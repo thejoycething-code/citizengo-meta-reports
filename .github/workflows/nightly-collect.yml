@@ -51,7 +51,7 @@ jobs:
 
     env:
       META_TOKENS: ${{ secrets.META_TOKENS }}
-      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL || vars.SUPABASE_URL }}
       SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
       GRAPH_VERSION: ${{ vars.GRAPH_VERSION || 'v23.0' }}
       LOOKBACK_DAYS: ${{ github.event.inputs.lookback_days || '14' }}
@@ -105,7 +105,13 @@ jobs:
             echo "  1. They are under Settings > Secrets and variables > ACTIONS"
             echo "     (NOT the Dependabot or Codespaces tabs, and NOT the Variables tab)."
             echo "  2. They are on THIS repository, not another one."
-            echo "  3. The names match exactly - no trailing spaces, correct case."
+            echo "  3. They are REPOSITORY secrets, not ENVIRONMENT secrets."
+            echo "     Environment secrets are invisible unless the job declares"
+            echo "     'environment:', which this workflow does not."
+            echo "  4. The names match exactly - no trailing spaces, correct case."
+            echo ""
+            echo "SUPABASE_URL may be set as either a secret or a repository VARIABLE"
+            echo "- it is a public project URL, not a credential."
             exit 1
           fi
           echo "Tokens configured: $(echo "$META_TOKENS" | tr ',' '\n' | grep -c .)"
