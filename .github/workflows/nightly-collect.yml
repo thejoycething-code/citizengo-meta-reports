@@ -62,6 +62,7 @@ jobs:
       SHEET_ID: ${{ secrets.SHEET_ID }}
       GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
       ALERT_WEBHOOK_URL: ${{ secrets.ALERT_WEBHOOK_URL }}
+      DRY_RUN: ${{ (github.event.inputs.dry_run == true || github.event.inputs.dry_run == 'true') && 'true' || 'false' }}
 
     steps:
       - uses: actions/checkout@v4
@@ -76,7 +77,8 @@ jobs:
         run: |
           missing=""
           [ -z "$META_TOKENS" ] && missing="$missing META_TOKENS"
-          if [ "${{ github.event.inputs.dry_run }}" != "true" ]; then
+          echo "dry run: $DRY_RUN"
+          if [ "$DRY_RUN" != "true" ]; then
             [ -z "$SUPABASE_URL" ] && missing="$missing SUPABASE_URL"
             [ -z "$SUPABASE_SERVICE_KEY" ] && missing="$missing SUPABASE_SERVICE_KEY"
           fi
@@ -90,16 +92,18 @@ jobs:
       - name: Collect
         id: collect
         run: |
+          FLAG=""
+          if [ "$DRY_RUN" = "true" ]; then FLAG="--dry-run"; fi
           node collector/collect.js \
             --lookback-days "$LOOKBACK_DAYS" \
             --max-posts "$MAX_POSTS" \
             --concurrency "$CONCURRENCY" \
-            ${{ github.event.inputs.dry_run == 'true' && '--dry-run' || '' }}
+            $FLAG
 
       # Mirror refresh. Skipped rather than failed when unconfigured, so the
       # collection itself is never blocked by Sheet credentials.
       - name: Refresh Google Sheet mirror
-        if: success() && env.SHEET_ID != '' && github.event.inputs.dry_run != 'true'
+        if: success() && env.SHEET_ID != '' && env.DRY_RUN != 'true'
         run: node collector/sync-sheet.js --push
 
       # Kept on failure too — the run log is how you diagnose a token that died
