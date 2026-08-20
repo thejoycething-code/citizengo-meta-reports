@@ -7,6 +7,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { withRetry } = require('../../lib/retry');
 
 // ---------------------------------------------------------------------------
 // NDJSON: one file per table under data/. Upserts are emulated by keying rows
@@ -70,18 +71,26 @@ function supabaseSink({ url, serviceKey }) {
       if (!rows.length) return { count: 0 };
       const conflict = CONFLICT[table];
       const target = base + '/rest/v1/' + table + (conflict ? `?on_conflict=${conflict}` : '');
-      const res = await fetch(target, {
-        method: 'POST',
-        headers: {
-          apikey: serviceKey,
-          Authorization: 'Bearer ' + serviceKey,
-          'Content-Type': 'application/json',
-          Prefer: conflict ? 'resolution=merge-duplicates,return=minimal' : 'return=minimal',
-        },
-        body: JSON.stringify(rows),
-      });
+      // Upserts are idempotent by construction (on_conflict + merge-duplicates),
+      // so retrying a write cannot duplicate rows.
+      const res = await withRetry(`upsert ${table}`, async () => {
+        const r = await fetch(target, {
+          method: 'POST',
+          headers: {
+            apikey: serviceKey,
+            Authorization: 'Bearer ' + serviceKey,
+            'Content-Type': 'application/json',
+            Prefer: conflict ? 'resolution=merge-duplicates,return=minimal' : 'return=minimal',
+          },
+          body: JSON.stringify(rows),
+        });
+        const text = await r.text();
+        let body = null;
+        if (text) { try { body = JSON.parse(text); } catch (e) { body = text; } }
+        return { status: r.status, ok: r.ok, body };
+      }, { onRetry: (l, n, why) => process.stderr.write(`  retry ${n}: ${l} (${why})\n`) });
       if (!res.ok) {
-        throw new Error(`${table} upsert failed: HTTP ${res.status} ${await res.text()}`);
+        throw new Error(`${table} upsert failed: HTTP ${res.status} ${JSON.stringify(res.body)}`);
       }
       return { count: rows.length };
     },

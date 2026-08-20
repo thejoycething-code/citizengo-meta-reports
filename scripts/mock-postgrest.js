@@ -18,6 +18,7 @@ const args = process.argv.slice(2);
 const argVal = (n, d) => { const i = args.indexOf(`--${n}`); return i === -1 ? d : args[i + 1]; };
 const PORT = Number(argVal('port', 5555));
 const FAIL_TABLE = argVal('fail-table', null);
+let transientLeft = Number(argVal('transient-fails', 0));
 
 // Mirrors the unique indexes in sql/schema.sql, so upsert semantics are tested
 // rather than assumed.
@@ -90,6 +91,12 @@ const server = http.createServer((req, res) => {
   if (!m) return pgError(res, 404, '404', 'Not found');
   const table = m[1];
 
+  // Reproduces the real observed failure: HTTP 401 PGRST303 from clock skew.
+  if (transientLeft > 0) {
+    transientLeft--;
+    log.push({ method: req.method, table, injected: 'PGRST303' });
+    return pgError(res, 401, 'PGRST303', 'JWT issued at future');
+  }
   if (table === FAIL_TABLE) {
     return pgError(res, 500, 'XX000', `simulated failure on ${table}`);
   }
