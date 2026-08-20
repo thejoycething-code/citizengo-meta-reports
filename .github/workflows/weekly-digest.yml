@@ -1,0 +1,71 @@
+name: Weekly digest
+
+# Builds the plain-language performance digest for the social media team and
+# renders it straight onto the run page, so reading it needs no tooling — just
+# open the run in GitHub.
+#
+# Reads Supabase only. It never calls Meta, so it cannot be affected by a token
+# problem and needs no META_TOKENS.
+
+on:
+  schedule:
+    # Monday 06:00 UTC — after Monday's 04:30 collection has landed, and in time
+    # for the start of the European working week.
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+    inputs:
+      page_id:
+        description: 'Page to report on (blank = the page with most views)'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+concurrency:
+  group: weekly-digest
+  cancel-in-progress: true
+
+jobs:
+  digest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL || vars.SUPABASE_URL }}
+      SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+      PAGE_ID: ${{ github.event.inputs.page_id }}
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: Check Supabase credentials
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_SERVICE_KEY" ]; then
+            echo "::error::SUPABASE_URL and SUPABASE_SERVICE_KEY are required."
+            echo "Repository secrets, Actions tab. SUPABASE_URL may also be a variable."
+            exit 1
+          fi
+          echo "credentials present"
+
+      - name: Build digest
+        run: |
+          ARGS=""
+          if [ -n "$PAGE_ID" ]; then ARGS="--page-id $PAGE_ID"; fi
+          node digest/build.js $ARGS --out digest.md
+          # Rendered onto the run page so nobody has to download an artifact to
+          # read it. This IS the delivery mechanism, not a debugging aid.
+          cat digest.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload digest
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: digest-${{ github.run_number }}
+          path: digest.md
+          retention-days: 90
+          if-no-files-found: warn
