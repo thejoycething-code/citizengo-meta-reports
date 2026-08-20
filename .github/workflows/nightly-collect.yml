@@ -65,29 +65,50 @@ jobs:
       DRY_RUN: ${{ (github.event.inputs.dry_run == true || github.event.inputs.dry_run == 'true') && 'true' || 'false' }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # No cache and no `npm install` — the project has zero dependencies by
       # design, so there is nothing to restore.
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: '24'
 
       - name: Check required secrets
         run: |
+          echo "dry run: $DRY_RUN"
+          echo
+          echo "Secret visibility to this runner (lengths only, never values):"
+          report() {
+            if [ -n "$2" ]; then
+              echo "  SET      $1  (${#2} chars)"
+            else
+              echo "  MISSING  $1"
+            fi
+          }
+          report META_TOKENS "$META_TOKENS"
+          report SUPABASE_URL "$SUPABASE_URL"
+          report SUPABASE_SERVICE_KEY "$SUPABASE_SERVICE_KEY"
+          report SHEET_ID "$SHEET_ID"
+          report GOOGLE_SERVICE_ACCOUNT_JSON "$GOOGLE_SERVICE_ACCOUNT_JSON"
+          report ALERT_WEBHOOK_URL "$ALERT_WEBHOOK_URL"
+          echo
+
           missing=""
           [ -z "$META_TOKENS" ] && missing="$missing META_TOKENS"
-          echo "dry run: $DRY_RUN"
           if [ "$DRY_RUN" != "true" ]; then
             [ -z "$SUPABASE_URL" ] && missing="$missing SUPABASE_URL"
             [ -z "$SUPABASE_SERVICE_KEY" ] && missing="$missing SUPABASE_SERVICE_KEY"
           fi
           if [ -n "$missing" ]; then
             echo "::error::Missing required secrets:$missing"
-            echo "Set them under Settings > Secrets and variables > Actions."
+            echo "If you believe these are set, check ALL of:"
+            echo "  1. They are under Settings > Secrets and variables > ACTIONS"
+            echo "     (NOT the Dependabot or Codespaces tabs, and NOT the Variables tab)."
+            echo "  2. They are on THIS repository, not another one."
+            echo "  3. The names match exactly - no trailing spaces, correct case."
             exit 1
           fi
-          echo "Secrets present. Tokens configured: $(echo "$META_TOKENS" | tr ',' '\n' | grep -c .)"
+          echo "Tokens configured: $(echo "$META_TOKENS" | tr ',' '\n' | grep -c .)"
 
       - name: Collect
         id: collect
@@ -110,7 +131,7 @@ jobs:
       # or a page that started returning permissions errors.
       - name: Upload output and logs
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: collection-${{ github.run_number }}
           path: |
