@@ -150,6 +150,17 @@ alter table public.meta_posts            enable row level security;
 alter table public.meta_post_metrics     enable row level security;
 alter table public.meta_collection_runs  enable row level security;
 
+-- Defence in depth on top of RLS. RLS alone does block anon (verified with a
+-- canary row: 0 rows visible), but the SELECT grant makes these tables part of
+-- the public PostgREST surface, so one careless policy added later would expose
+-- them. meta_page_tokens matters most — it holds long-lived Meta System User
+-- tokens. Only the server-side service_role needs any access.
+revoke all on public.meta_pages           from anon, authenticated;
+revoke all on public.meta_page_tokens     from anon, authenticated;
+revoke all on public.meta_posts           from anon, authenticated;
+revoke all on public.meta_post_metrics    from anon, authenticated;
+revoke all on public.meta_collection_runs from anon, authenticated;
+
 -- ---------------------------------------------------------------------------
 -- Convenience view for the dashboard and the Sheet mirror: latest snapshot per
 -- post, with engagement rate against the reach figure that still exists.
@@ -185,3 +196,12 @@ join public.meta_post_metrics m on m.post_id = p.post_id
 where m.collected_date = (
   select max(m2.collected_date) from public.meta_post_metrics m2 where m2.post_id = p.post_id
 );
+
+-- CRITICAL, and not the default. A Postgres view executes with its OWNER's
+-- privileges unless security_invoker is on, which makes it SECURITY DEFINER and
+-- lets it read straight past the base tables' RLS. On a project whose anon key
+-- is embedded in a public web page, that turns this view into an
+-- internet-readable window onto internal performance data. Supabase's linter
+-- reports it as an ERROR-level finding.
+alter view public.meta_post_latest set (security_invoker = on);
+revoke all on public.meta_post_latest from anon, authenticated;
