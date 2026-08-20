@@ -34,6 +34,11 @@ const OUT = opt('out', null);
 const DAY = 86400000;
 const n = (v) => (v === null || v === undefined ? '—' : Math.round(v).toLocaleString('en-GB'));
 const pc = (v) => (v === null || v === undefined ? '—' : v.toFixed(1) + '%');
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const shortDate = (iso) => {
+  const d = new Date(iso);
+  return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]}`;
+};
 const clean = (s, len) => {
   const one = (s || '(no text)').replace(/\s+/g, ' ').trim();
   return one.length > len ? one.slice(0, len - 1) + '…' : one;
@@ -163,10 +168,11 @@ async function main() {
     L.push('Nothing beat the page\'s usual performance by a clear margin this week.');
   } else {
     for (const r of over.slice(0, 5)) {
-      L.push(`**${r.benchmark.views_x_median}× a normal post** · ${r.created_time.slice(0, 10)} · ${r.media_type || 'post'}`);
-      L.push(`> ${clean(r.message, 180)}`);
-      L.push(`${n(r.views_total)} views · ${n(r.views_unique)} people · ${pc(r.beyond_followers_pct)} beyond your followers · ${n(r.shares_total)} shares · ${pc(r.engagement_rate)} engagement`);
-      if (r.permalink_url) L.push(`[See the post](${r.permalink_url})`);
+      L.push(`**"${clean(r.message, 150)}"**`);
+      L.push('');
+      L.push(`${r.benchmark.views_x_median}× a normal post · ${shortDate(r.created_time)} · ${r.media_type || 'post'}${r.permalink_url ? ` · [see the post](${r.permalink_url})` : ''}`);
+      L.push('');
+      L.push(`${n(r.views_total)} views · ${n(r.views_unique)} people reached · ${pc(r.beyond_followers_pct)} beyond your followers · ${n(r.shares_total)} shares · ${pc(r.engagement_rate)} engagement`);
       L.push('');
     }
   }
@@ -179,7 +185,8 @@ async function main() {
     L.push('These reached well under half what this page normally does. Worth a look at format and timing rather than subject — several are on themes that have worked before.');
     L.push('');
     for (const r of under.slice(0, 5)) {
-      L.push(`- **${r.benchmark.views_x_median}×** · ${n(r.views_total)} views · ${clean(r.message, 100)}`);
+      L.push(`- **"${clean(r.message, 110)}"**`);
+      L.push(`  ${r.benchmark.views_x_median}× a normal post · ${shortDate(r.created_time)} · ${n(r.views_total)} views${r.permalink_url ? ` · [see the post](${r.permalink_url})` : ''}`);
     }
     L.push('');
   }
