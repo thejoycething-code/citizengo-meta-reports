@@ -153,7 +153,8 @@ async function collectPostMetrics(post, as) {
     activity_by_type: firstValue(results.post_activity_by_action_type) || null,
     video_views: num(firstValue(results.post_video_views)),
 
-    // Requires pages_read_user_content, which the pilot token lacks.
+    // Filled in by listCommentCounts() after this returns; stays null if the
+    // token lacks pages_read_user_content.
     comments_total: null,
 
     errors: Object.keys(errors).length ? errors : null,
@@ -240,6 +241,43 @@ function classify(posts, metrics) {
   return { status: 'ok', empty, degraded };
 }
 
+// Comment counts live behind pages_read_user_content. They are fetched in their
+// OWN listing pass rather than added to POST_FIELDS, because a gated field in the
+// main query fails the entire call with #10 and loses every post — which is
+// exactly what happened during the Phase 0 probe. Here a permission failure costs
+// only the comment counts, and every other metric still lands.
+//
+// One extra call per page (plus pagination), not one per post.
+async function listCommentCounts(pageId, as) {
+  const cutoff = new Date(RUN_STARTED.getTime() - LOOKBACK_DAYS * 86400000);
+  const counts = new Map();
+  let next = null;
+
+  while (counts.size < MAX_POSTS) {
+    const params = next
+      ? { fields: 'id,created_time,comments.summary(true).limit(0)', limit: 100, after: next }
+      : { fields: 'id,created_time,comments.summary(true).limit(0)', limit: 100 };
+    const res = await call(`/${pageId}/published_posts`, params, as);
+    if (!res.ok) {
+      return { counts, error: res.error ? res.error.message : 'unknown' };
+    }
+    const rows = (res.body && res.body.data) || [];
+    if (!rows.length) break;
+
+    let reachedCutoff = false;
+    for (const r of rows) {
+      if (new Date(r.created_time) < cutoff) { reachedCutoff = true; break; }
+      const total = r.comments && r.comments.summary
+        ? r.comments.summary.total_count : null;
+      if (typeof total === 'number') counts.set(r.id, total);
+    }
+    if (reachedCutoff) break;
+    next = res.body && res.body.paging && res.body.paging.cursors && res.body.paging.cursors.after;
+    if (!next) break;
+  }
+  return { counts, error: null };
+}
+
 // --- per page --------------------------------------------------------------
 
 async function collectPage(page, pageToken) {
@@ -279,6 +317,20 @@ async function collectPage(page, pageToken) {
   }
 
   const metrics = await mapLimit(posts, CONCURRENCY, (p) => collectPostMetrics(p, as));
+
+  // Merged in after the fact so a failure here cannot affect anything else.
+  const { counts: commentCounts, error: commentError } = await listCommentCounts(page.page_id, as);
+  if (commentError) {
+    console.log(`   comment counts unavailable — ${commentError.slice(0, 80)}`);
+    console.log('     (needs the pages_read_user_content scope; every other metric is unaffected)');
+  } else {
+    let applied = 0;
+    for (const m of metrics) {
+      if (commentCounts.has(m.post_id)) { m.comments_total = commentCounts.get(m.post_id); applied++; }
+    }
+    console.log(`   comment counts: ${applied}/${metrics.length} posts`);
+  }
+
   if (metrics.length) await sink.upsert('meta_post_metrics', metrics);
 
   const { status, empty, degraded } = classify(posts, metrics);
