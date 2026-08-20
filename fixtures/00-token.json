@@ -1,0 +1,13 @@
+{
+  "ok": true,
+  "status": 200,
+  "request": "https://graph.facebook.com/v23.0/me?fields=id%2Cname",
+  "business_use_case_usage": null,
+  "app_usage": "{\"call_count\":7,\"total_cputime\":0,\"total_time\":3}",
+  "elapsed_ms": 1886,
+  "error": null,
+  "body": {
+    "id": "10243774161025971",
+    "name": "Chris Joyce"
+  }
+}

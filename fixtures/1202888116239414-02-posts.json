@@ -1,0 +1,130 @@
+{
+  "safe": {
+    "ok": true,
+    "status": 200,
+    "request": "https://graph.facebook.com/v23.0/1202888116239414/published_posts?fields=id%2Ccreated_time%2Cmessage%2Cpermalink_url%2Cstatus_type%2Cis_published%2Cfull_picture%2Cattachments%7Bmedia_type%2Ctype%7D%2Cshares&limit=5",
+    "business_use_case_usage": "{\"1202888116239414\":[{\"type\":\"pages\",\"call_count\":1,\"total_cputime\":1,\"total_time\":1,\"estimated_time_to_regain_access\":0}]}",
+    "app_usage": null,
+    "elapsed_ms": 1407,
+    "error": null,
+    "body": {
+      "data": [
+        {
+          "id": "1202888116239414_1372643328372454",
+          "created_time": "2026-08-17T15:32:06+0000",
+          "message": "🏴󠁧󠁢󠁳󠁣󠁴󠁿 One week today, Sarah Morse will appear at her employment tribunal against Angus Council after being dismissed from Arbroath High School. \n\nSarah answered her pupils' questions honestly and faithfully, without seeking or attempting to influence anyone.\n\nNobody should have to choose between their conscience and their career.\n\nSarah needs you! Sign the petition and send her a message of support on our page:  https://cgo.ac/scTDvf9Pp",
+          "permalink_url": "https://www.facebook.com/1374827568154030/posts/1372643328372454",
+          "status_type": "added_photos",
+          "is_published": true,
+          "full_picture": "https://scontent-eze1-2.xx.fbcdn.net/v/t39.30808-6/777854209_1372634875039966_884951604107965798_n.jpg?_nc_cat=100&ccb=1-7&_nc_sid=127cfc&_nc_ohc=XdCYnvW9TmMQ7kNvwEFVMYD&_nc_oc=AdoHi5dU95u4oCTM8G3n4YkKIkCJnVktQFsvLzke2sKix0fMrUnAOmxAOy4UO3bXkdM&_nc_zt=23&_nc_ht=scontent-eze1-2.xx&edm=APyxFHYEAAAA&_nc_gid=M-tJhg-J4GqeRmhClD1Z9g&_nc_tpa=Q5bMBQIUiOl7q87f7gk_t6LgfHvceCRE7Sx0iE4FFigLLj598sOYy3WmdGSlR3eS_-AardfIYPtQSZKIVg&oh=00_AQFRSuwmtC1IaX1TRp_ayFAxe1mYeof51brP2-2zgQmVWQ&oe=6A8C8987",
+          "attachments": {
+            "data": [
+              {
+                "media_type": "photo",
+                "type": "photo"
+              }
+            ]
+          },
+          "shares": {
+            "count": 5
+          }
+        },
+        {
+          "id": "1202888116239414_1370124751957645",
+          "created_time": "2026-08-14T17:02:29+0000",
+          "message": "⌛ There is still time to tell Andy Burnham's Government not to proceed with conversational policing.\n\nBurnham has previously politicised the police as pictured below. Soon, you could see yourself in handcuffs for trying to talk your 14-year-old child not to proceed with body-altering puberty blockers.\n\nGender dysphoria, which many struggle with, should be treated with care and dignity. \n\n🚨 As a direct effect of any so-called 'conversion practices' ban, a young man struggling with his sexuality may be forced to be rejected from pastoral care.\n\nStand up to this tyranny. Help us get to 30,000 signatures.\n\nAdd your name to the petition now: https://cgo.ac/sc6EfNlEe",
+          "permalink_url": "https://www.facebook.com/1374827568154030/posts/1370124751957645",
+          "status_type": "added_photos",
+          "is_published": true,
+          "full_picture": "https://scontent-eze1-1.xx.fbcdn.net/v/t39.30808-6/774157106_1370083298628457_3802661158598405654_n.jpg?stp=dst-jpg_p720x720_tt6&_nc_cat=106&ccb=1-7&_nc_sid=127cfc&_nc_ohc=RhceyL2GiiYQ7kNvwFqxoXs&_nc_oc=Adqur09HOQJy7yoArMu3WOqUSHJPAKkxM7M5BysjqDY8heElhoN68drgMVgX9lf7tAY&_nc_zt=23&_nc_ht=scontent-eze1-1.xx&edm=APyxFHYEAAAA&_nc_gid=M-tJhg-J4GqeRmhClD1Z9g&_nc_tpa=Q5bMBQJKBjVJp3XL0DxfOpTxB3qZoYRwsHb882RqO4UXYdDYZHKeaoU_LU3bYk8LKeoBmg9xE7EbFvRVzw&oh=00_AQGfNscirE-eUv0XX551YitAEyIcg7xLWINKu734yPGKDw&oe=6A8C71F6",
+          "attachments": {
+            "data": [
+              {
+                "media_type": "photo",
+                "type": "photo"
+              }
+            ]
+          },
+          "shares": {
+            "count": 9
+          }
+        },
+        {
+          "id": "1202888116239414_122121900255387135",
+          "created_time": "2026-08-11T19:21:03+0000",
+          "permalink_url": "https://www.facebook.com/122124811761387135/posts/122121900255387135",
+          "status_type": "mobile_status_update",
+          "is_published": true,
+          "full_picture": "https://scontent-eze1-2.xx.fbcdn.net/v/t15.5256-10/772647523_1931083404244918_3083791158660659478_n.jpg?_nc_cat=107&ccb=1-7&_nc_sid=5fad0e&_nc_ohc=427O-euqdwsQ7kNvwEKmfm_&_nc_oc=Adr91gVQm9-7GLJfmF_X85MEUYMkqSlcQ9w_HaVSW_Oz5bz4PxpzW452okofTdBL2uA&_nc_zt=23&_nc_ht=scontent-eze1-2.xx&edm=APyxFHYEAAAA&_nc_gid=M-tJhg-J4GqeRmhClD1Z9g&_nc_tpa=Q5bMBQK9fJnlGPvTbcbHYpMMfw329kO1pty9BklXWn04hzwj8TUNZMm0j7cX_K1HguAgHEGp0_OvTI7_Jg&oh=00_AQEINJXgWlJOc0bER45y-8DouDkr_5EC5Or_nm1aETG74w&oe=6A8C93A6",
+          "attachments": {
+            "data": [
+              {
+                "media_type": "video",
+                "type": "video_inline"
+              }
+            ]
+          }
+        },
+        {
+          "id": "1202888116239414_122121868803387135",
+          "created_time": "2026-08-11T17:00:17+0000",
+          "message": "What it really looked like when Massachusetts legalised prenatal infanticide up to birth:",
+          "permalink_url": "https://www.facebook.com/122124811761387135/posts/122121868803387135",
+          "status_type": "added_photos",
+          "is_published": true,
+          "full_picture": "https://scontent-eze1-1.xx.fbcdn.net/v/t39.30808-6/769345673_122121861033387135_5294139869266530512_n.jpg?stp=dst-jpg_p720x720_tt6&_nc_cat=109&ccb=1-7&_nc_sid=127cfc&_nc_ohc=QP_sd--ksMIQ7kNvwFTJW91&_nc_oc=AdqLrcmuaX3A6BsKJgEbrZmtEMyllL8924PiXfXSXTUKU2MjHtsXrnRuvVPW7jBwgIA&_nc_zt=23&_nc_ht=scontent-eze1-1.xx&edm=APyxFHYEAAAA&_nc_gid=M-tJhg-J4GqeRmhClD1Z9g&_nc_tpa=Q5bMBQLVM0S38dtiPPG9hojPS2uu3F5KQhdcCxV63_VVv7N5gfu6Qxpplc9vHXw1OE7lggZ3qP_4U5GNiA&oh=00_AQFs-ooUZtM1yxjGhOqg6YbUsEnwg15QHiC6Z8DM4MifUw&oe=6A8C83A8",
+          "attachments": {
+            "data": [
+              {
+                "media_type": "photo",
+                "type": "photo"
+              }
+            ]
+          }
+        },
+        {
+          "id": "1202888116239414_1366748452295275",
+          "created_time": "2026-08-10T15:40:59+0000",
+          "message": "Please join us in praying for the people of Colombia after the devastating earthquake that has struck the country. 🙏\n\nOur thoughts and prayers are also with all of our colleagues and friends during these devastating circumstances.\n\nMay the Lord stay close to those who have been affected and those who are suffering in these difficult times. 💛🇨🇴",
+          "permalink_url": "https://www.facebook.com/1374827568154030/posts/1366748452295275",
+          "status_type": "added_photos",
+          "is_published": true,
+          "full_picture": "https://scontent-eze1-2.xx.fbcdn.net/v/t39.30808-6/764800669_1366746978962089_571710391737671885_n.jpg?stp=dst-jpg_p720x720_tt6&_nc_cat=101&ccb=1-7&_nc_sid=127cfc&_nc_ohc=LIzR4qUEdGkQ7kNvwEBOIsB&_nc_oc=AdoD47hpjYV5QAatqAvGeIIE3H4Jtg1yCgKj9qnfQyR5Wb070G9b59oKc9FCcGK6qYw&_nc_zt=23&_nc_ht=scontent-eze1-2.xx&edm=APyxFHYEAAAA&_nc_gid=M-tJhg-J4GqeRmhClD1Z9g&_nc_tpa=Q5bMBQIfwmOg-CRNbbzaJosLvXrOcZrobQh89ZIk7rJ5tTkfWfKgEWDZC6cVI7JOV6jX6fycqviYr7FjUQ&oh=00_AQGTlo4Z69Rxj9NQdIFoBFK1B65uF2jNfikrfw0qFJO45g&oe=6A8C9D86",
+          "attachments": {
+            "data": [
+              {
+                "media_type": "photo",
+                "type": "photo"
+              }
+            ]
+          },
+          "shares": {
+            "count": 2
+          }
+        }
+      ],
+      "paging": {
+        "cursors": {
+          "before": "QVFIVFZAnVzd3a295el9xa0RjMFR4aFA0SEpSTVI2OGI3WVMwTUdFOW9lOWR2R25ZAWTBUVVh0NlZA3cTFqNWNtVFEyQ0tUVFVLa1VCQjhYbHRqQnV4TU9hdUFQbE12TjhaMXBNdDA5Q09zd0RzTmZATbEpMS0pUNUdXLUw0dG5XWC1aQnlOMkdzYmZAtSmcwWGcwMEpUZAjczUG9lQkc2MldjSHlta29UdWNSeWN3VnlCbWQtdkRyN0FaVnMtN3pWNFA5cUs4TTlpSjhOLU1qQ3NhZAkFRYk82UGRBcEg3VjNETm1SS2JYdHlBNGtmSmUyempmcDkzZAWQ2UnZAkcFRNX0lqRG5OS2VEUnJ4YUpfWllmY3ZAmb0N0Yk9wNEw5NlE2MUctSFhabmlacWVHSFJla1BRMkZAYS0U2Mi10TVhrejd0SUgzMUpWWjJwcXkyRDZAKWDZApZAFFzZAWloVVF6cERFeUg3MXR1ejlKdUhPTF9fNVNjVE9IMnc2ajNodGF0dHZA6TXhQWFFNQ0JUVFNhazJ6ZA3V0V3ZAlVmloSHpKWWx3X214WnJYVTFVMFdXbUJBWFFkS2FiWk1PYzFkSEd5OUMtTkQ5RC1udEhCU0s4ekxDNnUyM2VrdzFCM1pHZAlRTdWg5a2Nack82ZAnBUb25icGdRdmZAvc0Vwak9xcmFmOS15UHpSOEF1bFFyNUkxOEVPVExxY2ZA2WTJEUXpIaVFZAT2JONFFrVzdpQUdUc2hIamhCQWYxal9BdWVBX05EdjBLWGhOcXo0Wk9oTAZDZD",
+          "after": "QVFIVHlIVUxPXzJ1TmVvODhYWW5KUkoyUUpJRkNGRElmMGxJQUl1ZAjJIdFNNdzFOOW13OUhGUHZAvWjhjX0tHd0VvS1NvN1NYQ1ZAsVnhvSzliX0gwYy1IblVQd2JBeWhBbzhta3lCVGJFbDBwUmdYVDR1R0hxdEZAzREI3NUozMnlPbV9lUlhIMHJXTG9USUJYazJHMkJBSHpFRUtOLVpjVWdXdUg5alJlZAFRBZAm9GenhiU0xPUkpxdmdUQXVsb3F2cEVuX200djlRZAWt2MzJucU9JemVjcDMwZAzdOMjRMN0prZAHp2SWNUOG1vZA3lScEQ5dHFzekpWT0pXUkhqUFAxLUdjd2E5LWF5WjZAVZAHBPekt5YkpZATHVlRXNMbjFzY2h4ZAkRFT01wYmJtakRYZAFBTUl9HWTc3SHcwOUswcElEeWNzMENja2VUcWQwaFpfUjZA0bXZAIV0VfRDI0eGh0S0Mxa2xRMkdnaHRiNmVNc0VZAVkdjWmJWOUo2ejE4MjVjN082NDNCRDNOd0FCVWpLeUd2UW1GcklSMk1hMnBvRGRVMFE1RFlndTBadXFPOGxPYlo5VFNvUjFjeVpEV2VGcWVSVFktZADA5NkFidjNOdXF3NTR2RmFiSm1EUHlrTUNNeEwtUXBGU0ZAhZAURPQl95clJaVENnelZArVHowSEZATUkY5aUg0QXlpWVFma3hkMzVLdjc0UEhkRnFwN2dza1RLZAmphcVREVVIwRklIelAzUkhBVV80S2tFSHBBQTV2Nm9NVE5wVWVLeAZDZD"
+        },
+        "next": "https://graph.facebook.com/v26.0/1202888116239414/published_posts?fields=id%2Ccreated_time%2Cmessage%2Cpermalink_url%2Cstatus_type%2Cis_published%2Cfull_picture%2Cattachments%7Bmedia_type%2Ctype%7D%2Cshares&limit=5&after=QVFIVHlIVUxPXzJ1TmVvODhYWW5KUkoyUUpJRkNGRElmMGxJQUl1ZAjJIdFNNdzFOOW13OUhGUHZAvWjhjX0tHd0VvS1NvN1NYQ1ZAsVnhvSzliX0gwYy1IblVQd2JBeWhBbzhta3lCVGJFbDBwUmdYVDR1R0hxdEZAzREI3NUozMnlPbV9lUlhIMHJXTG9USUJYazJHMkJBSHpFRUtOLVpjVWdXdUg5alJlZAFRBZAm9GenhiU0xPUkpxdmdUQXVsb3F2cEVuX200djlRZAWt2MzJucU9JemVjcDMwZAzdOMjRMN0prZAHp2SWNUOG1vZA3lScEQ5dHFzekpWT0pXUkhqUFAxLUdjd2E5LWF5WjZAVZAHBPekt5YkpZATHVlRXNMbjFzY2h4ZAkRFT01wYmJtakRYZAFBTUl9HWTc3SHcwOUswcElEeWNzMENja2VUcWQwaFpfUjZA0bXZAIV0VfRDI0eGh0S0Mxa2xRMkdnaHRiNmVNc0VZAVkdjWmJWOUo2ejE4MjVjN082NDNCRDNOd0FCVWpLeUd2UW1GcklSMk1hMnBvRGRVMFE1RFlndTBadXFPOGxPYlo5VFNvUjFjeVpEV2VGcWVSVFktZADA5NkFidjNOdXF3NTR2RmFiSm1EUHlrTUNNeEwtUXBGU0ZAhZAURPQl95clJaVENnelZArVHowSEZATUkY5aUg0QXlpWVFma3hkMzVLdjc0UEhkRnFwN2dza1RLZAmphcVREVVIwRklIelAzUkhBVV80S2tFSHBBQTV2Nm9NVE5wVWVLeAZDZD"
+      }
+    }
+  },
+  "gated_needs_pages_read_user_content": {
+    "ok": false,
+    "status": 400,
+    "request": "https://graph.facebook.com/v23.0/1202888116239414/published_posts?fields=id%2Ccomments.summary%28true%29.limit%280%29%2Creactions.limit%280%29.summary%28true%29.as%28reactions_all%29%2Creactions.type%28LOVE%29.limit%280%29.summary%28true%29.as%28reactions_love%29&limit=5",
+    "business_use_case_usage": null,
+    "app_usage": "{\"call_count\":8,\"total_cputime\":0,\"total_time\":3}",
+    "elapsed_ms": 692,
+    "error": {
+      "message": "(#10) This endpoint requires the 'pages_read_user_content' permission or the 'Page Public Content Access' feature. Refer to https://developers.facebook.com/docs/apps/review/login-permissions#manage-pages and https://developers.facebook.com/docs/apps/review/feature#reference-PAGES_ACCESS for details.",
+      "type": "OAuthException",
+      "code": 10,
+      "fbtrace_id": "AiisNHhhBAOBQU-PWbjDEf-"
+    },
+    "body": null
+  }
+}

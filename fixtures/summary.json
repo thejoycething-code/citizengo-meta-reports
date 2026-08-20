@@ -1,0 +1,706 @@
+{
+  "graph_version": "v23.0",
+  "probed_at_utc": "2026-08-20T07:46:45.812Z",
+  "verdicts": [
+    {
+      "scope": "token",
+      "subject": "identity",
+      "ok": true,
+      "status": 200,
+      "error_code": null,
+      "retired": false,
+      "error_subcode": null,
+      "message": null
+    },
+    {
+      "scope": "token",
+      "subject": "permissions",
+      "ok": true,
+      "status": 200,
+      "error_code": null,
+      "retired": false,
+      "error_subcode": null,
+      "message": null
+    },
+    {
+      "scope": "token",
+      "subject": "accounts",
+      "ok": true,
+      "status": 200,
+      "error_code": null,
+      "retired": false,
+      "error_subcode": null,
+      "message": null
+    },
+    {
+      "scope": "page",
+      "subject": "1202888116239414 fields",
+      "ok": true,
+      "status": 200,
+      "error_code": null,
+      "retired": false,
+      "error_subcode": null,
+      "message": null
+    },
+    {
+      "scope": "posts",
+      "subject": "1202888116239414 published_posts (safe fields)",
+      "ok": true,
+      "status": 200,
+      "error_code": null,
+      "retired": false,
+      "error_subcode": null,
+      "message": null
+    },
+    {
+      "scope": "posts",
+      "subject": "1202888116239414 published_posts (gated fields)",
+      "ok": false,
+      "status": 400,
+      "error_code": 10,
+      "retired": false,
+      "error_subcode": null,
+      "message": "(#10) This endpoint requires the 'pages_read_user_content' permission or the 'Page Public Content Access' feature. Refer to https://developers.facebook.com/docs/apps/review/login-permissions#manage-pages and https://developers.facebook.com/docs/apps/review/feature#reference-PAGES_ACCESS for details."
+    },
+    {
+      "scope": "post-insight(dead?)",
+      "subject": "post_impressions",
+      "ok": false,
+      "status": 400,
+      "error_code": 100,
+      "retired": true,
+      "error_subcode": null,
+      "message": "(#100) The value must be a valid insights metric"
+    },
+    {
+      "scope": "post-insight(dead?)",
+      "subject": "post_impressions_unique",
+      "ok": false,
+      "status": 400,
+      "error_code": 100,
+      "retired": true,
+      "error_subcode": null,
+      "message": "(#100) The value must be a valid insights metric"
+    },
+    {
+      "scope": "post-insight(dead?)",
+      "subject": "post_impressions_organic",
+      "ok": false,
+      "status": 400,
+      "error_code": 100,
+      "retired": true,
+      "error_subcode": null,
+      "message": "(#100) The value must be a valid insights metric"
+    },
+    {
+      "scope": "post-insight(dead?)",
+      "subject": "post_impressions_organic_unique",
+      "ok": false,
+      "status": 400,
+      "error_code": 100,
+      "retired": true,
+      "error_subcode": null,
+      "message": "(#100) The value must be a valid insights metric"
+    },
+    {
+      "scope": "post-insight(dead?)",
+      "subject": "post_impressions_paid",
+      "ok": false,
+      "status": 400,
+      "error_code": 100,
+      "retired": true,
+      "error_subcode": null,
+      "message": "(#100) The value must be a valid insights metric"
+    },
+    {
+      "scope": "post-insight(dead?)",
+      "subject": "post_impressions_viral",
+      "ok": false,
+      "status": 400,
+      "error_code": 100,
+      "retired": true,
+      "error_subcode": null,
+      "message": "(#100) The value must be a valid insights metric"
+    },
+    {
+      "scope": "post-insight(dead?)",
+      "subject": "post_impressions_fan",
+      "ok": false,
+      "status": 400,
+      "error_code": 100,
+      "retired": true,
+      "error_subcode": null,
+      "message": "(#100) The value must be a valid insights metric"
+    },
+    {
+      "scope": "post-insight",
+      "subject": "post_total_media_view_unique",
+      "ok": false,
+      "status": 400,
+      "error_code": 200,
+      "retired": false,
+      "error_subcode": 1504029,
+      "message": "Permissions error"
+    },
+    {
+      "scope": "post-insight",
+      "subject": "post_media_view",
+      "ok": true,
+      "status": 200,
+      "error_code": null,
+      "retired": false,
+      "error_subcode": null,
+      "message": null
+    },
+    {
+      "scope": "post-insight",
+      "subject": "post_clicks",
+      "ok": true,
+      "status": 200,
+      "error_code": null,
+      "retired": false,
+      "error_subcode": null,
+      "message": null
+    },
+    {
+      "scope": "post-insight",
+      "subject": "post_clicks_by_type",
+      "ok": true,
+      "status": 200,
+      "error_code": null,
+      "retired": false,
+      "error_subcode": null,
+      "message": null
+    },
+    {
+      "scope": "post-insight",
+      "subject": "post_activity_by_action_type",
+      "ok": true,
+      "status": 200,
+      "error_code": null,
+      "retired": false,
+      "error_subcode": null,
+      "message": null
+    },
+    {
+      "scope": "post-insight",
+      "subject": "post_reactions_by_type_total",
+      "ok": true,
+      "status": 200,
+      "error_code": null,
+      "retired": false,
+      "error_subcode": null,
+      "message": null
+    },
+    {
+      "scope": "post-insight",
+      "subject": "post_video_views",
+      "ok": true,
+      "status": 200,
+      "error_code": null,
+      "retired": false,
+      "error_subcode": null,
+      "message": null
+    },
+    {
+      "scope": "post-insight",
+      "subject": "post_video_views_organic",
+      "ok": true,
+      "status": 200,
+      "error_code": null,
+      "retired": false,
+      "error_subcode": null,
+      "message": null
+    },
+    {
+      "scope": "post-insight",
+      "subject": "post_media_view+is_from_ads",
+      "ok": true,
+      "status": 200,
+      "error_code": null,
+      "retired": false,
+      "error_subcode": null,
+      "message": null
+    },
+    {
+      "scope": "post-insight",
+      "subject": "post_media_view+is_from_followers",
+      "ok": true,
+      "status": 200,
+      "error_code": null,
+      "retired": false,
+      "error_subcode": null,
+      "message": null
+    },
+    {
+      "scope": "page-insight",
+      "subject": "page_views_total",
+      "ok": true,
+      "status": 200,
+      "error_code": null,
+      "retired": false,
+      "error_subcode": null,
+      "message": null
+    },
+    {
+      "scope": "page-insight",
+      "subject": "page_total_media_view_unique",
+      "ok": true,
+      "status": 200,
+      "error_code": null,
+      "retired": false,
+      "error_subcode": null,
+      "message": null
+    },
+    {
+      "scope": "page-insight",
+      "subject": "page_media_view",
+      "ok": true,
+      "status": 200,
+      "error_code": null,
+      "retired": false,
+      "error_subcode": null,
+      "message": null
+    },
+    {
+      "scope": "page-insight",
+      "subject": "page_post_engagements",
+      "ok": true,
+      "status": 200,
+      "error_code": null,
+      "retired": false,
+      "error_subcode": null,
+      "message": null
+    },
+    {
+      "scope": "page-insight",
+      "subject": "page_follows",
+      "ok": true,
+      "status": 200,
+      "error_code": null,
+      "retired": false,
+      "error_subcode": null,
+      "message": null
+    },
+    {
+      "scope": "page-insight",
+      "subject": "page_daily_follows",
+      "ok": true,
+      "status": 200,
+      "error_code": null,
+      "retired": false,
+      "error_subcode": null,
+      "message": null
+    },
+    {
+      "scope": "page-insight",
+      "subject": "page_impressions",
+      "ok": false,
+      "status": 400,
+      "error_code": 100,
+      "retired": true,
+      "error_subcode": null,
+      "message": "(#100) The value must be a valid insights metric"
+    },
+    {
+      "scope": "page-insight",
+      "subject": "page_fans",
+      "ok": false,
+      "status": 400,
+      "error_code": 100,
+      "retired": true,
+      "error_subcode": null,
+      "message": "(#100) The value must be a valid insights metric"
+    },
+    {
+      "scope": "page",
+      "subject": "1116066201596147 fields",
+      "ok": true,
+      "status": 200,
+      "error_code": null,
+      "retired": false,
+      "error_subcode": null,
+      "message": null
+    },
+    {
+      "scope": "posts",
+      "subject": "1116066201596147 published_posts (safe fields)",
+      "ok": true,
+      "status": 200,
+      "error_code": null,
+      "retired": false,
+      "error_subcode": null,
+      "message": null
+    },
+    {
+      "scope": "posts",
+      "subject": "1116066201596147 published_posts (gated fields)",
+      "ok": true,
+      "status": 200,
+      "error_code": null,
+      "retired": false,
+      "error_subcode": null,
+      "message": null
+    },
+    {
+      "scope": "page-insight",
+      "subject": "page_views_total",
+      "ok": true,
+      "status": 200,
+      "error_code": null,
+      "retired": false,
+      "error_subcode": null,
+      "message": null
+    },
+    {
+      "scope": "page-insight",
+      "subject": "page_total_media_view_unique",
+      "ok": true,
+      "status": 200,
+      "error_code": null,
+      "retired": false,
+      "error_subcode": null,
+      "message": null
+    },
+    {
+      "scope": "page-insight",
+      "subject": "page_media_view",
+      "ok": true,
+      "status": 200,
+      "error_code": null,
+      "retired": false,
+      "error_subcode": null,
+      "message": null
+    },
+    {
+      "scope": "page-insight",
+      "subject": "page_post_engagements",
+      "ok": true,
+      "status": 200,
+      "error_code": null,
+      "retired": false,
+      "error_subcode": null,
+      "message": null
+    },
+    {
+      "scope": "page-insight",
+      "subject": "page_follows",
+      "ok": true,
+      "status": 200,
+      "error_code": null,
+      "retired": false,
+      "error_subcode": null,
+      "message": null
+    },
+    {
+      "scope": "page-insight",
+      "subject": "page_daily_follows",
+      "ok": true,
+      "status": 200,
+      "error_code": null,
+      "retired": false,
+      "error_subcode": null,
+      "message": null
+    },
+    {
+      "scope": "page-insight",
+      "subject": "page_impressions",
+      "ok": false,
+      "status": 400,
+      "error_code": 100,
+      "retired": true,
+      "error_subcode": null,
+      "message": "(#100) The value must be a valid insights metric"
+    },
+    {
+      "scope": "page-insight",
+      "subject": "page_fans",
+      "ok": false,
+      "status": 400,
+      "error_code": 100,
+      "retired": true,
+      "error_subcode": null,
+      "message": "(#100) The value must be a valid insights metric"
+    },
+    {
+      "scope": "page",
+      "subject": "434058216680321 fields",
+      "ok": true,
+      "status": 200,
+      "error_code": null,
+      "retired": false,
+      "error_subcode": null,
+      "message": null
+    },
+    {
+      "scope": "posts",
+      "subject": "434058216680321 published_posts (safe fields)",
+      "ok": true,
+      "status": 200,
+      "error_code": null,
+      "retired": false,
+      "error_subcode": null,
+      "message": null
+    },
+    {
+      "scope": "posts",
+      "subject": "434058216680321 published_posts (gated fields)",
+      "ok": false,
+      "status": 400,
+      "error_code": 10,
+      "retired": false,
+      "error_subcode": null,
+      "message": "(#10) This endpoint requires the 'pages_read_user_content' permission or the 'Page Public Content Access' feature. Refer to https://developers.facebook.com/docs/apps/review/login-permissions#manage-pages and https://developers.facebook.com/docs/apps/review/feature#reference-PAGES_ACCESS for details."
+    },
+    {
+      "scope": "post-insight(dead?)",
+      "subject": "post_impressions",
+      "ok": false,
+      "status": 400,
+      "error_code": 100,
+      "retired": true,
+      "error_subcode": null,
+      "message": "(#100) The value must be a valid insights metric"
+    },
+    {
+      "scope": "post-insight(dead?)",
+      "subject": "post_impressions_unique",
+      "ok": false,
+      "status": 400,
+      "error_code": 100,
+      "retired": true,
+      "error_subcode": null,
+      "message": "(#100) The value must be a valid insights metric"
+    },
+    {
+      "scope": "post-insight(dead?)",
+      "subject": "post_impressions_organic",
+      "ok": false,
+      "status": 400,
+      "error_code": 100,
+      "retired": true,
+      "error_subcode": null,
+      "message": "(#100) The value must be a valid insights metric"
+    },
+    {
+      "scope": "post-insight(dead?)",
+      "subject": "post_impressions_organic_unique",
+      "ok": false,
+      "status": 400,
+      "error_code": 100,
+      "retired": true,
+      "error_subcode": null,
+      "message": "(#100) The value must be a valid insights metric"
+    },
+    {
+      "scope": "post-insight(dead?)",
+      "subject": "post_impressions_paid",
+      "ok": false,
+      "status": 400,
+      "error_code": 100,
+      "retired": true,
+      "error_subcode": null,
+      "message": "(#100) The value must be a valid insights metric"
+    },
+    {
+      "scope": "post-insight(dead?)",
+      "subject": "post_impressions_viral",
+      "ok": false,
+      "status": 400,
+      "error_code": 100,
+      "retired": true,
+      "error_subcode": null,
+      "message": "(#100) The value must be a valid insights metric"
+    },
+    {
+      "scope": "post-insight(dead?)",
+      "subject": "post_impressions_fan",
+      "ok": false,
+      "status": 400,
+      "error_code": 100,
+      "retired": true,
+      "error_subcode": null,
+      "message": "(#100) The value must be a valid insights metric"
+    },
+    {
+      "scope": "post-insight",
+      "subject": "post_total_media_view_unique",
+      "ok": true,
+      "status": 200,
+      "error_code": null,
+      "retired": false,
+      "error_subcode": null,
+      "message": null
+    },
+    {
+      "scope": "post-insight",
+      "subject": "post_media_view",
+      "ok": true,
+      "status": 200,
+      "error_code": null,
+      "retired": false,
+      "error_subcode": null,
+      "message": null
+    },
+    {
+      "scope": "post-insight",
+      "subject": "post_clicks",
+      "ok": true,
+      "status": 200,
+      "error_code": null,
+      "retired": false,
+      "error_subcode": null,
+      "message": null
+    },
+    {
+      "scope": "post-insight",
+      "subject": "post_clicks_by_type",
+      "ok": true,
+      "status": 200,
+      "error_code": null,
+      "retired": false,
+      "error_subcode": null,
+      "message": null
+    },
+    {
+      "scope": "post-insight",
+      "subject": "post_activity_by_action_type",
+      "ok": true,
+      "status": 200,
+      "error_code": null,
+      "retired": false,
+      "error_subcode": null,
+      "message": null
+    },
+    {
+      "scope": "post-insight",
+      "subject": "post_reactions_by_type_total",
+      "ok": true,
+      "status": 200,
+      "error_code": null,
+      "retired": false,
+      "error_subcode": null,
+      "message": null
+    },
+    {
+      "scope": "post-insight",
+      "subject": "post_video_views",
+      "ok": true,
+      "status": 200,
+      "error_code": null,
+      "retired": false,
+      "error_subcode": null,
+      "message": null
+    },
+    {
+      "scope": "post-insight",
+      "subject": "post_video_views_organic",
+      "ok": true,
+      "status": 200,
+      "error_code": null,
+      "retired": false,
+      "error_subcode": null,
+      "message": null
+    },
+    {
+      "scope": "post-insight",
+      "subject": "post_media_view+is_from_ads",
+      "ok": true,
+      "status": 200,
+      "error_code": null,
+      "retired": false,
+      "error_subcode": null,
+      "message": null
+    },
+    {
+      "scope": "post-insight",
+      "subject": "post_media_view+is_from_followers",
+      "ok": true,
+      "status": 200,
+      "error_code": null,
+      "retired": false,
+      "error_subcode": null,
+      "message": null
+    },
+    {
+      "scope": "page-insight",
+      "subject": "page_views_total",
+      "ok": true,
+      "status": 200,
+      "error_code": null,
+      "retired": false,
+      "error_subcode": null,
+      "message": null
+    },
+    {
+      "scope": "page-insight",
+      "subject": "page_total_media_view_unique",
+      "ok": true,
+      "status": 200,
+      "error_code": null,
+      "retired": false,
+      "error_subcode": null,
+      "message": null
+    },
+    {
+      "scope": "page-insight",
+      "subject": "page_media_view",
+      "ok": true,
+      "status": 200,
+      "error_code": null,
+      "retired": false,
+      "error_subcode": null,
+      "message": null
+    },
+    {
+      "scope": "page-insight",
+      "subject": "page_post_engagements",
+      "ok": true,
+      "status": 200,
+      "error_code": null,
+      "retired": false,
+      "error_subcode": null,
+      "message": null
+    },
+    {
+      "scope": "page-insight",
+      "subject": "page_follows",
+      "ok": true,
+      "status": 200,
+      "error_code": null,
+      "retired": false,
+      "error_subcode": null,
+      "message": null
+    },
+    {
+      "scope": "page-insight",
+      "subject": "page_daily_follows",
+      "ok": true,
+      "status": 200,
+      "error_code": null,
+      "retired": false,
+      "error_subcode": null,
+      "message": null
+    },
+    {
+      "scope": "page-insight",
+      "subject": "page_impressions",
+      "ok": false,
+      "status": 400,
+      "error_code": 100,
+      "retired": true,
+      "error_subcode": null,
+      "message": "(#100) The value must be a valid insights metric"
+    },
+    {
+      "scope": "page-insight",
+      "subject": "page_fans",
+      "ok": false,
+      "status": 400,
+      "error_code": 100,
+      "retired": true,
+      "error_subcode": null,
+      "message": "(#100) The value must be a valid insights metric"
+    }
+  ]
+}

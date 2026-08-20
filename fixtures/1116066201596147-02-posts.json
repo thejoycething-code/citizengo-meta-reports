@@ -1,0 +1,26 @@
+{
+  "safe": {
+    "ok": true,
+    "status": 200,
+    "request": "https://graph.facebook.com/v23.0/1116066201596147/published_posts?fields=id%2Ccreated_time%2Cmessage%2Cpermalink_url%2Cstatus_type%2Cis_published%2Cfull_picture%2Cattachments%7Bmedia_type%2Ctype%7D%2Cshares&limit=5",
+    "business_use_case_usage": "{\"1116066201596147\":[{\"type\":\"pages\",\"call_count\":1,\"total_cputime\":1,\"total_time\":1,\"estimated_time_to_regain_access\":0}]}",
+    "app_usage": null,
+    "elapsed_ms": 515,
+    "error": null,
+    "body": {
+      "data": []
+    }
+  },
+  "gated_needs_pages_read_user_content": {
+    "ok": true,
+    "status": 200,
+    "request": "https://graph.facebook.com/v23.0/1116066201596147/published_posts?fields=id%2Ccomments.summary%28true%29.limit%280%29%2Creactions.limit%280%29.summary%28true%29.as%28reactions_all%29%2Creactions.type%28LOVE%29.limit%280%29.summary%28true%29.as%28reactions_love%29&limit=5",
+    "business_use_case_usage": "{\"1116066201596147\":[{\"type\":\"pages\",\"call_count\":1,\"total_cputime\":1,\"total_time\":1,\"estimated_time_to_regain_access\":0}]}",
+    "app_usage": null,
+    "elapsed_ms": 544,
+    "error": null,
+    "body": {
+      "data": []
+    }
+  }
+}

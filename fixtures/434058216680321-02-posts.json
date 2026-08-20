@@ -1,0 +1,137 @@
+{
+  "safe": {
+    "ok": true,
+    "status": 200,
+    "request": "https://graph.facebook.com/v23.0/434058216680321/published_posts?fields=id%2Ccreated_time%2Cmessage%2Cpermalink_url%2Cstatus_type%2Cis_published%2Cfull_picture%2Cattachments%7Bmedia_type%2Ctype%7D%2Cshares&limit=5",
+    "business_use_case_usage": "{\"434058216680321\":[{\"type\":\"pages\",\"call_count\":1,\"total_cputime\":1,\"total_time\":1,\"estimated_time_to_regain_access\":0}]}",
+    "app_usage": null,
+    "elapsed_ms": 1155,
+    "error": null,
+    "body": {
+      "data": [
+        {
+          "id": "434058216680321_1517220967114396",
+          "created_time": "2026-08-18T18:43:26+0000",
+          "message": "They made policies during COVID that damaged our lives. Yet the very people whom the institutions claimed to protect were locked out of the room. 🔒\n\nThis September, the WHO negotiations continue.\n\n👇 Donate today, and help us bring your voice inside: https://cgo.ac/scRY8tWqM",
+          "permalink_url": "https://www.facebook.com/1518658250304001/posts/1517220967114396",
+          "status_type": "added_photos",
+          "is_published": true,
+          "full_picture": "https://scontent-eze1-1.xx.fbcdn.net/v/t39.30808-6/778957765_1517220290447797_21943589264203077_n.jpg?stp=dst-jpg_p720x720_tt6&_nc_cat=102&ccb=1-7&_nc_sid=127cfc&_nc_ohc=QIbRuthL-tIQ7kNvwFl1X47&_nc_oc=AdqVE9UGKjqiwdAIzmtytcRZNV3CMRAqmrXe4JZP4QWxZgJnxVMOuWzskWrR2lEdFAM&_nc_zt=23&_nc_ht=scontent-eze1-1.xx&edm=APyxFHYEAAAA&_nc_gid=BEuGqrebsmO1FuWvSeiHOw&_nc_tpa=Q5bMBQKlWNlym8nhQovQBEsw6Q8Z_3uGCtXaZx6ohCLJR-tVYOY1Dez40Y8wmKvn1DaWq5ewsony1BBkRQ&oh=00_AQFvAsqwIW_Gh4MvpO8xZVMxwGU61kfr77_e_2NgV_MPuQ&oe=6A8C8DD8",
+          "attachments": {
+            "data": [
+              {
+                "media_type": "photo",
+                "type": "photo"
+              }
+            ]
+          },
+          "shares": {
+            "count": 8
+          }
+        },
+        {
+          "id": "434058216680321_1516997883803371",
+          "created_time": "2026-08-18T13:46:41+0000",
+          "message": "🚨 August 26 could shape what children are taught for years.\n\n🇺🇳 New UNFPA country programs may influence schools, ministries, NGOs, abortion-related policy, gender programs, and sexuality education, using public money.\n\nWhat starts in the UN can end up in your child’s backpack.\n\nYour taxes. Your children. Your voice.\n\n✍️ Sign now and demand that your government oppose approval by consensus:\nhttps://cgo.ac/scIeaEOi3",
+          "permalink_url": "https://www.facebook.com/1518658250304001/posts/1516997883803371",
+          "status_type": "added_photos",
+          "is_published": true,
+          "full_picture": "https://scontent-eze1-2.xx.fbcdn.net/v/t39.30808-6/771821261_1516997513803408_2431510924106788778_n.jpg?stp=dst-jpg_p720x720_tt6&_nc_cat=101&ccb=1-7&_nc_sid=127cfc&_nc_ohc=_D28JU67xA8Q7kNvwFoLbdH&_nc_oc=Adp-Eo5HtGqkUg72rwlTWyHD1LJ_5HtnQhGuPxAOFyZHJ6hRTNl1c6BjUkBvOuGbffI&_nc_zt=23&_nc_ht=scontent-eze1-2.xx&edm=APyxFHYEAAAA&_nc_gid=BEuGqrebsmO1FuWvSeiHOw&_nc_tpa=Q5bMBQJlPHkb6Oqvonnb72bLpAGI4wnVq6Acu-uff3nDEz1pNGArnqn-iFOhILzwf5X6kCvZNvfsMyp4nQ&oh=00_AQG7l3iGxg8JYKhhh4ZNLa8gnitNGYEzmMmCoIwEMqcJsw&oe=6A8C8AF1",
+          "attachments": {
+            "data": [
+              {
+                "media_type": "photo",
+                "type": "photo"
+              }
+            ]
+          },
+          "shares": {
+            "count": 11
+          }
+        },
+        {
+          "id": "434058216680321_1515837027252790",
+          "created_time": "2026-08-17T08:38:55+0000",
+          "message": "In a world that makes the wrong people famous, let's give a platform to those who truly deserve to be heard.",
+          "permalink_url": "https://www.facebook.com/1518658250304001/posts/1515837027252790",
+          "status_type": "added_photos",
+          "is_published": true,
+          "full_picture": "https://scontent-eze1-1.xx.fbcdn.net/v/t39.30808-6/775260434_1515836833919476_6370481571370577556_n.jpg?stp=dst-jpg_p720x720_tt6&_nc_cat=110&ccb=1-7&_nc_sid=127cfc&_nc_ohc=d63PrFgW_6wQ7kNvwGoHOQy&_nc_oc=AdrrbEGG4LdCRtOEXHEnUvbJA10soS4yKLR1nFPSJmrOYcvFir-iF8fDc5GdgSQXGHA&_nc_zt=23&_nc_ht=scontent-eze1-1.xx&edm=APyxFHYEAAAA&_nc_gid=BEuGqrebsmO1FuWvSeiHOw&_nc_tpa=Q5bMBQIX7e1tViC8RM-w92l1TBd6Y1XkLJKACKfFJ87tFxYXxjkKIp0I8r1Poo18BzMZokKBArTYCOkIyw&oh=00_AQFGkVThb2wdNT9fb65GGdxRBY8kKr2d4AMWqKLfjRLAlA&oe=6A8C929D",
+          "attachments": {
+            "data": [
+              {
+                "media_type": "photo",
+                "type": "photo"
+              }
+            ]
+          },
+          "shares": {
+            "count": 4
+          }
+        },
+        {
+          "id": "434058216680321_1515157220654104",
+          "created_time": "2026-08-16T14:53:40+0000",
+          "message": "🗣️ When the UN cut off CitizenGO’s statement questioning Michelle Bachelet’s candidacy, they did not just silence us: they silenced you.\n\n🗽 So we took your voices directly to New York.\n\nCitizenGO delivered more than 300,000 signatures to UN permanent missions and took the campaign to the city’s most iconic locations, making it impossible for diplomats and decision-makers to ignore you.\n\nThey silenced one voice in Geneva. In New York, they had to face more than 300,000.\n\nThis battle is not over. Join us in keeping up the pressure to stop Michelle Bachelet from becoming the next UN Secretary-General!\n\n✍️ VetoBachelet.com/FB",
+          "permalink_url": "https://www.facebook.com/reel/1055392316866068/",
+          "status_type": "added_video",
+          "is_published": true,
+          "full_picture": "https://scontent-eze1-2.xx.fbcdn.net/v/t51.82787-10/776020773_18614074651053002_2339765834119074155_n.jpg?_nc_cat=100&ccb=1-7&_nc_sid=5fad0e&_nc_ohc=fK1psshJ97QQ7kNvwFOkpuD&_nc_oc=AdqmtSCjAjMWLOvFYnzlfDDKMBABbKbEpdur_bjGSCp3rE3C2mDwoJ_kYhgjXHdqJCM&_nc_zt=23&_nc_ht=scontent-eze1-2.xx&edm=APyxFHYEAAAA&_nc_gid=BEuGqrebsmO1FuWvSeiHOw&_nc_tpa=Q5bMBQIIkn3EIUj0H489HQHyWK7nDdZKeRFMuCF2vvchHPcVK6LssCqXUdkzsZsYC8M3qfbk8SO6bMb1JQ&oh=00_AQGiZJUA0bwVI7WV824xob5ZhPe8ejyvtzIHjz3YmO1Iug&oe=6A8C8F14",
+          "attachments": {
+            "data": [
+              {
+                "media_type": "video",
+                "type": "video_inline"
+              }
+            ]
+          },
+          "shares": {
+            "count": 6
+          }
+        },
+        {
+          "id": "434058216680321_1514374190732407",
+          "created_time": "2026-08-15T17:56:51+0000",
+          "message": "🔥 This is what showing up looks like.\n\nIn May, we took your voice straight to the UN in Geneva - confronting crisis profiteers and demanding accountability with international delegates.\n\n🦠🌎⛓️‍💥 Now, as WHO Pandemic Treaty negotiators return to Geneva this September, we’re heading back to ensure public interest and freedom stay front and center. But we can’t do it without you.\n\n🎁 Your support makes independent advocacy possible. Send a one-time gift or pledge monthly to keep us fighting for you:\nhttps://cgo.ac/scRY8tWqM",
+          "permalink_url": "https://www.facebook.com/1518658250304001/posts/1514374190732407",
+          "status_type": "added_photos",
+          "is_published": true,
+          "full_picture": "https://scontent-eze1-1.xx.fbcdn.net/v/t39.30808-6/774868514_1514367034066456_955545321400040625_n.jpg?stp=dst-jpg_p720x720_tt6&_nc_cat=106&ccb=1-7&_nc_sid=127cfc&_nc_ohc=DTcQy6sQeH8Q7kNvwEqHB8-&_nc_oc=Adpcb8tYEjRnPyZVXaJsMJCovPa7n9zny9bXi3v5pjtMtDWWHGJd5TaWZFGuncHLyRE&_nc_zt=23&_nc_ht=scontent-eze1-1.xx&edm=APyxFHYEAAAA&_nc_gid=BEuGqrebsmO1FuWvSeiHOw&_nc_tpa=Q5bMBQJTfa-XgpPPnmV1jjNw58JCdRpAvETe7LoaHTacX39Rv6vaq7AEC9ckI-3EA-KZmXwVJOEPAI2MXg&oh=00_AQGpQcBoBAwSGAK9biVxiX0squ1_HaADUQSI1NR3w8OanA&oe=6A8C7BF9",
+          "attachments": {
+            "data": [
+              {
+                "media_type": "album",
+                "type": "album"
+              }
+            ]
+          },
+          "shares": {
+            "count": 9
+          }
+        }
+      ],
+      "paging": {
+        "cursors": {
+          "before": "QVFIVGJsTXRTRllVWWVkT0FkSXRnMVg0enlfWU9Tb2szZATZAUbFctUk9LZA091SWJsNHZARYXRKWi1hZA0RvUGRkVjhyZAk80NEZAWaF9EeTMybXBzeWczYzdyNlllN2JmMTNkaXZAyWmtiRXZAqZAjFVcWJXV25JUWZArNEF1b0JEUzN2aWMtc212Ym1KV0M3YnNBUTFLd0hIVHVwUm9ZAR2FmQWgwQnpCMkNncWZAGSDhpQ09YSjlrbGhQRC1PdWlYcFlDU01yWkh0S2RNUXBLaHhkVlEtT2NlWDRsVm9ORVpIQktwTmNqakh6ZAjN1dHU1bXJCUUFDcklzSzhpdzhfc1FSSjZAvSzViWHpXQW80OE9pc0ZA4bnQwOW84N1h4bWRLUTQtMWFkNU5DTjFIOEQ5MWo1UENsWmktMks5TXVsd0tjYlFmQVpGMmpueGJUcWJvRWtqVW5GMnFIYm1XTFJETnBicGNRM3RlM3ZApMlAyemwyUWRCMVlHRGdwYktQVHpKOVBWNlFpOU04ajAtRXdMdklIdU9XM3hKRXNRdVhHcFRac29idG5lRzhqSHBrME1QdHVqY2MxTG5NYlpfNG9sLUxPV3UxWmpJdWZAzMEVHQnVnZAkRZAbU9TaDJkVDRJaW90UXVlYmRodVRXTjM4Vmp4TmZAKQzlnSUtUTWFsRWxsYTVBdElYM010V0JLYW1jOTZARdnZA3MlduTEVmMkYtczg4ZA3k2ZAkNoc2RGejNRejJtX3BrMGRtWE5yYlcyU01aTXpTT3ZAsb19hVjVxUwZDZD",
+          "after": "QVFIVHg1THRTSVIybWxrWlNJLVVFVFRfZAjVQdFFiTkdwWnRXZAG1JS1JlSG9ZAV3Jmb1h3Wkd3ZATM4bHlkXzRQVDhJOTRVR0tYQVdwRkdwQUUybVFiS0NtaExvTmtad0lXQ3pGLUhxUHRWVWZAUZAm03OXRSeUpCWFFyeFJRYlVfaTZAJYmVFdnVGYlZAWZAlJ6cWNOVnNiNTlyaUxrT2N6OW1yNUxUOXYxemE1STRqUWxFN3NXdWNnV3ZAJdjFDOUF5ZA2szMXRhWkVyTXlLMUprMi1tN0tDRnF6ZADNYYWNmRU50blc5eVlmMkUyOTBJUG1SSWtHRDEtbXFxSG9CT0RCZAmZACNXFRS0VwcHh5TnByTlAwSDl1TFp3QzlmdEM4eFZAROTZAHSVIzX2paSGItZAGwzTk1EY0tEc0xZANUZAmZAWpHMVhsLUktZA1BuNGxLaWEyYTY2UnZAObUVRT1pDc0VLay1JcnlseE5JSnRlZADVMdXpWZAGNaZA25RR3UtWDhLOGdlV0lPa0tnM2dQNkRHM3k4N0lHM3JGeUlqNmNVLUs0N20wc2RuX0JvSE8zNTJHTERGQnVCLXJkZATFwck1jS01qbktzQUtZAMS1UemJyVjR4UEt6THNWVjlLTWFVRHk1M3pGRG5rRUE1aW11RmtGVGFBRGE4VEJQd1ZALQ2d6QzNYV0FMc2tBWkIzTzgzX0pxVWZAydnc0V2RMSF9ncVdWVFJ3TFF1bXBLSlY2c1NoeHEyNWlZAeE5ZAUWdVRkVFczBOaG95bUd5NzhfQThvagZDZD"
+        },
+        "next": "https://graph.facebook.com/v26.0/434058216680321/published_posts?fields=id%2Ccreated_time%2Cmessage%2Cpermalink_url%2Cstatus_type%2Cis_published%2Cfull_picture%2Cattachments%7Bmedia_type%2Ctype%7D%2Cshares&limit=5&after=QVFIVHg1THRTSVIybWxrWlNJLVVFVFRfZAjVQdFFiTkdwWnRXZAG1JS1JlSG9ZAV3Jmb1h3Wkd3ZATM4bHlkXzRQVDhJOTRVR0tYQVdwRkdwQUUybVFiS0NtaExvTmtad0lXQ3pGLUhxUHRWVWZAUZAm03OXRSeUpCWFFyeFJRYlVfaTZAJYmVFdnVGYlZAWZAlJ6cWNOVnNiNTlyaUxrT2N6OW1yNUxUOXYxemE1STRqUWxFN3NXdWNnV3ZAJdjFDOUF5ZA2szMXRhWkVyTXlLMUprMi1tN0tDRnF6ZADNYYWNmRU50blc5eVlmMkUyOTBJUG1SSWtHRDEtbXFxSG9CT0RCZAmZACNXFRS0VwcHh5TnByTlAwSDl1TFp3QzlmdEM4eFZAROTZAHSVIzX2paSGItZAGwzTk1EY0tEc0xZANUZAmZAWpHMVhsLUktZA1BuNGxLaWEyYTY2UnZAObUVRT1pDc0VLay1JcnlseE5JSnRlZADVMdXpWZAGNaZA25RR3UtWDhLOGdlV0lPa0tnM2dQNkRHM3k4N0lHM3JGeUlqNmNVLUs0N20wc2RuX0JvSE8zNTJHTERGQnVCLXJkZATFwck1jS01qbktzQUtZAMS1UemJyVjR4UEt6THNWVjlLTWFVRHk1M3pGRG5rRUE1aW11RmtGVGFBRGE4VEJQd1ZALQ2d6QzNYV0FMc2tBWkIzTzgzX0pxVWZAydnc0V2RMSF9ncVdWVFJ3TFF1bXBLSlY2c1NoeHEyNWlZAeE5ZAUWdVRkVFczBOaG95bUd5NzhfQThvagZDZD"
+      }
+    }
+  },
+  "gated_needs_pages_read_user_content": {
+    "ok": false,
+    "status": 400,
+    "request": "https://graph.facebook.com/v23.0/434058216680321/published_posts?fields=id%2Ccomments.summary%28true%29.limit%280%29%2Creactions.limit%280%29.summary%28true%29.as%28reactions_all%29%2Creactions.type%28LOVE%29.limit%280%29.summary%28true%29.as%28reactions_love%29&limit=5",
+    "business_use_case_usage": null,
+    "app_usage": "{\"call_count\":8,\"total_cputime\":0,\"total_time\":3}",
+    "elapsed_ms": 684,
+    "error": {
+      "message": "(#10) This endpoint requires the 'pages_read_user_content' permission or the 'Page Public Content Access' feature. Refer to https://developers.facebook.com/docs/apps/review/login-permissions#manage-pages and https://developers.facebook.com/docs/apps/review/feature#reference-PAGES_ACCESS for details.",
+      "type": "OAuthException",
+      "code": 10,
+      "fbtrace_id": "AwTNSd3YKaez8YThxuZz8-T"
+    },
+    "body": null
+  }
+}

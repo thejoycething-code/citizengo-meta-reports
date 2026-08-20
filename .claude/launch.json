@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "meta-reports-dashboard",
+      "runtimeExecutable": "/Users/chrisjoyce/.local/node/bin/node",
+      "runtimeArgs": ["dev-server.js"],
+      "port": 4321
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "ok": true,
+  "status": 200,
+  "request": "https://graph.facebook.com/v23.0/me/permissions",
+  "business_use_case_usage": null,
+  "app_usage": "{\"call_count\":7,\"total_cputime\":0,\"total_time\":3}",
+  "elapsed_ms": 1219,
+  "error": null,
+  "body": {
+    "data": [
+      {
+        "permission": "read_insights",
+        "status": "granted"
+      },
+      {
+        "permission": "pages_show_list",
+        "status": "granted"
+      },
+      {
+        "permission": "pages_read_engagement",
+        "status": "granted"
+      },
+      {
+        "permission": "public_profile",
+        "status": "granted"
+      }
+    ]
+  }
+}

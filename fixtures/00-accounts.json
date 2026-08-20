@@ -1,0 +1,37 @@
+{
+  "ok": true,
+  "status": 200,
+  "request": "https://graph.facebook.com/v23.0/me/accounts?fields=id%2Cname%2Cfollowers_count%2Caccess_token&limit=100",
+  "business_use_case_usage": null,
+  "app_usage": "{\"call_count\":8,\"total_cputime\":0,\"total_time\":3}",
+  "elapsed_ms": 801,
+  "error": null,
+  "body": {
+    "data": [
+      {
+        "id": "1202888116239414",
+        "name": "Citizen GO Scotland",
+        "followers_count": 28,
+        "access_token": "<redacted>"
+      },
+      {
+        "id": "1116066201596147",
+        "name": "CGO Sandbox",
+        "followers_count": 0,
+        "access_token": "<redacted>"
+      },
+      {
+        "id": "434058216680321",
+        "name": "CitizenGO",
+        "followers_count": 117664,
+        "access_token": "<redacted>"
+      }
+    ],
+    "paging": {
+      "cursors": {
+        "before": "QVFIVFh3Q05DZAV9XLTNjaDh6THJTb3NQWGp3RHJqLS1jNjNyRUY4U3U4dVRNeE10ZAzZAYXy1ScDdwTHNCZAEZAwNkpfeE1ERVpCZA1hibkx6VzhtWDgxUG9icEdB",
+        "after": "QVFIVFY3cnZARc3FVeldNSEhUd3FxRmtQUUdyc19qbDFiX2VVdkJlR2lKaW5ncjZAQNWp4dHpPdWN0dmtUVHc4QXZAXeHJHTGdkVzlsTXlIcXptTVNWTXNKWTJn"
+      }
+    }
+  }
+}

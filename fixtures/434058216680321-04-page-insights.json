@@ -1,0 +1,908 @@
+{
+  "page_views_total": {
+    "ok": true,
+    "status": 200,
+    "request": "https://graph.facebook.com/v23.0/434058216680321/insights?metric=page_views_total&period=day&date_preset=last_30d",
+    "business_use_case_usage": "{\"434058216680321\":[{\"type\":\"pages\",\"call_count\":1,\"total_cputime\":1,\"total_time\":1,\"estimated_time_to_regain_access\":0}]}",
+    "app_usage": null,
+    "elapsed_ms": 762,
+    "error": null,
+    "body": {
+      "data": [
+        {
+          "name": "page_views_total",
+          "period": "day",
+          "values": [
+            {
+              "value": 179,
+              "end_time": "2026-07-22T07:00:00+0000"
+            },
+            {
+              "value": 186,
+              "end_time": "2026-07-23T07:00:00+0000"
+            },
+            {
+              "value": 173,
+              "end_time": "2026-07-24T07:00:00+0000"
+            },
+            {
+              "value": 120,
+              "end_time": "2026-07-25T07:00:00+0000"
+            },
+            {
+              "value": 152,
+              "end_time": "2026-07-26T07:00:00+0000"
+            },
+            {
+              "value": 136,
+              "end_time": "2026-07-27T07:00:00+0000"
+            },
+            {
+              "value": 268,
+              "end_time": "2026-07-28T07:00:00+0000"
+            },
+            {
+              "value": 110,
+              "end_time": "2026-07-29T07:00:00+0000"
+            },
+            {
+              "value": 183,
+              "end_time": "2026-07-30T07:00:00+0000"
+            },
+            {
+              "value": 209,
+              "end_time": "2026-07-31T07:00:00+0000"
+            },
+            {
+              "value": 217,
+              "end_time": "2026-08-01T07:00:00+0000"
+            },
+            {
+              "value": 216,
+              "end_time": "2026-08-02T07:00:00+0000"
+            },
+            {
+              "value": 146,
+              "end_time": "2026-08-03T07:00:00+0000"
+            },
+            {
+              "value": 105,
+              "end_time": "2026-08-04T07:00:00+0000"
+            },
+            {
+              "value": 118,
+              "end_time": "2026-08-05T07:00:00+0000"
+            },
+            {
+              "value": 126,
+              "end_time": "2026-08-06T07:00:00+0000"
+            },
+            {
+              "value": 136,
+              "end_time": "2026-08-07T07:00:00+0000"
+            },
+            {
+              "value": 120,
+              "end_time": "2026-08-08T07:00:00+0000"
+            },
+            {
+              "value": 63,
+              "end_time": "2026-08-09T07:00:00+0000"
+            },
+            {
+              "value": 404,
+              "end_time": "2026-08-10T07:00:00+0000"
+            },
+            {
+              "value": 358,
+              "end_time": "2026-08-11T07:00:00+0000"
+            },
+            {
+              "value": 736,
+              "end_time": "2026-08-12T07:00:00+0000"
+            },
+            {
+              "value": 1185,
+              "end_time": "2026-08-13T07:00:00+0000"
+            },
+            {
+              "value": 278,
+              "end_time": "2026-08-14T07:00:00+0000"
+            },
+            {
+              "value": 203,
+              "end_time": "2026-08-15T07:00:00+0000"
+            },
+            {
+              "value": 121,
+              "end_time": "2026-08-16T07:00:00+0000"
+            },
+            {
+              "value": 313,
+              "end_time": "2026-08-17T07:00:00+0000"
+            },
+            {
+              "value": 329,
+              "end_time": "2026-08-18T07:00:00+0000"
+            },
+            {
+              "value": 149,
+              "end_time": "2026-08-19T07:00:00+0000"
+            },
+            {
+              "value": 138,
+              "end_time": "2026-08-20T07:00:00+0000"
+            }
+          ],
+          "title": "Daily Total views count per Page",
+          "description": "Daily: Total views count per Page",
+          "id": "434058216680321/insights/page_views_total/day"
+        }
+      ],
+      "paging": {
+        "previous": "https://graph.facebook.com/v26.0/434058216680321/insights?metric=page_views_total&period=day&date_preset=last_30d&since=1782025200&until=1784617200",
+        "next": "https://graph.facebook.com/v26.0/434058216680321/insights?metric=page_views_total&period=day&date_preset=last_30d&since=1787209200&until=1789801200"
+      }
+    }
+  },
+  "page_total_media_view_unique": {
+    "ok": true,
+    "status": 200,
+    "request": "https://graph.facebook.com/v23.0/434058216680321/insights?metric=page_total_media_view_unique&period=day&date_preset=last_30d",
+    "business_use_case_usage": "{\"434058216680321\":[{\"type\":\"pages\",\"call_count\":1,\"total_cputime\":1,\"total_time\":1,\"estimated_time_to_regain_access\":0}]}",
+    "app_usage": null,
+    "elapsed_ms": 630,
+    "error": null,
+    "body": {
+      "data": [
+        {
+          "name": "page_total_media_view_unique",
+          "period": "day",
+          "values": [
+            {
+              "value": 41830,
+              "end_time": "2026-07-22T07:00:00+0000"
+            },
+            {
+              "value": 6454,
+              "end_time": "2026-07-23T07:00:00+0000"
+            },
+            {
+              "value": 6175,
+              "end_time": "2026-07-24T07:00:00+0000"
+            },
+            {
+              "value": 4914,
+              "end_time": "2026-07-25T07:00:00+0000"
+            },
+            {
+              "value": 5468,
+              "end_time": "2026-07-26T07:00:00+0000"
+            },
+            {
+              "value": 5005,
+              "end_time": "2026-07-27T07:00:00+0000"
+            },
+            {
+              "value": 3269,
+              "end_time": "2026-07-28T07:00:00+0000"
+            },
+            {
+              "value": 3074,
+              "end_time": "2026-07-29T07:00:00+0000"
+            },
+            {
+              "value": 4309,
+              "end_time": "2026-07-30T07:00:00+0000"
+            },
+            {
+              "value": 5257,
+              "end_time": "2026-07-31T07:00:00+0000"
+            },
+            {
+              "value": 23657,
+              "end_time": "2026-08-01T07:00:00+0000"
+            },
+            {
+              "value": 22292,
+              "end_time": "2026-08-02T07:00:00+0000"
+            },
+            {
+              "value": 11226,
+              "end_time": "2026-08-03T07:00:00+0000"
+            },
+            {
+              "value": 7608,
+              "end_time": "2026-08-04T07:00:00+0000"
+            },
+            {
+              "value": 7254,
+              "end_time": "2026-08-05T07:00:00+0000"
+            },
+            {
+              "value": 7348,
+              "end_time": "2026-08-06T07:00:00+0000"
+            },
+            {
+              "value": 5967,
+              "end_time": "2026-08-07T07:00:00+0000"
+            },
+            {
+              "value": 7333,
+              "end_time": "2026-08-08T07:00:00+0000"
+            },
+            {
+              "value": 4324,
+              "end_time": "2026-08-09T07:00:00+0000"
+            },
+            {
+              "value": 3274,
+              "end_time": "2026-08-10T07:00:00+0000"
+            },
+            {
+              "value": 12082,
+              "end_time": "2026-08-11T07:00:00+0000"
+            },
+            {
+              "value": 499579,
+              "end_time": "2026-08-12T07:00:00+0000"
+            },
+            {
+              "value": 757473,
+              "end_time": "2026-08-13T07:00:00+0000"
+            },
+            {
+              "value": 27000,
+              "end_time": "2026-08-14T07:00:00+0000"
+            },
+            {
+              "value": 16456,
+              "end_time": "2026-08-15T07:00:00+0000"
+            },
+            {
+              "value": 13590,
+              "end_time": "2026-08-16T07:00:00+0000"
+            },
+            {
+              "value": 21484,
+              "end_time": "2026-08-17T07:00:00+0000"
+            },
+            {
+              "value": 17247,
+              "end_time": "2026-08-18T07:00:00+0000"
+            },
+            {
+              "value": 5018,
+              "end_time": "2026-08-19T07:00:00+0000"
+            },
+            {
+              "value": 3115,
+              "end_time": "2026-08-20T07:00:00+0000"
+            }
+          ],
+          "title": null,
+          "description": "The number of total unique media viewers for the FB Page",
+          "id": "434058216680321/insights/page_total_media_view_unique/day"
+        }
+      ],
+      "paging": {
+        "previous": "https://graph.facebook.com/v26.0/434058216680321/insights?metric=page_total_media_view_unique&period=day&date_preset=last_30d&since=1782025200&until=1784617200",
+        "next": "https://graph.facebook.com/v26.0/434058216680321/insights?metric=page_total_media_view_unique&period=day&date_preset=last_30d&since=1787209200&until=1789801200"
+      }
+    }
+  },
+  "page_media_view": {
+    "ok": true,
+    "status": 200,
+    "request": "https://graph.facebook.com/v23.0/434058216680321/insights?metric=page_media_view&period=day&date_preset=last_30d",
+    "business_use_case_usage": "{\"434058216680321\":[{\"type\":\"pages\",\"call_count\":1,\"total_cputime\":1,\"total_time\":1,\"estimated_time_to_regain_access\":0}]}",
+    "app_usage": null,
+    "elapsed_ms": 762,
+    "error": null,
+    "body": {
+      "data": [
+        {
+          "name": "page_media_view",
+          "period": "day",
+          "values": [
+            {
+              "value": 60848,
+              "end_time": "2026-07-22T07:00:00+0000"
+            },
+            {
+              "value": 10731,
+              "end_time": "2026-07-23T07:00:00+0000"
+            },
+            {
+              "value": 10581,
+              "end_time": "2026-07-24T07:00:00+0000"
+            },
+            {
+              "value": 8221,
+              "end_time": "2026-07-25T07:00:00+0000"
+            },
+            {
+              "value": 8867,
+              "end_time": "2026-07-26T07:00:00+0000"
+            },
+            {
+              "value": 7560,
+              "end_time": "2026-07-27T07:00:00+0000"
+            },
+            {
+              "value": 5139,
+              "end_time": "2026-07-28T07:00:00+0000"
+            },
+            {
+              "value": 5224,
+              "end_time": "2026-07-29T07:00:00+0000"
+            },
+            {
+              "value": 7676,
+              "end_time": "2026-07-30T07:00:00+0000"
+            },
+            {
+              "value": 9842,
+              "end_time": "2026-07-31T07:00:00+0000"
+            },
+            {
+              "value": 37138,
+              "end_time": "2026-08-01T07:00:00+0000"
+            },
+            {
+              "value": 32399,
+              "end_time": "2026-08-02T07:00:00+0000"
+            },
+            {
+              "value": 17684,
+              "end_time": "2026-08-03T07:00:00+0000"
+            },
+            {
+              "value": 12354,
+              "end_time": "2026-08-04T07:00:00+0000"
+            },
+            {
+              "value": 11317,
+              "end_time": "2026-08-05T07:00:00+0000"
+            },
+            {
+              "value": 12758,
+              "end_time": "2026-08-06T07:00:00+0000"
+            },
+            {
+              "value": 10871,
+              "end_time": "2026-08-07T07:00:00+0000"
+            },
+            {
+              "value": 13620,
+              "end_time": "2026-08-08T07:00:00+0000"
+            },
+            {
+              "value": 7070,
+              "end_time": "2026-08-09T07:00:00+0000"
+            },
+            {
+              "value": 5592,
+              "end_time": "2026-08-10T07:00:00+0000"
+            },
+            {
+              "value": 20028,
+              "end_time": "2026-08-11T07:00:00+0000"
+            },
+            {
+              "value": 775047,
+              "end_time": "2026-08-12T07:00:00+0000"
+            },
+            {
+              "value": 1278253,
+              "end_time": "2026-08-13T07:00:00+0000"
+            },
+            {
+              "value": 43501,
+              "end_time": "2026-08-14T07:00:00+0000"
+            },
+            {
+              "value": 27841,
+              "end_time": "2026-08-15T07:00:00+0000"
+            },
+            {
+              "value": 22754,
+              "end_time": "2026-08-16T07:00:00+0000"
+            },
+            {
+              "value": 35656,
+              "end_time": "2026-08-17T07:00:00+0000"
+            },
+            {
+              "value": 29334,
+              "end_time": "2026-08-18T07:00:00+0000"
+            },
+            {
+              "value": 8490,
+              "end_time": "2026-08-19T07:00:00+0000"
+            },
+            {
+              "value": 5245,
+              "end_time": "2026-08-20T07:00:00+0000"
+            }
+          ],
+          "title": "Facebook views",
+          "description": "The number of times that any content from your Page was displayed on a person's screen, including posts, stories, ads and other content on your Page.",
+          "id": "434058216680321/insights/page_media_view/day"
+        }
+      ],
+      "paging": {
+        "previous": "https://graph.facebook.com/v26.0/434058216680321/insights?metric=page_media_view&period=day&date_preset=last_30d&since=1782025200&until=1784617200",
+        "next": "https://graph.facebook.com/v26.0/434058216680321/insights?metric=page_media_view&period=day&date_preset=last_30d&since=1787209200&until=1789801200"
+      }
+    }
+  },
+  "page_post_engagements": {
+    "ok": true,
+    "status": 200,
+    "request": "https://graph.facebook.com/v23.0/434058216680321/insights?metric=page_post_engagements&period=day&date_preset=last_30d",
+    "business_use_case_usage": "{\"434058216680321\":[{\"type\":\"pages\",\"call_count\":1,\"total_cputime\":1,\"total_time\":1,\"estimated_time_to_regain_access\":0}]}",
+    "app_usage": null,
+    "elapsed_ms": 834,
+    "error": null,
+    "body": {
+      "data": [
+        {
+          "name": "page_post_engagements",
+          "period": "day",
+          "values": [
+            {
+              "value": 4259,
+              "end_time": "2026-07-22T07:00:00+0000"
+            },
+            {
+              "value": 528,
+              "end_time": "2026-07-23T07:00:00+0000"
+            },
+            {
+              "value": 553,
+              "end_time": "2026-07-24T07:00:00+0000"
+            },
+            {
+              "value": 413,
+              "end_time": "2026-07-25T07:00:00+0000"
+            },
+            {
+              "value": 629,
+              "end_time": "2026-07-26T07:00:00+0000"
+            },
+            {
+              "value": 513,
+              "end_time": "2026-07-27T07:00:00+0000"
+            },
+            {
+              "value": 277,
+              "end_time": "2026-07-28T07:00:00+0000"
+            },
+            {
+              "value": 249,
+              "end_time": "2026-07-29T07:00:00+0000"
+            },
+            {
+              "value": 267,
+              "end_time": "2026-07-30T07:00:00+0000"
+            },
+            {
+              "value": 949,
+              "end_time": "2026-07-31T07:00:00+0000"
+            },
+            {
+              "value": 3972,
+              "end_time": "2026-08-01T07:00:00+0000"
+            },
+            {
+              "value": 3235,
+              "end_time": "2026-08-02T07:00:00+0000"
+            },
+            {
+              "value": 1408,
+              "end_time": "2026-08-03T07:00:00+0000"
+            },
+            {
+              "value": 948,
+              "end_time": "2026-08-04T07:00:00+0000"
+            },
+            {
+              "value": 798,
+              "end_time": "2026-08-05T07:00:00+0000"
+            },
+            {
+              "value": 857,
+              "end_time": "2026-08-06T07:00:00+0000"
+            },
+            {
+              "value": 977,
+              "end_time": "2026-08-07T07:00:00+0000"
+            },
+            {
+              "value": 1017,
+              "end_time": "2026-08-08T07:00:00+0000"
+            },
+            {
+              "value": 475,
+              "end_time": "2026-08-09T07:00:00+0000"
+            },
+            {
+              "value": 311,
+              "end_time": "2026-08-10T07:00:00+0000"
+            },
+            {
+              "value": 1506,
+              "end_time": "2026-08-11T07:00:00+0000"
+            },
+            {
+              "value": 76757,
+              "end_time": "2026-08-12T07:00:00+0000"
+            },
+            {
+              "value": 138499,
+              "end_time": "2026-08-13T07:00:00+0000"
+            },
+            {
+              "value": 4172,
+              "end_time": "2026-08-14T07:00:00+0000"
+            },
+            {
+              "value": 2014,
+              "end_time": "2026-08-15T07:00:00+0000"
+            },
+            {
+              "value": 1530,
+              "end_time": "2026-08-16T07:00:00+0000"
+            },
+            {
+              "value": 1824,
+              "end_time": "2026-08-17T07:00:00+0000"
+            },
+            {
+              "value": 1382,
+              "end_time": "2026-08-18T07:00:00+0000"
+            },
+            {
+              "value": 327,
+              "end_time": "2026-08-19T07:00:00+0000"
+            },
+            {
+              "value": 236,
+              "end_time": "2026-08-20T07:00:00+0000"
+            }
+          ],
+          "title": "Daily Post Engagements",
+          "description": "Daily: The number of times people have engaged with your posts through like, comments and shares and more.",
+          "id": "434058216680321/insights/page_post_engagements/day"
+        }
+      ],
+      "paging": {
+        "previous": "https://graph.facebook.com/v26.0/434058216680321/insights?metric=page_post_engagements&period=day&date_preset=last_30d&since=1782025200&until=1784617200",
+        "next": "https://graph.facebook.com/v26.0/434058216680321/insights?metric=page_post_engagements&period=day&date_preset=last_30d&since=1787209200&until=1789801200"
+      }
+    }
+  },
+  "page_follows": {
+    "ok": true,
+    "status": 200,
+    "request": "https://graph.facebook.com/v23.0/434058216680321/insights?metric=page_follows&period=day&date_preset=last_30d",
+    "business_use_case_usage": "{\"434058216680321\":[{\"type\":\"pages\",\"call_count\":1,\"total_cputime\":1,\"total_time\":1,\"estimated_time_to_regain_access\":0}]}",
+    "app_usage": null,
+    "elapsed_ms": 745,
+    "error": null,
+    "body": {
+      "data": [
+        {
+          "name": "page_follows",
+          "period": "day",
+          "values": [
+            {
+              "value": 117358,
+              "end_time": "2026-07-22T07:00:00+0000"
+            },
+            {
+              "value": 117363,
+              "end_time": "2026-07-23T07:00:00+0000"
+            },
+            {
+              "value": 117362,
+              "end_time": "2026-07-24T07:00:00+0000"
+            },
+            {
+              "value": 117361,
+              "end_time": "2026-07-25T07:00:00+0000"
+            },
+            {
+              "value": 117370,
+              "end_time": "2026-07-26T07:00:00+0000"
+            },
+            {
+              "value": 117378,
+              "end_time": "2026-07-27T07:00:00+0000"
+            },
+            {
+              "value": 117392,
+              "end_time": "2026-07-28T07:00:00+0000"
+            },
+            {
+              "value": 117394,
+              "end_time": "2026-07-29T07:00:00+0000"
+            },
+            {
+              "value": 117398,
+              "end_time": "2026-07-30T07:00:00+0000"
+            },
+            {
+              "value": 117394,
+              "end_time": "2026-07-31T07:00:00+0000"
+            },
+            {
+              "value": 117404,
+              "end_time": "2026-08-01T07:00:00+0000"
+            },
+            {
+              "value": 117416,
+              "end_time": "2026-08-02T07:00:00+0000"
+            },
+            {
+              "value": 117429,
+              "end_time": "2026-08-03T07:00:00+0000"
+            },
+            {
+              "value": 117435,
+              "end_time": "2026-08-04T07:00:00+0000"
+            },
+            {
+              "value": 117441,
+              "end_time": "2026-08-05T07:00:00+0000"
+            },
+            {
+              "value": 117443,
+              "end_time": "2026-08-06T07:00:00+0000"
+            },
+            {
+              "value": 117445,
+              "end_time": "2026-08-07T07:00:00+0000"
+            },
+            {
+              "value": 117447,
+              "end_time": "2026-08-08T07:00:00+0000"
+            },
+            {
+              "value": 117448,
+              "end_time": "2026-08-09T07:00:00+0000"
+            },
+            {
+              "value": 117449,
+              "end_time": "2026-08-10T07:00:00+0000"
+            },
+            {
+              "value": 117457,
+              "end_time": "2026-08-11T07:00:00+0000"
+            },
+            {
+              "value": 117495,
+              "end_time": "2026-08-12T07:00:00+0000"
+            },
+            {
+              "value": 117552,
+              "end_time": "2026-08-13T07:00:00+0000"
+            },
+            {
+              "value": 117565,
+              "end_time": "2026-08-14T07:00:00+0000"
+            },
+            {
+              "value": 117585,
+              "end_time": "2026-08-15T07:00:00+0000"
+            },
+            {
+              "value": 117601,
+              "end_time": "2026-08-16T07:00:00+0000"
+            },
+            {
+              "value": 117631,
+              "end_time": "2026-08-17T07:00:00+0000"
+            },
+            {
+              "value": 117655,
+              "end_time": "2026-08-18T07:00:00+0000"
+            },
+            {
+              "value": 117657,
+              "end_time": "2026-08-19T07:00:00+0000"
+            },
+            {
+              "value": 117664,
+              "end_time": "2026-08-20T07:00:00+0000"
+            }
+          ],
+          "title": "Lifetime Total Follows",
+          "description": "Lifetime: The number of followers of your Facebook Page or profile. This is calculated as the number of follows minus the number of unfollows over the lifetime of your Facebook Page or profile. ",
+          "id": "434058216680321/insights/page_follows/day"
+        }
+      ],
+      "paging": {
+        "previous": "https://graph.facebook.com/v26.0/434058216680321/insights?metric=page_follows&period=day&date_preset=last_30d&since=1782025200&until=1784617200",
+        "next": "https://graph.facebook.com/v26.0/434058216680321/insights?metric=page_follows&period=day&date_preset=last_30d&since=1787209200&until=1789801200"
+      }
+    }
+  },
+  "page_daily_follows": {
+    "ok": true,
+    "status": 200,
+    "request": "https://graph.facebook.com/v23.0/434058216680321/insights?metric=page_daily_follows&period=day&date_preset=last_30d",
+    "business_use_case_usage": "{\"434058216680321\":[{\"type\":\"pages\",\"call_count\":1,\"total_cputime\":1,\"total_time\":1,\"estimated_time_to_regain_access\":0}]}",
+    "app_usage": null,
+    "elapsed_ms": 596,
+    "error": null,
+    "body": {
+      "data": [
+        {
+          "name": "page_daily_follows",
+          "period": "day",
+          "values": [
+            {
+              "value": 15,
+              "end_time": "2026-07-22T07:00:00+0000"
+            },
+            {
+              "value": 10,
+              "end_time": "2026-07-23T07:00:00+0000"
+            },
+            {
+              "value": 11,
+              "end_time": "2026-07-24T07:00:00+0000"
+            },
+            {
+              "value": 8,
+              "end_time": "2026-07-25T07:00:00+0000"
+            },
+            {
+              "value": 12,
+              "end_time": "2026-07-26T07:00:00+0000"
+            },
+            {
+              "value": 11,
+              "end_time": "2026-07-27T07:00:00+0000"
+            },
+            {
+              "value": 17,
+              "end_time": "2026-07-28T07:00:00+0000"
+            },
+            {
+              "value": 8,
+              "end_time": "2026-07-29T07:00:00+0000"
+            },
+            {
+              "value": 8,
+              "end_time": "2026-07-30T07:00:00+0000"
+            },
+            {
+              "value": 3,
+              "end_time": "2026-07-31T07:00:00+0000"
+            },
+            {
+              "value": 17,
+              "end_time": "2026-08-01T07:00:00+0000"
+            },
+            {
+              "value": 16,
+              "end_time": "2026-08-02T07:00:00+0000"
+            },
+            {
+              "value": 14,
+              "end_time": "2026-08-03T07:00:00+0000"
+            },
+            {
+              "value": 12,
+              "end_time": "2026-08-04T07:00:00+0000"
+            },
+            {
+              "value": 9,
+              "end_time": "2026-08-05T07:00:00+0000"
+            },
+            {
+              "value": 7,
+              "end_time": "2026-08-06T07:00:00+0000"
+            },
+            {
+              "value": 10,
+              "end_time": "2026-08-07T07:00:00+0000"
+            },
+            {
+              "value": 6,
+              "end_time": "2026-08-08T07:00:00+0000"
+            },
+            {
+              "value": 6,
+              "end_time": "2026-08-09T07:00:00+0000"
+            },
+            {
+              "value": 4,
+              "end_time": "2026-08-10T07:00:00+0000"
+            },
+            {
+              "value": 10,
+              "end_time": "2026-08-11T07:00:00+0000"
+            },
+            {
+              "value": 49,
+              "end_time": "2026-08-12T07:00:00+0000"
+            },
+            {
+              "value": 81,
+              "end_time": "2026-08-13T07:00:00+0000"
+            },
+            {
+              "value": 21,
+              "end_time": "2026-08-14T07:00:00+0000"
+            },
+            {
+              "value": 21,
+              "end_time": "2026-08-15T07:00:00+0000"
+            },
+            {
+              "value": 19,
+              "end_time": "2026-08-16T07:00:00+0000"
+            },
+            {
+              "value": 41,
+              "end_time": "2026-08-17T07:00:00+0000"
+            },
+            {
+              "value": 34,
+              "end_time": "2026-08-18T07:00:00+0000"
+            },
+            {
+              "value": 6,
+              "end_time": "2026-08-19T07:00:00+0000"
+            },
+            {
+              "value": 7,
+              "end_time": "2026-08-20T07:00:00+0000"
+            }
+          ],
+          "title": "Daily New Follows",
+          "description": "Daily: The number of times your Facebook Page or profile was followed in the selected time period. (Total Count)",
+          "id": "434058216680321/insights/page_daily_follows/day"
+        }
+      ],
+      "paging": {
+        "previous": "https://graph.facebook.com/v26.0/434058216680321/insights?metric=page_daily_follows&period=day&date_preset=last_30d&since=1782025200&until=1784617200",
+        "next": "https://graph.facebook.com/v26.0/434058216680321/insights?metric=page_daily_follows&period=day&date_preset=last_30d&since=1787209200&until=1789801200"
+      }
+    }
+  },
+  "page_impressions": {
+    "ok": false,
+    "status": 400,
+    "request": "https://graph.facebook.com/v23.0/434058216680321/insights?metric=page_impressions&period=day&date_preset=last_30d",
+    "business_use_case_usage": null,
+    "app_usage": "{\"call_count\":8,\"total_cputime\":0,\"total_time\":3}",
+    "elapsed_ms": 518,
+    "error": {
+      "message": "(#100) The value must be a valid insights metric",
+      "type": "OAuthException",
+      "code": 100,
+      "fbtrace_id": "An4OlzwYLJ-6g88fKuMJdLx"
+    },
+    "body": null
+  },
+  "page_fans": {
+    "ok": false,
+    "status": 400,
+    "request": "https://graph.facebook.com/v23.0/434058216680321/insights?metric=page_fans&period=day&date_preset=last_30d",
+    "business_use_case_usage": null,
+    "app_usage": "{\"call_count\":8,\"total_cputime\":0,\"total_time\":3}",
+    "elapsed_ms": 1052,
+    "error": {
+      "message": "(#100) The value must be a valid insights metric",
+      "type": "OAuthException",
+      "code": 100,
+      "fbtrace_id": "A24_0wP6Wr7U9nijUDFlMoL"
+    },
+    "body": null
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "ok": true,
+  "status": 200,
+  "request": "https://graph.facebook.com/v23.0/1116066201596147?fields=id%2Cname%2Cfollowers_count%2Cfan_count%2Clink%2Cinstagram_business_account%7Bid%2Cusername%7D",
+  "business_use_case_usage": "{\"1116066201596147\":[{\"type\":\"pages\",\"call_count\":1,\"total_cputime\":1,\"total_time\":1,\"estimated_time_to_regain_access\":0}]}",
+  "app_usage": null,
+  "elapsed_ms": 507,
+  "error": null,
+  "body": {
+    "id": "1116066201596147",
+    "name": "CGO Sandbox",
+    "followers_count": 0,
+    "fan_count": 0,
+    "link": "https://www.facebook.com/1116066201596147"
+  }
+}
