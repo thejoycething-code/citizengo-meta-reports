@@ -246,6 +246,41 @@ over Supabase-shaped data rather than assumed.
 - The schema is now described in three places, so `db:schema-check` parses the DDL
   and diffs it against the preflight to stop them drifting.
 
+### Creating a System User token (repeat once per Business Portfolio)
+
+Four steps, in this order. Two of them are easy to skip and each produces a
+different, confusing failure — all four were hit during the first real setup.
+
+1. **The app must be in the business.** Business Settings → Accounts → Apps. If it
+   was created under a personal developer account it will not be there; add it by
+   App ID (you must be an app admin).
+2. **The System User needs a role on the app.** Assign Assets → Apps → tick the app
+   → **Develop app**. Skip this and the token wizard says *"No permissions
+   available — assign an app role to the system user"*, because in Business Manager
+   the app is an asset like any other.
+3. **The System User needs the Pages.** Assign Assets → Pages → **View Performance**
+   only. Skip this and the token authenticates perfectly but returns zero pages.
+4. **Generate New Token** → expiry **Never** → tick `pages_show_list`,
+   `pages_read_engagement`, `read_insights`, `pages_read_user_content`,
+   `instagram_basic`, `instagram_manage_insights`. None require App Review. Tick all
+   six now; regenerating later to add one is a faff. Shown once only.
+
+Set expiry to **Never**. A 60-day token means the nightly job dies silently in two
+months — exactly the failure nobody notices until the dashboard looks stale.
+
+#### Telling the two token types apart
+
+| | Explorer token | System User token |
+| --- | --- | --- |
+| Source | developers.facebook.com/tools/explorer | business.facebook.com → Business Settings |
+| Lifetime | ~1 hour | Never (if set so) |
+| Failure message | `Session has expired` | no session, so never this |
+| Usable for automation | No | Yes |
+
+Only user tokens carry a session, so `Session has expired` in a scheduled run always
+means a user token was pasted into automation. The collector detects this exact
+message and says so, because it is a mistake available once per portfolio.
+
 ## Nightly collection (GitHub Actions)
 
 `.github/workflows/nightly-collect.yml` runs at **04:30 UTC**, collects every
@@ -426,7 +461,8 @@ mcp/server.js           MCP server (stdio, no dependencies)
 mcp/tools.js            the five tools, all via lib/shape.js
 mcp/test-client.js      protocol test harness
 lib/google-auth.js      mints Google tokens from a service account (RS256 JWT)
-.github/workflows/      nightly collection
+.github/workflows/nightly-collect.yml  scheduled collection (needs Supabase)
+.github/workflows/dry-run.yml          one-click dry run, no inputs, no database
 scripts/check-supabase.js         preflight against a real project
 scripts/check-schema-consistency.js  DDL vs preflight drift guard
 scripts/mock-postgrest.js         PostgREST test double
