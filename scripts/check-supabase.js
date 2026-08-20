@@ -76,18 +76,26 @@ async function main() {
   console.log(`Supabase preflight · ${BASE}\n`);
 
   console.log('1. Credentials');
-  // service_role and anon keys are JWTs; a publishable/anon key in the
-  // service slot is a common and confusing mistake.
   ok('SUPABASE_URL set', BASE);
-  if (/^eyJ/.test(KEY)) {
+
+  // Supabase has two generations of key, and putting a public one in the secret
+  // slot is the single most common setup mistake here — it fails later with a
+  // confusing RLS error rather than an auth error.
+  //   legacy: service_role (JWT, "eyJ...")   |  anon (JWT)
+  //   new:    sb_secret_...                  |  sb_publishable_...
+  if (/^sb_secret_/.test(KEY)) {
+    ok('secret key is the new sb_secret_ form');
+  } else if (/^sb_publishable_/.test(KEY)) {
+    no('that is a PUBLISHABLE key, not a secret key', 'it cannot bypass RLS; every read will return 0 rows');
+  } else if (/^eyJ/.test(KEY)) {
     try {
       const role = JSON.parse(Buffer.from(KEY.split('.')[1], 'base64').toString()).role;
-      role === 'service_role'
-        ? ok('service key has the service_role claim')
-        : no(`service key role is "${role}", expected service_role`, 'writes and RLS bypass will fail');
-    } catch (e) { wa('could not decode the service key claim', 'continuing'); }
+      if (role === 'service_role') ok('secret key is the legacy service_role JWT');
+      else if (role === 'anon') no('that is the ANON key, not service_role', 'every read will return 0 rows');
+      else no(`key role is "${role}", expected service_role`, 'writes and RLS bypass will fail');
+    } catch (e) { wa('could not decode the key claim', 'continuing'); }
   } else {
-    wa('service key is not a JWT', 'newer Supabase keys may differ; continuing');
+    wa('unrecognised key format', `starts "${KEY.slice(0, 4)}"; continuing anyway`);
   }
 
   console.log('\n2. Connectivity and tables');
