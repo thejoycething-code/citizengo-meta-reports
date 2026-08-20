@@ -312,8 +312,19 @@ async function main() {
       { fields: 'id,name,followers_count,access_token', limit: 100 }, { token: TOKENS[i] });
     if (!accounts.ok) {
       tokenFailures++;
+      const msg = accounts.error ? accounts.error.message : 'unknown';
       // One dead token must not abort the run — the other portfolios still work.
-      console.error(`  token ${i + 1}/${TOKENS.length}: FAILED — ${accounts.error ? accounts.error.message : 'unknown'}`);
+      console.error(`  token ${i + 1}/${TOKENS.length}: FAILED — ${msg}`);
+      // "Session has expired" is diagnostic: only short-lived USER tokens carry a
+      // session. A System User token has none and never expires, so this error
+      // means someone pasted a Graph API Explorer token into automation — an easy
+      // mistake to repeat once per Business Portfolio.
+      if (/session has expired|session is invalid/i.test(msg)) {
+        console.error('        ^ that is a short-lived USER token, not a System User token.');
+        console.error('          Explorer tokens last ~1 hour and cannot drive a scheduled job.');
+        console.error('          Get one at: business.facebook.com > Business Settings >');
+        console.error('          Users > System Users > Generate New Token.');
+      }
       continue;
     }
     const found = accounts.body.data || [];
