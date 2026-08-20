@@ -52,22 +52,53 @@ jobs:
 
       - name: Commit
         run: |
+          set -euo pipefail
+
           # Belt and braces: if the previous step somehow wrote nothing, still
           # produce a file so there is always something to commit.
           if [ ! -f STATUS.md ]; then
             printf '# Pipeline status\n\n_Heartbeat %s UTC. Status check produced no output._\n' \
               "$(date -u '+%Y-%m-%d %H:%M')" > STATUS.md
           fi
+
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          BEFORE="$(git rev-parse HEAD)"
+          echo "HEAD before: $BEFORE"
+          echo "checkout state: $(git symbolic-ref --quiet --short HEAD || echo 'DETACHED HEAD')"
+
           git add STATUS.md
           if git diff --cached --quiet; then
-            echo "No change in STATUS.md — forcing an empty commit so the repository still registers activity."
+            echo "STATUS.md unchanged — committing empty so the repository still registers activity."
             git commit --allow-empty -m "Heartbeat: keep scheduled workflows alive"
           else
             git commit -m "Status: $(date -u '+%Y-%m-%d')"
           fi
-          git push
+
+          AFTER="$(git rev-parse HEAD)"
+          echo "HEAD after:  $AFTER"
+          if [ "$BEFORE" = "$AFTER" ]; then
+            echo "::error::No commit was created."
+            exit 1
+          fi
+
+          # Explicit refspec. actions/checkout leaves a detached HEAD, so a bare
+          # "git push" has no branch to push to — which is how the first version
+          # of this step exited 0 having pushed nothing at all.
+          git push origin "HEAD:${{ github.ref_name }}"
+
+          # Verify the remote actually moved. Without this the step can report
+          # success while achieving nothing, which is exactly what happened
+          # before and defeats the entire point of a heartbeat.
+          git fetch origin "${{ github.ref_name }}"
+          REMOTE="$(git rev-parse "origin/${{ github.ref_name }}")"
+          echo "origin/${{ github.ref_name }}: $REMOTE"
+          if [ "$REMOTE" != "$AFTER" ]; then
+            echo "::error::Push reported success but origin is still at $REMOTE, expected $AFTER."
+            exit 1
+          fi
+          echo "Heartbeat committed and verified on origin/${{ github.ref_name }}."
 
       - name: Show status
         if: always()
