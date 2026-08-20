@@ -194,6 +194,58 @@ is single-tab and creates a new file each time — no stable URL. For a nightly
 mirror with a fixed link, `--push` needs a `GOOGLE_ACCESS_TOKEN` from a service
 account with the target Sheet shared to it.
 
+## Wiring up Supabase
+
+```bash
+npm run test:supabase      # exercises every Supabase path against a mock, no credentials
+npm run db:schema-check    # sql/schema.sql vs what the preflight expects
+npm run db:check           # preflight against a REAL project
+```
+
+### Setup
+
+1. Create a Supabase project. Pro ($25/mo) is worth it for daily backups — reach
+   history cannot be backfilled, so losing it is the one expensive failure here.
+2. Run `sql/schema.sql` in the SQL editor.
+3. Put `SUPABASE_URL`, `SUPABASE_SERVICE_KEY` and (optionally, for the RLS check)
+   `SUPABASE_ANON_KEY` in `.env`.
+4. `npm run db:check`, then `npm run collect`.
+
+The collector and MCP switch from local NDJSON to Supabase automatically once
+`SUPABASE_URL` and `SUPABASE_SERVICE_KEY` are present. No flag needed.
+
+### What the preflight checks
+
+In the order things actually go wrong: credentials well-formed (including that the
+service key really carries the `service_role` claim — an anon key in that slot is a
+common and confusing mistake), every table present, **every column the collector
+writes present**, RLS genuinely blocking the anon key, and a write/read/delete
+round-trip with a self-cleaning canary row.
+
+### Tested without a database
+
+`scripts/mock-postgrest.js` is a PostgREST test double covering the subset we use.
+It exists because `supabaseSink` and `supabaseStore` were written and never run, and
+untested write paths are where silent data loss lives. 13 assertions cover upsert
+semantics, the `merge-duplicates` header, null preservation, error shapes, and the
+exact `on_conflict` targets we send.
+
+The most important of those: two snapshots of one post (500 views, then 800) must
+reduce to **800**, not 1300. That is the append-only double-count guard, verified
+over Supabase-shaped data rather than assumed.
+
+### Three things this process caught
+
+- One assertion ended in `|| true` and could never fail. Fixing it revealed that
+  `loadAll()` fans out to three tables, so one bad-key probe yields three rejections
+  — my expectation was wrong, not the client. A test that cannot fail is worse than
+  no test.
+- The column check and canary cleanup initially passed **spuriously**: the mock
+  ignored `select=` and had no DELETE. It now enforces both, and a negative test
+  confirms an unknown column is rejected by name.
+- The schema is now described in three places, so `db:schema-check` parses the DDL
+  and diffs it against the preflight to stop them drifting.
+
 ## Nightly collection (GitHub Actions)
 
 `.github/workflows/nightly-collect.yml` runs at **04:30 UTC**, collects every
@@ -375,5 +427,9 @@ mcp/tools.js            the five tools, all via lib/shape.js
 mcp/test-client.js      protocol test harness
 lib/google-auth.js      mints Google tokens from a service account (RS256 JWT)
 .github/workflows/      nightly collection
+scripts/check-supabase.js         preflight against a real project
+scripts/check-schema-consistency.js  DDL vs preflight drift guard
+scripts/mock-postgrest.js         PostgREST test double
+scripts/test-supabase-paths.js    integration tests, no credentials needed
 fixtures/               raw probe output, committed as evidence
 ```

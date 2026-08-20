@@ -1,6 +1,6 @@
 {
   "name": "citizengo-meta-reports",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "private": true,
   "description": "Organic Facebook + Instagram post data pipeline for CitizenGO pages.",
   "scripts": {
@@ -11,6 +11,9 @@
     "dev": "node dev-server.js",
     "sheet": "node collector/sync-sheet.js",
     "mcp": "node mcp/server.js",
-    "mcp:test": "node mcp/test-client.js"
+    "mcp:test": "node mcp/test-client.js",
+    "db:check": "node scripts/check-supabase.js",
+    "db:schema-check": "node scripts/check-schema-consistency.js",
+    "test:supabase": "node scripts/test-supabase-paths.js"
   }
 }
