@@ -13,7 +13,7 @@
 //
 // An LLM given raw tables gets all three wrong, confidently. These tools cannot.
 
-const { shapeFeed, shapePages } = require('../lib/shape');
+const { shapeFeed, shapePages, pageBaseline, withBenchmark } = require('../lib/shape');
 
 const METRIC_LABELS = {
   views: 'Views', reach: 'Unique reach', beyond: 'Reach beyond followers',
@@ -76,18 +76,24 @@ async function topPosts(store, { page_id, days = 30, sort = 'views', limit = 10 
   const feed = shapeFeed(data, {
     page_id, since: sinceFor(days), sort, limit, with_metrics_only: false,
   });
-  const rows = feed.rows.map((r) => [
+  // Baseline from the same window, so "vs median" compares like with like.
+  const base = pageBaseline(feed.rows);
+  const rows = feed.rows.map((r) => withBenchmark(r, base)).map((r) => [
     r.created_time.slice(0, 10), r.page_name, truncate(r.message, 70),
     n(r.views_total), n(r.views_unique), p(r.beyond_followers_pct),
     n(r.reactions_total), n(r.shares_total), p(r.engagement_rate),
+    r.benchmark && r.benchmark.views_x_median !== null ? r.benchmark.views_x_median + '×' : '—',
   ]);
   const label = METRIC_LABELS[sort] || sort;
   return {
     text: `**Top ${feed.rows.length} posts by ${label}**`
       + `${page_id ? '' : ' (all pages)'}${days ? ` · last ${days} days` : ' · all time'}\n\n`
-      + table(['Date', 'Page', 'Post', 'Views', 'Unique', 'Beyond followers', 'Reactions', 'Shares', 'Eng. rate'], rows)
+      + table(['Date', 'Page', 'Post', 'Views', 'Unique', 'Beyond followers', 'Reactions', 'Shares', 'Eng. rate', 'vs median'], rows)
+      + (base.reliable
+        ? `\n\n_"vs median" compares each post to this page's own median of ${n(base.median_views)} views over the same window. A raw view count says nothing on its own._`
+        : `\n\n_Too few posts with metrics (${base.n}) to establish a baseline, so no comparison is shown._`)
       + gapNote(feed.rows),
-    data: feed,
+    data: { ...feed, baseline: base },
   };
 }
 
@@ -178,6 +184,54 @@ async function dataHealth(store) {
   };
 }
 
+async function outliers(store, { page_id, days = 90 }) {
+  const data = await store.loadAll();
+  const feed = shapeFeed(data, { page_id, since: sinceFor(days), sort: 'views' });
+  const base = pageBaseline(feed.rows);
+  if (!base.reliable) {
+    return {
+      text: `Only ${base.n} post(s) with metrics in the last ${days} days — not enough to say what "normal" looks like for this page, so nothing can be called an outlier yet. Collect more history first.`,
+      data: null,
+    };
+  }
+  const scored = feed.rows.filter((r) => r.has_metrics).map((r) => withBenchmark(r, base));
+  const over = scored.filter((r) => r.benchmark.views_x_median >= 1.5);
+  const under = scored.filter((r) => r.benchmark.views_x_median < 0.5);
+
+  const fmt = (r) => [
+    r.created_time.slice(0, 10),
+    r.benchmark.views_x_median + '×',
+    n(r.views_total),
+    n(r.shares_total),
+    r.benchmark.shares_x_median !== null ? r.benchmark.shares_x_median + '×' : '—',
+    p(r.engagement_rate),
+    truncate(r.message, 60),
+  ];
+  const head = ['Date', 'vs median', 'Views', 'Shares', 'Shares vs med', 'Eng. rate', 'Post'];
+
+  return {
+    text: [
+      `**What normal looks like** · last ${days} days · ${base.n} posts with metrics`,
+      '',
+      `- Median views: **${n(base.median_views)}** · 90th percentile: **${n(base.p90_views)}**`,
+      `- Median engagement rate: **${p(base.median_eng_rate)}**`,
+      `- Median reach beyond followers: **${p(base.median_beyond_pct)}**`,
+      `- Median shares: **${n(base.median_shares)}**`,
+      '',
+      `**Broke away from normal** (${over.length})`,
+      '',
+      over.length ? table(head, over.map(fmt)) : '_None._',
+      '',
+      `**Well below normal** (${under.length})`,
+      '',
+      under.length ? table(head, under.map(fmt)) : '_None._',
+      '',
+      '_Shares are usually what separates the two: a post reaches beyond its followers when supporters carry it, not when the page posts it._',
+    ].join('\n') + gapNote(feed.rows),
+    data: { baseline: base, over: over.length, under: under.length },
+  };
+}
+
 const TOOLS = [
   {
     name: 'list_pages',
@@ -223,6 +277,19 @@ const TOOLS = [
       additionalProperties: false,
     },
     handler: (store, args) => comparePages(store, args),
+  },
+  {
+    name: 'outliers',
+    description: 'Establish what "normal" looks like for a page (median views, engagement rate, shares) and list the posts that broke away from it or fell well below. Use this to answer "was this post actually good", "what worked", or "why did this one do so well" — a raw view count is meaningless without the page baseline to compare it against.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        page_id: { type: 'string', description: 'Restrict to one page. Omit for all pages.' },
+        days: { type: 'number', description: 'Window to compute the baseline over (default 90). A longer window gives a steadier baseline.' },
+      },
+      additionalProperties: false,
+    },
+    handler: (store, args) => outliers(store, args),
   },
   {
     name: 'data_health',
