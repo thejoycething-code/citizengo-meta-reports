@@ -1,0 +1,77 @@
+name: Dry run (no database)
+
+# A deliberately input-free companion to nightly-collect.yml.
+#
+# It exists so proving the CI plumbing is a single click with nothing to
+# configure: no checkbox to find, no way to accidentally run it against the
+# real database. It NEVER writes to Supabase and never touches the Sheet.
+#
+# Only META_TOKENS is required. Output lands in the run artifact.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dry-run
+  cancel-in-progress: true
+
+jobs:
+  dry-run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    env:
+      META_TOKENS: ${{ secrets.META_TOKENS }}
+      GRAPH_VERSION: ${{ vars.GRAPH_VERSION || 'v23.0' }}
+      # Deliberately NOT wired to the Supabase secrets. Even if they are set,
+      # this workflow cannot reach them, so it cannot write to the database.
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: Check META_TOKENS is visible
+        run: |
+          if [ -z "$META_TOKENS" ]; then
+            echo "::error::META_TOKENS is not visible to this runner."
+            echo ""
+            echo "The secret must be at:"
+            echo "  Settings > Secrets and variables > Actions > Secrets tab"
+            echo "  https://github.com/${{ github.repository }}/settings/secrets/actions"
+            echo ""
+            echo "Secrets on the Dependabot or Codespaces tabs, or on the Variables"
+            echo "tab, are invisible to workflows. That is the usual cause."
+            exit 1
+          fi
+          echo "META_TOKENS visible (${#META_TOKENS} chars)"
+          echo "Tokens configured: $(echo "$META_TOKENS" | tr ',' '\n' | grep -c .)"
+
+      - name: Collect (dry run, 7 days)
+        run: node collector/collect.js --dry-run --lookback-days 7 --concurrency 6
+
+      - name: Show what was collected
+        if: always()
+        run: |
+          if [ -d data ]; then
+            for f in data/*.ndjson; do
+              [ -e "$f" ] || continue
+              echo "$(basename "$f"): $(wc -l < "$f") rows"
+            done
+          else
+            echo "No data/ directory - collection produced nothing."
+          fi
+
+      - name: Upload output
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: dry-run-${{ github.run_number }}
+          path: data/
+          retention-days: 7
+          if-no-files-found: ignore
