@@ -1,0 +1,74 @@
+name: Monthly heartbeat
+
+# GitHub disables scheduled workflows after 60 days of repository inactivity.
+# On a parked project that would silently stop the nightly collection AND the
+# weekly digest — and since both are scheduled, neither could warn about the
+# other. This commits STATUS.md monthly to keep the repository active.
+#
+# Runs at twice the frequency it needs to, so one failed month is survivable.
+#
+# CAVEAT worth knowing: it is not fully settled whether a push made with the
+# default GITHUB_TOKEN resets the inactivity clock, since it is attributed to
+# github-actions[bot] rather than a person. If the schedules ever do get disabled
+# despite this running, swap the checkout token for a fine-grained PAT with
+# contents:write — a PAT push is attributed to you and counts unambiguously.
+# GitHub also emails a warning before disabling, so that is the backstop.
+
+on:
+  schedule:
+    # 1st and 15th at 07:00 UTC. Twice monthly, not monthly, so a single failure
+    # cannot let the 60-day window lapse.
+    - cron: '0 7 1,15 * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: heartbeat
+  cancel-in-progress: false
+
+jobs:
+  heartbeat:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL || vars.SUPABASE_URL }}
+      SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      # Never fails the job: a broken database check must still produce a commit,
+      # or the heartbeat stops exactly when the pipeline is broken.
+      - name: Write status
+        continue-on-error: true
+        run: node scripts/status.js --out STATUS.md
+
+      - name: Commit
+        run: |
+          # Belt and braces: if the previous step somehow wrote nothing, still
+          # produce a file so there is always something to commit.
+          if [ ! -f STATUS.md ]; then
+            printf '# Pipeline status\n\n_Heartbeat %s UTC. Status check produced no output._\n' \
+              "$(date -u '+%Y-%m-%d %H:%M')" > STATUS.md
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add STATUS.md
+          if git diff --cached --quiet; then
+            echo "No change in STATUS.md — forcing an empty commit so the repository still registers activity."
+            git commit --allow-empty -m "Heartbeat: keep scheduled workflows alive"
+          else
+            git commit -m "Status: $(date -u '+%Y-%m-%d')"
+          fi
+          git push
+
+      - name: Show status
+        if: always()
+        run: cat STATUS.md >> "$GITHUB_STEP_SUMMARY"
