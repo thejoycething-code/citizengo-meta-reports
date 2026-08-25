@@ -360,8 +360,23 @@ async function main() {
   const byPageId = new Map();
   let tokenFailures = 0;
   for (let i = 0; i < TOKENS.length; i++) {
-    const accounts = await call('/me/accounts',
-      { fields: 'id,name,followers_count,access_token', limit: 100 }, { token: TOKENS[i] });
+    const pagesForToken = [];
+    let accountsCursor = null;
+    let accounts;
+    do {
+      accounts = await call('/me/accounts', accountsCursor
+        ? { fields: 'id,name,followers_count,access_token', limit: 100, after: accountsCursor }
+        : { fields: 'id,name,followers_count,access_token', limit: 100 }, { token: TOKENS[i] });
+      if (!accounts.ok) break;
+      const batch = (accounts.body && accounts.body.data) || [];
+      pagesForToken.push(...batch);
+      accountsCursor = accounts.body && accounts.body.paging
+        && accounts.body.paging.cursors && accounts.body.paging.cursors.after;
+      // Meta returns a cursor even on the final page, so stop on an empty batch
+      // rather than trusting the cursor's presence.
+      if (!batch.length) break;
+    } while (accountsCursor && pagesForToken.length < 500);
+
     if (!accounts.ok) {
       tokenFailures++;
       const msg = accounts.error ? accounts.error.message : 'unknown';
@@ -379,7 +394,7 @@ async function main() {
       }
       continue;
     }
-    const found = accounts.body.data || [];
+    const found = pagesForToken;
     let added = 0;
     for (const p of found) {
       if (byPageId.has(p.id)) continue;

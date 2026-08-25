@@ -28,6 +28,10 @@ on:
         description: 'Parallel posts in flight per page'
         required: false
         default: '6'
+      page_ids:
+        description: 'Space-separated page IDs to restrict to (blank = every reachable page). Use for backfilling one portfolio at a time.'
+        required: false
+        default: ''
       dry_run:
         description: 'Write to data/*.ndjson instead of Supabase'
         type: boolean
@@ -47,7 +51,7 @@ concurrency:
 jobs:
   collect:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 180
 
     env:
       META_TOKENS: ${{ secrets.META_TOKENS }}
@@ -57,6 +61,7 @@ jobs:
       LOOKBACK_DAYS: ${{ github.event.inputs.lookback_days || '14' }}
       MAX_POSTS: ${{ github.event.inputs.max_posts || '200' }}
       CONCURRENCY: ${{ github.event.inputs.concurrency || '6' }}
+      PAGE_IDS: ${{ github.event.inputs.page_ids }}
       # Declared at JOB level so the step-level `if` conditions below can read
       # them. Step-level env is invisible to that step's own `if`.
       SHEET_ID: ${{ secrets.SHEET_ID }}
@@ -121,11 +126,13 @@ jobs:
         run: |
           FLAG=""
           if [ "$DRY_RUN" = "true" ]; then FLAG="--dry-run"; fi
+          # PAGE_IDS is intentionally unquoted: the collector takes page ids as
+          # separate positional arguments.
           node collector/collect.js \
             --lookback-days "$LOOKBACK_DAYS" \
             --max-posts "$MAX_POSTS" \
             --concurrency "$CONCURRENCY" \
-            $FLAG
+            $FLAG $PAGE_IDS
 
       # Mirror refresh. Skipped rather than failed when unconfigured, so the
       # collection itself is never blocked by Sheet credentials.
