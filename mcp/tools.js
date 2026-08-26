@@ -351,6 +351,92 @@ async function pageGrowth(store, { page_id, days = 30 }) {
   };
 }
 
+
+async function instagramPosts(store, { page_id, days = 30, sort = 'reach', limit = 15 }) {
+  const rows = await store.igMedia({ page_id, since: sinceFor(days), sort, limit });
+  if (!rows || !rows.length) {
+    return {
+      text: 'No Instagram data yet.\n\n_Instagram needs `instagram_basic` and `instagram_manage_insights` on the token, and the account must be a Business or Creator account linked to the Facebook Page. A personal Instagram account exposes no insights at all, whatever the token allows._',
+      data: null,
+    };
+  }
+  const label = { reach: 'reach', saved: 'saves', views: 'views', interactions: 'interactions', recent: 'most recent' }[sort] || sort;
+  return {
+    text: `**Top ${rows.length} Instagram posts by ${label}**${days ? ` · last ${days} days` : ''}\n\n`
+      + table(
+        ['Date', 'Account', 'Post', 'Type', 'Reach', 'Views', 'Saves', 'Saves/1k', 'Interactions', 'Rate'],
+        rows.map((r) => [
+          (r.timestamp || '').slice(0, 10),
+          r.ig_username ? '@' + r.ig_username : (r.page_name || '—'),
+          r.permalink ? `[${truncate(r.caption, 52).replace(/\|/g, '\\|')}](${r.permalink})` : truncate(r.caption, 52),
+          r.media_product_type || r.media_type || '—',
+          n(r.reach), n(r.views), n(r.saved),
+          r.saves_per_1k_reached !== null && r.saves_per_1k_reached !== undefined ? Number(r.saves_per_1k_reached).toFixed(1) : '—',
+          n(r.total_interactions),
+          r.interaction_rate_pct !== null && r.interaction_rate_pct !== undefined ? p(Number(r.interaction_rate_pct)) : '—',
+        ])
+      )
+      + '\n\n_Saves per 1,000 reached is the intent signal worth watching: saving a post is a deliberate act in a way a like is not, and Facebook has no equivalent metric._',
+    data: rows,
+  };
+}
+
+async function audience(store, { page_id, breakdown = 'country', limit = 20 }) {
+  const rows = await store.demographics({ page_id, breakdown, limit });
+  if (!rows || !rows.length) {
+    return {
+      text: `No ${breakdown} data available.\n\n_Meta retired many audience breakdowns in 2024. The collector attempts each one and records what survives, so an empty result here usually means Meta no longer provides it rather than that collection failed — check \`data_health\`._`,
+      data: null,
+    };
+  }
+  const total = rows.reduce((a, r) => a + (r.value || 0), 0);
+  const byPage = new Map();
+  for (const r of rows) {
+    if (!byPage.has(r.page_id)) byPage.set(r.page_id, []);
+    byPage.get(r.page_id).push(r);
+  }
+  return {
+    text: `**Audience by ${breakdown}**${page_id ? '' : ' (across collected pages)'}\n\n`
+      + table(['Page', breakdown === 'age_gender' ? 'Age / gender' : breakdown.replace(/^./, (c) => c.toUpperCase()), 'Followers', 'Share'],
+        rows.map((r) => [
+          r.page_id, r.key, n(r.value),
+          total > 0 ? p((r.value / total) * 100) : '—',
+        ]))
+      + `\n\n_Share is of the rows shown, not of the whole audience — the tail is truncated at ${limit}._`,
+    data: rows,
+  };
+}
+
+async function adSpend(store, { page_id, days = 90, limit = 20 }) {
+  const rows = await store.adSpend({ page_id, since: sinceFor(days), limit });
+  if (!rows || !rows.length) {
+    return {
+      text: 'No boosted posts found.\n\n_Ad spend needs `ads_read` on the token, and only posts that were actually promoted appear here. An organic-only page will always be empty._',
+      data: null,
+    };
+  }
+  const spend = rows.reduce((a, r) => a + (Number(r.total_spend) || 0), 0);
+  const cur = rows[0].currency || '';
+  return {
+    text: `**Boosted posts · last ${days} days** · ${rows.length} post${rows.length === 1 ? '' : 's'}, ${cur} ${spend.toFixed(2)} total\n\n`
+      + table(
+        ['Date', 'Page', 'Post', 'Spend', 'Paid reach', 'Cost/1k', 'Organic views', 'Paid views', 'Organic:paid'],
+        rows.map((r) => [
+          (r.created_time || '').slice(0, 10),
+          r.page_name || '—',
+          r.permalink_url ? `[${truncate(r.message, 44).replace(/\|/g, '\\|')}](${r.permalink_url})` : truncate(r.message, 44),
+          r.total_spend !== null ? `${r.currency || ''} ${Number(r.total_spend).toFixed(2)}` : '—',
+          n(r.ad_reach), 
+          r.cost_per_1k_reached !== null && r.cost_per_1k_reached !== undefined ? Number(r.cost_per_1k_reached).toFixed(2) : '—',
+          n(r.views_organic), n(r.views_paid),
+          r.organic_to_paid_ratio !== null && r.organic_to_paid_ratio !== undefined ? Number(r.organic_to_paid_ratio).toFixed(2) + '×' : '—',
+        ])
+      )
+      + '\n\n_"Organic:paid" is how much reach the post earned for free against what was paid for. Above 1 means the free half did more work than the money did — those are the posts worth studying, and arguably the ones worth boosting harder._',
+    data: rows,
+  };
+}
+
 const TOOLS = [
   {
     name: 'list_pages',
@@ -438,6 +524,49 @@ const TOOLS = [
       additionalProperties: false,
     },
     handler: (store, args) => pageGrowth(store, args),
+  },
+  {
+    name: 'instagram_posts',
+    description: 'Top Instagram posts by reach, saves, views or interactions. Use for any question about Instagram rather than Facebook. Saves are the notable metric here — Facebook has no equivalent, and saving a post signals far more intent than a like.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        page_id: { type: 'string', description: 'Restrict to the Instagram account linked to this Facebook page id.' },
+        days: { type: 'number', description: 'Look back this many days (default 30, 0 for all).' },
+        sort: { type: 'string', enum: ['reach', 'saved', 'views', 'interactions', 'recent'], description: 'Ranking metric (default reach).' },
+        limit: { type: 'number', description: 'How many posts (default 15).' },
+      },
+      additionalProperties: false,
+    },
+    handler: (store, args) => instagramPosts(store, args),
+  },
+  {
+    name: 'audience',
+    description: 'Where a page\'s followers actually are: country, city, locale, or age and gender. Use for "is our Latam page reaching Latin America", "what languages do our followers speak", "how old is our audience". Note that Meta retired several of these breakdowns, so some may return nothing.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        page_id: { type: 'string', description: 'Restrict to one page. Omit for all collected pages.' },
+        breakdown: { type: 'string', enum: ['country', 'city', 'locale', 'age_gender'], description: 'Which breakdown (default country).' },
+        limit: { type: 'number', description: 'How many rows (default 20).' },
+      },
+      additionalProperties: false,
+    },
+    handler: (store, args) => audience(store, args),
+  },
+  {
+    name: 'ad_spend',
+    description: 'Posts that were boosted, with what they cost and how paid reach compares to what the post earned organically. Use for "what did we spend on this", "which boosts were worth it", "cost per person reached". Only promoted posts appear.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        page_id: { type: 'string', description: 'Restrict to one page.' },
+        days: { type: 'number', description: 'Look back this many days (default 90).' },
+        limit: { type: 'number', description: 'How many posts (default 20).' },
+      },
+      additionalProperties: false,
+    },
+    handler: (store, args) => adSpend(store, args),
   },
   {
     name: 'data_health',
