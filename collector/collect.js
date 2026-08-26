@@ -101,6 +101,9 @@ const METRICS = [
   'post_clicks_by_type',
   'post_activity_by_action_type',
   'post_video_views',
+  'post_video_view_time',
+  'post_video_avg_time_watched',
+  'post_video_complete_views_30s',
 ];
 
 async function collectPostMetrics(post, as) {
@@ -152,6 +155,14 @@ async function collectPostMetrics(post, as) {
     clicks_by_type: firstValue(results.post_clicks_by_type) || null,
     activity_by_type: firstValue(results.post_activity_by_action_type) || null,
     video_views: num(firstValue(results.post_video_views)),
+    video_view_time_ms: num(firstValue(results.post_video_view_time)),
+    // Meta reports this in milliseconds; stored as seconds because nobody
+    // thinks about watch time in milliseconds.
+    video_avg_seconds_watched: (() => {
+      const ms = num(firstValue(results.post_video_avg_time_watched));
+      return ms === null ? null : Number((ms / 1000).toFixed(1));
+    })(),
+    video_complete_views_30s: num(firstValue(results.post_video_complete_views_30s)),
 
     // Filled in by listCommentCounts() after this returns; stays null if the
     // token lacks pages_read_user_content.
@@ -165,7 +176,11 @@ async function collectPostMetrics(post, as) {
 
 const POST_FIELDS = [
   'id', 'created_time', 'message', 'permalink_url', 'status_type',
-  'is_published', 'full_picture', 'attachments{media_type,type}', 'shares',
+  'is_published', 'full_picture',
+  // unshimmed_url is the real destination; target.url is Facebook's wrapped
+  // version. Prefer the former, fall back to the latter.
+  'attachments{media_type,type,unshimmed_url,target{url}}',
+  'shares',
 ].join(',');
 
 async function listPosts(pageId, as) {
@@ -196,6 +211,16 @@ async function listPosts(pageId, as) {
         status_type: r.status_type || null,
         media_type: (r.attachments && r.attachments.data && r.attachments.data[0]
           && (r.attachments.data[0].media_type || r.attachments.data[0].type)) || null,
+        link_url: (() => {
+          const a = r.attachments && r.attachments.data && r.attachments.data[0];
+          if (!a) return null;
+          const u = a.unshimmed_url || (a.target && a.target.url) || null;
+          // Photo and video attachments carry a facebook.com URL pointing back
+          // at the post itself. That is not an outbound link and recording it
+          // as one would corrupt any analysis of what we link to.
+          if (!u || /^https?:\/\/(www\.)?facebook\.com\//.test(u)) return null;
+          return u;
+        })(),
         // Signature params (oh/oe/_nc_gid) rotate on every request AND expire, so
         // the signed URL is both churn and dead-on-arrival for historical posts.
         // Keep only the stable path, as a media identity key — not a fetchable URL.
@@ -322,6 +347,7 @@ async function collectPage(page, pageToken) {
       post_id: p.post_id, page_id: p.page_id, created_time: p.created_time,
       message: p.message, permalink_url: p.permalink_url, status_type: p.status_type,
       media_type: p.media_type, full_picture: p.full_picture, is_published: p.is_published,
+      link_url: p.link_url,
     })));
   }
 

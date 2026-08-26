@@ -34,6 +34,13 @@ function table(headers, rows) {
   return head + '\n' + rows.map((r) => `| ${r.join(' | ')} |`).join('\n');
 }
 
+// Markdown link when we have a permalink, plain text otherwise. Keeps the table
+// readable while making every row clickable.
+function postLink(r, label) {
+  const safe = String(label).replace(/\|/g, '\\|').replace(/\]/g, ')');
+  return r.permalink_url ? `[${safe}](${r.permalink_url})` : safe;
+}
+
 function truncate(s, len) {
   const one = (s || '(no text)').replace(/\s+/g, ' ');
   return one.length > len ? one.slice(0, len - 1) + '…' : one;
@@ -79,7 +86,7 @@ async function topPosts(store, { page_id, days = 30, sort = 'views', limit = 10 
   // Baseline from the same window, so "vs median" compares like with like.
   const base = pageBaseline(feed.rows);
   const rows = feed.rows.map((r) => withBenchmark(r, base)).map((r) => [
-    r.created_time.slice(0, 10), r.page_name, truncate(r.message, 70),
+    r.created_time.slice(0, 10), r.page_name, postLink(r, truncate(r.message, 62)),
     n(r.views_total), n(r.views_unique), p(r.beyond_followers_pct),
     n(r.reactions_total), n(r.shares_total), p(r.engagement_rate),
     r.benchmark && r.benchmark.views_x_median !== null ? r.benchmark.views_x_median + '×' : '—',
@@ -88,7 +95,8 @@ async function topPosts(store, { page_id, days = 30, sort = 'views', limit = 10 
   return {
     text: `**Top ${feed.rows.length} posts by ${label}**`
       + `${page_id ? '' : ' (all pages)'}${days ? ` · last ${days} days` : ' · all time'}\n\n`
-      + table(['Date', 'Page', 'Post', 'Views', 'Unique', 'Beyond followers', 'Reactions', 'Shares', 'Eng. rate', 'vs median'], rows)
+      + table(['Date', 'Page', 'Post', 'Views', 'Unique', 'Beyond followers', 'Reactions', 'Shares', 'Eng. rate', 'vs median', 'Post ID'],
+        rows.map((row, i) => row.concat([feed.rows[i].post_id])))
       + (base.reliable
         ? `\n\n_"vs median" compares each post to this page's own median of ${n(base.median_views)} views over the same window. A raw view count says nothing on its own._`
         : `\n\n_Too few posts with metrics (${base.n}) to establish a baseline, so no comparison is shown._`)
@@ -117,8 +125,8 @@ async function pageSummary(store, { page_id, days = 30 }) {
     `- Median engagement rate: **${p(page.median_engagement_rate)}**`,
     `- Median reach beyond followers: **${p(page.median_beyond_followers_pct)}**`,
   ];
-  if (best) lines.push('', `Best performing by views: "${truncate(best.message, 90)}" — ${n(best.views_total)} views, ${p(best.engagement_rate)} engagement rate.`);
-  if (widest) lines.push(`Travelled furthest beyond followers: "${truncate(widest.message, 90)}" — ${p(widest.beyond_followers_pct)} of views came from non-followers.`);
+  if (best) lines.push('', `Best performing by views: ${postLink(best, '"' + truncate(best.message, 90) + '"')} — ${n(best.views_total)} views, ${p(best.engagement_rate)} engagement rate. \`${best.post_id}\``);
+  if (widest) lines.push(`Travelled furthest beyond followers: ${postLink(widest, '"' + truncate(widest.message, 90) + '"')} — ${p(widest.beyond_followers_pct)} of views came from non-followers. \`${widest.post_id}\``);
   return { text: lines.join('\n') + gapNote(feed.rows), data: { page, posts: feed.total } };
 }
 
@@ -205,9 +213,10 @@ async function outliers(store, { page_id, days = 90 }) {
     n(r.shares_total),
     r.benchmark.shares_x_median !== null ? r.benchmark.shares_x_median + '×' : '—',
     p(r.engagement_rate),
-    truncate(r.message, 60),
+    postLink(r, truncate(r.message, 52)),
+    r.post_id,
   ];
-  const head = ['Date', 'vs median', 'Views', 'Shares', 'Shares vs med', 'Eng. rate', 'Post'];
+  const head = ['Date', 'vs median', 'Views', 'Shares', 'Shares vs med', 'Eng. rate', 'Post', 'Post ID'];
 
   return {
     text: [
@@ -257,17 +266,18 @@ async function searchPosts(store, { query, page_id, days = 0, limit = 15 }) {
   }
 
   const table_ = table(
-    ['Date', 'Page', 'Post', 'Reach', 'Views', 'Beyond followers', 'Shares', 'Comments', 'Eng. rate'],
+    ['Date', 'Page', 'Post', 'Reach', 'Views', 'Beyond followers', 'Shares', 'Comments', 'Eng. rate', 'Post ID'],
     rows.map((r) => [
       (r.created_time || '').slice(0, 10),
       r.page_name || '—',
-      truncate(r.message, 70),
+      postLink(r, truncate(r.message, 62)),
       n(r.views_unique),
       n(r.views_total),
       r.views_total > 0 ? p((r.views_from_nonfollowers / r.views_total) * 100) : '—',
       n(r.shares_total), n(r.comments_total),
       r.engagement_rate_pct !== null && r.engagement_rate_pct !== undefined
         ? p(Number(r.engagement_rate_pct)) : '—',
+      r.post_id,
     ])
   );
 

@@ -59,6 +59,11 @@ create table if not exists public.meta_posts (
   -- URL you can load. Thumbnails must be fetched fresh at render time.
   full_picture   text,
   is_published   boolean,
+  -- Destination of a link post, from attachments.unshimmed_url. Null for
+  -- photos, videos and text posts. Facebook-internal URLs are deliberately
+  -- discarded: a photo attachment points back at the post itself, and recording
+  -- that as an outbound link would corrupt any analysis of what we link to.
+  link_url       text,
   first_seen_at  timestamptz not null default now()
 );
 
@@ -100,6 +105,11 @@ create table if not exists public.meta_post_metrics (
   clicks_by_type            jsonb,    -- post_clicks_by_type
   activity_by_type          jsonb,    -- post_activity_by_action_type
   video_views               bigint,   -- post_video_views
+  -- Several pages are majority reels, and a view count alone says nothing about
+  -- whether anyone actually watched.
+  video_view_time_ms        bigint,   -- post_video_view_time
+  video_avg_seconds_watched numeric,  -- post_video_avg_time_watched, ms converted to seconds
+  video_complete_views_30s  bigint,   -- post_video_complete_views_30s
 
   -- Requires pages_read_user_content, which the pilot token lacked. Stays NULL
   -- until that scope is granted.
