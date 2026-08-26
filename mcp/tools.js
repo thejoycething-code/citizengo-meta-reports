@@ -232,6 +232,55 @@ async function outliers(store, { page_id, days = 90 }) {
   };
 }
 
+// Text search across post copy. Uses the store's server-side filter rather than
+// loading every post, because at 36 pages over 90 days that is thousands of rows
+// per call.
+//
+// Results are ranked by REACH, not relevance. A campaigner asking "how did our
+// marriage posts do" wants the ones that travelled, not the ones that mention the
+// word most often — and Meta gives us no relevance signal anyway.
+async function searchPosts(store, { query, page_id, days = 0, limit = 15 }) {
+  if (!query || !String(query).trim()) {
+    return { text: 'Give a search term — a word or phrase that appears in the post text.', data: null };
+  }
+  const rows = await store.searchPosts({
+    q: query, page_id, since: sinceFor(days), limit,
+  });
+
+  if (!rows.length) {
+    return {
+      text: `No posts matching "${query}"${page_id ? ' on that page' : ''}${days ? ` in the last ${days} days` : ''}.\n\n`
+        + '_Only collected pages are searchable, and only the period that has been collected. '
+        + 'A blank result may mean the post exists but has not been collected, rather than that it was never written._',
+      data: null,
+    };
+  }
+
+  const table_ = table(
+    ['Date', 'Page', 'Post', 'Reach', 'Views', 'Beyond followers', 'Shares', 'Comments', 'Eng. rate'],
+    rows.map((r) => [
+      (r.created_time || '').slice(0, 10),
+      r.page_name || '—',
+      truncate(r.message, 70),
+      n(r.views_unique),
+      n(r.views_total),
+      r.views_total > 0 ? p((r.views_from_nonfollowers / r.views_total) * 100) : '—',
+      n(r.shares_total), n(r.comments_total),
+      r.engagement_rate_pct !== null && r.engagement_rate_pct !== undefined
+        ? p(Number(r.engagement_rate_pct)) : '—',
+    ])
+  );
+
+  return {
+    text: `**${rows.length} post${rows.length === 1 ? '' : 's'} matching "${query}"**`
+      + `${page_id ? ' on one page' : ' across all collected pages'}`
+      + `${days ? ` · last ${days} days` : ''} · ranked by reach\n\n`
+      + table_
+      + '\n\n_Matches the post text only. Ranked by how many people each reached, not by relevance._',
+    data: rows,
+  };
+}
+
 const TOOLS = [
   {
     name: 'list_pages',
@@ -277,6 +326,22 @@ const TOOLS = [
       additionalProperties: false,
     },
     handler: (store, args) => comparePages(store, args),
+  },
+  {
+    name: 'search_posts',
+    description: 'Search the text of collected posts across every page and return them ranked by reach. Use this whenever someone asks about a topic, campaign or specific post rather than about a page overall — "how did our marriage posts do", "what did we publish about assisted dying", "find the Sarah Morse posts". Searches post copy only, not comments.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        query: { type: 'string', description: 'Word or phrase appearing in the post text. Case-insensitive.' },
+        page_id: { type: 'string', description: 'Restrict to one page. Omit to search every collected page.' },
+        days: { type: 'number', description: 'Only posts from the last N days. Omit or 0 for all collected history.' },
+        limit: { type: 'number', description: 'Maximum posts to return (default 15, max 200).' },
+      },
+      required: ['query'],
+      additionalProperties: false,
+    },
+    handler: (store, args) => searchPosts(store, args),
   },
   {
     name: 'outliers',
