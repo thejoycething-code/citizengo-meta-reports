@@ -21,7 +21,6 @@ const { loadEnv, makeClient } = require('../lib/graph');
 const { mapLimit } = require('../lib/pool');
 const { makeSink } = require('./lib/sinks');
 const { collectInstagram } = require('./instagram');
-const { collectDemographics, collectRetention } = require('./demographics');
 const { collectAdSpend } = require('./adspend');
 
 loadEnv();
@@ -445,15 +444,6 @@ async function collectPage(page, pageToken) {
   } catch (e) {
     // Never let Instagram break the Facebook collection it runs alongside.
     console.log(`   instagram: failed — ${e.message.slice(0, 80)}`);
-  }
-
-  // Demographics. Which metrics survive Meta's retirements is genuinely
-  // unknown, so this reports what worked rather than assuming.
-  try {
-    const demo = await collectDemographics({ page, as, call, runStarted: RUN_STARTED, log: (m) => console.log(m) });
-    if (demo.rows.length) await sink.upsert('meta_page_demographics', demo.rows);
-  } catch (e) {
-    console.log(`   demographics: failed — ${e.message.slice(0, 80)}`);
   }
 
   // Page-level series. Independent of posts: a page with nothing published in

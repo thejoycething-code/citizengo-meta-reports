@@ -42,6 +42,19 @@ const POST_METRICS_CANDIDATE = [
 //   is_from_followers: [{683, "1"}, {106, "0"}]    -> followers vs reached beyond
 const POST_BREAKDOWNS = ['is_from_ads', 'is_from_followers'];
 
+// CONFIRMED RETIRED, 26 Aug 2026, tested live across 36 pages. All returned an
+// error or an empty result. Listed so nobody spends another afternoon on them.
+const CONFIRMED_RETIRED = [
+  'post_video_retention_graph',
+  'page_fans_country',
+  'page_fans_city',
+  'page_fans_locale',
+  'page_fans_gender_age',
+  'page_follows_by_country',
+  'page_follows_by_city',
+  'page_audience_country',
+];
+
 // Page level: 6 live, 2 retired. Consistent across all three probed pages.
 const PAGE_METRICS_CANDIDATE = [
   'page_views_total',              // LIVE
@@ -88,6 +101,7 @@ const IG_MEDIA_FIELDS = [
 ].join(',');
 
 module.exports = {
+  CONFIRMED_RETIRED,
   POST_METRICS_EXPECTED_DEAD,
   POST_METRICS_CANDIDATE,
   POST_BREAKDOWNS,

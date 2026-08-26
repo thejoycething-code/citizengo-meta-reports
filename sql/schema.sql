@@ -110,9 +110,8 @@ create table if not exists public.meta_post_metrics (
   video_view_time_ms        bigint,   -- post_video_view_time
   video_avg_seconds_watched numeric,  -- post_video_avg_time_watched, ms converted to seconds
   video_complete_views_30s  bigint,   -- post_video_complete_views_30s
-  -- Per-interval viewer counts. Stored whole rather than exploded: it is read
-  -- as a curve, never queried by interval.
-  video_retention           jsonb,    -- post_video_retention_graph
+  -- NOTE: post_video_retention_graph is retired. Confirmed 26 Aug 2026 - it
+  -- returned nothing on any video post across 36 pages. Not collected.
 
   -- Requires pages_read_user_content, which the pilot token lacked. Stays NULL
   -- until that scope is granted.
@@ -232,27 +231,13 @@ create unique index if not exists meta_ig_media_metrics_day_key
   on public.meta_ig_media_metrics (media_id, collected_date);
 
 -- ---------------------------------------------------------------------------
--- AUDIENCE DEMOGRAPHICS. Long format because the key space is open - every
--- country, every city - so columns would be unworkable. Meta retired many
--- page_fans_* metrics in 2024 and the surviving set is not reliably documented,
--- so the collector attempts each and records what worked.
+-- AUDIENCE DEMOGRAPHICS: NOT COLLECTED. Confirmed retired by Meta, 26 Aug 2026,
+-- tested live across 36 pages. Seven metrics attempted per page -
+-- page_fans_country, page_fans_city, page_fans_locale, page_fans_gender_age,
+-- page_follows_by_country, page_follows_by_city, page_audience_country - and
+-- every one returned an error or an empty object. Do not re-add without
+-- re-probing first; the table shape is in git history at 72a5656.
 -- ---------------------------------------------------------------------------
-create table if not exists public.meta_page_demographics (
-  id           bigint generated always as identity primary key,
-  page_id      text not null references public.meta_pages(page_id),
-  metric_date  date not null,
-  breakdown    text not null,   -- country | city | locale | age_gender
-  metric       text not null,   -- the Meta metric it came from
-  key          text not null,   -- 'ES', 'Madrid, Spain', 'M.25-34'
-  value        bigint,
-  collected_at timestamptz not null default now()
-);
-
-create unique index if not exists meta_page_demographics_key
-  on public.meta_page_demographics (page_id, metric_date, metric, key);
-
-create index if not exists meta_page_demographics_lookup_idx
-  on public.meta_page_demographics (page_id, breakdown, metric_date desc);
 
 -- ---------------------------------------------------------------------------
 -- AD SPEND against organic posts. Own table because one post can be promoted by

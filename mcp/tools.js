@@ -381,32 +381,6 @@ async function instagramPosts(store, { page_id, days = 30, sort = 'reach', limit
   };
 }
 
-async function audience(store, { page_id, breakdown = 'country', limit = 20 }) {
-  const rows = await store.demographics({ page_id, breakdown, limit });
-  if (!rows || !rows.length) {
-    return {
-      text: `No ${breakdown} data available.\n\n_Meta retired many audience breakdowns in 2024. The collector attempts each one and records what survives, so an empty result here usually means Meta no longer provides it rather than that collection failed — check \`data_health\`._`,
-      data: null,
-    };
-  }
-  const total = rows.reduce((a, r) => a + (r.value || 0), 0);
-  const byPage = new Map();
-  for (const r of rows) {
-    if (!byPage.has(r.page_id)) byPage.set(r.page_id, []);
-    byPage.get(r.page_id).push(r);
-  }
-  return {
-    text: `**Audience by ${breakdown}**${page_id ? '' : ' (across collected pages)'}\n\n`
-      + table(['Page', breakdown === 'age_gender' ? 'Age / gender' : breakdown.replace(/^./, (c) => c.toUpperCase()), 'Followers', 'Share'],
-        rows.map((r) => [
-          r.page_id, r.key, n(r.value),
-          total > 0 ? p((r.value / total) * 100) : '—',
-        ]))
-      + `\n\n_Share is of the rows shown, not of the whole audience — the tail is truncated at ${limit}._`,
-    data: rows,
-  };
-}
-
 async function adSpend(store, { page_id, days = 90, limit = 20 }) {
   const rows = await store.adSpend({ page_id, since: sinceFor(days), limit });
   if (!rows || !rows.length) {
@@ -539,20 +513,6 @@ const TOOLS = [
       additionalProperties: false,
     },
     handler: (store, args) => instagramPosts(store, args),
-  },
-  {
-    name: 'audience',
-    description: 'Where a page\'s followers actually are: country, city, locale, or age and gender. Use for "is our Latam page reaching Latin America", "what languages do our followers speak", "how old is our audience". Note that Meta retired several of these breakdowns, so some may return nothing.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        page_id: { type: 'string', description: 'Restrict to one page. Omit for all collected pages.' },
-        breakdown: { type: 'string', enum: ['country', 'city', 'locale', 'age_gender'], description: 'Which breakdown (default country).' },
-        limit: { type: 'number', description: 'How many rows (default 20).' },
-      },
-      additionalProperties: false,
-    },
-    handler: (store, args) => audience(store, args),
   },
   {
     name: 'ad_spend',
