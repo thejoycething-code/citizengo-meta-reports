@@ -16,17 +16,32 @@
 // only if that is absent — see sql/readonly-role.sql.
 
 const { supabaseStore } = require('../lib/store');
+const { verify, originOf } = require('../lib/oauth');
 const { TOOLS } = require('../mcp/tools');
 
 const SERVER_INFO = { name: 'citizengo-meta-reports', version: '1.0.0' };
 
 function tokenIsValid(supplied) {
+  if (!supplied) return false;
+
+  // 1. A static team token, as used by Claude Code and by claude.ai's
+  //    static_headers option.
   const configured = String(process.env.MCP_TOKENS || '')
     .split(',').map((t) => t.trim()).filter(Boolean);
-  if (!configured.length) return false;      // never default to open
-  if (!supplied) return false;
-  // Constant-time-ish: compare against all, do not early-exit on first mismatch.
-  return configured.reduce((ok, t) => (t === supplied ? true : ok), false);
+  // Compare against all rather than early-exiting on first mismatch.
+  const staticOk = configured.length
+    ? configured.reduce((ok, t) => (t === supplied ? true : ok), false)
+    : false;
+  if (staticOk) return true;
+
+  // 2. An OAuth access token this server issued. claude.ai cannot send a fixed
+  //    header on a personal account, so it goes through the OAuth flow instead.
+  try {
+    return !!verify(supplied, 'access');
+  } catch (e) {
+    // OAUTH_SIGNING_SECRET unset - OAuth simply unavailable, static still works.
+    return false;
+  }
 }
 
 function getStore() {
@@ -111,7 +126,9 @@ module.exports = async function handler(req, res) {
   const supplied = auth.startsWith('Bearer ') ? auth.slice(7).trim() : '';
   if (!tokenIsValid(supplied)) {
     // 401 with WWW-Authenticate is what MCP clients expect for an auth failure.
-    res.setHeader('WWW-Authenticate', 'Bearer');
+    const origin = originOf(req);
+    res.setHeader('WWW-Authenticate',
+      `Bearer resource_metadata="${origin}/.well-known/oauth-protected-resource"`);
     res.status(401).json(rpcError(null, -32001, 'Unauthorized'));
     return;
   }

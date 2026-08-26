@@ -1,0 +1,20 @@
+{
+  "rewrites": [
+    {
+      "source": "/.well-known/oauth-protected-resource/api/mcp",
+      "destination": "/api/oauth/metadata?doc=protected-resource"
+    },
+    {
+      "source": "/.well-known/oauth-protected-resource",
+      "destination": "/api/oauth/metadata?doc=protected-resource"
+    },
+    {
+      "source": "/.well-known/oauth-authorization-server",
+      "destination": "/api/oauth/metadata?doc=authorization-server"
+    },
+    {
+      "source": "/.well-known/openid-configuration",
+      "destination": "/api/oauth/metadata?doc=authorization-server"
+    }
+  ]
+}
