@@ -56,6 +56,9 @@ const EXPECTED = {
     'posts_seen', 'metrics_written', 'api_calls', 'error_code', 'error_message'],
   meta_page_tokens: ['page_id', 'token', 'token_source', 'system_user_id',
     'last_verified_at', 'last_error'],
+  meta_page_metrics: ['page_id', 'metric_date', 'views_total', 'media_view',
+    'media_view_unique', 'post_engagements', 'follows', 'daily_follows',
+    'followers_snapshot', 'collected_at', 'errors'],
 };
 
 const hdrs = (key) => ({ apikey: key, Authorization: 'Bearer ' + key });

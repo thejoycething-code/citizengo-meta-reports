@@ -16,6 +16,10 @@ const GOOD = 'test-token-alice';
 process.env.MCP_TOKENS = `${GOOD},test-token-bob`;
 
 const handler = require(path.join(__dirname, '..', 'api', 'mcp.js'));
+// Compared against the actual definitions rather than a hardcoded number, so
+// adding a tool does not fail the suite while a genuine mismatch between what is
+// defined and what the transport exposes still does.
+const { TOOLS } = require(path.join(__dirname, '..', 'mcp', 'tools.js'));
 
 let pass = 0; let fail = 0;
 const check = (name, ok, detail) => {
@@ -58,7 +62,9 @@ async function main() {
     init.body.result && init.body.result.protocolVersion);
   const list = await call({ jsonrpc: '2.0', id: 2, method: 'tools/list' }, GOOD);
   const names = list.body.result ? list.body.result.tools.map((t) => t.name) : [];
-  check('tools/list returns all 7', names.length === 7, names.join(', '));
+  check(`tools/list exposes every defined tool (${TOOLS.length})`,
+    names.length === TOOLS.length && TOOLS.every((t) => names.includes(t.name)),
+    names.join(', '));
 
   console.log('\n3. A real tool call against live data');
   const call1 = await call({

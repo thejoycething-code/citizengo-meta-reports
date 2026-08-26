@@ -93,6 +93,17 @@ function reactionCol(map, ...keys) {
   return null;
 }
 
+// One call per metric returns a VALUE PER DAY, so six calls fill the whole
+// window for a page — very cheap next to nine calls per post.
+const PAGE_METRICS = {
+  page_views_total: 'views_total',
+  page_media_view: 'media_view',
+  page_total_media_view_unique: 'media_view_unique',
+  page_post_engagements: 'post_engagements',
+  page_follows: 'follows',
+  page_daily_follows: 'daily_follows',
+};
+
 const METRICS = [
   'post_media_view',
   'post_total_media_view_unique',
@@ -170,6 +181,51 @@ async function collectPostMetrics(post, as) {
 
     errors: Object.keys(errors).length ? errors : null,
   };
+}
+
+// Collects the daily page series and folds the six metrics into one row per
+// date. Meta caps an insights date range at roughly 93 days, so a longer
+// lookback is clamped rather than silently returning nothing.
+async function collectPageInsights(page, as, followersSnapshot) {
+  const days = Math.min(LOOKBACK_DAYS, 90);
+  const until = new Date(RUN_STARTED);
+  const since = new Date(RUN_STARTED.getTime() - days * 86400000);
+  const byDate = new Map();
+  const errors = {};
+
+  for (const [metric, column] of Object.entries(PAGE_METRICS)) {
+    const res = await call(`/${page.page_id}/insights`, {
+      metric,
+      period: 'day',
+      since: Math.floor(since.getTime() / 1000),
+      until: Math.floor(until.getTime() / 1000),
+    }, as);
+
+    if (!res.ok) {
+      errors[metric] = { code: res.error ? res.error.code : null, message: res.error ? res.error.message : 'unknown' };
+      continue;
+    }
+    const series = (res.body && res.body.data && res.body.data[0] && res.body.data[0].values) || [];
+    for (const point of series) {
+      if (!point || point.end_time === undefined) continue;
+      // end_time is the END of the day the value covers.
+      const date = String(point.end_time).slice(0, 10);
+      if (!byDate.has(date)) {
+        byDate.set(date, {
+          page_id: page.page_id,
+          metric_date: date,
+          followers_snapshot: followersSnapshot ?? null,
+          collected_at: RUN_STARTED.toISOString(),
+          errors: null,
+        });
+      }
+      byDate.get(date)[column] = typeof point.value === 'number' ? point.value : null;
+    }
+  }
+
+  const rows = [...byDate.values()];
+  if (Object.keys(errors).length) rows.forEach((r) => { r.errors = errors; });
+  return { rows, errorCount: Object.keys(errors).length };
 }
 
 // --- post listing ----------------------------------------------------------
@@ -367,6 +423,16 @@ async function collectPage(page, pageToken) {
   }
 
   if (metrics.length) await sink.upsert('meta_post_metrics', metrics);
+
+  // Page-level series. Independent of posts: a page with nothing published in
+  // the window still has views and follower movement worth recording.
+  const { rows: pageRows, errorCount: pageErrors } = await collectPageInsights(page, as, page.followers_count);
+  if (pageRows.length) {
+    await sink.upsert('meta_page_metrics', pageRows);
+    console.log(`   page insights: ${pageRows.length} day(s)${pageErrors ? ` · ${pageErrors} metric(s) unavailable` : ''}`);
+  } else {
+    console.log(`   page insights: none returned${pageErrors ? ` · ${pageErrors} metric(s) errored` : ''}`);
+  }
 
   const { status, empty, degraded } = classify(posts, metrics);
   const scopeProblem = looksLikeMissingInsightsScope(metrics);

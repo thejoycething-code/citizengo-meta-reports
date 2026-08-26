@@ -291,6 +291,66 @@ async function searchPosts(store, { query, page_id, days = 0, limit = 15 }) {
   };
 }
 
+// Page-level trend, as opposed to individual post performance. Answers "are we
+// growing" rather than "did this post work".
+async function pageGrowth(store, { page_id, days = 30 }) {
+  const rows = await store.pageGrowth({ page_id, since: sinceFor(days) });
+  if (!rows || !rows.length) {
+    return {
+      text: 'No page-level data yet. It is collected alongside posts, so it appears after the next collection run.',
+      data: null,
+    };
+  }
+
+  // Group by page and report the window's movement rather than every day —
+  // 30 rows per page across 36 pages would be unreadable.
+  const byPage = new Map();
+  for (const r of rows) {
+    if (!byPage.has(r.page_id)) byPage.set(r.page_id, []);
+    byPage.get(r.page_id).push(r);
+  }
+
+  const summary = [...byPage.values()].map((series) => {
+    series.sort((a, b) => (a.metric_date < b.metric_date ? -1 : 1));
+    const first = series[0];
+    const last = series[series.length - 1];
+    const sum = (k) => {
+      const vals = series.map((x) => x[k]).filter((v) => typeof v === 'number');
+      return vals.length ? vals.reduce((a, b) => a + b, 0) : null;
+    };
+    const startF = first.followers_snapshot;
+    const endF = last.followers_snapshot;
+    return {
+      name: last.page_name,
+      days: series.length,
+      followers: endF,
+      // Only meaningful once there are snapshots from different days; on a
+      // single collection every snapshot is identical, so this reads 0 rather
+      // than pretending to be a trend.
+      followerChange: (typeof startF === 'number' && typeof endF === 'number') ? endF - startF : null,
+      views: sum('views_total'),
+      reach: sum('media_view_unique'),
+      engagements: sum('post_engagements'),
+      newFollows: sum('daily_follows'),
+    };
+  }).sort((a, b) => (b.views || 0) - (a.views || 0));
+
+  return {
+    text: `**Page-level trend · last ${days} days**\n\n`
+      + table(
+        ['Page', 'Days', 'Followers', 'Change', 'Page views', 'Reach', 'Engagements', 'New follows'],
+        summary.map((s) => [
+          s.name, s.days, n(s.followers),
+          s.followerChange === null ? '—' : (s.followerChange > 0 ? '+' : '') + n(s.followerChange),
+          n(s.views), n(s.reach), n(s.engagements), n(s.newFollows),
+        ])
+      )
+      + '\n\n_Page-level figures, not post totals: page views include profile visits, and reach counts people who saw anything from the page. '
+      + 'Follower change needs snapshots from more than one day, so it reads 0 until the collector has run on separate dates._',
+    data: summary,
+  };
+}
+
 const TOOLS = [
   {
     name: 'list_pages',
@@ -365,6 +425,19 @@ const TOOLS = [
       additionalProperties: false,
     },
     handler: (store, args) => outliers(store, args),
+  },
+  {
+    name: 'page_growth',
+    description: 'Page-level trend over time: followers and how they changed, page views, total page reach, engagements and new follows. Use this for "are we growing", "how is this page trending" or "which pages are gaining followers" — as opposed to how any individual post did.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        page_id: { type: 'string', description: 'Restrict to one page. Omit for every collected page.' },
+        days: { type: 'number', description: 'Window in days (default 30).' },
+      },
+      additionalProperties: false,
+    },
+    handler: (store, args) => pageGrowth(store, args),
   },
   {
     name: 'data_health',

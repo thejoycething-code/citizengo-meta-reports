@@ -129,6 +129,64 @@ create index if not exists meta_post_metrics_page_date_idx
   on public.meta_post_metrics (page_id, collected_date desc);
 
 -- ---------------------------------------------------------------------------
+-- Page-level daily insights: how the PAGE is doing, rather than how individual
+-- posts did. Answers "are we growing".
+--
+-- Unlike post insights, one call returns a value PER DAY, so six calls fill the
+-- whole window for a page - far cheaper than nine calls per post.
+--
+-- Columns are named after the Meta metric that fills them rather than an
+-- interpretation: the exact difference between page_follows and
+-- page_daily_follows is not clearly documented, and a wrong label would be
+-- worse than a literal one.
+-- ---------------------------------------------------------------------------
+create table if not exists public.meta_page_metrics (
+  id                 bigint generated always as identity primary key,
+  page_id            text not null references public.meta_pages(page_id),
+  metric_date        date not null,
+
+  views_total        bigint,   -- page_views_total
+  media_view         bigint,   -- page_media_view
+  media_view_unique  bigint,   -- page_total_media_view_unique
+  post_engagements   bigint,   -- page_post_engagements
+  follows            bigint,   -- page_follows
+  daily_follows      bigint,   -- page_daily_follows
+
+  -- Off the page object, not an insights metric: page_fans was retired, so this
+  -- is the only reliable follower figure available.
+  followers_snapshot bigint,
+
+  collected_at       timestamptz not null default now(),
+  errors             jsonb
+);
+
+create unique index if not exists meta_page_metrics_page_day_key
+  on public.meta_page_metrics (page_id, metric_date);
+
+create index if not exists meta_page_metrics_date_idx
+  on public.meta_page_metrics (metric_date desc);
+
+alter table public.meta_page_metrics enable row level security;
+
+-- Daily follower change is computed, not stored, so it cannot drift out of step
+-- with the snapshots it derives from.
+create or replace view public.meta_page_growth as
+select
+  m.page_id,
+  g.name as page_name,
+  m.metric_date,
+  m.followers_snapshot,
+  m.followers_snapshot - lag(m.followers_snapshot)
+    over (partition by m.page_id order by m.metric_date) as followers_change,
+  m.views_total,
+  m.media_view,
+  m.media_view_unique,
+  m.post_engagements,
+  m.daily_follows
+from public.meta_page_metrics m
+join public.meta_pages g on g.page_id = m.page_id;
+
+-- ---------------------------------------------------------------------------
 -- Run log. Non-negotiable: a silent partial failure that looks like
 -- "engagement dropped" is worse than having no data at all.
 -- ---------------------------------------------------------------------------

@@ -16,6 +16,9 @@ const ORIGIN = `http://localhost:${PORT}`;
 process.env.MCP_TOKENS = 'cgo_team_shared_2026';
 process.env.OAUTH_SIGNING_SECRET = 'test-signing-secret-not-production';
 
+// Asserted against the definitions, not a fixed count.
+const { TOOLS } = require('../mcp/tools.js');
+
 const routes = {
   '/api/oauth/metadata': require('../api/oauth/metadata.js'),
   '/api/oauth/register': require('../api/oauth/register.js'),
@@ -93,9 +96,9 @@ async function main() {
 
   console.log('\n6. The token actually works on the MCP endpoint');
   const call = await (await fetch(`${ORIGIN}/api/mcp`, { method:'POST', headers:{'Content-Type':'application/json', Authorization:`Bearer ${tok.access_token}`}, body:'{"jsonrpc":"2.0","id":1,"method":"tools/list"}' })).json();
-  check('OAuth token authorises tools/list', !!(call.result && call.result.tools.length === 7), call.result ? `${call.result.tools.length} tools` : JSON.stringify(call.error));
+  check('OAuth token authorises tools/list', !!(call.result && call.result.tools.length === TOOLS.length), call.result ? `${call.result.tools.length} tools` : JSON.stringify(call.error));
   const stat = await (await fetch(`${ORIGIN}/api/mcp`, { method:'POST', headers:{'Content-Type':'application/json', Authorization:'Bearer cgo_team_shared_2026'}, body:'{"jsonrpc":"2.0","id":1,"method":"tools/list"}' })).json();
-  check('static team token still works alongside OAuth', !!(stat.result && stat.result.tools.length === 7));
+  check('static team token still works alongside OAuth', !!(stat.result && stat.result.tools.length === TOOLS.length));
 
   console.log('\n7. Refresh');
   const ref = await (await fetch(`${ORIGIN}/api/oauth/token`, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body: new URLSearchParams({ grant_type:'refresh_token', refresh_token: tok.refresh_token }).toString() })).json();

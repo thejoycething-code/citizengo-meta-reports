@@ -21,6 +21,7 @@ function jsonSink({ dir }) {
     if (table === 'meta_pages') return row.page_id;
     if (table === 'meta_posts') return row.post_id;
     if (table === 'meta_post_metrics') return `${row.post_id}|${row.collected_date}`;
+    if (table === 'meta_page_metrics') return `${row.page_id}|${row.metric_date}`;
     return null; // collection_runs is append-only
   }
 
@@ -63,6 +64,7 @@ function supabaseSink({ url, serviceKey }) {
     meta_pages: 'page_id',
     meta_posts: 'post_id',
     meta_post_metrics: 'post_id,collected_date',
+    meta_page_metrics: 'page_id,metric_date',
   };
 
   return {
