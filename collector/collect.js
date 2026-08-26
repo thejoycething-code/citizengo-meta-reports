@@ -232,6 +232,15 @@ function isBenign(errors) {
   return keys.length === 1 && keys[0] === 'post_total_media_view_unique';
 }
 
+// The signature of a missing read_insights scope: every metric empty on every
+// post, and NOT A SINGLE ERROR recorded, because Meta returned 200 with an empty
+// array each time. A genuine per-post refusal (#200 on a low-follower page)
+// records an error, so the two are distinguishable.
+function looksLikeMissingInsightsScope(metrics) {
+  if (!metrics.length) return false;
+  return metrics.every((m) => !hasAnyMetric(m) && !m.errors);
+}
+
 function classify(posts, metrics) {
   if (!posts.length) return { status: 'ok', empty: 0, degraded: 0 };
   const empty = metrics.filter((m) => !hasAnyMetric(m)).length;
@@ -334,6 +343,16 @@ async function collectPage(page, pageToken) {
   if (metrics.length) await sink.upsert('meta_post_metrics', metrics);
 
   const { status, empty, degraded } = classify(posts, metrics);
+  const scopeProblem = looksLikeMissingInsightsScope(metrics);
+  if (scopeProblem) {
+    console.log('   NO METRICS AT ALL, and Meta reported no error on any call.');
+    console.log('     That is the signature of a token without the read_insights scope:');
+    console.log('     Meta answers 200 with an empty result instead of refusing.');
+    console.log('     Check the PAGE token, not just the user token:');
+    console.log('       graph.facebook.com/v23.0/debug_token?input_token=PAGE_TOKEN&access_token=PAGE_TOKEN');
+    console.log('     read_insights must appear in "scopes". Regenerate the token after');
+    console.log('     changing app permissions — existing tokens never gain new scopes.');
+  }
   const reach = metrics.filter((m) => m.views_unique !== null).length;
   console.log(`   wrote ${metrics.length} metric rows · ${reach} with unique reach` +
     (empty ? ` · ${empty} with NO metrics` : '') +
@@ -345,8 +364,9 @@ async function collectPage(page, pageToken) {
     finished_at: new Date().toISOString(), status,
     posts_seen: posts.length, metrics_written: metrics.length,
     api_calls: apiCalls - startCalls, error_code: null,
-    error_message: (empty || degraded)
-      ? `${empty} rows with no metrics, ${degraded} degraded` : null,
+    error_message: scopeProblem
+      ? 'no metrics and no errors on any post - token probably lacks read_insights'
+      : (empty || degraded) ? `${empty} rows with no metrics, ${degraded} degraded` : null,
   }]);
   return { status, posts: posts.length, metrics: metrics.length };
 }
