@@ -22,6 +22,10 @@ function jsonSink({ dir }) {
     if (table === 'meta_posts') return row.post_id;
     if (table === 'meta_post_metrics') return `${row.post_id}|${row.collected_date}`;
     if (table === 'meta_page_metrics') return `${row.page_id}|${row.metric_date}`;
+    if (table === 'meta_ig_media') return row.media_id;
+    if (table === 'meta_ig_media_metrics') return `${row.media_id}|${row.collected_date}`;
+    if (table === 'meta_page_demographics') return `${row.page_id}|${row.metric_date}|${row.metric}|${row.key}`;
+    if (table === 'meta_post_ad_spend') return `${row.ad_id}|${row.date_start}|${row.date_stop}`;
     return null; // collection_runs is append-only
   }
 
@@ -65,6 +69,10 @@ function supabaseSink({ url, serviceKey }) {
     meta_posts: 'post_id',
     meta_post_metrics: 'post_id,collected_date',
     meta_page_metrics: 'page_id,metric_date',
+    meta_ig_media: 'media_id',
+    meta_ig_media_metrics: 'media_id,collected_date',
+    meta_page_demographics: 'page_id,metric_date,metric,key',
+    meta_post_ad_spend: 'ad_id,date_start,date_stop',
   };
 
   return {

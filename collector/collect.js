@@ -20,6 +20,9 @@ const path = require('path');
 const { loadEnv, makeClient } = require('../lib/graph');
 const { mapLimit } = require('../lib/pool');
 const { makeSink } = require('./lib/sinks');
+const { collectInstagram } = require('./instagram');
+const { collectDemographics, collectRetention } = require('./demographics');
+const { collectAdSpend } = require('./adspend');
 
 loadEnv();
 
@@ -424,6 +427,35 @@ async function collectPage(page, pageToken) {
 
   if (metrics.length) await sink.upsert('meta_post_metrics', metrics);
 
+  // Instagram. Silently skipped when no account is linked - most Pages have
+  // none, and reporting that as a failure would be noise.
+  try {
+    const ig = await collectInstagram({
+      page, as, call,
+      lookbackDays: LOOKBACK_DAYS, maxPosts: MAX_POSTS,
+      runStarted: RUN_STARTED, collectedDate: COLLECTED_DATE,
+      log: (m) => console.log(m),
+    });
+    if (ig.linked && ig.media.length) {
+      await sink.upsert('meta_ig_media', ig.media);
+      await sink.upsert('meta_ig_media_metrics', ig.metrics);
+      const withReach = ig.metrics.filter((m) => m.reach !== null).length;
+      console.log(`   instagram: @${ig.username} — ${ig.media.length} posts, ${withReach} with reach`);
+    }
+  } catch (e) {
+    // Never let Instagram break the Facebook collection it runs alongside.
+    console.log(`   instagram: failed — ${e.message.slice(0, 80)}`);
+  }
+
+  // Demographics. Which metrics survive Meta's retirements is genuinely
+  // unknown, so this reports what worked rather than assuming.
+  try {
+    const demo = await collectDemographics({ page, as, call, runStarted: RUN_STARTED, log: (m) => console.log(m) });
+    if (demo.rows.length) await sink.upsert('meta_page_demographics', demo.rows);
+  } catch (e) {
+    console.log(`   demographics: failed — ${e.message.slice(0, 80)}`);
+  }
+
   // Page-level series. Independent of posts: a page with nothing published in
   // the window still has views and follower movement worth recording.
   const { rows: pageRows, errorCount: pageErrors } = await collectPageInsights(page, as, page.followers_count);
@@ -529,6 +561,18 @@ async function main() {
 
   const summary = [];
   for (const page of pages) summary.push({ page: page.name, ...(await collectPage(page, page.token)) });
+
+  // Once per run. Ad accounts span pages, so doing this per page would repeat
+  // identical work for every one of them.
+  try {
+    const ads = await collectAdSpend({
+      call, lookbackDays: LOOKBACK_DAYS, runStarted: RUN_STARTED,
+      log: (m) => console.log(m.replace(/^ {3}/, '')),
+    });
+    if (ads.rows.length) await sink.upsert('meta_post_ad_spend', ads.rows);
+  } catch (e) {
+    console.log(`ad spend: failed — ${e.message.slice(0, 80)}`);
+  }
 
   const written = await sink.flush();
   console.log('\nSummary');

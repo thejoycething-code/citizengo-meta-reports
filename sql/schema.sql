@@ -110,6 +110,9 @@ create table if not exists public.meta_post_metrics (
   video_view_time_ms        bigint,   -- post_video_view_time
   video_avg_seconds_watched numeric,  -- post_video_avg_time_watched, ms converted to seconds
   video_complete_views_30s  bigint,   -- post_video_complete_views_30s
+  -- Per-interval viewer counts. Stored whole rather than exploded: it is read
+  -- as a curve, never queried by interval.
+  video_retention           jsonb,    -- post_video_retention_graph
 
   -- Requires pages_read_user_content, which the pilot token lacked. Stays NULL
   -- until that scope is granted.
@@ -185,6 +188,103 @@ select
   m.daily_follows
 from public.meta_page_metrics m
 join public.meta_pages g on g.page_id = m.page_id;
+
+-- ---------------------------------------------------------------------------
+-- INSTAGRAM. Separate tables rather than forced into meta_posts: IG media has
+-- no share count on the object, has `saved` (no Facebook equivalent, and the
+-- strongest intent signal on the platform), and uses different metric names.
+-- IG insights survived Meta's 2025-2026 deprecations far better than Facebook's.
+-- ---------------------------------------------------------------------------
+create table if not exists public.meta_ig_media (
+  media_id           text primary key,
+  page_id            text not null references public.meta_pages(page_id),
+  ig_user_id         text not null,
+  ig_username        text,
+  media_type         text,   -- IMAGE | VIDEO | CAROUSEL_ALBUM
+  media_product_type text,   -- FEED | REELS | STORY
+  caption            text,
+  permalink          text,
+  thumbnail_url      text,
+  timestamp          timestamptz not null,
+  first_seen_at      timestamptz not null default now()
+);
+
+create index if not exists meta_ig_media_page_time_idx
+  on public.meta_ig_media (page_id, timestamp desc);
+
+create table if not exists public.meta_ig_media_metrics (
+  id                 bigint generated always as identity primary key,
+  media_id           text not null references public.meta_ig_media(media_id),
+  page_id            text not null references public.meta_pages(page_id),
+  collected_date     date not null,
+  collected_at       timestamptz not null default now(),
+  reach              bigint,
+  views              bigint,
+  saved              bigint,
+  total_interactions bigint,
+  likes              bigint,
+  comments           bigint,
+  shares             bigint,
+  errors             jsonb
+);
+
+create unique index if not exists meta_ig_media_metrics_day_key
+  on public.meta_ig_media_metrics (media_id, collected_date);
+
+-- ---------------------------------------------------------------------------
+-- AUDIENCE DEMOGRAPHICS. Long format because the key space is open - every
+-- country, every city - so columns would be unworkable. Meta retired many
+-- page_fans_* metrics in 2024 and the surviving set is not reliably documented,
+-- so the collector attempts each and records what worked.
+-- ---------------------------------------------------------------------------
+create table if not exists public.meta_page_demographics (
+  id           bigint generated always as identity primary key,
+  page_id      text not null references public.meta_pages(page_id),
+  metric_date  date not null,
+  breakdown    text not null,   -- country | city | locale | age_gender
+  metric       text not null,   -- the Meta metric it came from
+  key          text not null,   -- 'ES', 'Madrid, Spain', 'M.25-34'
+  value        bigint,
+  collected_at timestamptz not null default now()
+);
+
+create unique index if not exists meta_page_demographics_key
+  on public.meta_page_demographics (page_id, metric_date, metric, key);
+
+create index if not exists meta_page_demographics_lookup_idx
+  on public.meta_page_demographics (page_id, breakdown, metric_date desc);
+
+-- ---------------------------------------------------------------------------
+-- AD SPEND against organic posts. Own table because one post can be promoted by
+-- several ads. Joined via the ad creative's effective_object_story_id, which IS
+-- the page post id - so a boosted post appears in both datasets under one key.
+-- ---------------------------------------------------------------------------
+create table if not exists public.meta_post_ad_spend (
+  id            bigint generated always as identity primary key,
+  post_id       text not null,
+  page_id       text references public.meta_pages(page_id),
+  ad_id         text not null,
+  ad_account_id text,
+  campaign_name text,
+  spend         numeric,
+  currency      text,
+  impressions   bigint,
+  reach         bigint,
+  date_start    date,
+  date_stop     date,
+  collected_at  timestamptz not null default now()
+);
+
+create unique index if not exists meta_post_ad_spend_key
+  on public.meta_post_ad_spend (ad_id, date_start, date_stop);
+
+create index if not exists meta_post_ad_spend_post_idx
+  on public.meta_post_ad_spend (post_id);
+
+alter table public.meta_ig_media          enable row level security;
+alter table public.meta_ig_media_metrics  enable row level security;
+alter table public.meta_page_demographics enable row level security;
+alter table public.meta_post_ad_spend     enable row level security;
 
 -- ---------------------------------------------------------------------------
 -- Run log. Non-negotiable: a silent partial failure that looks like
