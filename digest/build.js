@@ -110,22 +110,42 @@ async function main() {
 
   const data = await store.loadAll();
   const pages = shapePages(data);
-  const page = PAGE_ID ? pages.find((p) => p.page_id === PAGE_ID) : pages[0];
-  if (!page) {
+  if (!pages.length) {
     console.error('No pages found. Has the collector run?');
     process.exit(1);
   }
 
-  const feed = shapeFeed(data, { page_id: page.page_id, sort: 'recent' });
+  // --page-id narrows to one page; the default is the whole estate. Reporting on
+  // one page by default was the old behaviour and it quietly hid 35 others.
+  const page = PAGE_ID ? pages.find((p) => p.page_id === PAGE_ID) : null;
+  if (PAGE_ID && !page) {
+    console.error(`No page with id ${PAGE_ID}.`);
+    process.exit(1);
+  }
+  const scopeName = page ? page.name : 'All pages';
+
+  const feed = shapeFeed(data, page ? { page_id: page.page_id, sort: 'recent' } : { sort: 'recent' });
   const now = Date.now();
   const thisWeek = windowStats(feed.rows, now - 7 * DAY, now + DAY);
   const lastWeek = windowStats(feed.rows, now - 14 * DAY, now - 7 * DAY);
 
-  // Baseline over the whole collected history, not just this week — a one-week
+  // Baselines over the whole collected history, not just this week — a one-week
   // baseline would move with the thing it is meant to measure.
-  const base = pageBaseline(feed.rows);
+  //
+  // CRUCIALLY, one baseline PER PAGE. A single estate-wide median is meaningless
+  // when pages range from 7 followers to 292,876: it rates every post on a large
+  // page as extraordinary and every post on a small one as a failure, when the
+  // interesting question is whether a post beat what its OWN page normally does.
+  const baselineByPage = new Map();
+  for (const p of pages) {
+    baselineByPage.set(p.page_id, pageBaseline(feed.rows.filter((r) => r.page_id === p.page_id)));
+  }
+  // Used only for the headline context line when scoped to a single page.
+  const base = page ? baselineByPage.get(page.page_id) : pageBaseline(feed.rows);
+
   const scored = thisWeek.rows.filter((r) => r.has_metrics)
-    .map((r) => withBenchmark(r, base))
+    .map((r) => withBenchmark(r, baselineByPage.get(r.page_id)))
+    .filter((r) => r.benchmark)   // no baseline yet for that page: too few posts
     .sort((a, b) => (b.views_total || 0) - (a.views_total || 0));
 
   const over = scored.filter((r) => r.benchmark && r.benchmark.views_x_median >= 1.5);
@@ -138,7 +158,7 @@ async function main() {
   const weekEnding = new Date(now).toISOString().slice(0, 10);
   const L = [];
 
-  L.push(`# ${page.name} — organic performance`);
+  L.push(`# ${scopeName} — organic performance`);
   L.push(`Week ending ${weekEnding}`);
   L.push('');
 
@@ -158,8 +178,47 @@ async function main() {
   L.push('');
 
   if (base.reliable) {
-    L.push(`For context, a normal post on this page gets **${n(base.median_views)} views** and ${pc(base.median_eng_rate)} engagement. Everything below is measured against that.`);
+    L.push(page
+      ? `For context, a normal post on this page gets **${n(base.median_views)} views** and ${pc(base.median_eng_rate)} engagement. Everything below is measured against that.`
+      : 'Each post below is measured against what its **own page** normally does, not against the other pages. '
+        + 'A page with 200 followers and one with 200,000 are not comparable on raw numbers, so comparing each to itself is the only fair reading.');
     L.push('');
+  }
+
+  if (!page) {
+    // Per-page movement over the same window. Median, not total: a page that
+    // posts twice as often would otherwise always look twice as good.
+    const perPage = pages.map((p) => {
+      const rows = thisWeek.rows.filter((r) => r.page_id === p.page_id && r.has_metrics);
+      if (!rows.length) return null;
+      return {
+        name: p.name,
+        posts: rows.length,
+        views: rows.reduce((a, r) => a + (r.views_total || 0), 0),
+        medianReach: median(rows.map((r) => r.views_unique).filter((v) => v !== null)),
+        medianBeyond: median(rows.map((r) => r.beyond_followers_pct).filter((v) => v !== null)),
+      };
+    }).filter(Boolean).sort((a, b) => b.views - a.views);
+
+    if (perPage.length) {
+      L.push('## How each page did');
+      L.push('');
+      L.push('| Page | Posts | Views | Typical reach | Beyond followers |');
+      L.push('| --- | --- | --- | --- | --- |');
+      for (const p of perPage.slice(0, 15)) {
+        L.push(`| ${p.name} | ${p.posts} | ${n(p.views)} | ${n(p.medianReach)} | ${pc(p.medianBeyond)} |`);
+      }
+      if (perPage.length > 15) {
+        L.push('');
+        L.push(`_${perPage.length - 15} more pages posted this week and are not shown._`);
+      }
+      L.push('');
+      const quiet = pages.length - perPage.length;
+      if (quiet > 0) {
+        L.push(`**${quiet} of ${pages.length} pages published nothing** with measurable reach this week.`);
+        L.push('');
+      }
+    }
   }
 
   L.push('## What worked');
@@ -170,7 +229,7 @@ async function main() {
     for (const r of over.slice(0, 5)) {
       L.push(`**"${clean(r.message, 150)}"**`);
       L.push('');
-      L.push(`${r.benchmark.views_x_median}× a normal post · ${shortDate(r.created_time)} · ${r.media_type || 'post'}${r.permalink_url ? ` · [see the post](${r.permalink_url})` : ''}`);
+      L.push(`${r.benchmark.views_x_median}× a normal post · ${shortDate(r.created_time)}${page ? '' : ' · ' + r.page_name} · ${r.media_type || 'post'}${r.permalink_url ? ` · [see the post](${r.permalink_url})` : ''}`);
       L.push('');
       L.push(`${n(r.views_total)} views · ${n(r.views_unique)} people reached · ${pc(r.beyond_followers_pct)} beyond your followers · ${n(r.shares_total)} shares · ${pc(r.engagement_rate)} engagement`);
       L.push('');
@@ -186,7 +245,7 @@ async function main() {
     L.push('');
     for (const r of under.slice(0, 5)) {
       L.push(`- **"${clean(r.message, 110)}"**`);
-      L.push(`  ${r.benchmark.views_x_median}× a normal post · ${shortDate(r.created_time)} · ${n(r.views_total)} views${r.permalink_url ? ` · [see the post](${r.permalink_url})` : ''}`);
+      L.push(`  ${r.benchmark.views_x_median}× a normal post · ${shortDate(r.created_time)}${page ? '' : ' · ' + r.page_name} · ${n(r.views_total)} views${r.permalink_url ? ` · [see the post](${r.permalink_url})` : ''}`);
     }
     L.push('');
   }
@@ -211,7 +270,9 @@ async function main() {
   if (thisWeek.no_metrics) {
     L.push(`- ${thisWeek.no_metrics} post${thisWeek.no_metrics > 1 ? 's' : ''} this week returned no figures from Facebook and ${thisWeek.no_metrics > 1 ? 'are' : 'is'} left out entirely. That is a gap in what Facebook reported, not zero performance.`);
   }
-  L.push(`- Covers **${page.name}** only. Other CitizenGO pages need their own access granted before they can appear.`);
+  L.push(page
+    ? `- Covers **${page.name}** only.`
+    : `- Covers all **${pages.length}** pages currently collecting. A page missing from this list has not granted access yet.`);
   L.push('');
   L.push(`_Generated ${new Date(now).toISOString().slice(0, 16).replace('T', ' ')} UTC from ${base.n} posts of collected history._`);
 
