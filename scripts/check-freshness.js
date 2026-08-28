@@ -90,6 +90,40 @@ async function main() {
   // 1 day is normal (today's run may not have fired yet) and 2 means two
   // consecutive misses. A strict > let exactly that case pass as "fresh", and
   // disagreed with the banner the MCP tools show, which used <.
+  // COMPLETENESS. Every aggregate this project produces was once computed on
+  // 1000 of 2237 posts, because PostgREST silently caps responses at
+  // db-max-rows and ignores a larger limit in the query string. It was found by
+  // accident. This compares what the tools actually receive against an
+  // independent exact count, so the same class of bug fails loudly instead.
+  const mismatches = [];
+  try {
+    const [exact, loaded] = await Promise.all([store.counts(), store.loadAll()]);
+    const got = {
+      meta_pages: loaded.pages.length,
+      meta_posts: loaded.posts.length,
+      meta_post_metrics: loaded.metrics.length,
+    };
+    for (const [table, expected] of Object.entries(exact)) {
+      if (expected === null) continue;              // count unavailable, not a mismatch
+      if (got[table] !== expected) {
+        mismatches.push(`${table}: tools see ${got[table]} of ${expected}`);
+      }
+    }
+    console.log('Completeness: '
+      + Object.entries(exact).map(([t, n]) => `${t.replace('meta_', '')} ${got[t]}/${n}`).join(', '));
+  } catch (e) {
+    mismatches.push(`completeness check failed: ${e.message}`);
+  }
+
+  if (mismatches.length) {
+    const msg = 'CitizenGO organic reporting is reading INCOMPLETE data — '
+      + mismatches.join('; ')
+      + '. Every figure the tool reports is understated until this is fixed.';
+    console.error(`::error::${msg}`);
+    await alert(msg);
+    process.exit(1);
+  }
+
   if (ageDays >= MAX_AGE) {
     const msg = `CitizenGO organic reporting has stopped. Last collection was ${f.latest}, `
       + `${ageDays} days ago. Most likely an expired Facebook token or a failed nightly run. `

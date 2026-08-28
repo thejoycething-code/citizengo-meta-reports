@@ -1,6 +1,6 @@
 {
   "name": "citizengo-meta-reports",
-  "version": "2.5.0",
+  "version": "2.6.0",
   "private": true,
   "description": "Organic Facebook + Instagram post data pipeline for CitizenGO pages.",
   "scripts": {
@@ -20,6 +20,7 @@
     "test:multitoken": "node scripts/mock-graph.js",
     "test:mcp-http": "node scripts/test-mcp-http.js",
     "test:oauth": "node scripts/test-oauth.js",
-    "check:freshness": "node scripts/check-freshness.js"
+    "check:freshness": "node scripts/check-freshness.js",
+    "test:truncation": "node scripts/test-truncation.js"
   }
 }

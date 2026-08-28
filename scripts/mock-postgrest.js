@@ -19,6 +19,10 @@ const argVal = (n, d) => { const i = args.indexOf(`--${n}`); return i === -1 ? d
 const PORT = Number(argVal('port', 5555));
 const FAIL_TABLE = argVal('fail-table', null);
 let transientLeft = Number(argVal('transient-fails', 0));
+// Reproduces PostgREST's db-max-rows: cap every response at N rows while still
+// reporting the TRUE total in Content-Range, and ignore a larger limit in the
+// query string. That combination is what made the truncation invisible.
+const ROW_CAP = Number(argVal('cap', 0));
 
 // Mirrors the unique indexes in sql/schema.sql, so upsert semantics are tested
 // rather than assumed.
@@ -138,10 +142,25 @@ const server = http.createServer((req, res) => {
       return res.end();
     }
 
-    const limit = url.searchParams.get('limit');
-    if (limit !== null) rows = rows.slice(0, Number(limit));
+    const total = rows.length;
+    const offset = Number(url.searchParams.get('offset') || 0);
+    let limit = url.searchParams.get('limit');
+    limit = limit === null ? total : Number(limit);
+    if (ROW_CAP > 0) {
+      // Silently ignore both a larger limit AND the offset, exactly as an
+      // uncapped-looking PostgREST does.
+      rows = rows.slice(0, Math.min(ROW_CAP, limit));
+    } else {
+      rows = rows.slice(offset, offset + limit);
+    }
+
+    const headers = { 'Content-Type': 'application/json' };
+    if (/count=exact/.test(req.headers.prefer || '')) {
+      const from = ROW_CAP > 0 ? 0 : offset;
+      headers['Content-Range'] = `${from}-${Math.max(from, from + rows.length - 1)}/${total}`;
+    }
     log.push({ method: 'GET', table, returned: rows.length, query: url.search });
-    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.writeHead(200, headers);
     return res.end(JSON.stringify(rows));
   }
 
