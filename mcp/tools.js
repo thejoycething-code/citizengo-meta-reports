@@ -181,7 +181,9 @@ async function dataHealth(store) {
       `- Posts: **${feed.total}**, covering ${dates[0] || '—'} to ${dates[dates.length - 1] || '—'}`,
       `- Posts with no metrics at all: **${missing.length}** (Meta permissions error)`,
       `- Posts missing only unique reach: **${partial.length}** (Meta suppresses it on low-follower pages)`,
-      `- Posts with no comment count: **${noComments}** (requires the pages_read_user_content scope, not yet granted)`,
+      noComments
+        ? `- Posts with no comment count: **${noComments}** (needs the pages_read_user_content scope)`
+        : '- Comment counts: **complete** on every post',
       '',
       'Known limitations to state when reporting:',
       '- Paid vs organic split comes from a breakdown, not a dedicated metric; all `post_impressions*` metrics were retired by Meta in 2026.',
