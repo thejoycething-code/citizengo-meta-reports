@@ -27,8 +27,13 @@ const CONFLICT_KEYS = {
   meta_posts: ['post_id'],
   meta_post_metrics: ['post_id', 'collected_date'],
   meta_page_tokens: ['page_id'],
+  meta_page_metrics: ['page_id', 'metric_date'],
+  meta_ig_media: ['media_id'],
+  meta_ig_media_metrics: ['media_id', 'collected_date'],
+  meta_post_ad_spend: ['ad_id', 'date_start', 'date_stop'],
 };
-const KNOWN = new Set([...Object.keys(CONFLICT_KEYS), 'meta_collection_runs']);
+const KNOWN = new Set([...Object.keys(CONFLICT_KEYS), 'meta_collection_runs',
+  'meta_page_metrics', 'meta_ig_media', 'meta_ig_media_metrics', 'meta_post_ad_spend']);
 
 // Mirrors sql/schema.sql. Without this the mock accepts any select= list and the
 // preflight's column check passes without proving anything.
