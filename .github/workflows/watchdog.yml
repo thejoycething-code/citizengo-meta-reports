@@ -16,6 +16,12 @@ on:
     # European working day so an alert is seen rather than slept through.
     - cron: '0 9 * * *'
   workflow_dispatch:
+    inputs:
+      test_alert:
+        description: 'Send a test alert instead of checking freshness'
+        type: boolean
+        required: false
+        default: false
 
 permissions:
   contents: read
@@ -39,7 +45,12 @@ jobs:
       # Fails the job when data is stale, so the run goes red and GitHub emails
       # even without a webhook configured.
       - name: Check data is still arriving
-        run: node scripts/check-freshness.js --max-age-days 2
+        run: |
+          if [ "${{ github.event.inputs.test_alert }}" = "true" ]; then
+            node scripts/check-freshness.js --test-alert
+          else
+            node scripts/check-freshness.js --max-age-days 2
+          fi
 
       - name: Summary
         if: always()

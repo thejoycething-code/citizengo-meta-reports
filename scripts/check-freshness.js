@@ -21,6 +21,10 @@ loadEnv();
 const args = process.argv.slice(2);
 const i = args.indexOf('--max-age-days');
 const MAX_AGE = i !== -1 && args[i + 1] ? Number(args[i + 1]) : 2;
+// Sends a test message and exits. Without this the only way to prove the
+// alerting works is to wait for a real outage - and an untested alert is
+// indistinguishable from no alert.
+const TEST_ONLY = args.includes('--test-alert');
 
 const URL_ = process.env.SUPABASE_URL;
 const KEY = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_MCP_KEY;
@@ -46,6 +50,18 @@ async function alert(text) {
 }
 
 async function main() {
+  if (TEST_ONLY) {
+    if (!process.env.ALERT_WEBHOOK_URL) {
+      console.error('ALERT_WEBHOOK_URL is not set, so there is nothing to test.');
+      process.exit(2);
+    }
+    const msg = 'CitizenGO organic reporting: this is a TEST alert. '
+      + 'Alerting is wired up correctly. Real alerts only fire when collection stops.';
+    await alert(msg);
+    console.log('Test alert sent. If it did not arrive, the webhook URL is wrong or the channel is not accepting posts.');
+    return;
+  }
+
   if (!URL_ || !KEY) {
     console.error('SUPABASE_URL and a Supabase key are required.');
     process.exit(2);
