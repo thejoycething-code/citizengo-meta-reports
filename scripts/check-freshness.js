@@ -1,0 +1,94 @@
+#!/usr/bin/env node
+'use strict';
+// Watchdog. Answers one question: is the data still arriving?
+//
+// This exists SEPARATELY from the collector for a reason learned the hard way -
+// on 27 and 28 August 2026 the nightly run did not happen at all, and nothing
+// said so. An alert built into the collector cannot fire when the collector is
+// what failed to run. So this reads only the database and knows nothing about
+// Meta, tokens or GitHub.
+//
+// Exits non-zero when data is stale, so CI fails loudly, and posts to
+// ALERT_WEBHOOK_URL if one is configured.
+//
+// Usage: node scripts/check-freshness.js [--max-age-days 2]
+
+const { loadEnv } = require('../lib/graph');
+const { supabaseStore } = require('../lib/store');
+
+loadEnv();
+
+const args = process.argv.slice(2);
+const i = args.indexOf('--max-age-days');
+const MAX_AGE = i !== -1 && args[i + 1] ? Number(args[i + 1]) : 2;
+
+const URL_ = process.env.SUPABASE_URL;
+const KEY = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_MCP_KEY;
+
+async function alert(text) {
+  const hook = process.env.ALERT_WEBHOOK_URL;
+  if (!hook) return;
+  try {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 5000);
+    await fetch(hook, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      // No figures in the message - only whether collection is running. It may
+      // go to a channel wider than the people who should see performance data.
+      body: JSON.stringify({ text }),
+      signal: ctrl.signal,
+    });
+    clearTimeout(timer);
+  } catch (e) {
+    console.error('alert webhook failed:', e.message);
+  }
+}
+
+async function main() {
+  if (!URL_ || !KEY) {
+    console.error('SUPABASE_URL and a Supabase key are required.');
+    process.exit(2);
+  }
+  const store = supabaseStore({ url: URL_, serviceKey: KEY });
+
+  const f = await store.freshness();
+  const now = new Date();
+
+  if (!f.latest) {
+    const msg = 'CitizenGO organic reporting: no data has ever been collected.';
+    console.error(msg);
+    await alert(msg);
+    process.exit(1);
+  }
+
+  const ageDays = Math.floor((now.getTime() - new Date(f.latest + 'T00:00:00Z').getTime()) / 86400000);
+  console.log(`Most recent collection: ${f.latest} (${ageDays} day${ageDays === 1 ? '' : 's'} ago)`);
+
+  // Per-page detail, so the alert can say WHICH pages went quiet rather than
+  // only that something is wrong.
+  const pages = await store.loadAll().then((d) => d.pages).catch(() => []);
+  console.log(`Pages configured: ${pages.length}`);
+
+  // >= not >, so the threshold means what it says. With nightly collection,
+  // 1 day is normal (today's run may not have fired yet) and 2 means two
+  // consecutive misses. A strict > let exactly that case pass as "fresh", and
+  // disagreed with the banner the MCP tools show, which used <.
+  if (ageDays >= MAX_AGE) {
+    const msg = `CitizenGO organic reporting has stopped. Last collection was ${f.latest}, `
+      + `${ageDays} days ago. Most likely an expired Facebook token or a failed nightly run. `
+      + 'Check the Actions tab.';
+    console.error(`::error::${msg}`);
+    await alert(msg);
+    process.exit(1);
+  }
+
+  console.log(`Fresh: under the ${MAX_AGE}-day threshold. Nothing to report.`);
+}
+
+main().catch((e) => {
+  console.error('freshness check failed:', e.message);
+  // A watchdog that cannot run must be loud, not silent.
+  alert(`CitizenGO organic reporting: the freshness check itself failed — ${e.message}`)
+    .finally(() => process.exit(1));
+});

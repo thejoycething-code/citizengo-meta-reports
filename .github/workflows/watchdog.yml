@@ -1,0 +1,53 @@
+name: Watchdog
+
+# Answers one question daily: is the data still arriving?
+#
+# SEPARATE from the collector on purpose. On 27 and 28 August 2026 the nightly
+# run did not happen at all and nothing said so - an alert built into the
+# collector cannot fire when the collector is what failed to run. This reads
+# only the database and knows nothing about Meta, tokens or the collector.
+#
+# It also runs at a different time, so a problem affecting one scheduled
+# workflow is less likely to silence both.
+
+on:
+  schedule:
+    # 09:00 UTC - a few hours after the 04:30 collection, and during the
+    # European working day so an alert is seen rather than slept through.
+    - cron: '0 9 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  freshness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL || vars.SUPABASE_URL }}
+      SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+      ALERT_WEBHOOK_URL: ${{ secrets.ALERT_WEBHOOK_URL }}
+
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      # Fails the job when data is stale, so the run goes red and GitHub emails
+      # even without a webhook configured.
+      - name: Check data is still arriving
+        run: node scripts/check-freshness.js --max-age-days 2
+
+      - name: Summary
+        if: always()
+        run: |
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "Collection is up to date." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "### Collection has stopped" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "No new data for at least two days. Most likely an expired Facebook token or a failing nightly run — check the Nightly collection workflow." >> "$GITHUB_STEP_SUMMARY"
+          fi

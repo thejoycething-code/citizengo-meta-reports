@@ -536,4 +536,44 @@ const TOOLS = [
   },
 ];
 
-module.exports = { TOOLS };
+// How old the data may be before a caller is warned. Collection runs nightly,
+// so two days means one missed run passes quietly and two does not.
+const STALE_AFTER_DAYS = 2;
+
+async function freshnessBanner(store) {
+  if (typeof store.freshness !== 'function') return '';
+  let f;
+  try {
+    f = await store.freshness();
+  } catch (e) {
+    // Never let the freshness check break the answer it is annotating.
+    return '';
+  }
+  if (!f || !f.latest) {
+    return '**No data has been collected yet.** Everything below will be empty.\n\n';
+  }
+  const days = Math.floor((Date.now() - new Date(f.latest + 'T00:00:00Z').getTime()) / 86400000);
+  if (days < STALE_AFTER_DAYS) return '';
+  return `**These figures are ${days} days old.** The most recent collection ran on ${f.latest}. `
+    + 'Nightly collection has probably stopped — most often an expired Facebook token. '
+    + 'Treat the numbers below as historic, not current.\n\n';
+}
+
+// Single dispatch path for BOTH transports. Previously each server looked the
+// tool up itself, which is how a check added in one place would silently miss
+// the other.
+async function callTool(store, name, args) {
+  const tool = TOOLS.find((t) => t.name === name);
+  if (!tool) {
+    const e = new Error(`Unknown tool: ${name}`);
+    e.code = 'UNKNOWN_TOOL';
+    throw e;
+  }
+  const out = await tool.handler(store, args || {});
+  const banner = await freshnessBanner(store);
+  // Prepended, not appended: a warning below the numbers is a warning nobody
+  // reads until after they have quoted them.
+  return { ...out, text: banner + out.text };
+}
+
+module.exports = { TOOLS, callTool, freshnessBanner, STALE_AFTER_DAYS };

@@ -19,7 +19,7 @@
 const path = require('path');
 const { loadEnv } = require('../lib/graph');
 const { fileStore, supabaseStore } = require('../lib/store');
-const { TOOLS } = require('./tools');
+const { TOOLS, callTool } = require('./tools');
 
 loadEnv();
 
@@ -67,12 +67,11 @@ async function handle(msg) {
 
     case 'tools/call': {
       const name = params && params.name;
-      const tool = TOOLS.find((t) => t.name === name);
-      if (!tool) return failure(id, -32602, `Unknown tool: ${name}`);
       try {
-        const out = await tool.handler(store, (params && params.arguments) || {});
+        const out = await callTool(store, name, (params && params.arguments) || {});
         return result(id, { content: [{ type: 'text', text: out.text }] });
       } catch (e) {
+        if (e.code === 'UNKNOWN_TOOL') return failure(id, -32602, e.message);
         log('tool error', name, e.stack || e.message);
         // Reported as a tool-level error so the model can surface it rather than
         // silently presenting an empty result as "no posts found".

@@ -17,9 +17,30 @@
 
 const { supabaseStore } = require('../lib/store');
 const { verify, originOf } = require('../lib/oauth');
-const { TOOLS } = require('../mcp/tools');
+const { TOOLS, callTool } = require('../mcp/tools');
 
 const SERVER_INFO = { name: 'citizengo-meta-reports', version: '1.0.0' };
+
+// Sliding window per credential. PER WARM INSTANCE, not global - serverless
+// gives no shared memory, and a shared store would be a database write on every
+// request. Enough to stop one client hammering the database; not a hard quota.
+const RATE_LIMIT = Number(process.env.MCP_RATE_LIMIT || 60);   // calls
+const RATE_WINDOW_MS = 60_000;                                  // per minute
+const hits = new Map();
+
+function rateLimited(key) {
+  const now = Date.now();
+  const seen = (hits.get(key) || []).filter((t) => now - t < RATE_WINDOW_MS);
+  seen.push(now);
+  hits.set(key, seen);
+  // Unbounded growth is the obvious failure here, so evict cold keys.
+  if (hits.size > 500) {
+    for (const [k, v] of hits) {
+      if (!v.length || now - v[v.length - 1] > RATE_WINDOW_MS) hits.delete(k);
+    }
+  }
+  return seen.length > RATE_LIMIT;
+}
 
 function tokenIsValid(supplied) {
   if (!supplied) return false;
@@ -81,12 +102,11 @@ async function handleRpc(msg, store) {
 
     case 'tools/call': {
       const name = params && params.name;
-      const tool = TOOLS.find((t) => t.name === name);
-      if (!tool) return rpcError(id, -32602, `Unknown tool: ${name}`);
       try {
-        const out = await tool.handler(store, (params && params.arguments) || {});
+        const out = await callTool(store, name, (params && params.arguments) || {});
         return rpcResult(id, { content: [{ type: 'text', text: out.text }] });
       } catch (e) {
+        if (e.code === 'UNKNOWN_TOOL') return rpcError(id, -32602, e.message);
         // Reported as a tool error, not a protocol error, so the model can
         // surface it rather than the call appearing to vanish.
         return rpcResult(id, {
@@ -130,6 +150,15 @@ module.exports = async function handler(req, res) {
     res.setHeader('WWW-Authenticate',
       `Bearer resource_metadata="${origin}/.well-known/oauth-protected-resource"`);
     res.status(401).json(rpcError(null, -32001, 'Unauthorized'));
+    return;
+  }
+
+  // Keyed on the credential rather than IP: every request from Claude arrives
+  // from Anthropic's egress range, so IP would throttle all users together.
+  if (rateLimited(supplied.slice(0, 24))) {
+    res.setHeader('Retry-After', '60');
+    res.status(429).json(rpcError(null, -32002,
+      `Rate limit exceeded: more than ${RATE_LIMIT} requests in a minute. Try again shortly.`));
     return;
   }
 
