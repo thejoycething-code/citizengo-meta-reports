@@ -47,6 +47,33 @@ const fingerprint = (t) => crypto.createHash('sha256').update(t).digest('hex').s
 const daysUntil = (secs) => (secs ? Math.round((secs * 1000 - Date.now()) / 86_400_000) : null);
 const asDate = (secs) => (secs ? new Date(secs * 1000).toISOString().slice(0, 10) : 'never');
 
+// Who holds this token, and how far does it actually reach? Both matter and
+// neither was visible anywhere. Two tokens can carry identical scopes and differ
+// enormously in coverage - a personal login only offers Pages the person holds a
+// DIRECT role on, so the same person can produce a 36-page token one month and a
+// 14-page one the next without anything looking wrong.
+async function reach(token) {
+  const out = { name: null, pages: 0, ig: 0 };
+  try {
+    const me = await (await fetch(`${GRAPH}/me?fields=name&access_token=${encodeURIComponent(token)}`)).json();
+    out.name = me.name || null;
+    let after = null;
+    do {
+      const u = new URL(`${GRAPH}/me/accounts`);
+      u.searchParams.set('fields', 'id,instagram_business_account{id}');
+      u.searchParams.set('limit', '100');
+      u.searchParams.set('access_token', token);
+      if (after) u.searchParams.set('after', after);
+      const r = await (await fetch(u)).json();
+      const batch = r.data || [];
+      out.pages += batch.length;
+      out.ig += batch.filter((x) => x.instagram_business_account).length;
+      after = r.paging && r.paging.next && r.paging.cursors ? r.paging.cursors.after : null;
+    } while (after);
+  } catch (e) { /* coverage is a nice-to-have; never fail the check on it */ }
+  return out;
+}
+
 async function inspect(token) {
   const url = `${GRAPH}/debug_token?input_token=${encodeURIComponent(token)}`
     + `&access_token=${encodeURIComponent(token)}`;
@@ -91,7 +118,10 @@ async function main() {
     const candidates = [tokenDays, dataDays].filter((n) => n !== null);
     const soonest = candidates.length ? Math.min(...candidates) : null;
 
+    const cov = await reach(token);
     console.log(`  ${label}  app ${d.app_id || '?'}  type ${d.type || '?'}`);
+    console.log(`    held by          ${cov.name || 'unknown'}`);
+    console.log(`    reaches          ${cov.pages} page(s), ${cov.ig} with Instagram`);
     console.log(`    expires          ${asDate(d.expires_at)}${tokenDays === null ? '' : `  (${tokenDays} days)`}`);
     console.log(`    data access ends ${asDate(d.data_access_expires_at)}${dataDays === null ? '' : `  (${dataDays} days)`}`);
 
