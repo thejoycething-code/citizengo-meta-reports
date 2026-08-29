@@ -7,8 +7,9 @@ English.
 **For team members wanting to use it:** see [ONBOARDING.md](ONBOARDING.md).
 This file is for whoever maintains it.
 
-**Status:** 36 pages, ~2,200 posts, ~90 days of history. Nightly collection,
-weekly digest, and a daily watchdog all running unattended.
+**Status:** 36 pages collecting (25 actively publishing), 2,700 posts, ~90 days
+of history. Nightly collection, weekly digest and a daily watchdog all running
+unattended.
 
 ---
 
@@ -32,6 +33,7 @@ npm run test:mcp-http     # the HTTP transport, over real HTTP
 npm run test:oauth        # the full OAuth flow
 npm run test:truncation   # the silent-truncation regression
 npm run db:schema-check   # sql/schema.sql vs what the preflight expects
+npm run test:tool-size    # no tool response floods the conversation
 npm run check:freshness   # freshness + completeness (needs Supabase)
 ```
 
@@ -141,9 +143,12 @@ something reporting success while achieving nothing.
 | "No permissions available" in the token wizard | System User has no role on the app |
 | Aggregates plausible but low | **PostgREST caps at 1,000 rows** and ignores a larger `limit` |
 | Collection silently stopped | Cron disabled after 60 days of repo inactivity |
+| A self-signed role JWT gets `Invalid API key` | The gateway validates against **issued** keys, not signatures |
+| A tool response floods the conversation | An unbounded list; cap it and state what was dropped |
 
-The last two were each found by accident and now have tests: `test:truncation`
-and the watchdog's completeness check.
+Each of these was found by accident rather than by a test, which is the point of
+the table. Three now have one: `test:truncation`, `test:tool-size`, and the
+watchdog's completeness check.
 
 ---
 
@@ -151,8 +156,7 @@ and the watchdog's completeness check.
 
 ### Supabase
 
-Run `sql/schema.sql`, then `sql/readonly-role.sql` for the restricted role the
-hosted MCP should use. Set `SUPABASE_URL` and `SUPABASE_SERVICE_KEY` in `.env` and
+Run `sql/schema.sql`. Set `SUPABASE_URL` and `SUPABASE_SERVICE_KEY` in `.env` and
 run `npm run db:check` — it verifies tables, every column the collector writes,
 that RLS blocks the anon key, and a write round-trip.
 
@@ -198,13 +202,26 @@ production, or every request is blocked before reaching the auth in `api/mcp.js`
   `instagram_manage_insights`
 - **Access runs through a personal Facebook profile** — should be a System User in
   a CitizenGO Business Portfolio; expires every 60 days and is against Meta's terms
-- **Data shares a database with supporter records** (`clacton_actions`) — the
-  `meta_readonly` role exists to limit the blast radius but no key is issued yet
 - **One shared MCP token** — per-person tokens are supported but not configured, so
   there's no audit trail
 - **Comment text deliberately not collected** — see ONBOARDING.md
 
 ---
+
+## Why the connector can hold a service key
+
+The reporting tables are the **only** things PostgREST exposes on this project.
+`clacton_actions` and `clacton_events` (supporter records from a closed campaign)
+live in a `private` schema, which PostgREST does not serve, so no key reaches
+them over the API — verified with the service key itself: `404 PGRST205`. The
+empty `meta_page_tokens` table was dropped.
+
+A restricted `meta_readonly` role exists and is correct, but **cannot be reached
+over the REST API**: Supabase's gateway validates against issued API keys, so a
+correctly-signed JWT carrying a custom role is rejected as `Invalid API key`
+before Postgres sees it. Removing the sensitive data from the API surface
+achieves the same protection more completely. The role is kept for the day the
+MCP talks to Postgres directly.
 
 ## Layout
 
