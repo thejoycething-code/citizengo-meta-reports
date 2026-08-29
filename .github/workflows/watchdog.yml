@@ -9,6 +9,12 @@ name: Watchdog
 #
 # It also runs at a different time, so a problem affecting one scheduled
 # workflow is less likely to silence both.
+#
+# Since 29 Aug 2026 it answers a second question: how long until the Meta token
+# expires? Access runs through a personal Facebook profile - the citizenGO
+# portfolio cannot have apps added, so a System User is not possible - and those
+# tokens last 60 days. Waiting for staleness to reveal an expiry means finding
+# out two days late and diagnosing a symptom instead of a cause.
 
 on:
   schedule:
@@ -35,6 +41,7 @@ jobs:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL || vars.SUPABASE_URL }}
       SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
       ALERT_WEBHOOK_URL: ${{ secrets.ALERT_WEBHOOK_URL }}
+      META_TOKENS: ${{ secrets.META_TOKENS }}
 
     steps:
       - uses: actions/checkout@v7
@@ -52,6 +59,14 @@ jobs:
             node scripts/check-freshness.js --max-age-days 2
           fi
 
+      # if: always() so an expiring token is still reported when the data is
+      # ALSO stale. Those two arrive together far more often than separately -
+      # the token dies, then collection stops - and reporting only the staleness
+      # describes the symptom while hiding the cause.
+      - name: Check how long the Meta tokens have left
+        if: always() && github.event.inputs.test_alert != 'true'
+        run: node scripts/check-token-expiry.js --warn-days 21 --fail-days 7
+
       - name: Summary
         if: always()
         run: |
@@ -60,5 +75,7 @@ jobs:
           else
             echo "### Collection has stopped" >> "$GITHUB_STEP_SUMMARY"
             echo "" >> "$GITHUB_STEP_SUMMARY"
-            echo "No new data for at least two days. Most likely an expired Facebook token or a failing nightly run — check the Nightly collection workflow." >> "$GITHUB_STEP_SUMMARY"
+            echo "Either no new data for two days, or a Meta token is close to expiring. The step above says which." >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "Token renewal: generate a fresh token on the profile that owns it, extend it to 60 days in the Access Token Debugger, then update the META_TOKENS secret." >> "$GITHUB_STEP_SUMMARY"
           fi

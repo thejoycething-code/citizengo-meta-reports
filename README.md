@@ -34,7 +34,9 @@ npm run test:oauth        # the full OAuth flow
 npm run test:truncation   # the silent-truncation regression
 npm run db:schema-check   # sql/schema.sql vs what the preflight expects
 npm run test:tool-size    # no tool response floods the conversation
+npm run test:tokens       # token expiry thresholds, against a stubbed Graph API
 npm run check:freshness   # freshness + completeness (needs Supabase)
+npm run check:tokens      # days left on each Meta token (needs META_TOKENS)
 ```
 
 ---
@@ -62,7 +64,7 @@ the MCP tools cannot disagree about what a number means.
 |---|---|---|
 | Nightly collection | 04:30 UTC daily | Collects posts, metrics, page trends, ad spend |
 | Weekly digest | Mondays 06:00 UTC | Plain-language summary on the run page |
-| Watchdog | 09:00 UTC daily | Fails if data is stale **or incomplete** |
+| Watchdog | 09:00 UTC daily | Fails if data is stale, incomplete, **or a token is expiring** |
 | Monthly heartbeat | 1st & 15th | Commits `STATUS.md` so GitHub doesn't disable the crons |
 | Dry run | manual | Collects to files, never touches the database |
 
@@ -226,8 +228,12 @@ production, or every request is blocked before reaching the auth in `api/mcp.js`
 
 - **Instagram** — 8 accounts and 126 posts collected, metrics blocked on
   `instagram_manage_insights`
-- **Access runs through a personal Facebook profile** — should be a System User in
-  a CitizenGO Business Portfolio; expires every 60 days and is against Meta's terms
+- **Access runs through a personal Facebook profile.** A System User is not
+  currently possible: it must live in a Business Portfolio, and the citizenGO
+  portfolio — which owns 11 pages carrying **86.7% of all views**, HazteOir alone
+  being 65.5% — cannot have apps added to it. Until that is resolved the token
+  must be renewed every 60 days. The watchdog now warns 21 days out and fails at
+  7, so renewal is a scheduled task rather than an outage.
 - **One shared MCP token** — per-person tokens are supported but not configured, so
   there's no audit trail
 - **Comment text deliberately not collected** — see ONBOARDING.md
