@@ -194,7 +194,13 @@ async function dataHealth(store) {
   };
 }
 
-async function outliers(store, { page_id, days = 90 }) {
+// Enough to see the pattern, few enough to read. Before this cap the tool
+// returned every post more than 1.5x or under 0.5x the median - which on a
+// 90-day window across 36 pages was 2,225 lines and 439,000 characters, most of
+// it posts that were unremarkable in the ordinary way.
+const OUTLIER_ROWS = 25;
+
+async function outliers(store, { page_id, days = 90, limit = OUTLIER_ROWS }) {
   const data = await store.loadAll();
   const feed = shapeFeed(data, { page_id, since: sinceFor(days), sort: 'views' });
   const base = pageBaseline(feed.rows);
@@ -205,8 +211,19 @@ async function outliers(store, { page_id, days = 90 }) {
     };
   }
   const scored = feed.rows.filter((r) => r.has_metrics).map((r) => withBenchmark(r, base));
-  const over = scored.filter((r) => r.benchmark.views_x_median >= 1.5);
-  const under = scored.filter((r) => r.benchmark.views_x_median < 0.5);
+  // Most extreme first, so a cap keeps the interesting end rather than whichever
+  // posts happened to sort first.
+  const over = scored.filter((r) => r.benchmark.views_x_median >= 1.5)
+    .sort((a, b) => b.benchmark.views_x_median - a.benchmark.views_x_median);
+  const under = scored.filter((r) => r.benchmark.views_x_median < 0.5)
+    .sort((a, b) => a.benchmark.views_x_median - b.benchmark.views_x_median);
+
+  // Say what was left out. A silent cap reads as "this is all of them", which is
+  // how a partial answer gets quoted as a complete one.
+  const shown = (rows) => rows.slice(0, limit);
+  const omitted = (rows) => (rows.length > limit
+    ? `\n\n_Showing the ${limit} most extreme of ${n(rows.length)}. Ask for a single page, a shorter window, or a higher limit to see more._`
+    : '');
 
   const fmt = (r) => [
     r.created_time.slice(0, 10),
@@ -231,11 +248,11 @@ async function outliers(store, { page_id, days = 90 }) {
       '',
       `**Broke away from normal** (${over.length})`,
       '',
-      over.length ? table(head, over.map(fmt)) : '_None._',
+      over.length ? table(head, shown(over).map(fmt)) + omitted(over) : '_None._',
       '',
       `**Well below normal** (${under.length})`,
       '',
-      under.length ? table(head, under.map(fmt)) : '_None._',
+      under.length ? table(head, shown(under).map(fmt)) + omitted(under) : '_None._',
       '',
       '_Shares are usually what separates the two: a post reaches beyond its followers when supporters carry it, not when the page posts it._',
     ].join('\n') + gapNote(feed.rows),
@@ -483,6 +500,7 @@ const TOOLS = [
       properties: {
         page_id: { type: 'string', description: 'Restrict to one page. Omit for all pages.' },
         days: { type: 'number', description: 'Window to compute the baseline over (default 90). A longer window gives a steadier baseline.' },
+        limit: { type: 'number', description: 'How many posts to list at each end (default 25). The count of any left out is always stated.' },
       },
       additionalProperties: false,
     },

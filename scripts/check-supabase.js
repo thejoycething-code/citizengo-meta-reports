@@ -54,8 +54,6 @@ const EXPECTED = {
     'video_complete_views_30s'],
   meta_collection_runs: ['run_id', 'page_id', 'started_at', 'finished_at', 'status',
     'posts_seen', 'metrics_written', 'api_calls', 'error_code', 'error_message'],
-  meta_page_tokens: ['page_id', 'token', 'token_source', 'system_user_id',
-    'last_verified_at', 'last_error'],
   meta_ig_media: ['media_id', 'page_id', 'ig_user_id', 'ig_username', 'media_type',
     'media_product_type', 'caption', 'permalink', 'thumbnail_url', 'timestamp', 'first_seen_at'],
   meta_ig_media_metrics: ['media_id', 'page_id', 'collected_date', 'collected_at',

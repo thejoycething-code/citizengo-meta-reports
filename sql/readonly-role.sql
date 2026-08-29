@@ -40,7 +40,6 @@ begin
 end
 $$;
 
-revoke all on public.meta_page_tokens from meta_readonly;
 
 -- ---------------------------------------------------------------------------
 -- Extended 29 Aug 2026. The role was written when the MCP had five tools; it
@@ -75,3 +74,19 @@ $$;
 --   readable  : all 11 reporting objects, row counts matching the service key
 --   refused   : clacton_actions, clacton_events, meta_page_tokens
 --   no writes : insert denied on meta_pages, meta_posts, meta_post_metrics
+
+-- ---------------------------------------------------------------------------
+-- 29 Aug 2026: THIS ROLE IS NOT CURRENTLY IN USE, and cannot be reached over the
+-- REST API. Supabase's gateway validates requests against ISSUED API keys, not
+-- merely a correctly-signed JWT: a token signed with the project's own legacy
+-- secret carrying role=meta_readonly is rejected upstream as "Invalid API key",
+-- before Postgres sees it. Verified directly - the real anon key returns a
+-- Postgres grant error (42501) on the same request, proving it authenticated
+-- while the self-signed one did not.
+--
+-- The problem this role existed to solve was removed instead: the sensitive
+-- tables were moved out of the API's reach (see schema.sql), so the service key
+-- can now only reach reporting data.
+--
+-- The role is kept because it is correct and verified, and would be used
+-- directly if the MCP ever connects to Postgres rather than PostgREST.

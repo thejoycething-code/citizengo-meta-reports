@@ -31,15 +31,6 @@ create table if not exists public.meta_pages (
 -- /me/accounts?fields=access_token, so this table is optional until Phase 3
 -- brings in System Users that the operator's own token cannot reach.
 -- ---------------------------------------------------------------------------
-create table if not exists public.meta_page_tokens (
-  page_id           text primary key references public.meta_pages(page_id),
-  token             text not null,
-  token_source      text not null default 'system_user',  -- 'system_user' | 'page_admin' | 'runtime'
-  system_user_id    text,
-  last_verified_at  timestamptz,
-  last_error        text
-);
-
 -- ---------------------------------------------------------------------------
 -- Posts. Metadata only — every number lives in meta_post_metrics.
 -- These fields are all readable with pages_read_engagement alone; the post
@@ -298,7 +289,6 @@ create index if not exists meta_collection_runs_page_idx
 -- Same approach as clacton_actions. The database is never exposed to the web.
 -- ---------------------------------------------------------------------------
 alter table public.meta_pages            enable row level security;
-alter table public.meta_page_tokens      enable row level security;
 alter table public.meta_posts            enable row level security;
 alter table public.meta_post_metrics     enable row level security;
 alter table public.meta_collection_runs  enable row level security;
@@ -306,10 +296,9 @@ alter table public.meta_collection_runs  enable row level security;
 -- Defence in depth on top of RLS. RLS alone does block anon (verified with a
 -- canary row: 0 rows visible), but the SELECT grant makes these tables part of
 -- the public PostgREST surface, so one careless policy added later would expose
--- them. meta_page_tokens matters most — it holds long-lived Meta System User
+-- them. Nothing here is exposed to the web: the collector writes with the
 -- tokens. Only the server-side service_role needs any access.
 revoke all on public.meta_pages           from anon, authenticated;
-revoke all on public.meta_page_tokens     from anon, authenticated;
 revoke all on public.meta_posts           from anon, authenticated;
 revoke all on public.meta_post_metrics    from anon, authenticated;
 revoke all on public.meta_collection_runs from anon, authenticated;
@@ -358,3 +347,16 @@ where m.collected_date = (
 -- reports it as an ERROR-level finding.
 alter view public.meta_post_latest set (security_invoker = on);
 revoke all on public.meta_post_latest from anon, authenticated;
+
+-- ---------------------------------------------------------------------------
+-- 29 Aug 2026. meta_page_tokens was DROPPED. It held 0 rows for its entire life:
+-- the collector reads tokens from the META_TOKENS secret, never from a table.
+-- An empty table named "tokens" sitting on the public API surface invites
+-- exactly the wrong kind of attention for no benefit.
+--
+-- Also on this date, clacton_actions and clacton_events were moved to the
+-- `private` schema. PostgREST only serves schemas it is configured to expose, so
+-- they are now unreachable over the API by ANY key, service key included. The
+-- rows are intact (2,192 and 154) and the move reverses with
+--   alter table private.clacton_actions set schema public;
+-- The Clacton campaign closed on 7 August and its app is down.

@@ -1,6 +1,18 @@
 #!/usr/bin/env node
 'use strict';
 
+// DOES NOT WORK ON THIS PROJECT - kept because the finding is worth keeping.
+//
+// Supabase's gateway validates against ISSUED API keys, not merely a valid
+// signature. A token signed with the project's own legacy JWT secret carrying
+// role=meta_readonly is rejected upstream as "Invalid API key" before Postgres
+// is reached. The real anon key, on the same request, returns a Postgres grant
+// error instead - which is how the two were told apart.
+//
+// The underlying problem was solved differently: clacton_actions and
+// clacton_events were moved to a non-exposed schema, so the service key can only
+// reach reporting data. See sql/schema.sql.
+//
 // Mints a PostgREST key that authenticates as meta_readonly.
 //
 // The hosted MCP currently holds a service key: full read AND write on every
@@ -88,7 +100,14 @@ const base = (process.env.SUPABASE_URL || '').replace(/\/+$/, '');
 if (base) {
   const probeInput = `${b64({ alg: 'HS256', typ: 'JWT' })}.${b64({ iss: 'supabase', ref: REF, role: 'anon', iat: now, exp: now + 300 })}`;
   const probe = `${probeInput}.${crypto.createHmac('sha256', SECRET).update(probeInput).digest('base64url')}`;
-  const r = await fetch(`${base}/rest/v1/meta_pages?select=page_id&limit=1`,
+  // Probe the PostgREST ROOT, not a table. The root returns the OpenAPI spec to
+  // any validly-signed token and needs no table grants, so a 401 there can only
+  // mean the signature was rejected.
+  //
+  // The first version of this check called meta_pages, where anon has no grant
+  // at all - so it returned 401 for a perfectly correct secret and refused to
+  // mint. A test that fails on correct input is worse than no test.
+  const r = await fetch(`${base}/rest/v1/`,
     { headers: { apikey: probe, Authorization: 'Bearer ' + probe } });
   if (r.status === 401) {
     console.error('\nThe secret in SUPABASE_JWT_SECRET is not this project signing secret.');
@@ -133,6 +152,9 @@ async function verify(token) {
 
   const mustRead = ['meta_pages', 'meta_posts', 'meta_post_latest', 'meta_page_growth',
                     'meta_ig_media', 'meta_post_ad_spend'];
+  // These are no longer reachable over the API by any key - they were moved to
+  // the private schema and meta_page_tokens was dropped. Kept in the probe so a
+  // regression that re-exposed them would be caught.
   const mustNotRead = ['clacton_actions', 'clacton_events', 'meta_page_tokens'];
 
   let bad = 0;

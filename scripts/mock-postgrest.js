@@ -30,7 +30,6 @@ const CONFLICT_KEYS = {
   meta_pages: ['page_id'],
   meta_posts: ['post_id'],
   meta_post_metrics: ['post_id', 'collected_date'],
-  meta_page_tokens: ['page_id'],
   meta_page_metrics: ['page_id', 'metric_date'],
   meta_ig_media: ['media_id'],
   meta_ig_media_metrics: ['media_id', 'collected_date'],
@@ -54,8 +53,6 @@ const COLUMNS = {
     'comments_total', 'errors'],
   meta_collection_runs: ['id', 'run_id', 'page_id', 'started_at', 'finished_at', 'status',
     'posts_seen', 'metrics_written', 'api_calls', 'error_code', 'error_message'],
-  meta_page_tokens: ['page_id', 'token', 'token_source', 'system_user_id',
-    'last_verified_at', 'last_error'],
 };
 
 // PostgREST filters we use: ?col=eq.value
