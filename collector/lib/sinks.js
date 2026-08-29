@@ -73,8 +73,32 @@ function supabaseSink({ url, serviceKey }) {
     meta_post_ad_spend: 'ad_id,date_start,date_stop',
   };
 
+  // Pages collected before. Used to recover pages that /me/accounts stops
+  // enumerating - see the recovery step in collect.js.
+  async function knownPageIds() {
+    try {
+      const res = await fetch(`${base}/rest/v1/meta_pages?select=page_id&limit=1000`, {
+        headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` },
+      });
+      if (!res.ok) {
+        console.error(`  knownPageIds: HTTP ${res.status} — page recovery unavailable this run`);
+        return [];
+      }
+      const rows = await res.json();
+      return Array.isArray(rows) ? rows.map((r) => r.page_id).filter(Boolean) : [];
+    } catch (e) {
+      // Say so. The first version referenced an out-of-scope variable, threw,
+      // and returned [] silently - so recovery reported nothing to recover and
+      // looked like it had simply found nothing missing. Never fail quietly
+      // here: an empty list and a broken query look identical downstream.
+      console.error(`  knownPageIds failed: ${e.message} — page recovery unavailable this run`);
+      return [];
+    }
+  }
+
   return {
     name: 'supabase',
+    knownPageIds,
     async upsert(table, rows) {
       if (!rows.length) return { count: 0 };
       const conflict = CONFLICT[table];

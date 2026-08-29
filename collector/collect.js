@@ -544,6 +544,38 @@ async function main() {
     console.error('Every token failed. Nothing to collect.');
     process.exit(1);
   }
+  // Step 1b: RECOVER pages that /me/accounts no longer lists.
+  //
+  // /me/accounts returns only pages the user holds a DIRECT role on. Pages
+  // reached through a Business Portfolio need business_management to enumerate -
+  // but they are perfectly readable without it. On 29 Aug 2026 enumeration
+  // dropped from 36 pages to 14 while every one of the missing 22 still handed
+  // over a page token when asked for it by id.
+  //
+  // So: for any page we have collected before but did not just enumerate, ask
+  // for it directly. Costs one call per missing page and makes the collector
+  // self-healing - once a page is known, losing it from enumeration no longer
+  // loses the page.
+  const known = await sink.knownPageIds ? await sink.knownPageIds() : [];
+  const recovered = [];
+  for (const known_id of known) {
+    if (byPageId.has(known_id)) continue;
+    for (let i = 0; i < TOKENS.length; i++) {
+      const r = await call(`/${known_id}`, { fields: 'id,name,followers_count,access_token' },
+        { token: TOKENS[i] });
+      if (!r.ok || !r.body || !r.body.access_token) continue;
+      byPageId.set(known_id, {
+        page_id: r.body.id, name: r.body.name, followers_count: r.body.followers_count,
+        token: r.body.access_token, token_index: i + 1,
+      });
+      recovered.push(r.body.name || known_id);
+      break;
+    }
+  }
+  if (recovered.length) {
+    console.log(`  recovered ${recovered.length} page(s) absent from /me/accounts but still readable: ${recovered.slice(0, 6).join(', ')}${recovered.length > 6 ? `, +${recovered.length - 6} more` : ''}`);
+  }
+
   let pages = [...byPageId.values()];
   if (ONLY_PAGES.length) pages = pages.filter((p) => ONLY_PAGES.includes(p.page_id));
   console.log(`${pages.length} page(s) reachable across ${TOKENS.length} token(s) · page tokens: ${pages.filter((p) => p.token).length}`);
