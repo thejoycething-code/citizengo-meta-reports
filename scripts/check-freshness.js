@@ -124,6 +124,36 @@ async function main() {
     process.exit(1);
   }
 
+  // COVERAGE. Freshness and completeness both pass happily while the estate
+  // shrinks: if a token is replaced with one granting fewer Pages, the pages it
+  // still reaches keep collecting on time and in full, so nothing looks wrong.
+  // On 29 Aug 2026 the token in the secret was swapped for one reaching 14 pages
+  // instead of 36 and every existing check stayed green.
+  //
+  // Compares the most recent run against the best run in the last 30 days rather
+  // than an absolute number, so it needs no hardcoded page count and survives
+  // pages being legitimately added or removed.
+  try {
+    const runs = await store.pageCoverage ? await store.pageCoverage() : null;
+    if (runs && runs.latest !== null && runs.best) {
+      const dropped = runs.best - runs.latest;
+      const pct = Math.round((100 * dropped) / runs.best);
+      console.log(`Coverage: ${runs.latest} page(s) across the last 3 runs, best recent ${runs.best}`);
+      if (pct >= 10) {
+        const msg = `CitizenGO organic reporting is collecting FEWER PAGES than it was: `
+          + `${runs.latest} across the last three runs against ${runs.best} recently — ${dropped} pages `
+          + `(${pct}%) have stopped. The data still looks current because the remaining pages `
+          + `collect normally. Most often the META_TOKENS secret was replaced with a token `
+          + `granting fewer Pages.`;
+        console.error(`::error::${msg}`);
+        await alert(msg);
+        process.exit(1);
+      }
+    }
+  } catch (e) {
+    console.log(`Coverage check skipped: ${e.message}`);
+  }
+
   if (ageDays >= MAX_AGE) {
     const msg = `CitizenGO organic reporting has stopped. Last collection was ${f.latest}, `
       + `${ageDays} days ago. Most likely an expired Facebook token or a failed nightly run. `
