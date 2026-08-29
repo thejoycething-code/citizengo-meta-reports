@@ -231,9 +231,13 @@ production, or every request is blocked before reaching the auth in `api/mcp.js`
 - **Access runs through a personal Facebook profile.** A System User is not
   currently possible: it must live in a Business Portfolio, and the citizenGO
   portfolio — which owns 11 pages carrying **86.7% of all views**, HazteOir alone
-  being 65.5% — cannot have apps added to it. Until that is resolved the token
-  must be renewed every 60 days. The watchdog now warns 21 days out and fails at
-  7, so renewal is a scheduled task rather than an outage.
+  being 65.5% — cannot have apps added to it.
+
+  The token itself does **not** expire. What expires is Meta's **data access
+  window**: 90 days, currently ending **24 November 2026**. Past that the token
+  still authenticates and simply returns nothing — no error, no failed request,
+  just empty results. Renewal means the profile owner re-authorising the app,
+  which resets the window. The watchdog warns 21 days out and fails at 7.
 - **One shared MCP token** — per-person tokens are supported but not configured, so
   there's no audit trail
 - **Comment text deliberately not collected** — see ONBOARDING.md
