@@ -36,7 +36,25 @@ const DRY_RUN = args.includes('--dry-run');
 const LOOKBACK_DAYS = Number(flag('lookback-days', process.env.LOOKBACK_DAYS || 30));
 const MAX_POSTS = Number(flag('max-posts', process.env.MAX_POSTS || 200));
 const CONCURRENCY = Number(flag('concurrency', process.env.CONCURRENCY || 4));
-const ONLY_PAGES = args.filter((a) => /^\d{6,}$/.test(a));
+// Concurrency WITHIN a post. The insights calls for one post are independent of
+// each other - separate metrics, separate breakdowns - but ran strictly in
+// sequence, so only CONCURRENCY requests were ever in flight no matter how many
+// posts were pending. A 90-day run measured 5.2 calls/second across 34,596 calls:
+// 110 minutes, almost all of it waiting.
+//
+// Total in flight is CONCURRENCY x METRIC_CONCURRENCY. Meta's limit is per page
+// and generous (4800 x engaged users per day), and this run spreads across 36
+// pages, so latency rather than rate limiting is the constraint.
+const METRIC_CONCURRENCY = Number(flag('metric-concurrency', process.env.METRIC_CONCURRENCY || 4));
+// Pages processed at once. Kept modest: each page already runs
+// CONCURRENCY x METRIC_CONCURRENCY requests, so this multiplies total in-flight.
+const PAGE_CONCURRENCY = Number(flag('page-concurrency', process.env.PAGE_CONCURRENCY || 6));
+// Accepts bare ids and comma-separated lists. Previously only bare numeric args
+// matched, so "--page-ids 123,456" matched NOTHING and silently collected every
+// page instead of two - which on a 90-day run is a very expensive typo.
+const ONLY_PAGES = args
+  .filter((a) => /^\d{6,}(,\d{6,})*$/.test(a))
+  .flatMap((a) => a.split(','));
 
 // META_TOKENS takes a newline- or comma-separated list, one System User token per
 // Business Portfolio. META_TOKEN (singular) still works for a single-portfolio run.
@@ -372,7 +390,11 @@ async function listCommentCounts(pageId, as) {
 
 // --- per page --------------------------------------------------------------
 
-async function collectPage(page, pageToken) {
+async function collectPage(page, pageToken, out) {
+  // Pages run in parallel, so their progress lines must not interleave. Each page
+  // writes into its own buffer and the caller flushes it in one go when the page
+  // finishes. Shadowing console here keeps the 19 existing log calls unchanged.
+  const console = { log: out || ((...a) => global.console.log(...a)) };
   const as = pageToken ? { token: pageToken } : {};
   const startCalls = apiCalls;
   const started = new Date().toISOString();
@@ -399,7 +421,7 @@ async function collectPage(page, pageToken) {
     return { status: 'failed', posts: 0, metrics: 0 };
   }
 
-  console.log(`   ${posts.length} posts in the last ${LOOKBACK_DAYS}d · fetching metrics (${CONCURRENCY} concurrent) ...`);
+  console.log(`   ${posts.length} posts in the last ${LOOKBACK_DAYS}d · fetching metrics (${CONCURRENCY} posts x ${METRIC_CONCURRENCY} metrics = ${CONCURRENCY * METRIC_CONCURRENCY} in flight) ...`);
   if (posts.length) {
     await sink.upsert('meta_posts', posts.map((p) => ({
       post_id: p.post_id, page_id: p.page_id, created_time: p.created_time,
@@ -557,32 +579,59 @@ async function main() {
   // self-healing - once a page is known, losing it from enumeration no longer
   // loses the page.
   const known = await sink.knownPageIds ? await sink.knownPageIds() : [];
-  const recovered = [];
-  for (const known_id of known) {
-    if (byPageId.has(known_id)) continue;
+  const toRecover = known.filter((id) => !byPageId.has(id));
+  const recoveredRows = await mapLimit(toRecover, 8, async (known_id) => {
     for (let i = 0; i < TOKENS.length; i++) {
       const r = await call(`/${known_id}`, { fields: 'id,name,followers_count,access_token' },
         { token: TOKENS[i] });
       if (!r.ok || !r.body || !r.body.access_token) continue;
-      byPageId.set(known_id, {
-        page_id: r.body.id, name: r.body.name, followers_count: r.body.followers_count,
-        token: r.body.access_token, token_index: i + 1,
-      });
-      recovered.push(r.body.name || known_id);
-      break;
+      return { id: known_id, body: r.body, token_index: i + 1 };
     }
+    return null;
+  });
+  const recovered = [];
+  for (const row of recoveredRows.filter(Boolean)) {
+    byPageId.set(row.id, {
+      page_id: row.body.id, name: row.body.name, followers_count: row.body.followers_count,
+      token: row.body.access_token, token_index: row.token_index,
+    });
+    recovered.push(row.body.name || row.id);
   }
   if (recovered.length) {
     console.log(`  recovered ${recovered.length} page(s) absent from /me/accounts but still readable: ${recovered.slice(0, 6).join(', ')}${recovered.length > 6 ? `, +${recovered.length - 6} more` : ''}`);
   }
 
   let pages = [...byPageId.values()];
-  if (ONLY_PAGES.length) pages = pages.filter((p) => ONLY_PAGES.includes(p.page_id));
+  if (ONLY_PAGES.length) {
+    pages = pages.filter((p) => ONLY_PAGES.includes(p.page_id));
+    console.log(`  restricted to ${pages.length} of ${byPageId.size} page(s) by --page-ids`);
+    if (!pages.length) {
+      console.error('  --page-ids matched no reachable page. Nothing to do.');
+      process.exit(1);
+    }
+  }
   console.log(`${pages.length} page(s) reachable across ${TOKENS.length} token(s) · page tokens: ${pages.filter((p) => p.token).length}`);
   if (tokenFailures) console.log(`WARNING: ${tokenFailures} of ${TOKENS.length} tokens failed — coverage is incomplete.`);
 
-  const summary = [];
-  for (const page of pages) summary.push({ page: page.name, ...(await collectPage(page, page.token)) });
+  // Pages in parallel. Each page carries roughly 35 seconds of fixed cost that no
+  // amount of per-post concurrency touches: listing published_posts, and the
+  // comments.summary query, which Meta answers slowly regardless of size. Run
+  // sequentially that is ~35s x 36 pages before a single metric is fetched, and it
+  // is most of why a 90-day run took 110 minutes.
+  //
+  // Meta's rate limits are per PAGE, so running different pages at once spends
+  // separate budgets rather than competing for one.
+  //
+  // Output is buffered per page and flushed when that page finishes, otherwise
+  // four pages interleave their progress lines and the log becomes unreadable at
+  // exactly the moment someone is trying to debug a failure.
+  const summary = new Array(pages.length);
+  await mapLimit(pages, PAGE_CONCURRENCY, async (page, idx) => {
+    const buffered = [];
+    const result = await collectPage(page, page.token, (line) => buffered.push(line));
+    process.stdout.write(buffered.join('\n') + '\n');
+    summary[idx] = { page: page.name, ...result };
+  });
 
   // Once per run. Ad accounts span pages, so doing this per page would repeat
   // identical work for every one of them.
