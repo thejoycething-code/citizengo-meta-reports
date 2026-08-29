@@ -66,6 +66,32 @@ the MCP tools cannot disagree about what a number means.
 | Monthly heartbeat | 1st & 15th | Commits `STATUS.md` so GitHub doesn't disable the crons |
 | Dry run | manual | Collects to files, never touches the database |
 
+### Alerting
+
+Three layers, deliberately independent of each other.
+
+| Layer | Runs on | Catches |
+|---|---|---|
+| Watchdog workflow | GitHub, 09:00 UTC | Data stale (2+ days) or incomplete |
+| GitHub → Slack | GitHub's servers | Any workflow failing, the watchdog included |
+| Scheduled Claude task | This laptop, 10:30 | **GitHub Actions not running at all** |
+
+The Slack posts come from GitHub's own app — subscribe with
+`/github subscribe thejoycething-code/citizengo-meta-reports workflows`. No custom
+Slack app and no `ALERT_WEBHOOK_URL` secret is needed; the webhook path in
+`check-freshness.js` still works if one is ever set.
+
+The third layer looks redundant and is not. GitHub cannot tell you that GitHub
+stopped: if the cron is disabled after 60 days of repo inactivity, no workflow
+runs, nothing fails, and no message is sent — silence is indistinguishable from
+health. The scheduled task queries the database directly, so it notices data
+going stale whether or not any workflow ran. Same reasoning as keeping the
+watchdog separate from the collector: nothing can raise the alarm about its own
+absence.
+
+It DMs only on failure. A daily "all fine" message trains the reader to ignore
+the channel, which is precisely what must not happen on the one day it matters.
+
 ---
 
 ## What Meta actually serves
