@@ -24,7 +24,7 @@ loadEnv();
 
 main();
 
-function main() {
+async function main() {
 const args = process.argv.slice(2);
 function argVal(name, fallback) {
   const i = args.indexOf('--' + name);
@@ -76,6 +76,32 @@ const signingInput = `${b64({ alg: 'HS256', typ: 'JWT' })}.${b64(payload)}`;
 const sig = crypto.createHmac('sha256', SECRET).update(signingInput).digest('base64url');
 const token = `${signingInput}.${sig}`;
 
+// Check the secret BEFORE presenting the token. A wrong secret produces a
+// perfectly well-formed token that simply never authenticates, and the failure
+// surfaces later as a bare 401 against every table at once - which reads like a
+// broken role or a network problem rather than a mistyped secret.
+//
+// Signing a throwaway 'anon' token and calling the API is the cheapest true
+// test: anon is a role the project definitely has, so a 401 can only mean the
+// signature was rejected.
+const base = (process.env.SUPABASE_URL || '').replace(/\/+$/, '');
+if (base) {
+  const probeInput = `${b64({ alg: 'HS256', typ: 'JWT' })}.${b64({ iss: 'supabase', ref: REF, role: 'anon', iat: now, exp: now + 300 })}`;
+  const probe = `${probeInput}.${crypto.createHmac('sha256', SECRET).update(probeInput).digest('base64url')}`;
+  const r = await fetch(`${base}/rest/v1/meta_pages?select=page_id&limit=1`,
+    { headers: { apikey: probe, Authorization: 'Bearer ' + probe } });
+  if (r.status === 401) {
+    console.error('\nThe secret in SUPABASE_JWT_SECRET is not this project signing secret.');
+    console.error('A token signed with it is rejected before any permissions are considered.\n');
+    console.error('  You want:     Legacy JWT Secret - a plain string, usually 40-64 characters');
+    console.error('  You do NOT:   anything starting eyJ (a token) or sb_ (an API key),');
+    console.error('                a PEM block, or anything with brackets or quotes attached\n');
+    console.error('  Supabase -> Project Settings -> JWT Keys -> Legacy JWT Secret -> Reveal\n');
+    console.error('No token has been printed, because it would not work.');
+    process.exit(1);
+  }
+}
+
 console.log(`\nProject: ${REF}`);
 console.log(`Role:    ${ROLE}`);
 console.log(`Expires: ${new Date(payload.exp * 1000).toISOString().slice(0, 10)} (${YEARS} years)\n`);
@@ -89,6 +115,13 @@ console.log('Verify with:  node scripts/mint-readonly-key.js --verify <token>\n'
 // respect - it reads the reporting tables perfectly well. The only thing that
 // distinguishes them is what they are REFUSED, so that is what this checks.
 async function verify(token) {
+  if (!token || !/^eyJ[\w-]+\.[\w-]+\.[\w-]+$/.test(token)) {
+    throw new Error(
+      `That is not a token: ${JSON.stringify(String(token).slice(0, 24))}\n\n`
+      + '  Paste the actual minted token - three dot-separated parts starting "eyJ".\n'
+      + '  Run the mint command with no arguments to produce one.'
+    );
+  }
   const base = (process.env.SUPABASE_URL || '').replace(/\/+$/, '');
   if (!base) throw new Error('SUPABASE_URL is not set.');
   const h = { apikey: token, Authorization: 'Bearer ' + token };
