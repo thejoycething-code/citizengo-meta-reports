@@ -52,10 +52,22 @@ const b64 = (o) => Buffer.from(JSON.stringify(o)).toString('base64url');
 // A long expiry is deliberate. A key that silently expires would stop the whole
 // team's reporting with a 401 nobody can interpret, and rotating it is a
 // deliberate act rather than something to be forced by a timer.
+// The project ref, taken from the Supabase URL. The working anon key carries
+// this claim and the API gateway checks it on some projects, so a token without
+// it can be rejected at the edge before PostgREST ever sees the role - which
+// presents as a confusing 401 rather than a permissions message.
+const REF = argVal('ref',
+  ((process.env.SUPABASE_URL || '').match(/https?:\/\/([a-z0-9]+)\./) || [])[1]);
+if (!REF) {
+  console.error('Could not work out the project ref from SUPABASE_URL. Pass --ref <ref>.');
+  process.exit(2);
+}
+
 const now = Math.floor(Date.now() / 1000);
 const payload = {
-  role: ROLE,
   iss: 'supabase',
+  ref: REF,
+  role: ROLE,
   iat: now,
   exp: now + Math.round(YEARS * 365.25 * 24 * 3600),
 };
@@ -64,7 +76,8 @@ const signingInput = `${b64({ alg: 'HS256', typ: 'JWT' })}.${b64(payload)}`;
 const sig = crypto.createHmac('sha256', SECRET).update(signingInput).digest('base64url');
 const token = `${signingInput}.${sig}`;
 
-console.log(`\nRole:    ${ROLE}`);
+console.log(`\nProject: ${REF}`);
+console.log(`Role:    ${ROLE}`);
 console.log(`Expires: ${new Date(payload.exp * 1000).toISOString().slice(0, 10)} (${YEARS} years)\n`);
 console.log(token);
 console.log('\nSet it as SUPABASE_MCP_KEY in Vercel, then redeploy.');
