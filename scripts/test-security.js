@@ -287,6 +287,41 @@ const ping = { jsonrpc: '2.0', id: 1, method: 'ping' };
       /pruneAuthFailures\(/.test(watchdog));
   }
 
+  console.log('\nTest seams refused in production (N3)\n');
+
+  {
+    const guardPath = path.join(ROOT, 'lib', 'env-guard.js');
+    // Each case reloads the module so it reads the environment fresh.
+    const under = (env, fn) => {
+      const saved = { ...process.env };
+      Object.assign(process.env, env);
+      delete require.cache[require.resolve(guardPath)];
+      let refused = false;
+      try { require(guardPath)[fn](); } catch (e) { refused = e.code === 'UNSAFE_ENV'; }
+      for (const k of Object.keys(env)) delete process.env[k];
+      Object.assign(process.env, saved);
+      return refused;
+    };
+
+    check('GRAPH_HOST is refused in GitHub Actions, where the collector runs',
+      under({ GRAPH_HOST: 'http://attacker.example', GITHUB_ACTIONS: 'true' }, 'assertGraphHostSafe'));
+    check('GRAPH_HOST is refused on Vercel production',
+      under({ GRAPH_HOST: 'http://attacker.example', VERCEL_ENV: 'production' }, 'assertGraphHostSafe'));
+    check('GRAPH_HOST is allowed locally, so the mock still works',
+      !under({ GRAPH_HOST: 'http://localhost:9' }, 'assertGraphHostSafe'));
+    check('an unset GRAPH_HOST does not trip the guard in production',
+      !under({ VERCEL_ENV: 'production' }, 'assertGraphHostSafe'));
+
+    check('GUARD_DURABLE=off is refused on Vercel production',
+      under({ GUARD_DURABLE: 'off', VERCEL_ENV: 'production' }, 'assertDurableGuardSafe'));
+    check('GUARD_DURABLE=off is allowed locally, so these tests can run',
+      !under({ GUARD_DURABLE: 'off' }, 'assertDurableGuardSafe'));
+    // Scoped deliberately: the API only runs on Vercel, so a CI test job that
+    // needs the seam is not production for this code and must not be blocked.
+    check('GUARD_DURABLE=off is allowed in CI, so a future test job still runs',
+      !under({ GUARD_DURABLE: 'off', GITHUB_ACTIONS: 'true' }, 'assertDurableGuardSafe'));
+  }
+
   console.log('\nFail closed (F1)\n');
 
   {
