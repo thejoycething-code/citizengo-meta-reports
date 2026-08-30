@@ -95,6 +95,35 @@ const ping = { jsonrpc: '2.0', id: 1, method: 'ping' };
   check('a token containing a colon survives the name split',
     guard.identify('cgo_Ab3:Cd9Xq7RmT2vLp5Wz', guard.usableTokens('dave:cgo_Ab3:Cd9Xq7RmT2vLp5Wz')) === 'dave');
 
+  console.log('\nRedirect allowlist (who may receive a code)\n');
+
+  {
+    const { redirectUriAllowed } = require(path.join(ROOT, 'lib', 'oauth.js'));
+    const allow = [
+      'https://claude.ai/api/mcp/auth_callback',
+      'https://chatgpt.com/connector_platform_oauth_redirect',
+      // ChatGPT generates a callback per connection, so the path varies.
+      'https://chatgpt.com/connector/abc123/callback',
+      'https://chat.openai.com/aip/oauth/callback',
+      'http://localhost:8123/callback',
+    ];
+    const deny = [
+      'https://claude.ai/evil',                    // right origin, wrong path
+      'https://chatgpt.com.attacker.example/x',    // origin-prefix lookalike
+      'https://evil.example/callback',
+      'https://notchatgpt.com/x',
+      'http://chatgpt.com/x',                      // http, not https
+      'javascript:alert(1)',
+      '',
+    ];
+    check('every assistant callback we support is allowed',
+      allow.every(redirectUriAllowed),
+      allow.filter((u) => !redirectUriAllowed(u)).join(' '));
+    check('lookalike and off-allowlist destinations are refused',
+      deny.every((u) => !redirectUriAllowed(u)),
+      deny.filter(redirectUriAllowed).join(' '));
+  }
+
   console.log('\nOAuth sessions are attributable and revocable\n');
 
   {

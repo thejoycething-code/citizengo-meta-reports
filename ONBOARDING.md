@@ -1,8 +1,8 @@
-# Asking Claude about our Facebook performance
+# Asking about our Facebook and Instagram performance
 
-You can now ask Claude how our organic Facebook posts are doing — across every
-CitizenGO page we collect — and get an answer from real data rather than digging
-through Business Suite page by page.
+You can now ask Claude or ChatGPT how our organic posts are doing — across every
+CitizenGO page and Instagram account we collect — and get an answer from real
+data rather than digging through Business Suite page by page.
 
 This takes about two minutes to set up.
 
@@ -20,18 +20,23 @@ This takes about two minutes to set up.
 
 Then in any conversation, press **+** → **Connectors** and switch it on.
 
-### In Claude Code
+### In ChatGPT
 
-One command:
+1. **Settings → Connectors → Create** (or **Add sources → Connect more**)
+2. URL: `https://meta-organic-reporting.vercel.app/api/mcp`
+3. Choose **OAuth** when asked how it authenticates
+4. The same sign-in page appears — paste your access token and **Allow access**
 
-```bash
-claude mcp add --transport http citizengo-meta https://meta-organic-reporting.vercel.app/api/mcp --header "Authorization: Bearer YOUR_TOKEN"
-```
+You need a ChatGPT plan that supports custom connectors; on some plans this sits
+behind **Settings → Connectors → Advanced → Developer mode**.
 
-Restart Claude Code afterwards.
+**Staying connected.** After you connect once, it stays connected. You are only
+asked to sign in again if you have not used it for 30 days.
 
-**Don't have a token?** Ask Chris. It's shared internally and shouldn't go in a
-public document or anywhere outside CitizenGO.
+**Don't have a token?** Ask Chris. Each person gets their own, so it can be turned
+off individually if you change roles or leave — which also means **don't pass yours
+on**. If a colleague needs access, they get their own. Keep it out of shared
+documents and anywhere outside CitizenGO.
 
 ---
 
@@ -96,14 +101,12 @@ numbers as current.
 
 ## What it covers, and what it doesn't
 
-**Covers:** organic Facebook posts across 36 CitizenGO pages, going back about
-three months — reach, shares, comments, clicks, follower growth, and what we spent
-boosting posts.
+**Covers:** organic posts across 36 CitizenGO Facebook pages and 8 Instagram
+accounts, going back about three months — reach, shares, saves, comments, clicks,
+follower growth, and what we spent boosting posts.
 
 **Doesn't cover:**
 
-- **Instagram** — accounts are found but Facebook is withholding the figures until
-  a permission is added. Coming.
 - **What people wrote in comments** — we count comments but deliberately don't
   store the text. That's a data-protection decision, not an oversight.
 - **Pages that haven't granted access** — if a page is missing, it's an access gap
