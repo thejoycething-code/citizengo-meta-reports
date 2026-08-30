@@ -134,6 +134,9 @@ async function comparePages(store, { days = 30 }) {
   const data = await store.loadAll();
   const pages = shapePages(data);
   let anyIncomplete = false;
+  // Ordered by views. The rows arrived in whatever order the store returned them,
+  // which for a COMPARISON table is a trap: the first row reads as the best one,
+  // and it was arbitrary — 20.5m views sat above 4.8m sat above 3.0m.
   const rows = pages.map((g) => {
     const feed = shapeFeed(data, { page_id: g.page_id, since: sinceFor(days) });
     const scored = feed.rows.filter((r) => r.has_metrics);
@@ -151,11 +154,26 @@ async function comparePages(store, { days = 30 }) {
       // Views per follower: the fair cross-page comparison, since a 28-follower
       // page and a 117k-follower page are not comparable on raw totals.
       (views && g.followers_count) ? (views / g.followers_count).toFixed(1) + '×' : '—',
+
+      // Index 7: the unformatted figure the sort uses. Trimmed off before display.
+
+      views,
     ];
   });
+  // Sort on the raw number, not the formatted string — "9,157" sorts above
+
+  // "20,501,220" lexically. Pages with nothing measurable go last rather than
+
+  // being ranked as the worst.
+
+  const sortedRows = [...rows].sort((x, y) => (y[7] || -1) - (x[7] || -1))
+
+    .map((r) => r.slice(0, 7));
+
+
   return {
     text: `**Page comparison · last ${days} days**\n\n`
-      + table(['Page', 'Followers', 'Posts', 'Views', 'Engagement', 'Eng. rate', 'Views per follower'], rows)
+      + table(['Page', 'Followers', 'Posts', 'Views', 'Engagement', 'Eng. rate', 'Views per follower'], sortedRows)
       + `\n\n_"Views per follower" is the fairer cross-page comparison — raw totals just rank pages by audience size._`
       + (anyIncomplete
         ? `\n\n_**Compare with care:** pages marked "no data" have posts Meta refused to report on, so their totals are understated by an unknown amount. Do not rank pages against each other without saying so._`
@@ -372,15 +390,15 @@ async function pageGrowth(store, { page_id, days = 30 }) {
   return {
     text: `**Page-level trend · last ${days} days**\n\n`
       + table(
-        ['Page', 'Days', 'Followers', 'Change', 'Page views', 'Reach', 'Engagements', 'New follows'],
+        ['Page', 'Days', 'Followers', 'Page views', 'Reach', 'Engagements', 'New follows'],
         summary.map((s) => [
           s.name, s.days, n(s.followers),
-          s.followerChange === null ? '—' : (s.followerChange > 0 ? '+' : '') + n(s.followerChange),
           n(s.views), n(s.reach), n(s.engagements), n(s.newFollows),
         ])
       )
       + '\n\n_Page-level figures, not post totals: page views include profile visits, and reach counts people who saw anything from the page. '
-      + 'Follower change needs snapshots from more than one day, so it reads 0 until the collector has run on separate dates._',
+      + '"New follows" is Meta\'s own daily metric and is the reliable growth figure. It counts NEW follows only — Meta does not report unfollows, so it is gross rather than net. '
+      + 'The follower count is as at the last collection, not as at each date, which is why no net change is shown: a backfill stamps every row with one day\'s number._',
     data: summary,
   };
 }
