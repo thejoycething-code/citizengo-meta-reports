@@ -90,10 +90,15 @@ told us, not a post that performed badly.**
 
 ### It should match what Facebook shows you
 
-Reactions, comments and shares are counted the same way Facebook counts them on
-the post, so the numbers here should line up with what you see. If they differ
+Reactions, comments and shares are counted the way Facebook counts them **on the
+post itself**, so they line up with what you see when you open it. If they differ
 slightly, it is almost always **timing** — these figures are taken once a night,
-and people keep reacting after that.
+and people keep reacting afterwards.
+
+Facebook does publish a second, larger reaction number in its insights, which
+also counts reactions people left on *reshares* of your post. On a widely shared
+post that runs around 20% higher. We report the first, because it is the one you
+can check.
 
 If something is off by more than a little, say so. That is worth looking at, and
 it is how a genuine problem gets found.

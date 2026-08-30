@@ -377,11 +377,20 @@ function classify(posts, metrics) {
 //
 // Reactions used to come from the post_reactions_by_type_total insights metric
 // while comments and shares came from the post object - two different counting
-// systems inside one engagement rate. They do not agree: on 30 Aug 2026 the same
-// post read 33,788 from insights and 29,754 from the object, a 13.5% gap, and
-// the object is what Facebook's own UI shows. A campaigner comparing our report
-// against the post saw two different numbers and had no way to tell which to
-// trust.
+// systems inside one engagement rate. They do not agree, and the difference is
+// not noise.
+//
+// Measured across 406 posts on 30 Aug 2026: insights is NEVER lower than the
+// object count, identical on 39% of posts, and higher on the rest. Splitting by
+// whether the post was shared at all is what explains it:
+//
+//   posts WITH shares   323 posts   75% differ   average gap +22.2%
+//   posts WITHOUT       83 posts     7% differ   average gap  +6.0%
+//
+// So post_reactions_by_type_total counts reactions the post attracted INCLUDING
+// on reshares of it, while reactions.summary on the post object counts reactions
+// on that post alone - which is the number Facebook's own UI shows, and the one
+// a campaigner will compare against.
 //
 // The total therefore comes from here. The per-type breakdown still comes from
 // insights, because the object does not offer one - so reactions_like..anger

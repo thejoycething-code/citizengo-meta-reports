@@ -222,7 +222,7 @@ async function dataHealth(store) {
       igStatus,
       '',
       'Known limitations to state when reporting:',
-      '- Reaction counts come from the same place Facebook\'s own page does, so they should match what you see on the post. A small difference is timing: figures here are a nightly snapshot and reactions keep arriving afterwards.',
+      '- **Reactions** are Meta\'s `reactions` count on the post itself — the number Facebook shows you on the post. Meta also publishes `post_reactions_by_type_total`, a lifetime insights figure that additionally counts reactions on reshares; measured across 406 posts it runs about 22% higher on posts that were shared and matches exactly on posts that were not. This tool reports the first, so figures line up with what you see. A small difference is timing — these are a nightly snapshot and people keep reacting.',
       '- Paid vs organic split comes from a breakdown, not a dedicated metric; all `post_impressions*` metrics were retired by Meta in 2026.',
       '- Only pages whose Business Portfolio granted read access are present. Absent pages are an access gap.',
       '- Metrics are a daily snapshot; engagement on recent posts is still accruing and will rise.',
