@@ -280,6 +280,19 @@ async function main() {
     L.push('');
   }
 
+  const weekStart = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
+
+  // Reactions on reshares, for the same week. Skipped silently when the data
+  // source cannot answer - the file backend has no such view, and a digest that
+  // failed because an extra section was unavailable would be worse than one
+  // without it.
+  let amp = [];
+  if (typeof store.amplification === 'function') {
+    try {
+      amp = (await store.amplification({ page_id: page ? page.page_id : undefined, since: weekStart, limit: 200 })) || [];
+    } catch (e) { amp = []; }
+  }
+
   L.push('## The pattern to notice');
   L.push('');
   if (carried.length) {
@@ -291,6 +304,42 @@ async function main() {
     L.push('Nothing was shared unusually heavily this week, so most reach came from people who already follow the page. Posts that travel further tend to be the ones supporters pass on.');
   }
   L.push('');
+
+  // Amplification: engagement the post earned AFTER it left the page. Distinct
+  // from everything above, which measures what happened on the post itself.
+  if (amp.length) {
+    const onReshares = amp.reduce((a2, r) => a2 + (Number(r.reactions_on_reshares) || 0), 0);
+    const ranked = [...amp].sort((x, y) => Number(y.amplification) - Number(x.amplification));
+    const best = ranked[0];
+
+    // Gated on there being something to report, NOT on the best post clearing a
+    // line. The first version required 1.30x and the week's best was 1.29 - so
+    // 14,114 reactions on reshares went unmentioned because one post missed an
+    // arbitrary threshold by a hundredth. The 1.30 mark belongs in the
+    // interpretation below, where a reader can apply it, not in a gate that
+    // silently removes the section.
+    if (onReshares > 0 && amp.length >= 5 && best) {
+      L.push('### And what kept working after it was shared');
+      L.push('');
+      L.push(`**${n(onReshares)} reactions** this week happened on somebody else's copy of a post rather than on the original — engagement earned after it left the page.`);
+      L.push('');
+      L.push(`The clearest was ${page ? '' : `**${best.page_name}**'s `}"${clean(best.message, 80)}" — **${Number(best.amplification).toFixed(2)}×**: ${n(best.reactions_on_post)} reactions on the post and ${n(best.reactions_on_reshares)} more on reshares.${best.permalink_url ? ` [See the post](${best.permalink_url}).` : ''}`);
+      L.push('');
+
+      // The counterpoint is the point. A post can reach enormous numbers because
+      // Meta distributed it while nobody passed it on, and the two look identical
+      // in every other view here.
+      const wide = [...amp]
+        .filter((r) => Number(r.views_unique) > 0 && Number(r.amplification) <= 1.05)
+        .sort((x, y) => Number(y.views_unique) - Number(x.views_unique))[0];
+      if (wide) {
+        L.push(`For contrast, ${page ? '' : `${wide.page_name}'s `}"${clean(wide.message, 60)}" reached ${n(wide.views_unique)} people at only **${Number(wide.amplification).toFixed(2)}×** — Meta distributed it widely, but almost nobody carried it. Both look like successes on reach alone; only one was passed on.`);
+        L.push('');
+      }
+      L.push('_Above 1.30× a post earned a real second life on other people\'s timelines. 1.00× means it was seen, not shared on._');
+      L.push('');
+    }
+  }
 
   L.push('## About these numbers');
   L.push('');
