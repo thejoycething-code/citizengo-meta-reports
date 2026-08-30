@@ -68,11 +68,18 @@ module.exports = async function handler(req, res) {
   const p = { ...q, ...body };
   if (!redirectUriAllowed(p.redirect_uri)) { res.status(400).send('invalid redirect_uri'); return; }
 
+  // Re-checked on POST, not only on GET. A direct POST could otherwise mint a
+  // code carrying no challenge. Such a code was never redeemable - verifyPkce
+  // rejects an empty challenge - but refusing it here is the honest place.
+  if (p.code_challenge_method !== 'S256' || !p.code_challenge) {
+    res.status(400).send('code_challenge with S256 is required'); return;
+  }
+
   // This consent form had no throttling whatsoever, so the team token could be
   // guessed at full speed. Failures are counted by source, which a guesser
   // cannot vary by changing the token they submit.
   const source = guard.clientIp(req);
-  if (guard.failureLimited(source)) {
+  if (await guard.failureLimited(source)) {
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.setHeader('Retry-After', '600');
     res.status(429).send(page({
@@ -83,7 +90,7 @@ module.exports = async function handler(req, res) {
   }
 
   if (!teamTokenValid(p.team_token)) {
-    guard.recordFailure(source);
+    await guard.recordFailure(source, 'authorize');
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.status(401).send(page({ params: p, error: 'That token was not recognised. Check it with whoever set up the connector.' }));
     return;
@@ -95,6 +102,8 @@ module.exports = async function handler(req, res) {
     typ: 'code',
     code_challenge: p.code_challenge,
     redirect_uri: p.redirect_uri,
+    // Carried so /token can refuse a code redeemed by a different client.
+    client_id: p.client_id || null,
   }, 60);
 
   const dest = new URL(p.redirect_uri);

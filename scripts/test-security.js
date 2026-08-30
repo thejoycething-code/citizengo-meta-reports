@@ -74,6 +74,34 @@ const ping = { jsonrpc: '2.0', id: 1, method: 'ping' };
   check('a weak token is dropped even when configured alongside a strong one',
     guard.usableTokens(`${WEAK},${STRONG}`).length === 1);
 
+  console.log('\nPer-person identity\n');
+
+  check('a bare token is identified by its fingerprint',
+    guard.identify(STRONG, guard.usableTokens(STRONG)) === guard.fingerprint(STRONG));
+  check('a name:token entry is identified by name',
+    guard.identify(STRONG, guard.usableTokens(`alice:${STRONG}`)) === 'alice');
+  {
+    const two = guard.usableTokens(`alice:${STRONG},bob:cgo_Zm5Wq8tRx2NpKv6yLd4H`);
+    check('two people can hold different tokens', two.length === 2, `${two.length} usable`);
+    check('each is told apart',
+      guard.identify(STRONG, two) === 'alice'
+      && guard.identify('cgo_Zm5Wq8tRx2NpKv6yLd4H', two) === 'bob');
+    check('removing one entry revokes only that person',
+      guard.identify(STRONG, guard.usableTokens('bob:cgo_Zm5Wq8tRx2NpKv6yLd4H')) === null);
+  }
+  check('a weak token is still rejected when it carries a name',
+    guard.usableTokens(`carol:${WEAK}`).length === 0);
+  check('a token containing a colon survives the name split',
+    guard.identify('cgo_Ab3:Cd9Xq7RmT2vLp5Wz', guard.usableTokens('dave:cgo_Ab3:Cd9Xq7RmT2vLp5Wz')) === 'dave');
+
+  console.log('\nDurable failure store (survives cold starts)\n');
+
+  check('an unreachable database does not break authentication',
+    (await call(ping, STRONG, '192.0.2.5')).status === 200,
+    'SUPABASE_URL points at a dead port in this test');
+  check('failureLimited is async, so it can consult the database',
+    guard.failureLimited('192.0.2.6') instanceof Promise);
+
   console.log('\nBrute force (F1)\n');
 
   {

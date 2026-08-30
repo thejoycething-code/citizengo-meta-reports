@@ -360,3 +360,33 @@ revoke all on public.meta_post_latest from anon, authenticated;
 -- rows are intact (2,192 and 154) and the move reverses with
 --   alter table private.clacton_actions set schema public;
 -- The Clacton campaign closed on 7 August and its app is down.
+
+-- ---------------------------------------------------------------------------
+-- Added 30 Aug 2026 after the security review.
+--
+-- Brute-force protection that survives a cold start. The in-memory limiter in
+-- lib/guard.js counts failures per warm serverless instance, and Vercel recycles
+-- instances freely, so a patient attacker gets a fresh allowance every time one
+-- is replaced.
+--
+-- Only FAILURES are written, so successful traffic pays no write cost and the
+-- table stays small. The source is stored as a SHA-256 prefix rather than an IP:
+-- enough to group attempts from one origin, not enough to identify a person.
+-- This is not a log of who used the tool.
+create table if not exists public.meta_auth_failures (
+  id          bigint generated always as identity primary key,
+  source_hash text        not null,
+  endpoint    text        not null,
+  at          timestamptz not null default now()
+);
+
+create index if not exists meta_auth_failures_lookup
+  on public.meta_auth_failures (source_hash, at desc);
+
+alter table public.meta_auth_failures enable row level security;
+revoke all on public.meta_auth_failures from anon, authenticated;
+
+create or replace function public.prune_meta_auth_failures()
+returns void language sql as $$
+  delete from public.meta_auth_failures where at < now() - interval '1 day';
+$$;

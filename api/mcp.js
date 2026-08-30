@@ -43,23 +43,27 @@ function rateLimited(key, cost = 1) {
   return seen.length > RATE_LIMIT;
 }
 
-function tokenIsValid(supplied) {
-  if (!supplied) return false;
+// Returns the name of whoever's token this is, or null. Naming the holder is
+// what makes "who read what" answerable at all: previously every request was
+// indistinguishable from every other.
+function tokenIdentity(supplied) {
+  if (!supplied) return null;
 
-  // 1. A static team token, as used by Claude Code and by claude.ai's
-  //    static_headers option.
-  // usableTokens drops any configured token too weak to be a credential and
-  // says so in the log. matchesAny compares SHA-256 digests with
-  // timingSafeEqual, so neither contents nor length leak through timing.
-  if (guard.matchesAny(supplied, guard.usableTokens(process.env.MCP_TOKENS))) return true;
+  // 1. A per-person or team token from MCP_TOKENS. usableTokens drops any entry
+  //    too weak to be a credential and says so in the log; identify compares
+  //    SHA-256 digests with timingSafeEqual and returns the matching name.
+  const name = guard.identify(supplied, guard.usableTokens(process.env.MCP_TOKENS));
+  if (name) return name;
 
   // 2. An OAuth access token this server issued. claude.ai cannot send a fixed
   //    header on a personal account, so it goes through the OAuth flow instead.
+  //    These carry no per-person identity - the consent step proves possession
+  //    of a team token, nothing more - so they are logged as such.
   try {
-    return !!verify(supplied, 'access');
+    return verify(supplied, 'access') ? 'oauth' : null;
   } catch (e) {
     // OAUTH_SIGNING_SECRET unset - OAuth simply unavailable, static still works.
-    return false;
+    return null;
   }
 }
 
@@ -146,15 +150,16 @@ module.exports = async function handler(req, res) {
 
   // Checked BEFORE the credential is examined, so a source that has been
   // guessing gets nothing back that varies with the token it sent.
-  if (guard.failureLimited(source)) {
+  if (await guard.failureLimited(source)) {
     res.setHeader('Retry-After', '600');
     res.status(429).json(rpcError(null, -32002,
       'Too many failed authentication attempts. Try again later.'));
     return;
   }
 
-  if (!tokenIsValid(supplied)) {
-    guard.recordFailure(source);
+  const identity = tokenIdentity(supplied);
+  if (!identity) {
+    await guard.recordFailure(source, 'mcp');
     // 401 with WWW-Authenticate is what MCP clients expect for an auth failure.
     const origin = originOf(req);
     res.setHeader('WWW-Authenticate',
@@ -194,6 +199,22 @@ module.exports = async function handler(req, res) {
     res.status(429).json(rpcError(null, -32002,
       `Rate limit exceeded: more than ${RATE_LIMIT} calls in a minute. Try again shortly.`));
     return;
+  }
+
+  // A request log with identity, so "who read what" is answerable. Deliberately
+  // to the platform log rather than a table: this endpoint is otherwise
+  // read-only, and adding a database write per request would cost latency on
+  // every call to answer a question that is asked rarely.
+  //
+  // Records WHICH TOOL, never the arguments or the result - a search query can
+  // itself be sensitive, and the point is accountability, not surveillance.
+  for (const msg of messages) {
+    if (msg && msg.method === 'tools/call') {
+      const tool = msg.params && msg.params.name;
+      console.log(JSON.stringify({
+        at: new Date().toISOString(), who: identity, tool, event: 'tools/call',
+      }));
+    }
   }
 
   const replies = [];

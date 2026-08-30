@@ -52,6 +52,10 @@ const EXPECTED = {
     'shares_total', 'clicks_total', 'clicks_by_type', 'activity_by_type', 'video_views',
     'comments_total', 'errors', 'video_view_time_ms', 'video_avg_seconds_watched',
     'video_complete_views_30s'],
+  // Written only on failed authentication, by lib/guard.js. Checked here so the
+  // consistency check can see it - a table in the DDL that the preflight does
+  // not verify is exactly the drift this project has hit repeatedly.
+  meta_auth_failures: ['id', 'source_hash', 'endpoint', 'at'],
   meta_collection_runs: ['run_id', 'page_id', 'started_at', 'finished_at', 'status',
     'posts_seen', 'metrics_written', 'api_calls', 'error_code', 'error_message'],
   meta_ig_media: ['media_id', 'page_id', 'ig_user_id', 'ig_username', 'media_type',
