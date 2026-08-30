@@ -222,6 +222,7 @@ async function dataHealth(store) {
       igStatus,
       '',
       'Known limitations to state when reporting:',
+      '- Reaction counts come from the same place Facebook\'s own page does, so they should match what you see on the post. A small difference is timing: figures here are a nightly snapshot and reactions keep arriving afterwards.',
       '- Paid vs organic split comes from a breakdown, not a dedicated metric; all `post_impressions*` metrics were retired by Meta in 2026.',
       '- Only pages whose Business Portfolio granted read access are present. Absent pages are an access gap.',
       '- Metrics are a daily snapshot; engagement on recent posts is still accruing and will rise.',

@@ -88,6 +88,16 @@ Facebook refuses to report some figures — usually on pages with few followers.
 Those show as `—` and are left out of totals. **They are gaps in what Facebook
 told us, not a post that performed badly.**
 
+### It should match what Facebook shows you
+
+Reactions, comments and shares are counted the same way Facebook counts them on
+the post, so the numbers here should line up with what you see. If they differ
+slightly, it is almost always **timing** — these figures are taken once a night,
+and people keep reacting after that.
+
+If something is off by more than a little, say so. That is worth looking at, and
+it is how a genuine problem gets found.
+
 ### If the data is stale, it says so
 
 If collection has stopped, every answer opens with a warning like *"These figures

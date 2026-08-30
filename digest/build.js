@@ -295,6 +295,7 @@ async function main() {
   L.push('## About these numbers');
   L.push('');
   L.push('- Organic only. Paid reach is reported separately and is not included here.');
+  L.push('- Reactions, comments and shares are counted the same way Facebook counts them on the post itself, so they should match what you see. Any small difference is timing — these are taken once a night and people keep reacting.');
   L.push('- "Beyond your followers" is the share of views from people who do not follow the page — the closest thing to a measure of whether a post travelled.');
   L.push('- Views can be added together; **people cannot**. Two posts reaching 1,000 people each have not reached 2,000 different people, so this digest never adds up reach across posts.');
   if (thisWeek.no_metrics) {
