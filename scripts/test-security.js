@@ -22,6 +22,7 @@ const WEAK = 'cgo_team_shared_2026';
 
 process.env.MCP_TOKENS = STRONG;
 process.env.SUPABASE_URL = 'http://localhost:1';       // never reached; auth fails first
+process.env.GUARD_DURABLE = 'off';                     // never touch the real failure log
 process.env.SUPABASE_SERVICE_KEY = 'unused';
 process.env.AUTH_FAIL_LIMIT = '5';
 process.env.MCP_MAX_BATCH = '20';

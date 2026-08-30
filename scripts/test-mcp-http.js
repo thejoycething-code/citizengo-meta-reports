@@ -12,6 +12,11 @@ const { loadEnv } = require('../lib/graph');
 loadEnv();
 
 const PORT = 5808;
+// Isolated from the durable failure store, and given a source of its own: this
+// suite deliberately fails authentication several times, and without both it
+// throttled itself and wrote those failures to the production table.
+process.env.GUARD_DURABLE = 'off';
+const SOURCE = '198.18.0.' + (1 + Math.floor(Math.random() * 250));
 const GOOD = 'test_Alice_7Kq2Vx9RmT4wZb6J';
 process.env.MCP_TOKENS = `${GOOD},test_Bob_3Hn8QyL5sW7pD2vX`;
 

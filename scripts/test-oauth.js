@@ -13,6 +13,11 @@ loadEnv();
 
 const PORT = 5810;
 const ORIGIN = `http://localhost:${PORT}`;
+// This suite deliberately submits a wrong team token. Without opting out of the
+// durable failure log it wrote those failures to the production table and then
+// throttled itself on the next run - the third test broken this way, because a
+// shared mutable store and test isolation are fundamentally at odds.
+process.env.GUARD_DURABLE = 'off';
 process.env.MCP_TOKENS = 'cgo_TESTFIXTURE_9Wq4Xz7Rm2LtV5nB';
 process.env.OAUTH_SIGNING_SECRET = 'test-signing-secret-not-production';
 
