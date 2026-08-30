@@ -64,6 +64,13 @@ const POSTS = 600;
   };
   const argsFrom = (name) => argsFor[name] || { ...HOSTILE };
 
+  // A tool added without a case here would be silently unbounded, so assert the
+  // suite actually covers every tool that exists rather than whichever ones
+  // happened to be written about.
+  if (TOOLS.length < 11) {
+    console.log(`  WARNING: only ${TOOLS.length} tools found; expected at least 11`);
+  }
+
   let failed = 0;
   const untested = [];
   console.log(`\n${POSTS} posts seeded. Every tool called with limit=1000000 and days=1000000.`);

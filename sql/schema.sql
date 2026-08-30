@@ -390,3 +390,54 @@ create or replace function public.prune_meta_auth_failures()
 returns void language sql as $$
   delete from public.meta_auth_failures where at < now() - interval '1 day';
 $$;
+
+-- ---------------------------------------------------------------------------
+-- Added 30 Aug 2026. How far a post travelled AS A SHARED OBJECT.
+--
+-- Meta publishes two reaction counts and they differ usefully:
+--   reactions (post object)        reactions on the post itself
+--   post_reactions_by_type_total   ALSO counts reactions on reshares of it
+--
+-- Measured across 406 posts: the second is never lower, matches exactly on 93%
+-- of posts that were never shared, and runs ~22% higher on posts that were. The
+-- difference is engagement the post earned after it left the page.
+--
+-- ONLY rows from 2026-08-30 qualify. Before that date reactions_total held the
+-- INSIGHTS figure, so both columns were the same number and every post would
+-- read as exactly 1.00x - indistinguishable from a genuine result, and wrong for
+-- every widely-shared post in the archive.
+create or replace view public.meta_post_amplification as
+with latest as (
+  select distinct on (m.post_id)
+    m.post_id, m.page_id, m.collected_date,
+    m.reactions_total,
+    m.shares_total, m.views_total, m.views_unique,
+    (coalesce(m.reactions_like,0) + coalesce(m.reactions_love,0)
+     + coalesce(m.reactions_wow,0) + coalesce(m.reactions_haha,0)
+     + coalesce(m.reactions_sorry,0) + coalesce(m.reactions_anger,0)) as insights_total,
+    (m.reactions_like is not null) as has_insights
+  from public.meta_post_metrics m
+  where m.collected_date >= date '2026-08-30'
+  order by m.post_id, m.collected_date desc
+)
+select
+  l.post_id, l.page_id, g.name as page_name,
+  p.created_time, p.message, p.permalink_url, p.media_type,
+  l.collected_date,
+  l.reactions_total as reactions_on_post,
+  l.insights_total  as reactions_incl_reshares,
+  greatest(l.insights_total - l.reactions_total, 0) as reactions_on_reshares,
+  l.shares_total, l.views_total, l.views_unique,
+  -- Null rather than a number when the base is too small to mean anything. Ten
+  -- reactions becoming twelve is noise, and a ratio printed from single digits
+  -- invites exactly the wrong conclusion.
+  case
+    when not l.has_insights then null
+    when l.reactions_total is null or l.reactions_total < 25 then null
+    else round(l.insights_total::numeric / l.reactions_total, 2)
+  end as amplification
+from latest l
+join public.meta_posts p on p.post_id = l.post_id
+join public.meta_pages g on g.page_id = l.page_id;
+
+grant select on public.meta_post_amplification to meta_readonly;

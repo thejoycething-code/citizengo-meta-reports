@@ -13,7 +13,7 @@
 //
 // An LLM given raw tables gets all three wrong, confidently. These tools cannot.
 
-const { shapeFeed, shapePages, pageBaseline, withBenchmark } = require('../lib/shape');
+const { shapeFeed, shapePages, pageBaseline, withBenchmark , median } = require('../lib/shape');
 
 const METRIC_LABELS = {
   views: 'Views', reach: 'Unique reach', beyond: 'Reach beyond followers',
@@ -196,6 +196,65 @@ async function igLine(store) {
   if (!c || !c.hasMedia) return '- Instagram: **not collected**';
   if (!c.total) return '- Instagram: posts collected, **no metrics yet** (needs instagram_manage_insights)';
   return `- Instagram: **${c.withReach} of ${c.total}** posts have reach, as of ${c.latest}`;
+}
+
+// How much engagement a post earned AFTER it left the page.
+//
+// Meta publishes two reaction counts: one for the post, one that also counts
+// reactions on reshares of it. The gap is engagement on somebody else's copy -
+// which is a different question from "beyond followers". Reach can travel
+// because Meta distributed the post widely with nobody sharing it; this only
+// moves when people actually pass it on and others engage with the copy.
+async function shareAmplification(store, { page_id, days: d = 90, limit: l = 15 }) {
+  const days = clampDays(d, 90);
+  const limit = clampRows(l, 15, 50);
+
+  if (typeof store.amplification !== 'function') {
+    return { text: 'Share amplification is not available on this data source.', data: null };
+  }
+  const rows = await store.amplification({ page_id, since: sinceFor(days), limit });
+
+  if (!rows || !rows.length) {
+    return {
+      text: 'No posts can be scored for amplification yet.\n\n'
+        + '_This needs both of Meta\'s reaction counts on the same post, and only collections '
+        + 'from 30 August 2026 carry both. It also skips posts under 25 reactions, where the '
+        + 'ratio would be noise rather than a signal._',
+      data: null,
+    };
+  }
+
+  const onReshares = rows.reduce((a2, r) => a2 + (Number(r.reactions_on_reshares) || 0), 0);
+  const med = median(rows.map((r) => Number(r.amplification)).filter((v) => Number.isFinite(v)));
+
+  return {
+    text: `**Which posts kept working after they were shared** · last ${days} days\n\n`
+      + `Across these ${rows.length} posts, **${n(onReshares)} reactions** happened on somebody `
+      + `else's copy rather than on the original. Typical post: **${med}×**.\n\n`
+      + table(
+        ['Date', 'Page', 'Post', 'On the post', 'On reshares', 'Total', 'Shares', 'Amplification'],
+        rows.map((r) => [
+          (r.created_time || '').slice(0, 10),
+          r.page_name || '—',
+          r.permalink_url
+            ? `[${truncate(r.message, 40).replace(/\|/g, '\\|')}](${r.permalink_url})`
+            : truncate(r.message, 40),
+          n(r.reactions_on_post),
+          n(r.reactions_on_reshares),
+          n(r.reactions_incl_reshares),
+          n(r.shares_total),
+          `${Number(r.amplification).toFixed(2)}×`,
+        ]),
+      )
+      + '\n\n_**1.00× means nobody engaged with a reshare** — the post may still have reached '
+      + 'a lot of people, but it did so because Meta distributed it, not because supporters '
+      + 'carried it. Above 1.30× the post earned a meaningful second life on other people\'s '
+      + 'timelines, which is the clearest sign it was worth sharing rather than merely worth seeing._'
+      + '\n\n_Different from "beyond followers", which measures where the reach landed. This '
+      + 'measures whether the post kept working once it got there._'
+      + '\n\n_Posts under 25 reactions are excluded: ten becoming twelve is not amplification._',
+    data: rows,
+  };
 }
 
 async function dataHealth(store) {
@@ -618,6 +677,20 @@ const TOOLS = [
       additionalProperties: false,
     },
     handler: (store, args) => adSpend(store, args),
+  },
+  {
+    name: 'share_amplification',
+    description: 'Show which posts kept earning engagement AFTER being shared — reactions people left on reshares rather than on the original. Use this to answer "which posts did supporters actually carry", "what was worth sharing", or "did this post have a second life". Different from reach beyond followers: that says where a post landed, this says whether it kept working once it got there.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        page_id: { type: 'string', description: 'Restrict to one page. Omit for all pages.' },
+        days: { type: 'number', description: 'How far back to look (default 90).' },
+        limit: { type: 'number', description: 'How many posts to list (default 15).' },
+      },
+      additionalProperties: false,
+    },
+    handler: (store, args) => shareAmplification(store, args),
   },
   {
     name: 'data_health',
