@@ -76,8 +76,23 @@ const RUN_ID = `run-${RUN_STARTED.toISOString().slice(0, 19).replace(/[:T]/g, ''
 const COLLECTED_DATE = RUN_STARTED.toISOString().slice(0, 10);
 
 let apiCalls = 0;
+// Per-page call attribution.
+//
+// api_calls used to be a delta on the global counter: a start value at the top of
+// a page, subtracted at the bottom. That was correct only while pages
+// ran one at a time. Once six run concurrently every page counts every other
+// page's calls too, and the first concurrent 90-day run reported 198,840 calls
+// for work that takes about 35,000 - and an impossible 102 calls/second.
+//
+// AsyncLocalStorage attributes each call to whichever page's async context made
+// it, which survives the awaits and the concurrency that broke the delta.
+const { AsyncLocalStorage } = require('node:async_hooks');
+const pageCalls = new AsyncLocalStorage();
+
 async function call(pathname, params, opts) {
   apiCalls++;
+  const ctx = pageCalls.getStore();
+  if (ctx) ctx.n++;
   return client.get(pathname, params, opts);
 }
 
@@ -391,12 +406,15 @@ async function listCommentCounts(pageId, as) {
 // --- per page --------------------------------------------------------------
 
 async function collectPage(page, pageToken, out) {
+  return pageCalls.run({ n: 0 }, () => collectPageInner(page, pageToken, out));
+}
+
+async function collectPageInner(page, pageToken, out) {
   // Pages run in parallel, so their progress lines must not interleave. Each page
   // writes into its own buffer and the caller flushes it in one go when the page
   // finishes. Shadowing console here keeps the 19 existing log calls unchanged.
   const console = { log: out || ((...a) => global.console.log(...a)) };
   const as = pageToken ? { token: pageToken } : {};
-  const startCalls = apiCalls;
   const started = new Date().toISOString();
   console.log(`\n── ${page.name} (${page.page_id})`);
 
@@ -415,7 +433,7 @@ async function collectPage(page, pageToken, out) {
     await sink.upsert('meta_collection_runs', [{
       run_id: RUN_ID, page_id: page.page_id, started_at: started,
       finished_at: new Date().toISOString(), status: 'failed',
-      posts_seen: 0, metrics_written: 0, api_calls: apiCalls - startCalls,
+      posts_seen: 0, metrics_written: 0, api_calls: pageCalls.getStore().n,
       error_code: error.code || null, error_message: error.message.slice(0, 500),
     }]);
     return { status: 'failed', posts: 0, metrics: 0 };
@@ -493,13 +511,13 @@ async function collectPage(page, pageToken, out) {
   console.log(`   wrote ${metrics.length} metric rows · ${reach} with unique reach` +
     (empty ? ` · ${empty} with NO metrics` : '') +
     (degraded ? ` · ${degraded} degraded` : '') +
-    ` · ${apiCalls - startCalls} API calls`);
+    ` · ${pageCalls.getStore().n} API calls`);
 
   await sink.upsert('meta_collection_runs', [{
     run_id: RUN_ID, page_id: page.page_id, started_at: started,
     finished_at: new Date().toISOString(), status,
     posts_seen: posts.length, metrics_written: metrics.length,
-    api_calls: apiCalls - startCalls, error_code: null,
+    api_calls: pageCalls.getStore().n, error_code: null,
     error_message: scopeProblem
       ? 'no metrics and no errors on any post - token probably lacks read_insights'
       : (empty || degraded) ? `${empty} rows with no metrics, ${degraded} degraded` : null,
