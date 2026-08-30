@@ -15,8 +15,7 @@ This takes about two minutes to set up.
 1. **Settings → Connectors → Add custom connector**
 2. URL: `https://meta-organic-reporting.vercel.app/api/mcp`
 3. Leave Advanced settings empty — you don't need a Client ID or Secret
-4. Click **Add**. A sign-in page appears asking for a **team access token**
-5. Paste the token you were given, and click **Allow access**
+4. Click **Add** — that's it, there is nothing to sign in to
 
 Then in any conversation, press **+** → **Connectors** and switch it on.
 
@@ -24,18 +23,17 @@ Then in any conversation, press **+** → **Connectors** and switch it on.
 
 1. **Settings → Connectors → Create** (or **Add sources → Connect more**)
 2. URL: `https://meta-organic-reporting.vercel.app/api/mcp`
-3. Choose **OAuth** when asked how it authenticates
-4. The same sign-in page appears — paste your access token and **Allow access**
+3. Choose **No authentication** if asked
 
 You need a ChatGPT plan that supports custom connectors; on some plans this sits
 behind **Settings → Connectors → Advanced → Developer mode**.
 
-**Staying connected.** After you connect once, it stays connected. You are only
-asked to sign in again if you have not used it for 30 days.
+**Staying connected.** Connect once and it stays connected. Nothing expires and
+there is nothing to renew.
 
-**Don't have a token?** Ask Chris. It's one shared team token — the same one for
-everyone — so keep it out of public documents and anywhere outside CitizenGO. It
-only ever reads performance figures; it cannot post, change or delete anything.
+**Please don't share the connector URL outside CitizenGO.** It reads our
+performance figures — including what we spent boosting posts — and right now
+anyone with the address can query it. It cannot post, change or delete anything.
 
 ---
 

@@ -220,6 +220,48 @@ const ping = { jsonrpc: '2.0', id: 1, method: 'ping' };
     check('the quota is charged per message, so batching cannot buy extra work', throttled);
   }
 
+  console.log('\nOpen access is opted into, never inherited\n');
+
+  {
+    const saved = process.env.MCP_TOKENS;
+
+    // THE CASE THAT MATTERS. Losing MCP_TOKENS - a bad Vercel edit, a secret
+    // that does not copy to a new environment - must keep refusing. Open access
+    // is a decision somebody made, not the absence of one.
+    process.env.MCP_TOKENS = '';
+    delete process.env.MCP_PUBLIC;
+    check('no tokens and no flag still refuses everything',
+      (await call(ping, null, '203.0.113.120')).status === 401,
+      'a missing secret must never publish the data');
+
+    process.env.MCP_PUBLIC = 'true';
+    check('with MCP_PUBLIC=true an unauthenticated request is served',
+      (await call(ping, null, '203.0.113.121')).status === 200);
+
+    // A DIFFERENT token, deliberately. The quota is keyed on the credential, and
+    // the batch test above spends STRONG's whole minute on purpose - reusing it
+    // here measured that exhausted bucket rather than the thing being tested.
+    const SECOND = 'cgo_Tn4Bv8kQx2WmZ6rLd9Hy';
+    process.env.MCP_TOKENS = `${STRONG},${SECOND}`;
+    check('a configured token still works while public, so nothing reconnects on a flip',
+      (await call(ping, SECOND, '203.0.113.122')).status === 200);
+
+    // Anonymous callers must not share one bucket, or they throttle each other.
+    let selfThrottled = false;
+    for (let i = 0; i < 8 && !selfThrottled; i++) {
+      if ((await call(ping, null, '203.0.113.130')).status === 429) selfThrottled = true;
+    }
+    check('one anonymous source does not throttle another',
+      (await call(ping, null, '203.0.113.131')).status === 200);
+
+    process.env.MCP_PUBLIC = 'false';
+    check('setting the flag to false closes it again',
+      (await call(ping, null, '203.0.113.140')).status === 401);
+
+    delete process.env.MCP_PUBLIC;
+    process.env.MCP_TOKENS = saved;
+  }
+
   console.log('\nFail closed (F1)\n');
 
   {

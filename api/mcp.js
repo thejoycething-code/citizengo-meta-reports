@@ -22,6 +22,26 @@ const guard = require('../lib/guard');
 
 const SERVER_INFO = { name: 'citizengo-meta-reports', version: '1.0.0' };
 
+// OPEN ACCESS, deliberately opted into.
+//
+// MCP_PUBLIC=true serves every request without a credential. Set on 30 Aug 2026:
+// the connector is read-only over organic performance figures, staff use
+// claude.ai and ChatGPT rather than Claude Code, and a token everybody shares
+// was judged more friction than the data warrants.
+//
+// It is an EXPLICIT flag rather than "no tokens configured means open", because
+// the difference matters. Unsetting MCP_TOKENS by accident - a fat-fingered
+// Vercel edit, a secret that fails to copy to a new environment - must keep
+// refusing, not silently publish the estate. Absence of configuration is a
+// mistake; this flag is a decision.
+//
+// To close it again: remove MCP_PUBLIC from Vercel and redeploy. The token path
+// below never stopped working, so nothing has to be re-issued.
+// Read per request, not once at module load: a value captured at load time is
+// untestable without reloading the module, and it hid three failures the first
+// time this was written.
+const publicAccess = () => String(process.env.MCP_PUBLIC || '').toLowerCase() === 'true';
+
 // Sliding window per credential. PER WARM INSTANCE, not global - serverless
 // gives no shared memory, and a shared store would be a database write on every
 // request. Enough to stop one client hammering the database; not a hard quota.
@@ -163,14 +183,16 @@ module.exports = async function handler(req, res) {
 
   // Checked BEFORE the credential is examined, so a source that has been
   // guessing gets nothing back that varies with the token it sent.
-  if (await guard.failureLimited(source)) {
+  if (!publicAccess() && await guard.failureLimited(source)) {
     res.setHeader('Retry-After', '600');
     res.status(429).json(rpcError(null, -32002,
       'Too many failed authentication attempts. Try again later.'));
     return;
   }
 
-  const identity = tokenIdentity(supplied);
+  // A token still identifies its holder when one is sent, so flipping the flag
+  // back changes nothing for anyone already connected.
+  const identity = tokenIdentity(supplied) || (publicAccess() ? 'anonymous' : null);
   if (!identity) {
     await guard.recordFailure(source, 'mcp');
     // 401 with WWW-Authenticate is what MCP clients expect for an auth failure.
@@ -207,7 +229,12 @@ module.exports = async function handler(req, res) {
   // Keyed on the credential rather than IP: every request from Claude arrives
   // from Anthropic's egress range, so IP would throttle all users together.
   // Charged per MESSAGE, so a batch cannot buy extra work for one request.
-  if (rateLimited(supplied.slice(0, 24), messages.length)) {
+  // Keyed on the credential when there is one - all of Claude's traffic shares
+  // an egress range, so an IP key would throttle every user together - and on the
+  // source when there is not. Without this, anonymous callers would share a
+  // single bucket and throttle each other.
+  const quotaKey = supplied ? supplied.slice(0, 24) : `anon:${source}`;
+  if (rateLimited(quotaKey, messages.length)) {
     res.setHeader('Retry-After', '60');
     res.status(429).json(rpcError(null, -32002,
       `Rate limit exceeded: more than ${RATE_LIMIT} calls in a minute. Try again shortly.`));
