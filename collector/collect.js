@@ -373,18 +373,36 @@ function classify(posts, metrics) {
 // only the comment counts, and every other metric still lands.
 //
 // One extra call per page (plus pagination), not one per post.
+// Comment AND reaction counts, from the post object.
+//
+// Reactions used to come from the post_reactions_by_type_total insights metric
+// while comments and shares came from the post object - two different counting
+// systems inside one engagement rate. They do not agree: on 30 Aug 2026 the same
+// post read 33,788 from insights and 29,754 from the object, a 13.5% gap, and
+// the object is what Facebook's own UI shows. A campaigner comparing our report
+// against the post saw two different numbers and had no way to tell which to
+// trust.
+//
+// The total therefore comes from here. The per-type breakdown still comes from
+// insights, because the object does not offer one - so reactions_like..anger
+// will not sum exactly to reactions_total, and that is deliberate rather than a
+// rounding error.
+const ENGAGEMENT_FIELDS =
+  'id,created_time,comments.summary(true).limit(0),reactions.summary(true).limit(0)';
+
 async function listCommentCounts(pageId, as) {
   const cutoff = new Date(RUN_STARTED.getTime() - LOOKBACK_DAYS * 86400000);
   const counts = new Map();
+  const reactions = new Map();
   let next = null;
 
   while (counts.size < MAX_POSTS) {
     const params = next
-      ? { fields: 'id,created_time,comments.summary(true).limit(0)', limit: 100, after: next }
-      : { fields: 'id,created_time,comments.summary(true).limit(0)', limit: 100 };
+      ? { fields: ENGAGEMENT_FIELDS, limit: 100, after: next }
+      : { fields: ENGAGEMENT_FIELDS, limit: 100 };
     const res = await call(`/${pageId}/published_posts`, params, as);
     if (!res.ok) {
-      return { counts, error: res.error ? res.error.message : 'unknown' };
+      return { counts, reactions, error: res.error ? res.error.message : 'unknown' };
     }
     const rows = (res.body && res.body.data) || [];
     if (!rows.length) break;
@@ -395,12 +413,17 @@ async function listCommentCounts(pageId, as) {
       const total = r.comments && r.comments.summary
         ? r.comments.summary.total_count : null;
       if (typeof total === 'number') counts.set(r.id, total);
+        // Reactions from the same object as comments and shares, so all three
+        // components of the engagement rate are counted the same way.
+        const react = r.reactions && r.reactions.summary
+          ? r.reactions.summary.total_count : null;
+        if (typeof react === 'number') reactions.set(r.id, react);
     }
     if (reachedCutoff) break;
     next = res.body && res.body.paging && res.body.paging.cursors && res.body.paging.cursors.after;
     if (!next) break;
   }
-  return { counts, error: null };
+  return { counts, reactions, error: null };
 }
 
 // --- per page --------------------------------------------------------------
@@ -452,16 +475,23 @@ async function collectPageInner(page, pageToken, out) {
   const metrics = await mapLimit(posts, CONCURRENCY, (p) => collectPostMetrics(p, as));
 
   // Merged in after the fact so a failure here cannot affect anything else.
-  const { counts: commentCounts, error: commentError } = await listCommentCounts(page.page_id, as);
+  const { counts: commentCounts, reactions: reactionCounts, error: commentError } = await listCommentCounts(page.page_id, as);
   if (commentError) {
     console.log(`   comment counts unavailable — ${commentError.slice(0, 80)}`);
     console.log('     (needs the pages_read_user_content scope; every other metric is unaffected)');
   } else {
     let applied = 0;
+    let reactionsApplied = 0;
     for (const m of metrics) {
       if (commentCounts.has(m.post_id)) { m.comments_total = commentCounts.get(m.post_id); applied++; }
+      // Overrides the insights figure with the post object's own count, which is
+      // what Facebook's UI shows. The per-type breakdown still comes from
+      // insights, so the parts will not sum exactly to the total.
+      if (reactionCounts.has(m.post_id)) {
+        m.reactions_total = reactionCounts.get(m.post_id); reactionsApplied++;
+      }
     }
-    console.log(`   comment counts: ${applied}/${metrics.length} posts`);
+    console.log(`   comment counts: ${applied}/${metrics.length} · reactions: ${reactionsApplied}/${metrics.length}`);
   }
 
   if (metrics.length) await sink.upsert('meta_post_metrics', metrics);
