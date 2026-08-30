@@ -53,15 +53,25 @@ const POSTS = 600;
   const { TOOLS, callTool } = require(path.join(ROOT, 'mcp/tools'));
   const store = supabaseStore({ url: `http://localhost:${PORT}`, serviceKey: 'k' });
 
-  const argsFor = { page_summary: { page_id: 'P1' }, search_posts: { query: 'x' } };
+  // HOSTILE arguments, not defaults. The previous version called every tool with
+  // its defaults, which is exactly why it passed while outliers still accepted
+  // {"limit": 100000} and rebuilt the 439,000-character response the cap existed
+  // to prevent. A cap that only holds when nobody pushes on it is not a cap.
+  const HOSTILE = { limit: 1e6, days: 1e6 };
+  const argsFor = {
+    page_summary: { page_id: 'P1', ...HOSTILE },
+    search_posts: { query: 'x', ...HOSTILE },
+  };
+  const argsFrom = (name) => argsFor[name] || { ...HOSTILE };
 
   let failed = 0;
   const untested = [];
-  console.log(`\n${POSTS} posts seeded. Cap is ${MAX_CHARS.toLocaleString()} characters per response.\n`);
+  console.log(`\n${POSTS} posts seeded. Every tool called with limit=1000000 and days=1000000.`);
+  console.log(`Cap is ${MAX_CHARS.toLocaleString()} characters per response.\n`);
   for (const t of TOOLS) {
     let len = -1, note = '', skipped = false;
     try {
-      const out = await callTool(store, t.name, argsFor[t.name] || {});
+      const out = await callTool(store, t.name, argsFrom(t.name));
       len = (out.text || '').length;
     } catch (e) {
       // 42P01 is "relation does not exist": the mock implements the base tables
@@ -69,7 +79,10 @@ const POSTS = 600;
       // is a gap in the mock, not a fault in the tool - but it must be reported
       // as an untested tool rather than folded into a pass, or the summary line
       // would claim coverage this test does not have.
-      if (/42P01/.test(e.message)) { skipped = true; note = ' — needs a view the mock does not implement'; }
+      // 42P01 "relation does not exist" and 42703 "column does not exist" both
+      // mean the mock lacks a view, not that the tool is broken. Read them from
+      // e.pgCode: the message no longer carries them, on purpose.
+      if (e.pgCode === '42P01' || e.pgCode === '42703') { skipped = true; note = ' — needs a view the mock does not implement'; }
       else { note = ' — ' + e.message.slice(0, 60); }
     }
     if (skipped) { untested.push(t.name); }

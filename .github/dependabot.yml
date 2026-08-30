@@ -1,0 +1,16 @@
+# A pinned SHA is only safe if somebody moves it when upstream fixes something.
+# Without this the pins added on 30 Aug 2026 would silently rot.
+#
+# There is no npm entry because this project has no dependencies at all -
+# package.json declares neither dependencies nor devDependencies - so GitHub
+# Actions is the entire third-party surface.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: ci
+    labels:
+      - dependencies

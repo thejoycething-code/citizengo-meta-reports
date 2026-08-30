@@ -52,6 +52,9 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-server.listen(PORT, () => {
+// 127.0.0.1, not every interface. This server applies no authentication - unlike
+// the Vercel functions, which all go through checkAuth - so binding 0.0.0.0
+// published the dashboard to whatever network the laptop was on.
+server.listen(PORT, '127.0.0.1', () => {
   console.log(`dev dashboard on http://localhost:${PORT}  (sink=${store.name}, no auth — localhost only)`);
 });

@@ -72,7 +72,8 @@ async function listPages(store) {
   };
 }
 
-async function topPosts(store, { page_id, days = 30, sort = 'views', limit = 10 }) {
+async function topPosts(store, { page_id, days: d = 30, sort = 'views', limit: l = 10 }) {
+  const days = clampDays(d, 30); const limit = clampRows(l, 10, 100);
   const data = await store.loadAll();
   if (page_id && !data.pages.some((g) => g.page_id === page_id)) {
     return {
@@ -105,7 +106,8 @@ async function topPosts(store, { page_id, days = 30, sort = 'views', limit = 10 
   };
 }
 
-async function pageSummary(store, { page_id, days = 30 }) {
+async function pageSummary(store, { page_id, days: d = 30 }) {
+  const days = clampDays(d, 30);
   const data = await store.loadAll();
   const all = shapePages(data);
   const page = all.find((g) => g.page_id === page_id);
@@ -130,7 +132,8 @@ async function pageSummary(store, { page_id, days = 30 }) {
   return { text: lines.join('\n') + gapNote(feed.rows), data: { page, posts: feed.total } };
 }
 
-async function comparePages(store, { days = 30 }) {
+async function comparePages(store, { days: d = 30 }) {
+  const days = clampDays(d, 30);
   const data = await store.loadAll();
   const pages = shapePages(data);
   let anyIncomplete = false;
@@ -231,9 +234,21 @@ async function dataHealth(store) {
 // returned every post more than 1.5x or under 0.5x the median - which on a
 // 90-day window across 36 pages was 2,225 lines and 439,000 characters, most of
 // it posts that were unremarkable in the ordinary way.
+// Caller-supplied bounds, clamped rather than trusted.
+//
+// These were defaults, not maximums. The 25-row cap on outliers existed because
+// that tool once returned 439,241 characters, but {"limit": 100000} restored the
+// original behaviour, and every tool advertises both parameters in its input
+// schema - so a client did not even have to guess.
+const clampRows = (v, dflt, max = 200) =>
+  Math.min(Math.max(Math.floor(Number(v)) || dflt, 1), max);
+const clampDays = (v, dflt) =>
+  Math.min(Math.max(Math.floor(Number(v)) || dflt, 1), 400);
+
 const OUTLIER_ROWS = 25;
 
-async function outliers(store, { page_id, days = 90, limit = OUTLIER_ROWS }) {
+async function outliers(store, { page_id, days: d = 90, limit: l = OUTLIER_ROWS }) {
+  const days = clampDays(d, 90); const limit = clampRows(l, OUTLIER_ROWS, 100);
   const data = await store.loadAll();
   const feed = shapeFeed(data, { page_id, since: sinceFor(days), sort: 'views' });
   const base = pageBaseline(feed.rows);
@@ -300,7 +315,8 @@ async function outliers(store, { page_id, days = 90, limit = OUTLIER_ROWS }) {
 // Results are ranked by REACH, not relevance. A campaigner asking "how did our
 // marriage posts do" wants the ones that travelled, not the ones that mention the
 // word most often — and Meta gives us no relevance signal anyway.
-async function searchPosts(store, { query, page_id, days = 0, limit = 15 }) {
+async function searchPosts(store, { query, page_id, days: d = 0, limit: l = 15 }) {
+  const days = Math.min(Math.max(Math.floor(Number(d)) || 0, 0), 400); const limit = clampRows(l, 15, 100);
   if (!query || !String(query).trim()) {
     return { text: 'Give a search term — a word or phrase that appears in the post text.', data: null };
   }
@@ -345,7 +361,8 @@ async function searchPosts(store, { query, page_id, days = 0, limit = 15 }) {
 
 // Page-level trend, as opposed to individual post performance. Answers "are we
 // growing" rather than "did this post work".
-async function pageGrowth(store, { page_id, days = 30 }) {
+async function pageGrowth(store, { page_id, days: d = 30 }) {
+  const days = clampDays(d, 30);
   const rows = await store.pageGrowth({ page_id, since: sinceFor(days) });
   if (!rows || !rows.length) {
     return {
@@ -404,7 +421,8 @@ async function pageGrowth(store, { page_id, days = 30 }) {
 }
 
 
-async function instagramPosts(store, { page_id, days = 30, sort = 'reach', limit = 15 }) {
+async function instagramPosts(store, { page_id, days: d = 30, sort = 'reach', limit: l = 15 }) {
+  const days = clampDays(d, 30); const limit = clampRows(l, 15, 100);
   const rows = await store.igMedia({ page_id, since: sinceFor(days), sort, limit });
   if (!rows || !rows.length) {
     return {
@@ -433,7 +451,8 @@ async function instagramPosts(store, { page_id, days = 30, sort = 'reach', limit
   };
 }
 
-async function adSpend(store, { page_id, days = 90, limit = 20 }) {
+async function adSpend(store, { page_id, days: d = 90, limit: l = 20 }) {
+  const days = clampDays(d, 90); const limit = clampRows(l, 20, 100);
   const rows = await store.adSpend({ page_id, since: sinceFor(days), limit });
   if (!rows || !rows.length) {
     return {
