@@ -60,7 +60,20 @@ function tokenIdentity(supplied) {
   //    These carry no per-person identity - the consent step proves possession
   //    of a team token, nothing more - so they are logged as such.
   try {
-    return verify(supplied, 'access') ? 'oauth' : null;
+    const claims = verify(supplied, 'access');
+    if (!claims) return null;
+    // An OAuth session is only as alive as the team token that authorised it.
+    // Re-checked on EVERY request against the current MCP_TOKENS, so deleting a
+    // person's entry ends their claude.ai session on the next call rather than
+    // when the refresh token happens to expire. Previously an OAuth token
+    // outlived the credential it came from by up to its full lifetime.
+    if (claims.who) {
+      const stillListed = guard.usableTokens(process.env.MCP_TOKENS)
+        .some((e2) => e2.name === claims.who);
+      return stillListed ? claims.who : null;
+    }
+    // Issued before identity binding: honoured until it expires, but anonymous.
+    return 'oauth (pre-identity)';
   } catch (e) {
     // OAUTH_SIGNING_SECRET unset - OAuth simply unavailable, static still works.
     return null;

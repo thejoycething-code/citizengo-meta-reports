@@ -18,7 +18,19 @@ const ACCESS_TTL = 60 * 60;            // 1 hour
 // refresh token stops working immediately. There is no way to revoke one person
 // without revoking all of them; per-person MCP_TOKENS entries are the mechanism
 // for that.
-const REFRESH_TTL = 60 * 60 * 24 * 7;  // 7 days
+// Thirty days, not seven.
+//
+// Seven was chosen during the security review on the reasoning that a leaked
+// refresh token cannot be revoked. That reasoning no longer holds: tokens now
+// carry WHO consented, and the endpoint re-checks that name against MCP_TOKENS
+// on every request, so deleting one entry ends that person's session on their
+// next call. Revocation is immediate rather than a wait for expiry.
+//
+// Shortening it was also poorly matched to how the tool is used. This is a
+// reporting connector people open after a campaign, not daily; a seven-day
+// window means someone who checks in fortnightly re-consents every time, which
+// is how a tool stops being used.
+const REFRESH_TTL = 60 * 60 * 24 * 30;  // 30 days
 
 function fail(res, code, description, status = 400) {
   res.status(status).json({ error: code, error_description: description });
@@ -39,13 +51,15 @@ module.exports = async function handler(req, res) {
     body = Object.fromEntries(new URLSearchParams(raw));
   }
 
-  const issue = () => {
+  // `who` rides along on both tokens, so every request can be attributed and
+  // re-authorised against the current MCP_TOKENS.
+  const issue = (who) => {
     res.status(200).json({
-      access_token: sign({ typ: 'access', scope: 'mcp' }, ACCESS_TTL),
+      access_token: sign({ typ: 'access', scope: 'mcp', who }, ACCESS_TTL),
       token_type: 'Bearer',
       expires_in: ACCESS_TTL,
       // Rotated on every refresh, as OAuth 2.1 requires for public clients.
-      refresh_token: sign({ typ: 'refresh', scope: 'mcp' }, REFRESH_TTL),
+      refresh_token: sign({ typ: 'refresh', scope: 'mcp', who }, REFRESH_TTL),
       scope: 'mcp',
     });
   };
@@ -68,14 +82,14 @@ module.exports = async function handler(req, res) {
     if (!verifyPkce(body.code_verifier, claims.code_challenge)) {
       fail(res, 'invalid_grant', 'PKCE verification failed'); return;
     }
-    issue();
+    issue(claims.who || null);
     return;
   }
 
   if (body.grant_type === 'refresh_token') {
     const claims = verify(body.refresh_token, 'refresh');
     if (!claims) { fail(res, 'invalid_grant', 'Refresh token is invalid or expired'); return; }
-    issue();
+    issue(claims.who || null);
     return;
   }
 

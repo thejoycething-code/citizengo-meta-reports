@@ -25,6 +25,7 @@ process.env.SUPABASE_URL = 'http://localhost:1';       // never reached; auth fa
 process.env.SUPABASE_SERVICE_KEY = 'unused';
 process.env.AUTH_FAIL_LIMIT = '5';
 process.env.MCP_MAX_BATCH = '20';
+process.env.OAUTH_SIGNING_SECRET = 'test-signing-secret-not-a-real-one';
 
 const handler = require(path.join(ROOT, 'api', 'mcp.js'));
 const guard = require(path.join(ROOT, 'lib', 'guard.js'));
@@ -93,6 +94,37 @@ const ping = { jsonrpc: '2.0', id: 1, method: 'ping' };
     guard.usableTokens(`carol:${WEAK}`).length === 0);
   check('a token containing a colon survives the name split',
     guard.identify('cgo_Ab3:Cd9Xq7RmT2vLp5Wz', guard.usableTokens('dave:cgo_Ab3:Cd9Xq7RmT2vLp5Wz')) === 'dave');
+
+  console.log('\nOAuth sessions are attributable and revocable\n');
+
+  {
+    const { sign } = require(path.join(ROOT, 'lib', 'oauth.js'));
+    process.env.MCP_TOKENS = `alice:${STRONG}`;
+
+    const aliceOauth = sign({ typ: 'access', scope: 'mcp', who: 'alice' }, 3600);
+    check('an OAuth token issued to alice is accepted',
+      (await call(ping, aliceOauth, '198.51.100.30')).status === 200);
+
+    // The point of the whole exercise: deleting the entry ends the session on
+    // the NEXT request, not when the refresh token happens to expire.
+    process.env.MCP_TOKENS = 'bob:cgo_Zm5Wq8tRx2NpKv6yLd4H';
+    check('removing alice from MCP_TOKENS revokes her OAuth session immediately',
+      (await call(ping, aliceOauth, '198.51.100.31')).status === 401);
+
+    process.env.MCP_TOKENS = `alice:${STRONG}`;
+    check('restoring the entry restores the session',
+      (await call(ping, aliceOauth, '198.51.100.32')).status === 200);
+
+    const anon = sign({ typ: 'access', scope: 'mcp' }, 3600);
+    check('a token issued before identity binding still works until it expires',
+      (await call(ping, anon, '198.51.100.33')).status === 200);
+
+    const forged = sign({ typ: 'access', scope: 'mcp', who: 'mallory' }, 3600);
+    check('a signed token naming somebody not in MCP_TOKENS is refused',
+      (await call(ping, forged, '198.51.100.34')).status === 401);
+
+    process.env.MCP_TOKENS = STRONG;
+  }
 
   console.log('\nDurable failure store (survives cold starts)\n');
 

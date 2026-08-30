@@ -5,7 +5,7 @@
 // There is no user directory behind this. Consent means "prove you hold the
 // shared team token", which is the same gate Claude Code uses as a bearer
 // header — just wrapped in the flow Claude.ai expects.
-const { sign, verify, redirectUriAllowed, teamTokenValid } = require('../../lib/oauth');
+const { sign, verify, redirectUriAllowed, teamTokenIdentity } = require('../../lib/oauth');
 const guard = require('../../lib/guard');
 
 const esc = (s) => String(s || '').replace(/[&<>"']/g, (c) =>
@@ -89,7 +89,8 @@ module.exports = async function handler(req, res) {
     return;
   }
 
-  if (!teamTokenValid(p.team_token)) {
+  const who = teamTokenIdentity(p.team_token);
+  if (!who) {
     await guard.recordFailure(source, 'authorize');
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.status(401).send(page({ params: p, error: 'That token was not recognised. Check it with whoever set up the connector.' }));
@@ -104,6 +105,11 @@ module.exports = async function handler(req, res) {
     redirect_uri: p.redirect_uri,
     // Carried so /token can refuse a code redeemed by a different client.
     client_id: p.client_id || null,
+    // WHO consented. Carried through to the access and refresh tokens so a
+    // claude.ai session is attributable to a person, and so deleting that
+    // person's MCP_TOKENS entry revokes it on their next request. Without this
+    // an OAuth session outlived the credential that authorised it.
+    who,
   }, 60);
 
   const dest = new URL(p.redirect_uri);
