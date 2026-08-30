@@ -161,7 +161,14 @@ async function main() {
     .sort((a, b) => (b.views_total || 0) - (a.views_total || 0));
 
   const over = scored.filter((r) => r.benchmark && r.benchmark.views_x_median >= 1.5);
-  const under = scored.filter((r) => r.benchmark && r.benchmark.views_x_median < 0.5);
+  // Ranked by how far below ITS OWN page's normal each post fell, not by raw
+  // views. Sorted by views, HazteOir filled all five slots every week simply
+  // because its posts are larger in absolute terms - a 12,000-view post there is
+  // a miss, while the same number would be a record on most other pages. The
+  // underperformers on smaller pages were never visible at all.
+  const under = scored
+    .filter((r) => r.benchmark && r.benchmark.views_x_median < 0.5)
+    .sort((x, y) => x.benchmark.views_x_median - y.benchmark.views_x_median);
   const carried = scored.filter((r) => r.benchmark && r.benchmark.shares_x_median >= 2);
 
   const viewsDelta = lastWeek.views > 0 ? ((thisWeek.views - lastWeek.views) / lastWeek.views) * 100 : null;
@@ -253,9 +260,20 @@ async function main() {
   if (!under.length) {
     L.push('No post fell well below the usual level this week.');
   } else {
-    L.push('These reached well under half what this page normally does. Worth a look at format and timing rather than subject — several are on themes that have worked before.');
+    L.push('These fell furthest below what their **own** page normally does — so a small page having a bad week appears here beside a large one. Worth a look at format and timing rather than subject; several are on themes that have worked before.');
     L.push('');
-    for (const r of under.slice(0, 5)) {
+    // At most two per page, so one prolific page cannot crowd out the rest even
+    // when it genuinely holds the five worst multiples.
+    const spread = [];
+    const perPage = new Map();
+    for (const r of under) {
+      const seen = perPage.get(r.page_id) || 0;
+      if (!page && seen >= 2) continue;
+      perPage.set(r.page_id, seen + 1);
+      spread.push(r);
+      if (spread.length === 5) break;
+    }
+    for (const r of spread) {
       L.push(`- **"${clean(r.message, 110)}"**`);
       L.push(`  ${r.benchmark.views_x_median}× a normal post · ${shortDate(r.created_time)}${page ? '' : ' · ' + r.page_name} · ${n(r.views_total)} views${r.permalink_url ? ` · [see the post](${r.permalink_url})` : ''}`);
     }
