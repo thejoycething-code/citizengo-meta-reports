@@ -61,7 +61,7 @@ function shareOfWeek(w) {
   return w.views > 0 ? w.top_views / w.views : 0;
 }
 
-function changeNote(thisWeek, lastWeek) {
+function changeNote(thisWeek, lastWeek, medDelta) {
   if (!lastWeek.posts) return 'No posts the week before, so there is nothing to compare against.';
 
   const notes = [];
@@ -73,7 +73,19 @@ function changeNote(thisWeek, lastWeek) {
   if (domPrev >= 0.5) {
     notes.push(`${Math.round(domPrev * 100)}% of last week's views came from one post, so the drop is that single post ending rather than a fall in normal performance`);
   } else if (domNow >= 0.5) {
-    notes.push(`${Math.round(domNow * 100)}% of this week's views came from one post, so the rise is that single post rather than a broad improvement`);
+    // Say what actually happened. This branch fires on CONCENTRATION, which says
+
+    // nothing about direction — it printed "the rise" directly beneath a 24% fall.
+
+    const fell = typeof medDelta === 'number' && medDelta < 0;
+
+    notes.push(`${Math.round(domNow * 100)}% of this week's views came from one post, so `
+
+      + (fell
+
+        ? 'the headline is that single post, not a recovery — the typical post still fell'
+
+        : 'the rise is that single post rather than a broad improvement'));
   }
   if (!notes.length) return null;
   return notes.join('; and ').replace(/^./, (c) => c.toUpperCase()) + '.';
@@ -173,7 +185,7 @@ async function main() {
     // completeness because people will add the numbers up themselves otherwise.
     L.push(`- Typical post **${signed(medDelta)}** against the week before (total views ${signed(viewsDelta)})`);
   }
-  const caveat = changeNote(thisWeek, lastWeek);
+  const caveat = changeNote(thisWeek, lastWeek, medDelta);
   if (caveat) L.push(`- _${caveat}_`);
   L.push('');
 

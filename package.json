@@ -1,6 +1,6 @@
 {
   "name": "citizengo-meta-reports",
-  "version": "3.3.1",
+  "version": "3.4.0",
   "private": true,
   "description": "Organic Facebook + Instagram post data pipeline for CitizenGO pages.",
   "scripts": {
