@@ -7,6 +7,7 @@
 // that the door was shut. All three findings fixed here were live in production
 // while every test was green.
 
+const fs = require('fs');
 const http = require('http');
 const path = require('path');
 
@@ -260,6 +261,30 @@ const ping = { jsonrpc: '2.0', id: 1, method: 'ping' };
 
     delete process.env.MCP_PUBLIC;
     process.env.MCP_TOKENS = saved;
+  }
+
+  console.log('\nAudit-log hygiene (second review, N1/N2)\n');
+
+  {
+    const { supabaseStore, fileStore } = require(path.join(ROOT, 'lib', 'store.js'));
+    const supa = supabaseStore({ url: 'http://localhost:1', serviceKey: 'k' });
+    check('the store exposes retention, so it can actually be called',
+      typeof supa.pruneAuthFailures === 'function');
+    check('the file backend does not pretend to offer it',
+      typeof fileStore({ dir: './data' }).pruneAuthFailures === 'undefined');
+
+    // N1: the schema must not define a function in the public schema, because
+    // PostgREST publishes those as RPC endpoints executable by PUBLIC.
+    const schema = fs.readFileSync(path.join(ROOT, 'sql', 'schema.sql'), 'utf8');
+    check('no function is defined in the public schema',
+      !/create (or replace )?function public\./i.test(schema),
+      'a public function becomes a callable REST endpoint');
+
+    // N2: retention has to be invoked by something. A cleanup nothing calls is
+    // exactly the failure this replaced.
+    const watchdog = fs.readFileSync(path.join(ROOT, 'scripts', 'check-freshness.js'), 'utf8');
+    check('the daily watchdog invokes retention',
+      /pruneAuthFailures\(/.test(watchdog));
   }
 
   console.log('\nFail closed (F1)\n');

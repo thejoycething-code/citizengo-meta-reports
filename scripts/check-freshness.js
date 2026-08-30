@@ -154,6 +154,19 @@ async function main() {
     console.log(`Coverage check skipped: ${e.message}`);
   }
 
+  // Housekeeping, not a check: trim the brute-force audit log. Done here because
+  // the watchdog is the daily job that is guaranteed to run and already holds the
+  // credentials. Never allowed to fail the run - a full disk is a problem, but a
+  // failed tidy-up is not a reason to report the pipeline as broken.
+  if (typeof store.pruneAuthFailures === 'function') {
+    try {
+      const removed = await store.pruneAuthFailures(1);
+      if (removed) console.log(`Pruned ${removed} expired auth-failure row(s).`);
+    } catch (e) {
+      console.error(`Auth-failure prune skipped: ${e.message}`);
+    }
+  }
+
   if (ageDays >= MAX_AGE) {
     const msg = `CitizenGO organic reporting has stopped. Last collection was ${f.latest}, `
       + `${ageDays} days ago. Most likely an expired Facebook token or a failed nightly run. `

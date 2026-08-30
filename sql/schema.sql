@@ -386,10 +386,11 @@ create index if not exists meta_auth_failures_lookup
 alter table public.meta_auth_failures enable row level security;
 revoke all on public.meta_auth_failures from anon, authenticated;
 
-create or replace function public.prune_meta_auth_failures()
-returns void language sql as $$
-  delete from public.meta_auth_failures where at < now() - interval '1 day';
-$$;
+-- Retention is a DELETE issued by the daily watchdog (see lib/store.js,
+-- pruneAuthFailures) rather than a function. A function in the public schema is
+-- published by PostgREST as an RPC endpoint and is executable by PUBLIC unless
+-- revoked, so a row-deleting routine sat on the API surface reachable with the
+-- anon key. Dropped 30 Aug 2026 after the second security review.
 
 -- ---------------------------------------------------------------------------
 -- Added 30 Aug 2026. How far a post travelled AS A SHARED OBJECT.
