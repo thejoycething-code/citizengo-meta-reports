@@ -8,6 +8,28 @@
 const { sign, verify, redirectUriAllowed, teamTokenIdentity } = require('../../lib/oauth');
 const guard = require('../../lib/guard');
 
+// The consent page collects a password, so it must not be embeddable. Without a
+// framing header any site can overlay it transparently on a decoy control and
+// capture the token as it is typed - and because the framed page is genuinely
+// ours, its certificate and address bar survive inspection.
+//
+// form-action is the more valuable half: it stops the form being rewritten to
+// post the token somewhere else. The page loads no scripts and no external
+// assets, so a restrictive policy costs nothing here.
+//
+// Applied to every response this endpoint produces, including the 400s and the
+// 401 that re-renders the form after a wrong token - a header set only on the
+// happy path protects only the requests that were never at risk.
+function secureHeaders(res) {
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Content-Security-Policy',
+    "frame-ancestors 'none'; default-src 'none'; style-src 'unsafe-inline'; "
+    + "form-action 'self'; base-uri 'none'");
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Referrer-Policy', 'no-referrer');
+  res.setHeader('Cache-Control', 'no-store');
+}
+
 const esc = (s) => String(s || '').replace(/[&<>"']/g, (c) =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
@@ -41,6 +63,7 @@ ${error ? `<div class="err">${esc(error)}</div>` : ''}
 }
 
 module.exports = async function handler(req, res) {
+  secureHeaders(res);
   const q = req.query || {};
 
   if (req.method === 'GET') {

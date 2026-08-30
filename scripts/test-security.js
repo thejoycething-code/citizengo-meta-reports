@@ -322,6 +322,41 @@ const ping = { jsonrpc: '2.0', id: 1, method: 'ping' };
       !under({ GUARD_DURABLE: 'off', GITHUB_ACTIONS: 'true' }, 'assertDurableGuardSafe'));
   }
 
+  console.log('\nConsent page cannot be framed\n');
+
+  {
+    const authorize = require(path.join(ROOT, 'api', 'oauth', 'authorize.js'));
+    // Minimal response double: records what the handler set.
+    const headersOn = async (query) => {
+      const set = {};
+      const res = {
+        setHeader: (k, v) => { set[k.toLowerCase()] = v; },
+        status: () => res, send: () => res, json: () => res, end: () => res,
+        writeHead: () => res,
+      };
+      await authorize({ method: 'GET', query, headers: {} }, res);
+      return set;
+    };
+
+    const good = await headersOn({
+      redirect_uri: 'https://claude.ai/api/mcp/auth_callback',
+      code_challenge: 'abc', code_challenge_method: 'S256',
+    });
+    check('the rendered consent page refuses to be framed',
+      good['x-frame-options'] === 'DENY', JSON.stringify(good['x-frame-options']));
+    check('its policy also blocks framing and pins form submission',
+      /frame-ancestors 'none'/.test(good['content-security-policy'] || '')
+      && /form-action 'self'/.test(good['content-security-policy'] || ''),
+      good['content-security-policy']);
+    check('it is not cached', good['cache-control'] === 'no-store');
+
+    // A header set only on the happy path protects only the requests that were
+    // never at risk, so the rejection paths are checked too.
+    const bad = await headersOn({ redirect_uri: 'https://evil.example/x' });
+    check('the rejection path carries the same headers',
+      bad['x-frame-options'] === 'DENY' && !!bad['content-security-policy']);
+  }
+
   console.log('\nFail closed (F1)\n');
 
   {
