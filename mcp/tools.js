@@ -423,13 +423,30 @@ async function adSpend(store, { page_id, days = 90, limit = 20 }) {
       data: null,
     };
   }
-  const spend = rows.reduce((a, r) => a + (Number(r.total_spend) || 0), 0);
-  const cur = rows[0].currency || '';
+  // Spend is in whatever currency each ad account bills in — this estate uses
+    // seven. Summing them gives a number that means nothing, and labelling that
+    // sum with the first row's currency makes it look like it does: this reported
+    // "ARS 141431.18 total" for a mix of ARS, GBP, CAD and AUD.
+    //
+    // Ranking had the same flaw and it mattered more. Sorted by raw spend, a
+    // 139,207 ARS boost (about GBP 100) outranked a genuine GBP 658 one purely
+    // because the number is larger. Ordered by paid reach instead: currency
+    // neutral, and closer to the question being asked.
+    const byCurrency = new Map();
+    for (const r of rows) {
+      const c = r.currency || '?';
+      byCurrency.set(c, (byCurrency.get(c) || 0) + (Number(r.total_spend) || 0));
+    }
+    const multi = byCurrency.size > 1;
+    const totals = [...byCurrency.entries()].sort((a, b) => b[1] - a[1])
+      .map(([c, v]) => `${c} ${v.toLocaleString('en-GB', { maximumFractionDigits: 0 })}`)
+      .join(' · ');
+    const sorted = [...rows].sort((a, b) => (b.ad_reach || 0) - (a.ad_reach || 0));
   return {
-    text: `**Boosted posts · last ${days} days** · ${rows.length} post${rows.length === 1 ? '' : 's'}, ${cur} ${spend.toFixed(2)} total\n\n`
+    text: `**Boosted posts · last ${days} days** · ${rows.length} post${rows.length === 1 ? '' : 's'}\n\nSpend by currency: ${totals}${multi ? '. These are **not** added together — different ad accounts bill in different currencies, so one total would be meaningless.' : '.'}\n\n`
       + table(
         ['Date', 'Page', 'Post', 'Spend', 'Paid reach', 'Cost/1k', 'Organic views', 'Paid views', 'Organic:paid'],
-        rows.map((r) => [
+        sorted.map((r) => [
           (r.created_time || '').slice(0, 10),
           r.page_name || '—',
           r.permalink_url ? `[${truncate(r.message, 44).replace(/\|/g, '\\|')}](${r.permalink_url})` : truncate(r.message, 44),
@@ -440,7 +457,8 @@ async function adSpend(store, { page_id, days = 90, limit = 20 }) {
           r.organic_to_paid_ratio !== null && r.organic_to_paid_ratio !== undefined ? Number(r.organic_to_paid_ratio).toFixed(2) + '×' : '—',
         ])
       )
-      + '\n\n_"Organic:paid" is how much reach the post earned for free against what was paid for. Above 1 means the free half did more work than the money did — those are the posts worth studying, and arguably the ones worth boosting harder._',
+      + (multi ? '\n\n_Ordered by paid reach, not spend: amounts in different currencies cannot be ranked against each other._' : '')
+        + '\n\n_"Organic:paid" is how much reach the post earned for free against what was paid for. Above 1 means the free half did more work than the money did — those are the posts worth studying, and arguably the ones worth boosting harder._',
     data: rows,
   };
 }
