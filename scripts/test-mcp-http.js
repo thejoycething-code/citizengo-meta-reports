@@ -12,8 +12,8 @@ const { loadEnv } = require('../lib/graph');
 loadEnv();
 
 const PORT = 5808;
-const GOOD = 'test-token-alice';
-process.env.MCP_TOKENS = `${GOOD},test-token-bob`;
+const GOOD = 'test_Alice_7Kq2Vx9RmT4wZb6J';
+process.env.MCP_TOKENS = `${GOOD},test_Bob_3Hn8QyL5sW7pD2vX`;
 
 const handler = require(path.join(__dirname, '..', 'api', 'mcp.js'));
 // Compared against the actual definitions rather than a hardcoded number, so

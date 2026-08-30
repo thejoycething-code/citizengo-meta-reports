@@ -18,6 +18,7 @@
 const { supabaseStore } = require('../lib/store');
 const { verify, originOf } = require('../lib/oauth');
 const { TOOLS, callTool } = require('../mcp/tools');
+const guard = require('../lib/guard');
 
 const SERVER_INFO = { name: 'citizengo-meta-reports', version: '1.0.0' };
 
@@ -28,10 +29,10 @@ const RATE_LIMIT = Number(process.env.MCP_RATE_LIMIT || 60);   // calls
 const RATE_WINDOW_MS = 60_000;                                  // per minute
 const hits = new Map();
 
-function rateLimited(key) {
+function rateLimited(key, cost = 1) {
   const now = Date.now();
   const seen = (hits.get(key) || []).filter((t) => now - t < RATE_WINDOW_MS);
-  seen.push(now);
+  for (let i = 0; i < cost; i++) seen.push(now);
   hits.set(key, seen);
   // Unbounded growth is the obvious failure here, so evict cold keys.
   if (hits.size > 500) {
@@ -47,13 +48,10 @@ function tokenIsValid(supplied) {
 
   // 1. A static team token, as used by Claude Code and by claude.ai's
   //    static_headers option.
-  const configured = String(process.env.MCP_TOKENS || '')
-    .split(',').map((t) => t.trim()).filter(Boolean);
-  // Compare against all rather than early-exiting on first mismatch.
-  const staticOk = configured.length
-    ? configured.reduce((ok, t) => (t === supplied ? true : ok), false)
-    : false;
-  if (staticOk) return true;
+  // usableTokens drops any configured token too weak to be a credential and
+  // says so in the log. matchesAny compares SHA-256 digests with
+  // timingSafeEqual, so neither contents nor length leak through timing.
+  if (guard.matchesAny(supplied, guard.usableTokens(process.env.MCP_TOKENS))) return true;
 
   // 2. An OAuth access token this server issued. claude.ai cannot send a fixed
   //    header on a personal account, so it goes through the OAuth flow instead.
@@ -144,21 +142,24 @@ module.exports = async function handler(req, res) {
 
   const auth = req.headers.authorization || '';
   const supplied = auth.startsWith('Bearer ') ? auth.slice(7).trim() : '';
+  const source = guard.clientIp(req);
+
+  // Checked BEFORE the credential is examined, so a source that has been
+  // guessing gets nothing back that varies with the token it sent.
+  if (guard.failureLimited(source)) {
+    res.setHeader('Retry-After', '600');
+    res.status(429).json(rpcError(null, -32002,
+      'Too many failed authentication attempts. Try again later.'));
+    return;
+  }
+
   if (!tokenIsValid(supplied)) {
+    guard.recordFailure(source);
     // 401 with WWW-Authenticate is what MCP clients expect for an auth failure.
     const origin = originOf(req);
     res.setHeader('WWW-Authenticate',
       `Bearer resource_metadata="${origin}/.well-known/oauth-protected-resource"`);
     res.status(401).json(rpcError(null, -32001, 'Unauthorized'));
-    return;
-  }
-
-  // Keyed on the credential rather than IP: every request from Claude arrives
-  // from Anthropic's egress range, so IP would throttle all users together.
-  if (rateLimited(supplied.slice(0, 24))) {
-    res.setHeader('Retry-After', '60');
-    res.status(429).json(rpcError(null, -32002,
-      `Rate limit exceeded: more than ${RATE_LIMIT} requests in a minute. Try again shortly.`));
     return;
   }
 
@@ -174,8 +175,27 @@ module.exports = async function handler(req, res) {
   }
 
   // Batches are permitted by JSON-RPC; handle them rather than silently taking
-  // only the first message.
+  // only the first message. But an uncapped batch is one request that does
+  // arbitrary work: the limiter counted requests, so a 5,000-entry batch spent
+  // one of sixty allowed calls and ran loadAll() five thousand times.
+  const MAX_BATCH = Number(process.env.MCP_MAX_BATCH || 20);
+  if (Array.isArray(body) && body.length > MAX_BATCH) {
+    res.status(400).json(rpcError(null, -32600,
+      `Batch too large: ${body.length} messages, maximum ${MAX_BATCH}.`));
+    return;
+  }
   const messages = Array.isArray(body) ? body : [body];
+
+  // Keyed on the credential rather than IP: every request from Claude arrives
+  // from Anthropic's egress range, so IP would throttle all users together.
+  // Charged per MESSAGE, so a batch cannot buy extra work for one request.
+  if (rateLimited(supplied.slice(0, 24), messages.length)) {
+    res.setHeader('Retry-After', '60');
+    res.status(429).json(rpcError(null, -32002,
+      `Rate limit exceeded: more than ${RATE_LIMIT} calls in a minute. Try again shortly.`));
+    return;
+  }
+
   const replies = [];
   for (const msg of messages) {
     // Notifications carry no id and MUST NOT be answered.

@@ -6,6 +6,7 @@
 // shared team token", which is the same gate Claude Code uses as a bearer
 // header — just wrapped in the flow Claude.ai expects.
 const { sign, verify, redirectUriAllowed, teamTokenValid } = require('../../lib/oauth');
+const guard = require('../../lib/guard');
 
 const esc = (s) => String(s || '').replace(/[&<>"']/g, (c) =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -32,7 +33,7 @@ button{margin-top:1rem;width:100%;padding:.65rem;font-size:1rem;font-weight:600;
 ${error ? `<div class="err">${esc(error)}</div>` : ''}
 <form method="POST">${hidden}
 <label for="t">Team access token</label>
-<input id="t" name="team_token" type="password" autocomplete="off" autofocus required placeholder="cgo_…">
+<input id="t" name="team_token" type="password" autocomplete="off" autofocus required>
 <button type="submit">Allow access</button>
 </form>
 <p class="note">Ask whoever set up the connector for the token. It grants read access to post performance figures only — it cannot post, change or delete anything.</p>
@@ -67,7 +68,22 @@ module.exports = async function handler(req, res) {
   const p = { ...q, ...body };
   if (!redirectUriAllowed(p.redirect_uri)) { res.status(400).send('invalid redirect_uri'); return; }
 
+  // This consent form had no throttling whatsoever, so the team token could be
+  // guessed at full speed. Failures are counted by source, which a guesser
+  // cannot vary by changing the token they submit.
+  const source = guard.clientIp(req);
+  if (guard.failureLimited(source)) {
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader('Retry-After', '600');
+    res.status(429).send(page({
+      params: p,
+      error: 'Too many incorrect attempts. Wait a few minutes and try again.',
+    }));
+    return;
+  }
+
   if (!teamTokenValid(p.team_token)) {
+    guard.recordFailure(source);
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.status(401).send(page({ params: p, error: 'That token was not recognised. Check it with whoever set up the connector.' }));
     return;
