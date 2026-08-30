@@ -164,7 +164,21 @@ async function comparePages(store, { days = 30 }) {
   };
 }
 
+// Instagram was invisible in data_health, so the only way to know whether it had
+// metrics was to query the database by hand - and doing that against the latest
+// collected_date, which may be a small targeted run rather than the last full
+// one, reports zero coverage for accounts that are fully collected.
+async function igLine(store) {
+  if (typeof store.igCoverage !== 'function') return null;
+  let c;
+  try { c = await store.igCoverage(); } catch (e) { return null; }
+  if (!c || !c.hasMedia) return '- Instagram: **not collected**';
+  if (!c.total) return '- Instagram: posts collected, **no metrics yet** (needs instagram_manage_insights)';
+  return `- Instagram: **${c.withReach} of ${c.total}** posts have reach, as of ${c.latest}`;
+}
+
 async function dataHealth(store) {
+  const igStatus = (await igLine(store)) || '- Instagram: status unavailable';
   const data = await store.loadAll();
   const feed = shapeFeed(data, {});
   const pages = shapePages(data);
@@ -184,6 +198,7 @@ async function dataHealth(store) {
       noComments
         ? `- Posts with no comment count: **${noComments}** (needs the pages_read_user_content scope)`
         : '- Comment counts: **complete** on every post',
+      igStatus,
       '',
       'Known limitations to state when reporting:',
       '- Paid vs organic split comes from a breakdown, not a dedicated metric; all `post_impressions*` metrics were retired by Meta in 2026.',
