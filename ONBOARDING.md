@@ -33,10 +33,9 @@ behind **Settings → Connectors → Advanced → Developer mode**.
 **Staying connected.** After you connect once, it stays connected. You are only
 asked to sign in again if you have not used it for 30 days.
 
-**Don't have a token?** Ask Chris. Each person gets their own, so it can be turned
-off individually if you change roles or leave — which also means **don't pass yours
-on**. If a colleague needs access, they get their own. Keep it out of shared
-documents and anywhere outside CitizenGO.
+**Don't have a token?** Ask Chris. It's one shared team token — the same one for
+everyone — so keep it out of public documents and anywhere outside CitizenGO. It
+only ever reads performance figures; it cannot post, change or delete anything.
 
 ---
 
