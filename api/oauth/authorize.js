@@ -8,6 +8,7 @@
 const { sign, redirectUriAllowed, teamTokenIdentity, claimsFor, resourceMatches, REDIRECT_ORIGINS } = require('../../lib/oauth');
 const { corsFor } = require('../../lib/origin');
 const google = require('../../lib/google');
+const cimd = require('../../lib/cimd');
 const guard = require('../../lib/guard');
 
 // The consent page collects a password, so it must not be embeddable. Without a
@@ -69,7 +70,33 @@ function googleHref(params) {
   return `/api/oauth/google/start?${sp}`;
 }
 
-function page({ params, error }) {
+// Who is asking, for the consent page. A CIMD client says so in its document;
+// a registered client is named from where the code will be delivered. The spec
+// asks that the redirect hostname be shown clearly, so it is.
+function clientLabel(params, doc) {
+  let host = '';
+  try { host = new URL(params.redirect_uri).hostname; } catch (e) { /* refused earlier */ }
+  if (doc && doc.client_name) return { name: doc.client_name, host };
+  if (/(^|\.)claude\.ai$/.test(host)) return { name: 'Claude', host };
+  if (/(^|\.)(chatgpt\.com|openai\.com)$/.test(host)) return { name: 'ChatGPT', host };
+  return { name: 'Your assistant', host };
+}
+
+// Validates a Client ID Metadata Document client_id when one is presented.
+// Returns the document (or null for a registered client); writes the 400 and
+// returns false when the document cannot be verified.
+async function clientDocument(params, res) {
+  if (!cimd.isClientIdUrl(params.client_id)) return null;
+  try {
+    return await cimd.validateClient(params.client_id, params.redirect_uri);
+  } catch (e) {
+    console.warn(JSON.stringify({ at: new Date().toISOString(), event: 'cimd_refused', url: e.url, reason: e.reason || e.message }));
+    res.status(400).send('client metadata could not be verified');
+    return false;
+  }
+}
+
+function page({ params, error, client }) {
   const hidden = PASS
     .map((k) => (params[k] ? `<input type="hidden" name="${k}" value="${esc(params[k])}">` : '')).join('');
   const withGoogle = google.configured();
@@ -90,7 +117,7 @@ input[type=password]{width:100%;padding:.6rem .7rem;font-size:1rem;border:1px so
 @media(prefers-color-scheme:dark){input[type=password],.btn.alt{border-color:#444}.err{background:#3a1d1d;color:#f3b8b8;border-color:#5a2a2a}}
 </style></head><body>
 <h1>Connect CitizenGO organic reporting</h1>
-<p>Claude is asking to read organic Facebook performance data for CitizenGO pages. This connection is <strong>read-only</strong>.</p>
+<p><strong>${esc(client.name)}</strong> is asking to read organic Facebook performance data for CitizenGO pages. This connection is <strong>read-only</strong>.${client.host ? ` You will be returned to <strong>${esc(client.host)}</strong>.` : ''}</p>
 ${error ? `<div class="err">${esc(error)}</div>` : ''}
 ${withGoogle ? `<a class="btn" href="${esc(googleHref(params))}">Continue with Google</a>
 <p>Use your ${esc(google.allowedDomains().join(' or '))} account. Nothing to paste, nothing to remember.</p>
@@ -127,8 +154,10 @@ module.exports = async function handler(req, res) {
     if (!resourceMatches(q.resource, req)) {
       res.status(400).send('resource does not match this server'); return;
     }
+    const doc = await clientDocument(q, res);
+    if (doc === false) return;
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
-    res.status(200).send(page({ params: q, error: null }));
+    res.status(200).send(page({ params: q, error: null, client: clientLabel(q, doc) }));
     return;
   }
 
@@ -153,6 +182,9 @@ module.exports = async function handler(req, res) {
   if (!resourceMatches(p.resource, req)) {
     res.status(400).send('resource does not match this server'); return;
   }
+  const doc = await clientDocument(p, res);
+  if (doc === false) return;
+  const client = clientLabel(p, doc);
 
   // This consent form had no throttling whatsoever, so the team token could be
   // guessed at full speed. Failures are counted by source, which a guesser
@@ -162,7 +194,7 @@ module.exports = async function handler(req, res) {
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.setHeader('Retry-After', '600');
     res.status(429).send(page({
-      params: p,
+      params: p, client,
       error: 'Too many incorrect attempts. Wait a few minutes and try again.',
     }));
     return;
@@ -173,7 +205,7 @@ module.exports = async function handler(req, res) {
   if (!who) {
     await guard.recordFailure(source, 'authorize');
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
-    res.status(401).send(page({ params: p, error: 'That token was not recognised. Check it with whoever set up the connector.' }));
+    res.status(401).send(page({ params: p, client, error: 'That token was not recognised. Check it with whoever set up the connector.' }));
     return;
   }
 

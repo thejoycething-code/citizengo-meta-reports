@@ -9,6 +9,7 @@ const crypto = require('crypto');
 const { sign, redirectUriAllowed, resourceMatches, originOf } = require('../../../lib/oauth');
 const { corsFor } = require('../../../lib/origin');
 const google = require('../../../lib/google');
+const cimd = require('../../../lib/cimd');
 
 module.exports = async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
@@ -28,6 +29,10 @@ module.exports = async function handler(req, res) {
     res.status(400).send('code_challenge with S256 is required'); return;
   }
   if (!resourceMatches(q.resource, req)) { res.status(400).send('resource does not match this server'); return; }
+  if (cimd.isClientIdUrl(q.client_id)) {
+    try { await cimd.validateClient(q.client_id, q.redirect_uri); }
+    catch (e) { res.status(400).send('client metadata could not be verified'); return; }
+  }
 
   const nonce = crypto.randomBytes(16).toString('hex');
   // Ten minutes: long enough to pick an account, short enough that a captured

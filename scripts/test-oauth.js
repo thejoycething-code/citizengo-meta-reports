@@ -78,6 +78,29 @@ const gmock = http.createServer(async (req, res) => {
   res.statusCode = 404; res.end('mock: no route');
 });
 
+// A mock Client ID Metadata Document host. Loopback over http is accepted off
+// production precisely so this can exist.
+const CPORT = 5814;
+const CORIGIN = `http://localhost:${CPORT}`;
+let cimdHits = 0;
+const cmock = http.createServer((req, res) => {
+  cimdHits++;
+  const url = new URL(req.url, CORIGIN);
+  const base = { client_name: 'Test Assistant', redirect_uris: ['https://claude.ai/api/mcp/auth_callback', 'http://localhost/callback'], token_endpoint_auth_method: 'none' };
+  const docs = {
+    '/client.json':     { client_id: `${CORIGIN}/client.json`, ...base },
+    '/mismatch.json':   { client_id: 'https://elsewhere.example/mismatch.json', ...base },
+    '/noredirect.json': { client_id: `${CORIGIN}/noredirect.json`, ...base, redirect_uris: ['https://claude.ai/somewhere/else'] },
+    '/noname.json':     { client_id: `${CORIGIN}/noname.json`, redirect_uris: base.redirect_uris },
+  };
+  if (url.pathname === '/notjson') { res.setHeader('Content-Type', 'text/plain'); return res.end('nope'); }
+  if (url.pathname === '/redirect') { res.statusCode = 302; res.setHeader('Location', `${CORIGIN}/client.json`); return res.end(); }
+  const doc = docs[url.pathname];
+  if (!doc) { res.statusCode = 404; return res.end('{}'); }
+  res.setHeader('Content-Type', 'application/json'); res.setHeader('Cache-Control', 'max-age=300');
+  res.end(JSON.stringify(doc));
+});
+
 const routes = {
   '/api/oauth/google/start': require('../api/oauth/google/start.js'),
   '/api/oauth/google/callback': require('../api/oauth/google/callback.js'),
@@ -109,6 +132,7 @@ async function main() {
   });
   await new Promise((r) => server.listen(PORT, r));
   await new Promise((r) => gmock.listen(GPORT, r));
+  await new Promise((r) => cmock.listen(CPORT, r));
 
   console.log('\n1. Discovery');
   const prm = await (await fetch(`${ORIGIN}/api/oauth/metadata?doc=protected-resource`)).json();
@@ -247,7 +271,67 @@ async function main() {
     check('team tokens are unaffected by any of it', !!stillStatic.result);
   }
 
-  server.close(); gmock.close();
+  console.log('\n9. Client ID Metadata Documents (against a mock document host)');
+  {
+    const cimd = require('../lib/cimd.js');
+    check('authorization server metadata advertises CIMD alongside token auth method none',
+      asm.client_id_metadata_document_supported === true && asm.token_endpoint_auth_methods_supported.includes('none'));
+
+    const cq = (clientId, redirect = 'https://claude.ai/api/mcp/auth_callback') => new URLSearchParams({
+      client_id: clientId, redirect_uri: redirect, response_type: 'code',
+      code_challenge: challenge, code_challenge_method: 'S256', state: 'cimd-xyz', resource: `${ORIGIN}/api/mcp`,
+    });
+    const good = `${CORIGIN}/client.json`;
+    cimd.resetCache(); cimdHits = 0;
+    const g1 = await fetch(`${ORIGIN}/api/oauth/authorize?${cq(good)}`);
+    const g1t = await g1.text();
+    check('a URL client_id whose document checks out reaches the consent page', g1.status === 200, `HTTP ${g1.status}`);
+    check('the page names the client from its document and the return hostname', /Test Assistant/.test(g1t) && /claude\.ai/.test(g1t));
+    await fetch(`${ORIGIN}/api/oauth/authorize?${cq(good)}`);
+    check('the document is fetched once and cached per its Cache-Control', cimdHits === 1, `${cimdHits} fetches`);
+
+    const cpost = await fetch(`${ORIGIN}/api/oauth/authorize?${cq(good)}`, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'x-vercel-forwarded-for': '198.18.7.1' },
+      body: new URLSearchParams({ ...Object.fromEntries(cq(good)), team_token: 'cgo_TESTFIXTURE_9Wq4Xz7Rm2LtV5nB' }).toString(), redirect: 'manual' });
+    const cloc = new URL(cpost.headers.get('location'));
+    check('consent issues a code bound to the URL client_id', cpost.status === 302 && !!cloc.searchParams.get('code'), `HTTP ${cpost.status}`);
+    const ctok = await (await fetch(`${ORIGIN}/api/oauth/token`, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ grant_type: 'authorization_code', code: cloc.searchParams.get('code'), code_verifier: verifier,
+        redirect_uri: 'https://claude.ai/api/mcp/auth_callback', client_id: good, resource: `${ORIGIN}/api/mcp` }).toString() })).json();
+    check('the code exchanges with the same URL client_id', !!ctok.access_token, ctok.error || 'ok');
+    const wrongClient = await (await fetch(`${ORIGIN}/api/oauth/token`, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ grant_type: 'authorization_code', code: cloc.searchParams.get('code'), code_verifier: verifier,
+        redirect_uri: 'https://claude.ai/api/mcp/auth_callback', client_id: `${CORIGIN}/noname.json` }).toString() })).json();
+    check('but not with a different client_id', wrongClient.error === 'invalid_grant', wrongClient.error);
+
+    for (const [id, why] of [
+      [`${CORIGIN}/mismatch.json`, 'a document whose client_id is not its own URL'],
+      [`${CORIGIN}/noredirect.json`, 'a document that does not list the redirect_uri'],
+      [`${CORIGIN}/noname.json`, 'a document with no client_name'],
+      [`${CORIGIN}/notjson`, 'a document that is not JSON'],
+      [`${CORIGIN}/missing.json`, 'a document that does not exist'],
+      [`${CORIGIN}/redirect`, 'a document URL that redirects'],
+    ]) {
+      const r = await fetch(`${ORIGIN}/api/oauth/authorize?${cq(id)}`);
+      check(`refuses ${why}`, r.status === 400, `HTTP ${r.status}`);
+    }
+    const before = cimdHits;
+    const evil = await fetch(`${ORIGIN}/api/oauth/authorize?${cq('https://evil.example/client.json')}`);
+    check('refuses an untrusted host before fetching anything', evil.status === 400 && cimdHits === before, `HTTP ${evil.status}`);
+    check('a URL with no path is not a client_id', !cimd.isClientIdUrl('https://claude.ai') && !cimd.isClientIdUrl('https://claude.ai/'));
+    check('a fragment or userinfo disqualifies a client_id', !cimd.isClientIdUrl('https://claude.ai/x#f') && !cimd.isClientIdUrl('https://u:p@claude.ai/x'));
+    check('registered (signed) client_ids are not mistaken for URLs', !cimd.isClientIdUrl(reg.client_id));
+    process.env.VERCEL_ENV = 'production';
+    check('on production, http loopback is not a client_id and not a trusted host', !cimd.isClientIdUrl(good) && !cimd.hostTrusted('localhost'));
+    delete process.env.VERCEL_ENV;
+    // Claude Code: document says http://localhost/callback, request arrives on an ephemeral port.
+    check('a loopback redirect matches its document entry with the port ignored (RFC 8252)',
+      (await fetch(`${ORIGIN}/api/oauth/authorize?${cq(good, 'http://localhost:3118/callback')}`)).status === 200);
+    check('but a different loopback path does not',
+      (await fetch(`${ORIGIN}/api/oauth/authorize?${cq(good, 'http://localhost:3118/other')}`)).status === 400);
+    check('subdomains of trusted hosts are trusted; lookalikes are not', cimd.hostTrusted('www.claude.ai') && !cimd.hostTrusted('claude.ai.evil.example') && !cimd.hostTrusted('notclaude.ai'));
+  }
+
+  server.close(); gmock.close(); cmock.close();
   console.log(`\n${pass} passed, ${fail} failed`);
   process.exit(fail ? 1 : 0);
 }

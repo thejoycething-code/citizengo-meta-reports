@@ -43,5 +43,9 @@ module.exports = function handler(req, res) {
     token_endpoint_auth_methods_supported: ['none'],
     code_challenge_methods_supported: ['S256'],
     scopes_supported: ['mcp'],
+    // Client ID Metadata Documents (lib/cimd.js). Claude picks this over
+    // dynamic registration only when it is advertised AND 'none' is listed
+    // above; both are true here.
+    client_id_metadata_document_supported: true,
   });
 };

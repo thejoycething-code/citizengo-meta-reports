@@ -251,6 +251,13 @@ the origin rather than `*`; every MCP response is `Cache-Control: private,
 no-store`. `npm run test:security` and `npm run test:oauth` cover each of
 these.
 
+**Client registration.** Both routes the MCP spec allows: Client ID Metadata
+Documents (Claude's recommended option — the client_id is an https URL on
+claude.ai / chatgpt.com whose document we fetch, cache and validate; other
+hosts are refused before any fetch, see `lib/cimd.js`) and dynamic client
+registration (RFC 7591, used by ChatGPT). Either way the redirect_uri must also
+pass our own allowlist.
+
 **Google sign-in — built, tested, not enabled.** (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`; optional
 `ALLOWED_GOOGLE_DOMAINS`, default `citizengo.net`; `MCP_REVOKED_EMAILS` for
 instant revocation). When configured, the consent page offers *Continue with
