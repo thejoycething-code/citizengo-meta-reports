@@ -221,6 +221,33 @@ create table if not exists public.meta_ig_media_metrics (
 create unique index if not exists meta_ig_media_metrics_day_key
   on public.meta_ig_media_metrics (media_id, collected_date);
 
+-- One row per Instagram post at its LATEST collection, with the two derived
+-- rates the tools quote. Recorded here 3 Sep 2026: the view existed in the
+-- database and was granted to meta_readonly, but had never been written down,
+-- so a rebuild from this file would have produced a database the MCP tools and
+-- the Sheet mirror could not read.
+--
+-- INNER JOIN on metrics, deliberately: a media row with no metrics yet has
+-- nothing to report, and showing it with every figure blank invites reading a
+-- collection gap as zero performance.
+create or replace view public.meta_ig_latest as
+  select m.media_id, m.page_id, g.name as page_name, m.ig_username,
+         m.media_type, m.media_product_type, m.caption, m.permalink, m."timestamp",
+         x.collected_date, x.reach, x.views, x.saved, x.total_interactions,
+         x.likes, x.comments, x.shares,
+         case when coalesce(x.reach, 0) > 0
+              then round(coalesce(x.total_interactions, 0)::numeric / x.reach::numeric * 100, 2)
+         end as interaction_rate_pct,
+         case when coalesce(x.reach, 0) > 0
+              then round(coalesce(x.saved, 0)::numeric / x.reach::numeric * 1000, 2)
+         end as saves_per_1k_reached
+    from public.meta_ig_media m
+    join public.meta_pages g on g.page_id = m.page_id
+    join public.meta_ig_media_metrics x on x.media_id = m.media_id
+   where x.collected_date = (select max(y.collected_date)
+                               from public.meta_ig_media_metrics y
+                              where y.media_id = m.media_id);
+
 -- ---------------------------------------------------------------------------
 -- AUDIENCE DEMOGRAPHICS: NOT COLLECTED. Confirmed retired by Meta, 26 Aug 2026,
 -- tested live across 36 pages. Seven metrics attempted per page -

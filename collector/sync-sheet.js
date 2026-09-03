@@ -4,7 +4,12 @@
 // second source of truth — it is built from lib/shape.js, the same module the
 // dashboard API uses, so the two surfaces cannot disagree.
 //
-// Two tabs: "Posts" (one row per post, latest snapshot) and "Pages" (rollup).
+// Three tabs: "Posts" (one row per Facebook post, latest snapshot), "Pages"
+// (rollup) and "Instagram" (one row per Instagram post, latest snapshot).
+//
+// Instagram was collected from the start - caption and permalink included, 723
+// of 723 media rows carry a link - but never mirrored here, so the Sheet showed
+// Facebook only. Added 3 Sep 2026.
 //
 // Modes:
 //   --out <file>     write the values matrix as JSON (no network, for inspection)
@@ -61,6 +66,34 @@ function postRow(r) {
   ];
 }
 
+// Instagram. Deliberately NOT the same columns as Posts: there is no paid
+// split, no follower breakdown and no shares-to-reach story on Instagram, but
+// there is "saved", which Facebook has no equivalent for and which signals far
+// more intent than a like.
+const IG_HEADERS = [
+  'Date', 'Account', 'Page', 'Caption', 'Permalink', 'Type',
+  'Reach', 'Views', 'Saves', 'Saves per 1k reached',
+  'Likes', 'Comments', 'Shares', 'Interactions', 'Interaction rate %',
+  'Collected',
+];
+
+function igRow(r) {
+  return [
+    r.timestamp ? String(r.timestamp).slice(0, 10) : '',
+    r.ig_username ? '@' + r.ig_username : '',
+    cell(r.page_name),
+    // Flattened and capped exactly as the Posts tab treats message: newlines
+    // inside a cell break TSV and make the Sheet unreadable.
+    (r.caption || '').replace(/\s+/g, ' ').slice(0, 300),
+    cell(r.permalink),
+    cell(r.media_product_type || r.media_type),
+    cell(r.reach), cell(r.views), cell(r.saved), cell(r.saves_per_1k_reached),
+    cell(r.likes), cell(r.comments), cell(r.shares),
+    cell(r.total_interactions), cell(r.interaction_rate_pct),
+    cell(r.collected_date),
+  ];
+}
+
 const PAGE_HEADERS = [
   'Page', 'Followers', 'Posts', 'With metrics', 'Missing metrics',
   'Total views', 'Unique reach', 'Paid views', 'Engagement',
@@ -106,12 +139,23 @@ async function main() {
   const data = await store.loadAll();
   const feed = shapeFeed(data, { sort: 'recent' });
   const pages = shapePages(data);
-  console.log(`source=${store.name} · ${feed.total} posts · ${pages.length} pages`);
+  // Never let Instagram break the Facebook mirror it rides along with - the
+  // same rule the collector applies. A missing tab is better than no Sheet.
+  let ig = [];
+  try {
+    ig = typeof store.igFeed === 'function' ? await store.igFeed() : [];
+  } catch (e) {
+    console.log(`  instagram skipped — ${e.message.slice(0, 80)}`);
+  }
+  console.log(`source=${store.name} · ${feed.total} posts · ${pages.length} pages · ${ig.length} instagram posts`);
 
   const tabs = {
     Posts: [POST_HEADERS, ...feed.rows.map(postRow)],
     Pages: [PAGE_HEADERS, ...pages.map(pageRow)],
   };
+  // Omitted entirely when there is nothing, rather than pushing a header-only
+  // tab that reads as "Instagram collection is broken".
+  if (ig.length) tabs.Instagram = [IG_HEADERS, ...ig.map(igRow)];
 
   const outFile = opt('out');
   if (outFile && outFile !== true) {
@@ -159,6 +203,7 @@ async function main() {
     console.log('\nNothing written. Pass --out <file>, --tsv <file>, or --push.');
     console.log(`Posts tab: ${tabs.Posts.length - 1} rows x ${POST_HEADERS.length} cols`);
     console.log(`Pages tab: ${tabs.Pages.length - 1} rows x ${PAGE_HEADERS.length} cols`);
+    if (tabs.Instagram) console.log(`Instagram tab: ${tabs.Instagram.length - 1} rows x ${IG_HEADERS.length} cols`);
   }
 }
 
