@@ -4,6 +4,11 @@
 // than for an analyst: plain language, every number framed against the page's own
 // baseline, and honest about what the data cannot say.
 //
+// Covers Facebook and, since 3 Sep 2026, Instagram. Instagram is reported in its
+// own section rather than folded in: the metrics are not the same shape - there
+// is no paid split and no follower breakdown, but there IS "saved", which
+// Facebook has no equivalent for and which signals more intent than a like.
+//
 // One statistical rule enforced here, because it is easy to get wrong and
 // impossible to spot afterwards: per-post UNIQUE reach is never summed. Two posts
 // reaching 1,000 people each have not reached 2,000 people — the same followers
@@ -137,6 +142,18 @@ async function main() {
   const scopeName = page ? page.name : 'All pages';
 
   const feed = shapeFeed(data, page ? { page_id: page.page_id, sort: 'recent' } : { sort: 'recent' });
+
+  // Instagram, read separately: loadAll covers Facebook only. Wrapped so a
+  // failure here cannot take the whole digest down - the same rule the
+  // collector and the Sheet mirror apply.
+  let igAll = [];
+  if (typeof store.igFeed === 'function') {
+    try { igAll = (await store.igFeed()) || []; } catch (e) {
+      console.error(`instagram skipped — ${e.message.slice(0, 80)}`);
+    }
+  }
+  if (page) igAll = igAll.filter((r) => r.page_id === page.page_id);
+
   const now = Date.now();
   const thisWeek = windowStats(feed.rows, now - 7 * DAY, now + DAY);
   const lastWeek = windowStats(feed.rows, now - 14 * DAY, now - 7 * DAY);
@@ -341,11 +358,105 @@ async function main() {
     }
   }
 
+  // ---- Instagram -----------------------------------------------------------
+  //
+  // Same discipline as the Facebook sections above: views are summed, REACH IS
+  // NOT. Two posts reaching 1,000 accounts each have not reached 2,000, and the
+  // rule does not stop applying because the platform changed.
+  const igWindow = (from, to) => igAll.filter((r) => {
+    const t = Date.parse(r.timestamp);
+    return !Number.isNaN(t) && t >= from && t < to;
+  });
+  const igThis = igWindow(now - 7 * DAY, now + DAY);
+  const igLast = igWindow(now - 14 * DAY, now - 7 * DAY);
+  const num = (v) => (v === null || v === undefined ? null : Number(v));
+  const sum = (rows, k) => rows.reduce((a, r) => a + (num(r[k]) || 0), 0);
+  const medOf = (rows, k) => median(rows.map((r) => num(r[k])).filter((v) => v !== null && !Number.isNaN(v)));
+
+  if (igThis.length) {
+    const accounts = new Set(igThis.map((r) => r.ig_username).filter(Boolean));
+    const igViews = sum(igThis, 'views');
+    const igSaves = sum(igThis, 'saved');
+    const bestReach = [...igThis].sort((a, b) => (num(b.reach) || 0) - (num(a.reach) || 0))[0];
+    const medViewsNow = medOf(igThis, 'views');
+    const medViewsPrev = igLast.length ? medOf(igLast, 'views') : null;
+    const igDelta = (medViewsPrev && medViewsNow !== null && medViewsPrev > 0)
+      ? ((medViewsNow - medViewsPrev) / medViewsPrev) * 100 : null;
+
+    L.push('## Instagram');
+    L.push('');
+    L.push(`- **${igThis.length} post${igThis.length > 1 ? 's' : ''}** across ${accounts.size} account${accounts.size === 1 ? '' : 's'}, ${n(igViews)} views in total`);
+    if (bestReach && num(bestReach.reach)) {
+      L.push(`- Best single post reached **${n(num(bestReach.reach))} accounts**`);
+    }
+    L.push(`- **${n(igSaves)} saves** and ${n(sum(igThis, 'total_interactions'))} interactions`);
+    const medRate = medOf(igThis, 'interaction_rate_pct');
+    if (medRate !== null) L.push(`- Typical post: ${pc(medRate)} interaction rate`);
+    if (igDelta !== null) L.push(`- Typical post **${signed(igDelta)}** on views against the week before`);
+
+    // Why the comparison may not mean what it looks like. On 3 Sep 2026 the
+    // median fell 91% because ONE account published 63 posts the week before and
+    // 32 this week, and its posts are an order of magnitude larger than the
+    // other accounts'. Reported as a fall in performance that would have been
+    // simply wrong. Same reasoning as changeNote() on the Facebook side.
+    const igCaveats = [];
+    if (igThis.length < 4 || igLast.length < 4) {
+      igCaveats.push(`based on ${igThis.length} post${igThis.length === 1 ? '' : 's'} against ${igLast.length} the week before, which is too few for the change to mean much`);
+    } else if (igLast.length) {
+      const volShift = ((igThis.length - igLast.length) / igLast.length) * 100;
+      if (Math.abs(volShift) >= 30) {
+        igCaveats.push(`${igThis.length} posts this week against ${igLast.length} the week before, so the move partly reflects how much was published rather than how it performed`);
+      }
+    }
+    // One account dominating the views makes the estate median its median.
+    const byAccount = new Map();
+    for (const r of igThis) {
+      const k = r.ig_username || r.page_name || '—';
+      byAccount.set(k, (byAccount.get(k) || 0) + (num(r.views) || 0));
+    }
+    const igViewsTotal = sum(igThis, 'views');
+    const topAccount = [...byAccount.entries()].sort((a, b) => b[1] - a[1])[0];
+    if (!page && topAccount && igViewsTotal > 0 && topAccount[1] / igViewsTotal >= 0.6) {
+      igCaveats.push(`${Math.round((topAccount[1] / igViewsTotal) * 100)}% of this week's Instagram views came from @${topAccount[0]}, so the estate figures largely describe that one account`);
+    }
+    if (igCaveats.length) L.push(`- _${igCaveats.join('; ')}._`);
+    L.push('');
+
+    if (bestReach) {
+      const label = bestReach.ig_username ? `@${bestReach.ig_username}` : (bestReach.page_name || 'Instagram');
+      const link = bestReach.permalink ? ` [See the post](${bestReach.permalink}).` : '';
+      L.push(`The furthest-reaching was ${page ? '' : `${label}'s `}"${clean(bestReach.caption, 80)}" — ${n(num(bestReach.reach))} accounts reached${num(bestReach.views) ? `, ${n(num(bestReach.views))} views` : ''}.${link}`);
+      L.push('');
+    }
+
+    // Saves per 1,000 reached, not raw saves. Raw saves just re-ranks by size,
+    // and the interesting question is which post made people want to keep it.
+    const saved = [...igThis]
+      .filter((r) => num(r.saves_per_1k_reached) !== null && (num(r.reach) || 0) >= 500)
+      .sort((a, b) => num(b.saves_per_1k_reached) - num(a.saves_per_1k_reached))[0];
+    if (saved && bestReach && saved.media_id !== bestReach.media_id) {
+      const label = saved.ig_username ? `@${saved.ig_username}` : (saved.page_name || 'Instagram');
+      const link = saved.permalink ? ` [See the post](${saved.permalink}).` : '';
+      L.push(`Most worth keeping: ${page ? '' : `${label}'s `}"${clean(saved.caption, 70)}" — **${Number(saved.saves_per_1k_reached).toFixed(1)} saves per 1,000 reached**, against ${n(num(saved.reach))} accounts reached.${link}`);
+      L.push('');
+      L.push('_Saving a post is a deliberate act in a way a like is not, so saves per 1,000 reached says which posts people wanted to come back to — regardless of how big the audience was._');
+      L.push('');
+    }
+  } else if (igAll.length) {
+    L.push('## Instagram');
+    L.push('');
+    L.push(`No Instagram posts published this week${page ? '' : ' on any collecting account'}. ${igAll.length} post${igAll.length > 1 ? 's are' : ' is'} held in total.`);
+    L.push('');
+  }
+
   L.push('## About these numbers');
   L.push('');
   L.push('- Organic only. Paid reach is reported separately and is not included here.');
   L.push('- Reactions, comments and shares are counted the same way Facebook counts them on the post itself, so they should match what you see. Any small difference is timing — these are taken once a night and people keep reacting.');
   L.push('- "Beyond your followers" is the share of views from people who do not follow the page — the closest thing to a measure of whether a post travelled.');
+  if (igThis.length) {
+    L.push('- Instagram is reported separately because the metrics differ: no paid split, no follower breakdown, but **saves**, which Facebook has no equivalent for. Instagram reach counts accounts, not people.');
+  }
   L.push('- Views can be added together; **people cannot**. Two posts reaching 1,000 people each have not reached 2,000 different people, so this digest never adds up reach across posts.');
   if (thisWeek.no_metrics) {
     L.push(`- ${thisWeek.no_metrics} post${thisWeek.no_metrics > 1 ? 's' : ''} this week returned no figures from Facebook and ${thisWeek.no_metrics > 1 ? 'are' : 'is'} left out entirely. That is a gap in what Facebook reported, not zero performance.`);
