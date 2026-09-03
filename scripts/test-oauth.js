@@ -69,6 +69,8 @@ async function main() {
   console.log('\n3. Dynamic client registration');
   const badReg = await fetch(`${ORIGIN}/api/oauth/register`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ redirect_uris: ['https://evil.example.com/cb'] }) });
   check('rejects a redirect_uri that is not Claude', badReg.status === 400, `HTTP ${badReg.status}`);
+  const xreg = await fetch(`${ORIGIN}/api/oauth/register`, { method:'POST', headers:{'Content-Type':'application/json', Origin:'https://attacker.example'}, body: JSON.stringify({ redirect_uris: ['https://claude.ai/api/mcp/auth_callback'] }) });
+  check('registration from an untrusted origin is refused', xreg.status === 403, `HTTP ${xreg.status}`);
   const reg = await (await fetch(`${ORIGIN}/api/oauth/register`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ redirect_uris: ['https://claude.ai/api/mcp/auth_callback'], client_name:'Claude' }) })).json();
   check('registers a client', !!reg.client_id, `auth method: ${reg.token_endpoint_auth_method}`);
 
@@ -96,8 +98,14 @@ async function main() {
   const badVerifier = await (await fetch(`${ORIGIN}/api/oauth/token`, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body: new URLSearchParams({ grant_type:'authorization_code', code, code_verifier:'wrong-verifier', redirect_uri:'https://claude.ai/api/mcp/auth_callback' }).toString() })).json();
   check('wrong PKCE verifier gives invalid_grant', badVerifier.error === 'invalid_grant', badVerifier.error_description);
 
+  const wrongRes = await (await fetch(`${ORIGIN}/api/oauth/token`, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body: new URLSearchParams({ grant_type:'authorization_code', code, code_verifier: verifier, redirect_uri:'https://claude.ai/api/mcp/auth_callback', resource:'https://other.example/api/mcp' }).toString() })).json();
+  check('a token request naming another resource is refused', wrongRes.error === 'invalid_target', wrongRes.error);
+
   const tok = await (await fetch(`${ORIGIN}/api/oauth/token`, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body: new URLSearchParams({ grant_type:'authorization_code', code, code_verifier: verifier, redirect_uri:'https://claude.ai/api/mcp/auth_callback' }).toString() })).json();
   check('code exchanges for an access token', !!tok.access_token && tok.token_type==='Bearer' && !!tok.refresh_token, `expires_in ${tok.expires_in}`);
+  const claims = JSON.parse(Buffer.from(tok.access_token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/'), 'base64').toString('utf8'));
+  check('the access token is bound to this issuer, resource and scope',
+    claims.iss === ORIGIN && claims.aud === `${ORIGIN}/api/mcp` && claims.scope === 'mcp' && !!claims.who, `${claims.iss} ${claims.aud} ${claims.scope} ${claims.who}`);
 
   console.log('\n6. The token actually works on the MCP endpoint');
   const call = await (await fetch(`${ORIGIN}/api/mcp`, { method:'POST', headers:{'Content-Type':'application/json', Authorization:`Bearer ${tok.access_token}`}, body:'{"jsonrpc":"2.0","id":1,"method":"tools/list"}' })).json();

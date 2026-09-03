@@ -16,31 +16,44 @@
 // only if that is absent — see sql/readonly-role.sql.
 
 const { supabaseStore } = require('../lib/store');
-const { verify, originOf } = require('../lib/oauth');
+const { verify, originOf, claimsFor } = require('../lib/oauth');
 const { TOOLS, callTool } = require('../mcp/tools');
 const guard = require('../lib/guard');
+const { corsFor } = require('../lib/origin');
+const { onVercelProduction } = require('../lib/env-guard');
 
 const SERVER_INFO = { name: 'citizengo-meta-reports', version: '1.0.0' };
 
-// OPEN ACCESS, deliberately opted into.
+// OPEN ACCESS - withdrawn.
 //
-// MCP_PUBLIC=true serves every request without a credential. Set on 30 Aug 2026:
-// the connector is read-only over organic performance figures, staff use
-// claude.ai and ChatGPT rather than Claude Code, and a token everybody shares
-// was judged more friction than the data warrants.
+// MCP_PUBLIC=true served every request without a credential. It was set on
+// 30 Aug 2026 on the reasoning that the connector is read-only and the URL
+// unpublished. Carlo Manuali's review of 3 Sep 2026 declined to accept that for
+// production: the server advertises OAuth, so an unauthenticated 200 is a
+// protocol violation as well as a policy choice, and it left the tool schemas
+// and the reporting data readable by anyone holding the address.
 //
-// It is an EXPLICIT flag rather than "no tokens configured means open", because
-// the difference matters. Unsetting MCP_TOKENS by accident - a fat-fingered
-// Vercel edit, a secret that fails to copy to a new environment - must keep
-// refusing, not silently publish the estate. Absence of configuration is a
-// mistake; this flag is a decision.
+// The flag still exists - the test suite needs an open server to prove that the
+// closed one is a decision rather than an accident - but it is IGNORED on Vercel
+// production. Setting it there changes nothing except a line in the log.
+// Absence of configuration still fails closed: no tokens and no flag refuses
+// everything.
 //
-// To close it again: remove MCP_PUBLIC from Vercel and redeploy. The token path
-// below never stopped working, so nothing has to be re-issued.
 // Read per request, not once at module load: a value captured at load time is
 // untestable without reloading the module, and it hid three failures the first
 // time this was written.
-const publicAccess = () => String(process.env.MCP_PUBLIC || '').toLowerCase() === 'true';
+let warnedPublicIgnored = false;
+const publicAccess = () => {
+  const wanted = String(process.env.MCP_PUBLIC || '').toLowerCase() === 'true';
+  if (wanted && onVercelProduction()) {
+    if (!warnedPublicIgnored) {
+      console.error('MCP_PUBLIC=true is set but IGNORED in production: open access was withdrawn on 3 Sep 2026. Remove the variable.');
+      warnedPublicIgnored = true;
+    }
+    return false;
+  }
+  return wanted;
+};
 
 // Sliding window per credential. PER WARM INSTANCE, not global - serverless
 // gives no shared memory, and a shared store would be a database write on every
@@ -66,7 +79,7 @@ function rateLimited(key, cost = 1) {
 // Returns the name of whoever's token this is, or null. Naming the holder is
 // what makes "who read what" answerable at all: previously every request was
 // indistinguishable from every other.
-function tokenIdentity(supplied) {
+function tokenIdentity(supplied, expect) {
   if (!supplied) return null;
 
   // 1. A per-person or team token from MCP_TOKENS. usableTokens drops any entry
@@ -77,23 +90,22 @@ function tokenIdentity(supplied) {
 
   // 2. An OAuth access token this server issued. claude.ai cannot send a fixed
   //    header on a personal account, so it goes through the OAuth flow instead.
-  //    These carry no per-person identity - the consent step proves possession
-  //    of a team token, nothing more - so they are logged as such.
   try {
-    const claims = verify(supplied, 'access');
+    // Signature, expiry, type, ISSUER and AUDIENCE. A token minted for another
+    // deployment that shares the signing secret is refused here.
+    const claims = verify(supplied, 'access', expect);
     if (!claims) return null;
+    if (!String(claims.scope || '').split(/\s+/).includes('mcp')) return null;
+    // Every token this server has minted since identity binding names who
+    // consented. One that does not is not ours, whatever its signature says.
+    if (!claims.who) return null;
     // An OAuth session is only as alive as the team token that authorised it.
     // Re-checked on EVERY request against the current MCP_TOKENS, so deleting a
     // person's entry ends their claude.ai session on the next call rather than
-    // when the refresh token happens to expire. Previously an OAuth token
-    // outlived the credential it came from by up to its full lifetime.
-    if (claims.who) {
-      const stillListed = guard.usableTokens(process.env.MCP_TOKENS)
-        .some((e2) => e2.name === claims.who);
-      return stillListed ? claims.who : null;
-    }
-    // Issued before identity binding: honoured until it expires, but anonymous.
-    return 'oauth (pre-identity)';
+    // when the refresh token happens to expire.
+    const stillListed = guard.usableTokens(process.env.MCP_TOKENS)
+      .some((e2) => e2.name === claims.who);
+    return stillListed ? claims.who : null;
   } catch (e) {
     // OAUTH_SIGNING_SECRET unset - OAuth simply unavailable, static still works.
     return null;
@@ -167,9 +179,21 @@ function readBody(req) {
 }
 
 module.exports = async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Mcp-Session-Id, MCP-Protocol-Version');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  // Reporting data read by a named person must never land in a shared cache.
+  // Left unset, Vercel applies "public, max-age=0, must-revalidate" - which is
+  // what Carlo Manuali's review saw on every response.
+  res.setHeader('Cache-Control', 'private, no-store');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+
+  // Origin is checked before anything else, the method included: a page on a
+  // host we do not trust gets a 403 and no CORS grant, whatever it asked for.
+  if (!corsFor(req, res, {
+    methods: 'POST, OPTIONS',
+    headers: 'Content-Type, Authorization, Mcp-Session-Id, MCP-Protocol-Version',
+  })) {
+    res.status(403).json(rpcError(null, -32000, 'Origin not allowed'));
+    return;
+  }
 
   if (req.method === 'OPTIONS') { res.status(204).end(); return; }
   if (req.method !== 'POST') {
@@ -190,18 +214,22 @@ module.exports = async function handler(req, res) {
     return;
   }
 
-  // A token still identifies its holder when one is sent, so flipping the flag
-  // back changes nothing for anyone already connected.
-  const identity = tokenIdentity(supplied) || (publicAccess() ? 'anonymous' : null);
-  if (!identity) {
+  // A credential that was SENT and is wrong is refused whatever the flag says:
+  // a revoked person must find out, not be silently downgraded to anonymous.
+  // Only the complete absence of a credential is served under open access.
+  const identity = tokenIdentity(supplied, claimsFor(req));
+  if (!identity && (supplied || !publicAccess())) {
     await guard.recordFailure(source, 'mcp');
-    // 401 with WWW-Authenticate is what MCP clients expect for an auth failure.
-    const origin = originOf(req);
-    res.setHeader('WWW-Authenticate',
-      `Bearer resource_metadata="${origin}/.well-known/oauth-protected-resource"`);
+    // 401 with WWW-Authenticate is what MCP clients expect. RFC 6750: a request
+    // that sent a credential and was refused is told so with error=invalid_token;
+    // one that sent none gets the bare challenge pointing at discovery.
+    const challenge = [`Bearer resource_metadata="${originOf(req)}/.well-known/oauth-protected-resource"`];
+    if (supplied) challenge.push('error="invalid_token"');
+    res.setHeader('WWW-Authenticate', challenge.join(', '));
     res.status(401).json(rpcError(null, -32001, 'Unauthorized'));
     return;
   }
+  const who = identity || 'anonymous';
 
   const body = await readBody(req);
   if (!body) { res.status(400).json(rpcError(null, -32700, 'Parse error')); return; }
@@ -252,7 +280,7 @@ module.exports = async function handler(req, res) {
     if (msg && msg.method === 'tools/call') {
       const tool = msg.params && msg.params.name;
       console.log(JSON.stringify({
-        at: new Date().toISOString(), who: identity, tool, event: 'tools/call',
+        at: new Date().toISOString(), who, tool, event: 'tools/call',
       }));
     }
   }
@@ -267,3 +295,6 @@ module.exports = async function handler(req, res) {
   if (!replies.length) { res.status(202).end(); return; }
   res.status(200).json(Array.isArray(body) ? replies : replies[0]);
 };
+
+// Exposed so the suite can prove the production override without a redeploy.
+module.exports.publicAccess = publicAccess;

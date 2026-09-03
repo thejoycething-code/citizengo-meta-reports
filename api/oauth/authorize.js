@@ -5,7 +5,8 @@
 // There is no user directory behind this. Consent means "prove you hold the
 // shared team token", which is the same gate Claude Code uses as a bearer
 // header — just wrapped in the flow Claude.ai expects.
-const { sign, verify, redirectUriAllowed, teamTokenIdentity } = require('../../lib/oauth');
+const { sign, redirectUriAllowed, teamTokenIdentity, claimsFor, resourceMatches } = require('../../lib/oauth');
+const { corsFor } = require('../../lib/origin');
 const guard = require('../../lib/guard');
 
 // The consent page collects a password, so it must not be embeddable. Without a
@@ -66,6 +67,13 @@ module.exports = async function handler(req, res) {
   secureHeaders(res);
   const q = req.query || {};
 
+  // A consent form that any page could POST to cross-site is a form any page
+  // could drive. Our own page posting to itself carries our origin; a browser
+  // navigation from Claude's redirect carries none; anything else is refused.
+  if (!corsFor(req, res, { methods: 'GET, POST, OPTIONS', headers: 'Content-Type' })) {
+    res.status(403).send('origin not allowed'); return;
+  }
+
   if (req.method === 'GET') {
     if (!redirectUriAllowed(q.redirect_uri)) {
       res.status(400).send('invalid redirect_uri'); return;
@@ -73,6 +81,10 @@ module.exports = async function handler(req, res) {
     // PKCE is mandatory: without it a stolen code could be redeemed by anyone.
     if (q.code_challenge_method !== 'S256' || !q.code_challenge) {
       res.status(400).send('code_challenge with S256 is required'); return;
+    }
+    // RFC 8707: a client naming a resource must name this one.
+    if (!resourceMatches(q.resource, req)) {
+      res.status(400).send('resource does not match this server'); return;
     }
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.status(200).send(page({ params: q, error: null }));
@@ -96,6 +108,9 @@ module.exports = async function handler(req, res) {
   // rejects an empty challenge - but refusing it here is the honest place.
   if (p.code_challenge_method !== 'S256' || !p.code_challenge) {
     res.status(400).send('code_challenge with S256 is required'); return;
+  }
+  if (!resourceMatches(p.resource, req)) {
+    res.status(400).send('resource does not match this server'); return;
   }
 
   // This consent form had no throttling whatsoever, so the team token could be
@@ -133,6 +148,9 @@ module.exports = async function handler(req, res) {
     // person's MCP_TOKENS entry revokes it on their next request. Without this
     // an OAuth session outlived the credential that authorised it.
     who,
+    // Bound to this deployment: /token refuses a code minted elsewhere, and the
+    // access and refresh tokens it issues carry the same issuer and audience.
+    ...claimsFor(req),
   }, 60);
 
   const dest = new URL(p.redirect_uri);

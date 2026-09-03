@@ -3,17 +3,24 @@
 // named ".well-known" from the api folder, so vercel.json rewrites the two
 // well-known paths here and passes ?doc= to say which one is wanted.
 const { originOf } = require('../../lib/oauth');
+const { corsFor } = require('../../lib/origin');
 
 module.exports = function handler(req, res) {
   const origin = originOf(req);
   const doc = (req.query && req.query.doc) || '';
 
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  // Discovery documents are public by design and may be cached; they still do
+  // not hand a CORS grant to an origin we would refuse everywhere else.
   res.setHeader('Cache-Control', 'public, max-age=300');
+  if (!corsFor(req, res, { methods: 'GET, OPTIONS', headers: 'Content-Type' })) {
+    res.status(403).json({ error: 'access_denied' }); return;
+  }
+  if (req.method === 'OPTIONS') { res.status(204).end(); return; }
 
   if (doc === 'protected-resource') {
     // `resource` MUST match the MCP server URL exactly as the user types it
-    // into Claude, path included, or discovery fails.
+    // into Claude, path included, or discovery fails. It is also the audience
+    // every issued token carries.
     res.status(200).json({
       resource: `${origin}/api/mcp`,
       authorization_servers: [origin],

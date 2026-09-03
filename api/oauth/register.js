@@ -7,11 +7,13 @@
 // token. Storing a registration table would add a database write per connection
 // and protect nothing extra.
 const { sign, redirectUriAllowed } = require('../../lib/oauth');
+const { corsFor } = require('../../lib/origin');
 
 module.exports = async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Cache-Control', 'no-store');
+  if (!corsFor(req, res, { methods: 'POST, OPTIONS', headers: 'Content-Type' })) {
+    res.status(403).json({ error: 'access_denied', error_description: 'origin not allowed' }); return;
+  }
   if (req.method === 'OPTIONS') { res.status(204).end(); return; }
   if (req.method !== 'POST') { res.status(405).json({ error: 'invalid_request' }); return; }
 
@@ -27,7 +29,7 @@ module.exports = async function handler(req, res) {
   if (!redirectUris.length || !redirectUris.every(redirectUriAllowed)) {
     res.status(400).json({
       error: 'invalid_redirect_uri',
-      error_description: 'redirect_uris must be Claude callbacks: https://claude.ai/api/mcp/auth_callback or an http loopback address',
+      error_description: 'redirect_uris must be an assistant callback we recognise (claude.ai, chatgpt.com) or an http loopback address',
     });
     return;
   }

@@ -217,7 +217,21 @@ fail differently:
 ### Hosted MCP (Vercel)
 
 Environment: `SUPABASE_URL`, `SUPABASE_MCP_KEY` (or `SUPABASE_SERVICE_KEY`),
-`MCP_TOKENS` (comma-separated, one per person), `OAUTH_SIGNING_SECRET`.
+`MCP_TOKENS` (comma-separated `name:token` pairs, one per person),
+`OAUTH_SIGNING_SECRET`. Optional: `PUBLIC_ORIGIN` to pin the token issuer to
+one hostname; `MCP_ALLOWED_ORIGINS` to allow browser origins beyond claude.ai,
+chatgpt.com and loopback.
+
+**Authentication is required.** `MCP_PUBLIC=true`, which served every request
+without a credential, was withdrawn on 3 Sep 2026 after Carlo Manuali's review
+and is ignored on Vercel production. Every request needs a team token or an
+OAuth token this server issued. OAuth tokens are checked for signature, expiry,
+type, **issuer, audience and scope**, and re-checked against `MCP_TOKENS` on
+every call, so removing a person's entry ends their session on their next
+request. Browser origins are allowlisted and anything else gets 403; CORS names
+the origin rather than `*`; every MCP response is `Cache-Control: private,
+no-store`. `npm run test:security` and `npm run test:oauth` cover each of
+these.
 
 Deploy with `vercel --prod`. **Vercel Deployment Protection must be off** for
 production, or every request is blocked before reaching the auth in `api/mcp.js`.
@@ -238,8 +252,9 @@ production, or every request is blocked before reaching the auth in `api/mcp.js`
   still authenticates and simply returns nothing — no error, no failed request,
   just empty results. Renewal means the profile owner re-authorising the app,
   which resets the window. The watchdog warns 21 days out and fails at 7.
-- **One shared MCP token** — per-person tokens are supported but not configured, so
-  there's no audit trail
+- **Per-person tokens are issued by hand** — `MCP_TOKENS` is a Vercel secret
+  edited by Chris; there is no self-service. Fine at a dozen people, not at a
+  hundred.
 - **Comment text deliberately not collected** — see ONBOARDING.md
 
 ---

@@ -2,7 +2,8 @@
 // Token endpoint. MUST accept application/x-www-form-urlencoded — Claude sends
 // both the initial exchange and refreshes that way, and a JSON-only parser
 // returns 415 and breaks the flow.
-const { sign, verify, verifyPkce } = require('../../lib/oauth');
+const { sign, verify, verifyPkce, claimsFor, resourceMatches } = require('../../lib/oauth');
+const { corsFor } = require('../../lib/origin');
 
 const ACCESS_TTL = 60 * 60;            // 1 hour
 // Seven days, not thirty.
@@ -37,10 +38,10 @@ function fail(res, code, description, status = 400) {
 }
 
 module.exports = async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Cache-Control', 'no-store');
+  if (!corsFor(req, res, { methods: 'POST, OPTIONS', headers: 'Content-Type, Authorization' })) {
+    fail(res, 'access_denied', 'origin not allowed', 403); return;
+  }
   if (req.method === 'OPTIONS') { res.status(204).end(); return; }
   if (req.method !== 'POST') { fail(res, 'invalid_request', 'POST required', 405); return; }
 
@@ -51,21 +52,34 @@ module.exports = async function handler(req, res) {
     body = Object.fromEntries(new URLSearchParams(raw));
   }
 
+  // Every token this endpoint issues or accepts is bound to THIS deployment:
+  // iss is the origin, aud is the MCP resource. A token minted for a preview
+  // URL with the same signing secret is refused here, and vice versa. Carlo
+  // Manuali's review, 3 Sep 2026, asked for issuer, audience, expiry and scope
+  // to be validated; before this only signature and expiry were.
+  const bound = claimsFor(req);
+
+  // RFC 8707: if the client says which resource it wants the token for, it had
+  // better be this one.
+  if (!resourceMatches(body.resource, req)) {
+    fail(res, 'invalid_target', 'resource does not match this server'); return;
+  }
+
   // `who` rides along on both tokens, so every request can be attributed and
   // re-authorised against the current MCP_TOKENS.
   const issue = (who) => {
     res.status(200).json({
-      access_token: sign({ typ: 'access', scope: 'mcp', who }, ACCESS_TTL),
+      access_token: sign({ typ: 'access', scope: 'mcp', who, ...bound }, ACCESS_TTL),
       token_type: 'Bearer',
       expires_in: ACCESS_TTL,
       // Rotated on every refresh, as OAuth 2.1 requires for public clients.
-      refresh_token: sign({ typ: 'refresh', scope: 'mcp', who }, REFRESH_TTL),
+      refresh_token: sign({ typ: 'refresh', scope: 'mcp', who, ...bound }, REFRESH_TTL),
       scope: 'mcp',
     });
   };
 
   if (body.grant_type === 'authorization_code') {
-    const claims = verify(body.code, 'code');
+    const claims = verify(body.code, 'code', bound);
     // invalid_grant specifically — Claude keys its retry behaviour on the code.
     if (!claims) { fail(res, 'invalid_grant', 'Authorization code is invalid or expired'); return; }
     // Required, not merely checked when present. RFC 6749 §4.1.3 requires it
@@ -82,14 +96,18 @@ module.exports = async function handler(req, res) {
     if (!verifyPkce(body.code_verifier, claims.code_challenge)) {
       fail(res, 'invalid_grant', 'PKCE verification failed'); return;
     }
-    issue(claims.who || null);
+    // Every code names who consented. One that does not was not minted by the
+    // current consent page and is not redeemable.
+    if (!claims.who) { fail(res, 'invalid_grant', 'Authorization code carries no identity'); return; }
+    issue(claims.who);
     return;
   }
 
   if (body.grant_type === 'refresh_token') {
-    const claims = verify(body.refresh_token, 'refresh');
+    const claims = verify(body.refresh_token, 'refresh', bound);
     if (!claims) { fail(res, 'invalid_grant', 'Refresh token is invalid or expired'); return; }
-    issue(claims.who || null);
+    if (!claims.who) { fail(res, 'invalid_grant', 'Refresh token carries no identity'); return; }
+    issue(claims.who);
     return;
   }
 

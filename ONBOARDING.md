@@ -10,12 +10,17 @@ This takes about two minutes to set up.
 
 ## Connecting
 
+You'll need an **access token** — ask Chris for yours. It is personal to you, so
+don't share it: if it leaks, Chris can cancel yours alone without disturbing
+anyone else.
+
 ### In Claude (claude.ai, desktop or mobile)
 
 1. **Settings → Connectors → Add custom connector**
 2. URL: `https://meta-organic-reporting.vercel.app/api/mcp`
 3. Leave Advanced settings empty — you don't need a Client ID or Secret
-4. Click **Add** — that's it, there is nothing to sign in to
+4. Click **Add**, then **Connect**. A CitizenGO page opens asking for your
+   token — paste it and click **Allow access**
 
 Then in any conversation, press **+** → **Connectors** and switch it on.
 
@@ -23,17 +28,18 @@ Then in any conversation, press **+** → **Connectors** and switch it on.
 
 1. **Settings → Connectors → Create** (or **Add sources → Connect more**)
 2. URL: `https://meta-organic-reporting.vercel.app/api/mcp`
-3. Choose **No authentication** if asked
+3. Authentication: **OAuth** — not "No authentication"
+4. Follow the sign-in prompt and paste your token when the CitizenGO page asks
 
 You need a ChatGPT plan that supports custom connectors; on some plans this sits
 behind **Settings → Connectors → Advanced → Developer mode**.
 
-**Staying connected.** Connect once and it stays connected. Nothing expires and
-there is nothing to renew.
+**Staying connected.** You'll be asked for your token again about once a month,
+and straight away if your access is withdrawn. There is nothing else to renew.
 
-**Please don't share the connector URL outside CitizenGO.** It reads our
-performance figures — including what we spent boosting posts — and right now
-anyone with the address can query it. It cannot post, change or delete anything.
+**The URL on its own does not give access** — your token does. The connector
+reads our performance figures, including what we spent boosting posts. It
+cannot post, change or delete anything.
 
 ---
 

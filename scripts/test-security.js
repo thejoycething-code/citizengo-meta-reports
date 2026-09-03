@@ -40,17 +40,22 @@ const check = (name, ok, detail) => {
 
 // Each request declares its own source, so the failure limiter can be exercised
 // from "different" clients without needing real network interfaces.
-async function call(body, token, source = '203.0.113.1') {
+// Extended 3 Sep 2026 to carry arbitrary headers and return the response's, so
+// Origin handling and cache directives can be asserted.
+async function call(body, token, source = '203.0.113.1', extra = {}, method = 'POST') {
   const res = await fetch(`http://localhost:${PORT}/api/mcp`, {
-    method: 'POST',
+    method,
     headers: {
       'Content-Type': 'application/json',
       'x-vercel-forwarded-for': source,
       ...(token ? { Authorization: 'Bearer ' + token } : {}),
+      ...extra,
     },
-    body: JSON.stringify(body),
+    body: method === 'POST' ? JSON.stringify(body) : undefined,
   });
-  return { status: res.status, text: await res.text() };
+  const headers = {};
+  res.headers.forEach((v, k) => { headers[k] = v; });
+  return { status: res.status, text: await res.text(), headers };
 }
 
 const ping = { jsonrpc: '2.0', id: 1, method: 'ping' };
@@ -126,13 +131,16 @@ const ping = { jsonrpc: '2.0', id: 1, method: 'ping' };
       deny.filter(redirectUriAllowed).join(' '));
   }
 
-  console.log('\nOAuth sessions are attributable and revocable\n');
+  console.log('\nOAuth sessions are attributable, revocable and audience-bound\n');
 
   {
     const { sign } = require(path.join(ROOT, 'lib', 'oauth.js'));
     process.env.MCP_TOKENS = `alice:${STRONG}`;
+    // What this test server is, as originOf(req) derives it from the Host header.
+    const EXPECT = { iss: `http://localhost:${PORT}`, aud: `http://localhost:${PORT}/api/mcp` };
+    const mint = (extra) => sign({ typ: 'access', scope: 'mcp', who: 'alice', ...EXPECT, ...extra }, 3600);
 
-    const aliceOauth = sign({ typ: 'access', scope: 'mcp', who: 'alice' }, 3600);
+    const aliceOauth = mint();
     check('an OAuth token issued to alice is accepted',
       (await call(ping, aliceOauth, '198.51.100.30')).status === 200);
 
@@ -146,11 +154,22 @@ const ping = { jsonrpc: '2.0', id: 1, method: 'ping' };
     check('restoring the entry restores the session',
       (await call(ping, aliceOauth, '198.51.100.32')).status === 200);
 
-    const anon = sign({ typ: 'access', scope: 'mcp' }, 3600);
-    check('a token issued before identity binding still works until it expires',
-      (await call(ping, anon, '198.51.100.33')).status === 200);
+    // Carlo Manuali, 3 Sep 2026: issuer, audience, expiry and scope must all be
+    // validated. Until then signature and expiry were, and nothing else.
+    check('a token naming another deployment as issuer is refused',
+      (await call(ping, mint({ iss: 'https://preview-abc.vercel.app' }), '198.51.100.35')).status === 401);
+    check('a token for another audience is refused',
+      (await call(ping, mint({ aud: 'https://other.example/api/mcp' }), '198.51.100.36')).status === 401);
+    check('a token without the mcp scope is refused',
+      (await call(ping, mint({ scope: 'email' }), '198.51.100.37')).status === 401);
+    check('an expired token is refused',
+      (await call(ping, sign({ typ: 'access', scope: 'mcp', who: 'alice', ...EXPECT }, -5), '198.51.100.38')).status === 401);
 
-    const forged = sign({ typ: 'access', scope: 'mcp', who: 'mallory' }, 3600);
+    const legacy = sign({ typ: 'access', scope: 'mcp', who: 'alice' }, 3600);
+    check('a token minted before audience binding is refused, so everyone re-consents once',
+      (await call(ping, legacy, '198.51.100.33')).status === 401);
+
+    const forged = mint({ who: 'mallory' });
     check('a signed token naming somebody not in MCP_TOKENS is refused',
       (await call(ping, forged, '198.51.100.34')).status === 401);
 
@@ -261,6 +280,75 @@ const ping = { jsonrpc: '2.0', id: 1, method: 'ping' };
 
     delete process.env.MCP_PUBLIC;
     process.env.MCP_TOKENS = saved;
+  }
+
+  console.log('\nOrigin validation and response caching (Carlo Manuali, 3 Sep)\n');
+
+  {
+    // A token of its own: the batch test above spends STRONG's minute on purpose.
+    const THIRD = 'cgo_Pq7Lm3Xw9Rt2Vb5Nz8Kd';
+    const savedTokens = process.env.MCP_TOKENS;
+    process.env.MCP_TOKENS = `${STRONG},${THIRD}`;
+    const src = (n) => `203.0.113.${n}`;
+    const hostile = { Origin: 'https://attacker.example' };
+
+    const r1 = await call(ping, THIRD, src(150), hostile);
+    check('a POST from an untrusted origin is refused with 403', r1.status === 403, `HTTP ${r1.status}`);
+    check('the refusal grants no CORS access', !r1.headers['access-control-allow-origin']);
+    const r2 = await call(ping, null, src(151), { ...hostile, 'Access-Control-Request-Method': 'POST' }, 'OPTIONS');
+    check('a preflight from an untrusted origin is refused with 403', r2.status === 403, `HTTP ${r2.status}`);
+
+    const r3 = await call(ping, THIRD, src(152), { Origin: 'https://claude.ai' });
+    check('claude.ai is allowed', r3.status === 200, `HTTP ${r3.status}`);
+    check('the grant names that origin exactly, never *',
+      r3.headers['access-control-allow-origin'] === 'https://claude.ai', r3.headers['access-control-allow-origin']);
+    check('and tells caches the answer varies by origin', /\borigin\b/i.test(r3.headers.vary || ''), r3.headers.vary);
+
+    const r4 = await call(ping, THIRD, src(153));
+    check('a request with no Origin - every real MCP client - is served', r4.status === 200, `HTTP ${r4.status}`);
+    check('and receives no CORS grant, because none was asked for', !r4.headers['access-control-allow-origin']);
+    check('a local MCP client on a loopback origin is allowed',
+      (await call(ping, THIRD, src(154), { Origin: 'http://localhost:6274' })).status === 200);
+    check('an opaque "null" origin is refused',
+      (await call(ping, THIRD, src(155), { Origin: 'null' })).status === 403);
+    check('an origin-prefix lookalike is refused',
+      (await call(ping, THIRD, src(156), { Origin: 'https://claude.ai.attacker.example' })).status === 403);
+    process.env.MCP_ALLOWED_ORIGINS = 'https://inspector.example';
+    check('MCP_ALLOWED_ORIGINS adds an exact origin without a redeploy',
+      (await call(ping, THIRD, src(157), { Origin: 'https://inspector.example' })).status === 200);
+    delete process.env.MCP_ALLOWED_ORIGINS;
+
+    check('a served response is private and not stored',
+      r4.headers['cache-control'] === 'private, no-store', r4.headers['cache-control']);
+    const r5 = await call(ping, null, src(158));
+    check('so is a refusal',
+      r5.status === 401 && r5.headers['cache-control'] === 'private, no-store', r5.headers['cache-control']);
+    check('responses are marked nosniff', r4.headers['x-content-type-options'] === 'nosniff');
+    check('a 401 with no credential carries the bare challenge',
+      /^Bearer resource_metadata=/.test(r5.headers['www-authenticate'] || '')
+      && !/error=/.test(r5.headers['www-authenticate'] || ''), r5.headers['www-authenticate']);
+    const r6 = await call(ping, 'not.a.real.token', src(159));
+    check('a 401 for a wrong credential says invalid_token',
+      r6.status === 401 && /error="invalid_token"/.test(r6.headers['www-authenticate'] || ''), r6.headers['www-authenticate']);
+
+    process.env.MCP_TOKENS = savedTokens;
+  }
+
+  console.log('\nOpen access cannot be enabled in production\n');
+
+  {
+    process.env.MCP_PUBLIC = 'true';
+    // An explicitly wrong credential is refused even while the flag is on: a
+    // revoked person must find out, not be silently downgraded to anonymous.
+    const wrong = await call(ping, 'this.is.garbage', '203.0.113.160');
+    check('an invalid bearer is refused even under open access', wrong.status === 401, `HTTP ${wrong.status}`);
+    check('while a request with no credential is still served off production',
+      (await call(ping, null, '203.0.113.161')).status === 200);
+    process.env.VERCEL_ENV = 'production';
+    check('but on Vercel production the flag is ignored', handler.publicAccess() === false);
+    delete process.env.VERCEL_ENV;
+    check('and honoured again off production', handler.publicAccess() === true);
+    delete process.env.MCP_PUBLIC;
   }
 
   console.log('\nAudit-log hygiene (second review, N1/N2)\n');
