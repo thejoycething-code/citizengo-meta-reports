@@ -5,7 +5,7 @@
 // There is no user directory behind this. Consent means "prove you hold the
 // shared team token", which is the same gate Claude Code uses as a bearer
 // header — just wrapped in the flow Claude.ai expects.
-const { sign, redirectUriAllowed, teamTokenIdentity, claimsFor, resourceMatches } = require('../../lib/oauth');
+const { sign, redirectUriAllowed, teamTokenIdentity, claimsFor, resourceMatches, REDIRECT_ORIGINS } = require('../../lib/oauth');
 const { corsFor } = require('../../lib/origin');
 const guard = require('../../lib/guard');
 
@@ -21,11 +21,28 @@ const guard = require('../../lib/guard');
 // Applied to every response this endpoint produces, including the 400s and the
 // 401 that re-renders the form after a wrong token - a header set only on the
 // happy path protects only the requests that were never at risk.
+// form-action lists where this form may SEND the browser - and in Chromium that
+// includes the 302 the browser follows after the POST. 'self' alone (a44af91)
+// meant Chrome refused to follow our redirect to claude.ai after a successful
+// consent: the server logged a 302, the user saw a blank page, and Claude never
+// received the code. Found live on 3 Sep 2026; curl and Firefox both follow the
+// redirect regardless, which is why no test caught it. So the destinations a
+// code may be delivered to - exactly the redirect allowlist - are the
+// destinations the form may send to, and nothing else.
+function formActionSources() {
+  const extras = String(process.env.OAUTH_EXTRA_REDIRECT_URIS || '')
+    .split(',').map((s) => s.trim()).filter(Boolean)
+    .map((u) => { try { return new URL(u).origin; } catch (e) { return null; } })
+    .filter(Boolean);
+  return ["'self'", 'https://claude.ai', ...REDIRECT_ORIGINS,
+    'http://localhost:*', 'http://127.0.0.1:*', ...new Set(extras)].join(' ');
+}
+
 function secureHeaders(res) {
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('Content-Security-Policy',
     "frame-ancestors 'none'; default-src 'none'; style-src 'unsafe-inline'; "
-    + "form-action 'self'; base-uri 'none'");
+    + `form-action ${formActionSources()}; base-uri 'none'`);
   res.setHeader('X-Content-Type-Options', 'nosniff');
   // same-origin, NOT no-referrer. Under no-referrer the Fetch standard makes a
   // browser serialise the Origin header of this page's own form POST as the
@@ -134,7 +151,8 @@ module.exports = async function handler(req, res) {
     return;
   }
 
-  const who = teamTokenIdentity(p.team_token);
+  // Trimmed: a token pasted with a trailing space or newline is the token.
+  const who = teamTokenIdentity(String(p.team_token || '').trim());
   if (!who) {
     await guard.recordFailure(source, 'authorize');
     res.setHeader('Content-Type', 'text/html; charset=utf-8');

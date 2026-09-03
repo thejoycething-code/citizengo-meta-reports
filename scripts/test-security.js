@@ -432,9 +432,11 @@ const ping = { jsonrpc: '2.0', id: 1, method: 'ping' };
     });
     check('the rendered consent page refuses to be framed',
       good['x-frame-options'] === 'DENY', JSON.stringify(good['x-frame-options']));
-    check('its policy also blocks framing and pins form submission',
+    // Chromium applies form-action to the redirect a form POST returns, so the
+    // assistants' origins must be listed or the browser never delivers the code.
+    check('its policy blocks framing and lets the form send the browser on to the assistants',
       /frame-ancestors 'none'/.test(good['content-security-policy'] || '')
-      && /form-action 'self'/.test(good['content-security-policy'] || ''),
+      && /form-action 'self' https:\/\/claude\.ai https:\/\/chatgpt\.com https:\/\/chat\.openai\.com http:\/\/localhost:\*/.test(good['content-security-policy'] || ''),
       good['content-security-policy']);
     check('it is not cached', good['cache-control'] === 'no-store');
     // A referrer policy of no-referrer makes the browser send Origin: null on
