@@ -437,6 +437,10 @@ const ping = { jsonrpc: '2.0', id: 1, method: 'ping' };
       && /form-action 'self'/.test(good['content-security-policy'] || ''),
       good['content-security-policy']);
     check('it is not cached', good['cache-control'] === 'no-store');
+    // A referrer policy of no-referrer makes the browser send Origin: null on
+    // this page's own form POST, which the Origin check refuses. Learned live.
+    check('its referrer policy lets the form POST carry a real Origin',
+      good['referrer-policy'] === 'same-origin', good['referrer-policy']);
 
     // A header set only on the happy path protects only the requests that were
     // never at risk, so the rejection paths are checked too.

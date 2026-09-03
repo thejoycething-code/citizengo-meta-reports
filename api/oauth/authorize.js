@@ -27,7 +27,14 @@ function secureHeaders(res) {
     "frame-ancestors 'none'; default-src 'none'; style-src 'unsafe-inline'; "
     + "form-action 'self'; base-uri 'none'");
   res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('Referrer-Policy', 'no-referrer');
+  // same-origin, NOT no-referrer. Under no-referrer the Fetch standard makes a
+  // browser serialise the Origin header of this page's own form POST as the
+  // literal "null" - which the Origin check below then refuses. That is exactly
+  // what happened on 3 Sep 2026: every consent submission was 403 "origin not
+  // allowed" while curl, which sends whatever Origin it is told, passed. Same-
+  // origin still sends no Referer to claude.ai on the redirect back, so the
+  // state and code_challenge in this URL stay out of anyone else's logs.
+  res.setHeader('Referrer-Policy', 'same-origin');
   res.setHeader('Cache-Control', 'no-store');
 }
 
