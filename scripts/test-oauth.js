@@ -18,6 +18,7 @@ const ORIGIN = `http://localhost:${PORT}`;
 // throttled itself on the next run - the third test broken this way, because a
 // shared mutable store and test isolation are fundamentally at odds.
 process.env.GUARD_DURABLE = 'off';
+process.env.TOKEN_STORE = 'off';                       // MCP_TOKENS only; the table has its own tests
 process.env.MCP_TOKENS = 'cgo_TESTFIXTURE_9Wq4Xz7Rm2LtV5nB';
 process.env.OAUTH_SIGNING_SECRET = 'test-signing-secret-not-production';
 

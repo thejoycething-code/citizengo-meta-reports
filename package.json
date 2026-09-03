@@ -26,6 +26,7 @@
     "test:tool-size": "node scripts/test-tool-size.js",
     "check:tokens": "node scripts/check-token-expiry.js",
     "test:tokens": "node scripts/test-token-expiry.js",
-    "test:security": "node scripts/test-security.js"
+    "test:security": "node scripts/test-security.js",
+    "tokens": "node scripts/tokens.js"
   }
 }

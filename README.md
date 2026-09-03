@@ -217,10 +217,25 @@ fail differently:
 ### Hosted MCP (Vercel)
 
 Environment: `SUPABASE_URL`, `SUPABASE_MCP_KEY` (or `SUPABASE_SERVICE_KEY`),
-`MCP_TOKENS` (comma-separated `name:token` pairs, one per person),
-`OAUTH_SIGNING_SECRET`. Optional: `PUBLIC_ORIGIN` to pin the token issuer to
+`OAUTH_SIGNING_SECRET`. `MCP_TOKENS` (comma-separated `name:token` pairs) is
+the break-glass credential source only; day-to-day tokens live in the database. Optional: `PUBLIC_ORIGIN` to pin the token issuer to
 one hostname; `MCP_ALLOWED_ORIGINS` to allow browser origins beyond claude.ai,
 chatgpt.com and loopback.
+
+**Per-person tokens live in `meta_access_tokens`**, as SHA-256 hashes. Issue,
+revoke and list them from the repo with no redeploy:
+
+```bash
+npm run tokens -- add candela --note "Candela García"   # prints the token once
+npm run tokens -- revoke candela                        # 401 within 30 seconds
+npm run tokens -- rotate candela
+npm run tokens -- list                                  # created, last used, revoked
+```
+
+The connector caches active hashes for 30 seconds per instance; if the table is
+unreachable the last good list stays in force and `MCP_TOKENS` still applies,
+so a database fault degrades rather than locks everyone out. An empty table
+with an empty `MCP_TOKENS` refuses everything.
 
 **Authentication is required.** `MCP_PUBLIC=true`, which served every request
 without a credential, was withdrawn on 3 Sep 2026 after Carlo Manuali's review
@@ -233,7 +248,7 @@ the origin rather than `*`; every MCP response is `Cache-Control: private,
 no-store`. `npm run test:security` and `npm run test:oauth` cover each of
 these.
 
-**Google sign-in** (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`; optional
+**Google sign-in — built, tested, not enabled.** (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`; optional
 `ALLOWED_GOOGLE_DOMAINS`, default `citizengo.net`; `MCP_REVOKED_EMAILS` for
 instant revocation). When configured, the consent page offers *Continue with
 Google*: a standard OpenID Connect flow, verified locally against Google's
@@ -268,9 +283,10 @@ production, or every request is blocked before reaching the auth in `api/mcp.js`
   still authenticates and simply returns nothing — no error, no failed request,
   just empty results. Renewal means the profile owner re-authorising the app,
   which resets the window. The watchdog warns 21 days out and fails at 7.
-- **Per-person tokens are issued by hand** — `MCP_TOKENS` is a Vercel secret
-  edited by Chris; there is no self-service. Fine at a dozen people, not at a
-  hundred.
+- **Tokens are issued by one operator** — `npm run tokens -- add` needs the
+  service key, so Chris mints and distributes them. No redeploy, but no
+  self-service either; Google sign-in exists in the code for the day that is
+  wanted.
 - **Comment text deliberately not collected** — see ONBOARDING.md
 
 ---

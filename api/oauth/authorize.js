@@ -169,7 +169,7 @@ module.exports = async function handler(req, res) {
   }
 
   // Trimmed: a token pasted with a trailing space or newline is the token.
-  const who = teamTokenIdentity(String(p.team_token || '').trim());
+  const who = await teamTokenIdentity(String(p.team_token || '').trim());
   if (!who) {
     await guard.recordFailure(source, 'authorize');
     res.setHeader('Content-Type', 'text/html; charset=utf-8');

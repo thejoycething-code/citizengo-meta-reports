@@ -106,7 +106,7 @@ module.exports = async function handler(req, res) {
     // Every code names who consented. One that does not was not minted by the
     // current consent page and is not redeemable.
     if (!claims.who) { fail(res, 'invalid_grant', 'Authorization code carries no identity'); return; }
-    if (!identityStillValid(claims.who)) { fail(res, 'invalid_grant', 'This identity is no longer permitted'); return; }
+    if (!(await identityStillValid(claims.who))) { fail(res, 'invalid_grant', 'This identity is no longer permitted'); return; }
     issue(claims.who);
     return;
   }
@@ -117,7 +117,7 @@ module.exports = async function handler(req, res) {
     if (!claims.who) { fail(res, 'invalid_grant', 'Refresh token carries no identity'); return; }
     // Revocation bites here too: a refresh for a removed name or a revoked or
     // off-domain email is refused, so the session cannot be renewed.
-    if (!identityStillValid(claims.who)) { fail(res, 'invalid_grant', 'This identity is no longer permitted'); return; }
+    if (!(await identityStillValid(claims.who))) { fail(res, 'invalid_grant', 'This identity is no longer permitted'); return; }
     issue(claims.who);
     return;
   }

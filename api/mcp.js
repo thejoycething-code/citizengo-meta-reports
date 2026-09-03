@@ -6,9 +6,11 @@
 // store — so nothing about them changes here. This file is only the plumbing
 // that mcp/server.js does for stdio.
 //
-// Auth: a bearer token per user, from MCP_TOKENS (comma-separated). Per-user
-// rather than one shared secret so a single person can be revoked without
-// re-issuing to everyone. There is NO anonymous access: unset MCP_TOKENS and the
+// Auth: a bearer token per person. Tokens live as hashes in the
+// meta_access_tokens table (lib/tokens.js; issued with `npm run tokens`), with
+// MCP_TOKENS in the environment as the break-glass path. Per-person rather than
+// one shared secret so a single person can be revoked without re-issuing to
+// everyone. There is NO anonymous access: no rows and no MCP_TOKENS means the
 // endpoint refuses everything rather than defaulting to open.
 //
 // Credentials: prefers SUPABASE_MCP_KEY, a key for the meta_readonly role, which
@@ -22,6 +24,7 @@ const guard = require('../lib/guard');
 const { corsFor } = require('../lib/origin');
 const { onVercelProduction } = require('../lib/env-guard');
 const { identityStillValid } = require('../lib/identity');
+const tokens = require('../lib/tokens');
 
 const SERVER_INFO = { name: 'citizengo-meta-reports', version: '1.0.0' };
 
@@ -80,13 +83,13 @@ function rateLimited(key, cost = 1) {
 // Returns the name of whoever's token this is, or null. Naming the holder is
 // what makes "who read what" answerable at all: previously every request was
 // indistinguishable from every other.
-function tokenIdentity(supplied, expect) {
+async function tokenIdentity(supplied, expect) {
   if (!supplied) return null;
 
-  // 1. A per-person or team token from MCP_TOKENS. usableTokens drops any entry
-  //    too weak to be a credential and says so in the log; identify compares
-  //    SHA-256 digests with timingSafeEqual and returns the matching name.
-  const name = guard.identify(supplied, guard.usableTokens(process.env.MCP_TOKENS));
+  // 1. A per-person token: MCP_TOKENS first (no network, break-glass), then the
+  //    hashed rows in meta_access_tokens. Both compare SHA-256 digests in
+  //    constant time and return the holder's name.
+  const name = await tokens.identify(supplied);
   if (name) return name;
 
   // 2. An OAuth access token this server issued. claude.ai cannot send a fixed
@@ -105,7 +108,7 @@ function tokenIdentity(supplied, expect) {
     // email against the allowed Google domains and the revocation list - so
     // revoking a person ends their session on the next call rather than when
     // the refresh token happens to expire.
-    return identityStillValid(claims.who) ? claims.who : null;
+    return (await identityStillValid(claims.who)) ? claims.who : null;
   } catch (e) {
     // OAUTH_SIGNING_SECRET unset - OAuth simply unavailable, static still works.
     return null;
@@ -217,7 +220,7 @@ module.exports = async function handler(req, res) {
   // A credential that was SENT and is wrong is refused whatever the flag says:
   // a revoked person must find out, not be silently downgraded to anonymous.
   // Only the complete absence of a credential is served under open access.
-  const identity = tokenIdentity(supplied, claimsFor(req));
+  const identity = await tokenIdentity(supplied, claimsFor(req));
   if (!identity && (supplied || !publicAccess())) {
     await guard.recordFailure(source, 'mcp');
     // 401 with WWW-Authenticate is what MCP clients expect. RFC 6750: a request

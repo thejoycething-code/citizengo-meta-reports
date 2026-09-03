@@ -24,6 +24,7 @@ const WEAK = 'cgo_team_shared_2026';
 process.env.MCP_TOKENS = STRONG;
 process.env.SUPABASE_URL = 'http://localhost:1';       // never reached; auth fails first
 process.env.GUARD_DURABLE = 'off';                     // never touch the real failure log
+process.env.TOKEN_STORE = 'off';                       // env tokens only, until the token-store section below
 process.env.SUPABASE_SERVICE_KEY = 'unused';
 process.env.AUTH_FAIL_LIMIT = '5';
 process.env.MCP_MAX_BATCH = '20';
@@ -416,6 +417,68 @@ const ping = { jsonrpc: '2.0', id: 1, method: 'ping' };
     }
     check('the Google seams are allowed locally, so the mock Google works',
       !under({ GOOGLE_TOKEN_URL: 'http://localhost:9' }, 'assertGoogleEndpointsSafe'));
+    check('TOKEN_STORE=off is refused on Vercel production',
+      under({ TOKEN_STORE: 'off', VERCEL_ENV: 'production' }, 'assertTokenStoreSafe'));
+    check('TOKEN_STORE=off is allowed locally, so these tests can run',
+      !under({ TOKEN_STORE: 'off' }, 'assertTokenStoreSafe'));
+  }
+
+  console.log('\nPer-person tokens live in the database\n');
+
+  {
+    const tokens = require(path.join(ROOT, 'lib', 'tokens.js'));
+    // A mock PostgREST serving meta_access_tokens: active rows out, PATCHes in.
+    const TPORT = 5813;
+    const table = [];                       // { name, token_hash, revoked_at }
+    const patches = [];
+    const mock = http.createServer((req, res) => {
+      if (!/\/rest\/v1\/meta_access_tokens/.test(req.url)) { res.statusCode = 404; return res.end('{}'); }
+      if (req.method === 'PATCH') { patches.push(req.url); res.statusCode = 204; return res.end(); }
+      res.setHeader('Content-Type', 'application/json');
+      res.end(JSON.stringify(table.filter((r) => !r.revoked_at).map(({ name, token_hash }) => ({ name, token_hash }))));
+    });
+    await new Promise((r) => mock.listen(TPORT, '127.0.0.1', r));
+    const saved = { url: process.env.SUPABASE_URL, tokens: process.env.MCP_TOKENS, store: process.env.TOKEN_STORE };
+    process.env.SUPABASE_URL = `http://127.0.0.1:${TPORT}`;
+    delete process.env.TOKEN_STORE;
+    process.env.MCP_TOKENS = '';
+    tokens.resetCache();
+
+    const BOB = 'cgo_Hx4Tq9mLw2Pz7Rv3Nk8Bd5Yc';
+    const FOURTH = 'cgo_Vz2Mq8Tn4Lr7Kp3Wx9Hd6Sb';
+    table.push({ name: 'bob', token_hash: tokens.hash(BOB), revoked_at: null });
+    check('the table stores a SHA-256 hex digest, never the token', /^[0-9a-f]{64}$/.test(table[0].token_hash) && !table[0].token_hash.includes(BOB));
+
+    const ok = await call(ping, BOB, '203.0.113.170');
+    check('a token whose hash is an active row authenticates, with no MCP_TOKENS at all', ok.status === 200, `HTTP ${ok.status}`);
+    check('a wrong token is refused', (await call(ping, 'cgo_not_bobs_token_at_all_xx', '203.0.113.171')).status === 401);
+    await new Promise((r) => setTimeout(r, 50));
+    check('the row is stamped last_used_at (throttled), so list can say who still uses theirs',
+      patches.some((u) => /name=eq\.bob/.test(u) && /revoked_at=is\.null/.test(u)), patches.join(' '));
+
+    table[0].revoked_at = new Date().toISOString();
+    check('a revocation is not seen within the cache window', (await call(ping, BOB, '203.0.113.172')).status === 200);
+    tokens.resetCache();
+    check('and bites as soon as the cache turns over', (await call(ping, BOB, '203.0.113.173')).status === 401);
+    table[0].revoked_at = null;
+
+    // Break-glass: the table is down. The last good list stays in force and
+    // MCP_TOKENS still works; the door does not lock everyone out.
+    tokens.resetCache();
+    process.env.SUPABASE_URL = 'http://127.0.0.1:1';
+    process.env.MCP_TOKENS = FOURTH;
+    check('with the table unreachable, an env token still authenticates', (await call(ping, FOURTH, '203.0.113.174')).status === 200);
+    check('and a table-only token does not, because nothing vouches for it', (await call(ping, BOB, '203.0.113.175')).status === 401);
+
+    // Fail closed: nothing configured anywhere refuses everything.
+    process.env.SUPABASE_URL = `http://127.0.0.1:${TPORT}`;
+    process.env.MCP_TOKENS = '';
+    table.length = 0; tokens.resetCache();
+    check('an empty table and an empty MCP_TOKENS still refuse everything', (await call(ping, BOB, '203.0.113.176')).status === 401);
+
+    mock.close();
+    process.env.SUPABASE_URL = saved.url; process.env.MCP_TOKENS = saved.tokens; process.env.TOKEN_STORE = saved.store;
+    tokens.resetCache();
   }
 
   console.log('\nIdentity liveness (names and Google emails)\n');
@@ -427,19 +490,19 @@ const ping = { jsonrpc: '2.0', id: 1, method: 'ping' };
     process.env.GOOGLE_CLIENT_ID = 'x'; process.env.GOOGLE_CLIENT_SECRET = 'y';
     process.env.ALLOWED_GOOGLE_DOMAINS = 'citizengo.net';
     delete process.env.MCP_REVOKED_EMAILS;
-    check('a name still in MCP_TOKENS is valid', identityStillValid('alice'));
-    check('a name no longer in MCP_TOKENS is not', !identityStillValid('mallory'));
-    check('a work email in an allowed domain is valid', identityStillValid('someone@citizengo.net'));
-    check('the domain check is case-insensitive', identityStillValid('Someone@CitizenGO.net'));
-    check('an email in another domain is not', !identityStillValid('someone@gmail.com'));
-    check('an email with no domain is not', !identityStillValid('someone@'));
+    check('a name still in MCP_TOKENS is valid', await identityStillValid('alice'));
+    check('a name no longer in MCP_TOKENS is not', !(await identityStillValid('mallory')));
+    check('a work email in an allowed domain is valid', await identityStillValid('someone@citizengo.net'));
+    check('the domain check is case-insensitive', await identityStillValid('Someone@CitizenGO.net'));
+    check('an email in another domain is not', !(await identityStillValid('someone@gmail.com')));
+    check('an email with no domain is not', !(await identityStillValid('someone@')));
     process.env.MCP_REVOKED_EMAILS = 'someone@citizengo.net';
-    check('a revoked email is not, whatever its domain', !identityStillValid('Someone@citizengo.net'));
+    check('a revoked email is not, whatever its domain', !(await identityStillValid('Someone@citizengo.net')));
     delete process.env.MCP_REVOKED_EMAILS;
     delete process.env.GOOGLE_CLIENT_ID;
-    check('with Google sign-in off, no email identity is valid', !identityStillValid('someone@citizengo.net'));
-    check('but names still are', identityStillValid('alice'));
-    check('nothing and nonsense are not', !identityStillValid('') && !identityStillValid(null) && !identityStillValid(42));
+    check('with Google sign-in off, no email identity is valid', !(await identityStillValid('someone@citizengo.net')));
+    check('but names still are', await identityStillValid('alice'));
+    check('nothing and nonsense are not', !(await identityStillValid('')) && !(await identityStillValid(null)) && !(await identityStillValid(42)));
     for (const k of ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'ALLOWED_GOOGLE_DOMAINS', 'MCP_REVOKED_EMAILS']) delete process.env[k];
     Object.assign(process.env, { MCP_TOKENS: saved.MCP_TOKENS });
   }

@@ -16,6 +16,7 @@ const PORT = 5808;
 // suite deliberately fails authentication several times, and without both it
 // throttled itself and wrote those failures to the production table.
 process.env.GUARD_DURABLE = 'off';
+process.env.TOKEN_STORE = 'off';                       // MCP_TOKENS only; the table has its own tests
 const SOURCE = '198.18.0.' + (1 + Math.floor(Math.random() * 250));
 const GOOD = 'test_Alice_7Kq2Vx9RmT4wZb6J';
 process.env.MCP_TOKENS = `${GOOD},test_Bob_3Hn8QyL5sW7pD2vX`;

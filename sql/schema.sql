@@ -442,3 +442,36 @@ join public.meta_posts p on p.post_id = l.post_id
 join public.meta_pages g on g.page_id = l.page_id;
 
 grant select on public.meta_post_amplification to meta_readonly;
+
+-- ---------------------------------------------------------------------------
+-- Added 3 Sep 2026. Per-person access tokens for the MCP connector, as HASHES.
+--
+-- MCP_TOKENS in Vercel is write-only, so adding one person meant re-entering
+-- everyone's token and redeploying. A token is now a row: lib/tokens.js checks
+-- a presented token's SHA-256 against active rows; scripts/tokens.js issues,
+-- revokes and lists them. The token itself is never stored - the hash of 24
+-- random bytes is neither reversible nor guessable.
+--
+-- Read by the connector's service key only. No policies: RLS on with none
+-- means anon and authenticated see nothing.
+create table if not exists public.meta_access_tokens (
+  id           bigint generated always as identity primary key,
+  name         text        not null,
+  token_hash   text        not null,
+  note         text,
+  created_at   timestamptz not null default now(),
+  created_by   text,
+  last_used_at timestamptz,
+  revoked_at   timestamptz,
+  constraint meta_access_tokens_name_format check (name ~ '^[a-z0-9][a-z0-9-]{0,62}$'),
+  constraint meta_access_tokens_hash_format check (token_hash ~ '^[0-9a-f]{64}$')
+);
+
+-- One ACTIVE token per name; a revoked row keeps the name's history.
+create unique index if not exists meta_access_tokens_one_active_per_name
+  on public.meta_access_tokens (name) where revoked_at is null;
+create unique index if not exists meta_access_tokens_hash
+  on public.meta_access_tokens (token_hash);
+
+alter table public.meta_access_tokens enable row level security;
+revoke all on public.meta_access_tokens from anon, authenticated;
