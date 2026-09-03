@@ -408,6 +408,40 @@ const ping = { jsonrpc: '2.0', id: 1, method: 'ping' };
     // needs the seam is not production for this code and must not be blocked.
     check('GUARD_DURABLE=off is allowed in CI, so a future test job still runs',
       !under({ GUARD_DURABLE: 'off', GITHUB_ACTIONS: 'true' }, 'assertDurableGuardSafe'));
+
+    // Any of these points Google sign-in somewhere other than Google.
+    for (const seam of ['GOOGLE_AUTH_URL', 'GOOGLE_TOKEN_URL', 'GOOGLE_JWKS_URL', 'GOOGLE_ISSUERS']) {
+      check(`${seam} is refused on Vercel production`,
+        under({ [seam]: 'http://attacker.example', VERCEL_ENV: 'production' }, 'assertGoogleEndpointsSafe'));
+    }
+    check('the Google seams are allowed locally, so the mock Google works',
+      !under({ GOOGLE_TOKEN_URL: 'http://localhost:9' }, 'assertGoogleEndpointsSafe'));
+  }
+
+  console.log('\nIdentity liveness (names and Google emails)\n');
+
+  {
+    const { identityStillValid } = require(path.join(ROOT, 'lib', 'identity.js'));
+    const saved = { ...process.env };
+    process.env.MCP_TOKENS = `alice:${STRONG}`;
+    process.env.GOOGLE_CLIENT_ID = 'x'; process.env.GOOGLE_CLIENT_SECRET = 'y';
+    process.env.ALLOWED_GOOGLE_DOMAINS = 'citizengo.net';
+    delete process.env.MCP_REVOKED_EMAILS;
+    check('a name still in MCP_TOKENS is valid', identityStillValid('alice'));
+    check('a name no longer in MCP_TOKENS is not', !identityStillValid('mallory'));
+    check('a work email in an allowed domain is valid', identityStillValid('someone@citizengo.net'));
+    check('the domain check is case-insensitive', identityStillValid('Someone@CitizenGO.net'));
+    check('an email in another domain is not', !identityStillValid('someone@gmail.com'));
+    check('an email with no domain is not', !identityStillValid('someone@'));
+    process.env.MCP_REVOKED_EMAILS = 'someone@citizengo.net';
+    check('a revoked email is not, whatever its domain', !identityStillValid('Someone@citizengo.net'));
+    delete process.env.MCP_REVOKED_EMAILS;
+    delete process.env.GOOGLE_CLIENT_ID;
+    check('with Google sign-in off, no email identity is valid', !identityStillValid('someone@citizengo.net'));
+    check('but names still are', identityStillValid('alice'));
+    check('nothing and nonsense are not', !identityStillValid('') && !identityStillValid(null) && !identityStillValid(42));
+    for (const k of ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'ALLOWED_GOOGLE_DOMAINS', 'MCP_REVOKED_EMAILS']) delete process.env[k];
+    Object.assign(process.env, { MCP_TOKENS: saved.MCP_TOKENS });
   }
 
   console.log('\nConsent page cannot be framed\n');

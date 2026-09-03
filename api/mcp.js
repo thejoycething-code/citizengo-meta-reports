@@ -21,6 +21,7 @@ const { TOOLS, callTool } = require('../mcp/tools');
 const guard = require('../lib/guard');
 const { corsFor } = require('../lib/origin');
 const { onVercelProduction } = require('../lib/env-guard');
+const { identityStillValid } = require('../lib/identity');
 
 const SERVER_INFO = { name: 'citizengo-meta-reports', version: '1.0.0' };
 
@@ -99,13 +100,12 @@ function tokenIdentity(supplied, expect) {
     // Every token this server has minted since identity binding names who
     // consented. One that does not is not ours, whatever its signature says.
     if (!claims.who) return null;
-    // An OAuth session is only as alive as the team token that authorised it.
-    // Re-checked on EVERY request against the current MCP_TOKENS, so deleting a
-    // person's entry ends their claude.ai session on the next call rather than
-    // when the refresh token happens to expire.
-    const stillListed = guard.usableTokens(process.env.MCP_TOKENS)
-      .some((e2) => e2.name === claims.who);
-    return stillListed ? claims.who : null;
+    // An OAuth session is only as alive as the identity that authorised it.
+    // Re-checked on EVERY request - a name against the current MCP_TOKENS, an
+    // email against the allowed Google domains and the revocation list - so
+    // revoking a person ends their session on the next call rather than when
+    // the refresh token happens to expire.
+    return identityStillValid(claims.who) ? claims.who : null;
   } catch (e) {
     // OAUTH_SIGNING_SECRET unset - OAuth simply unavailable, static still works.
     return null;

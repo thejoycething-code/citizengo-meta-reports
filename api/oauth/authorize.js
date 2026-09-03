@@ -7,6 +7,7 @@
 // header — just wrapped in the flow Claude.ai expects.
 const { sign, redirectUriAllowed, teamTokenIdentity, claimsFor, resourceMatches, REDIRECT_ORIGINS } = require('../../lib/oauth');
 const { corsFor } = require('../../lib/origin');
+const google = require('../../lib/google');
 const guard = require('../../lib/guard');
 
 // The consent page collects a password, so it must not be embeddable. Without a
@@ -58,9 +59,20 @@ function secureHeaders(res) {
 const esc = (s) => String(s || '').replace(/[&<>"']/g, (c) =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
+// Which of the assistant's parameters travel on to the Google link and ride
+// along as hidden fields of the token form.
+const PASS = ['client_id', 'redirect_uri', 'state', 'code_challenge', 'code_challenge_method', 'scope', 'resource'];
+
+function googleHref(params) {
+  const sp = new URLSearchParams();
+  for (const k of PASS) if (params[k]) sp.set(k, params[k]);
+  return `/api/oauth/google/start?${sp}`;
+}
+
 function page({ params, error }) {
-  const hidden = ['client_id', 'redirect_uri', 'state', 'code_challenge', 'code_challenge_method', 'scope', 'resource']
+  const hidden = PASS
     .map((k) => (params[k] ? `<input type="hidden" name="${k}" value="${esc(params[k])}">` : '')).join('');
+  const withGoogle = google.configured();
   return `<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Connect CitizenGO reporting</title><style>
@@ -68,22 +80,27 @@ function page({ params, error }) {
 body{font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;max-width:26rem;margin:12vh auto;padding:0 1.25rem}
 h1{font-size:1.25rem;margin:0 0 .25rem}
 p{color:#666;font-size:.9rem}
-label{display:block;font-weight:600;margin:1.5rem 0 .4rem;font-size:.9rem}
+label{display:block;font-weight:600;margin:1.25rem 0 .4rem;font-size:.9rem}
 input[type=password]{width:100%;padding:.6rem .7rem;font-size:1rem;border:1px solid #ccc;border-radius:.4rem;background:transparent;color:inherit}
-button{margin-top:1rem;width:100%;padding:.65rem;font-size:1rem;font-weight:600;border:0;border-radius:.4rem;background:#1d4ed8;color:#fff;cursor:pointer}
+.btn{display:block;box-sizing:border-box;width:100%;margin-top:1rem;padding:.65rem;font-size:1rem;font-weight:600;border:0;border-radius:.4rem;background:#1d4ed8;color:#fff;text-align:center;text-decoration:none;cursor:pointer}
+.btn.alt{background:transparent;color:inherit;border:1px solid #ccc;font-weight:500}
+.or{margin:1.5rem 0 .25rem;text-align:center;color:#888;font-size:.8rem;text-transform:uppercase;letter-spacing:.08em}
 .err{background:#fdeaea;color:#8a1c1c;border:1px solid #f3c6c6;padding:.6rem .75rem;border-radius:.4rem;font-size:.9rem}
 .note{margin-top:1.5rem;font-size:.8rem;color:#888}
-@media(prefers-color-scheme:dark){input[type=password]{border-color:#444}.err{background:#3a1d1d;color:#f3b8b8;border-color:#5a2a2a}}
+@media(prefers-color-scheme:dark){input[type=password],.btn.alt{border-color:#444}.err{background:#3a1d1d;color:#f3b8b8;border-color:#5a2a2a}}
 </style></head><body>
 <h1>Connect CitizenGO organic reporting</h1>
 <p>Claude is asking to read organic Facebook performance data for CitizenGO pages. This connection is <strong>read-only</strong>.</p>
 ${error ? `<div class="err">${esc(error)}</div>` : ''}
+${withGoogle ? `<a class="btn" href="${esc(googleHref(params))}">Continue with Google</a>
+<p>Use your ${esc(google.allowedDomains().join(' or '))} account. Nothing to paste, nothing to remember.</p>
+<div class="or">or</div>` : ''}
 <form method="POST">${hidden}
-<label for="t">Team access token</label>
-<input id="t" name="team_token" type="password" autocomplete="off" autofocus required>
-<button type="submit">Allow access</button>
+<label for="t">${withGoogle ? 'Access token, if you were given one' : 'Team access token'}</label>
+<input id="t" name="team_token" type="password" autocomplete="off" ${withGoogle ? '' : 'autofocus'} required>
+<button type="submit" class="btn${withGoogle ? ' alt' : ''}">Allow access</button>
 </form>
-<p class="note">Ask whoever set up the connector for the token. It grants read access to post performance figures only — it cannot post, change or delete anything.</p>
+<p class="note">${withGoogle ? 'Either way this grants read access to post performance figures only' : 'Ask whoever set up the connector for the token. It grants read access to post performance figures only'} — it cannot post, change or delete anything.</p>
 </body></html>`;
 }
 

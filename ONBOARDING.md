@@ -10,17 +10,17 @@ This takes about two minutes to set up.
 
 ## Connecting
 
-You'll need an **access token** — ask Chris for yours. It is personal to you, so
-don't share it: if it leaks, Chris can cancel yours alone without disturbing
-anyone else.
+You sign in with your **CitizenGO Google account** — nothing to paste, nothing
+to remember. (If Chris has given you an access token instead, the same page
+accepts that too.)
 
 ### In Claude (claude.ai, desktop or mobile)
 
 1. **Settings → Connectors → Add custom connector**
 2. URL: `https://meta-organic-reporting.vercel.app/api/mcp`
 3. Leave Advanced settings empty — you don't need a Client ID or Secret
-4. Click **Add**, then **Connect**. A CitizenGO page opens asking for your
-   token — paste it and click **Allow access**
+4. Click **Add**, then **Connect**. A CitizenGO page opens — click **Continue
+   with Google** and pick your work account
 
 Then in any conversation, press **+** → **Connectors** and switch it on.
 
@@ -29,17 +29,18 @@ Then in any conversation, press **+** → **Connectors** and switch it on.
 1. **Settings → Connectors → Create** (or **Add sources → Connect more**)
 2. URL: `https://meta-organic-reporting.vercel.app/api/mcp`
 3. Authentication: **OAuth** — not "No authentication"
-4. Follow the sign-in prompt and paste your token when the CitizenGO page asks
+4. Follow the sign-in prompt, then **Continue with Google** on the CitizenGO page
 
 You need a ChatGPT plan that supports custom connectors; on some plans this sits
 behind **Settings → Connectors → Advanced → Developer mode**.
 
-**Staying connected.** You'll be asked for your token again about once a month,
-and straight away if your access is withdrawn. There is nothing else to renew.
+**Staying connected.** About once a week Claude will send you back through the
+Google sign-in — one click, since you're already signed in. Leave CitizenGO and
+access ends with your account.
 
-**The URL on its own does not give access** — your token does. The connector
-reads our performance figures, including what we spent boosting posts. It
-cannot post, change or delete anything.
+**The URL on its own does not give access** — your Google account does. The
+connector reads our performance figures, including what we spent boosting
+posts. It cannot post, change or delete anything.
 
 ---
 

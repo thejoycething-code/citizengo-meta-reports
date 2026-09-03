@@ -4,6 +4,7 @@
 // returns 415 and breaks the flow.
 const { sign, verify, verifyPkce, claimsFor, resourceMatches } = require('../../lib/oauth');
 const { corsFor } = require('../../lib/origin');
+const { identityStillValid } = require('../../lib/identity');
 
 const ACCESS_TTL = 60 * 60;            // 1 hour
 // Seven days, not thirty.
@@ -32,6 +33,11 @@ const ACCESS_TTL = 60 * 60;            // 1 hour
 // window means someone who checks in fortnightly re-consents every time, which
 // is how a tool stops being used.
 const REFRESH_TTL = 60 * 60 * 24 * 30;  // 30 days
+// Seven for Google identities. Re-consent there is a redirect through an
+// already-signed-in Google account - no password field - so it costs nothing,
+// and it bounds how long a leaver's refresh token can outlive their account if
+// nobody adds them to MCP_REVOKED_EMAILS.
+const REFRESH_TTL_GOOGLE = 60 * 60 * 24 * 7;
 
 function fail(res, code, description, status = 400) {
   res.status(status).json({ error: code, error_description: description });
@@ -73,7 +79,8 @@ module.exports = async function handler(req, res) {
       token_type: 'Bearer',
       expires_in: ACCESS_TTL,
       // Rotated on every refresh, as OAuth 2.1 requires for public clients.
-      refresh_token: sign({ typ: 'refresh', scope: 'mcp', who, ...bound }, REFRESH_TTL),
+      refresh_token: sign({ typ: 'refresh', scope: 'mcp', who, ...bound },
+        who.includes('@') ? REFRESH_TTL_GOOGLE : REFRESH_TTL),
       scope: 'mcp',
     });
   };
@@ -99,6 +106,7 @@ module.exports = async function handler(req, res) {
     // Every code names who consented. One that does not was not minted by the
     // current consent page and is not redeemable.
     if (!claims.who) { fail(res, 'invalid_grant', 'Authorization code carries no identity'); return; }
+    if (!identityStillValid(claims.who)) { fail(res, 'invalid_grant', 'This identity is no longer permitted'); return; }
     issue(claims.who);
     return;
   }
@@ -107,6 +115,9 @@ module.exports = async function handler(req, res) {
     const claims = verify(body.refresh_token, 'refresh', bound);
     if (!claims) { fail(res, 'invalid_grant', 'Refresh token is invalid or expired'); return; }
     if (!claims.who) { fail(res, 'invalid_grant', 'Refresh token carries no identity'); return; }
+    // Revocation bites here too: a refresh for a removed name or a revoked or
+    // off-domain email is refused, so the session cannot be renewed.
+    if (!identityStillValid(claims.who)) { fail(res, 'invalid_grant', 'This identity is no longer permitted'); return; }
     issue(claims.who);
     return;
   }

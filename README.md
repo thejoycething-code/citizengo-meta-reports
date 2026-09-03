@@ -233,6 +233,22 @@ the origin rather than `*`; every MCP response is `Cache-Control: private,
 no-store`. `npm run test:security` and `npm run test:oauth` cover each of
 these.
 
+**Google sign-in** (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`; optional
+`ALLOWED_GOOGLE_DOMAINS`, default `citizengo.net`; `MCP_REVOKED_EMAILS` for
+instant revocation). When configured, the consent page offers *Continue with
+Google*: a standard OpenID Connect flow, verified locally against Google's
+published keys — signature, issuer, audience, expiry, nonce, `email_verified`
+and the Workspace `hd` claim, so a consumer account with a work alias is
+refused. Identity is the verified work email; it is re-checked on every call and
+every refresh, so removing a person from the Workspace, listing their email in
+`MCP_REVOKED_EMAILS`, or unsetting the client ID ends their access on the next
+request. Google refresh tokens last seven days rather than thirty. To create
+the client: Google Cloud Console → APIs & Services → Credentials → OAuth client
+ID → *Web application*, authorised redirect URI
+`https://meta-organic-reporting.vercel.app/api/oauth/google/callback`; set the
+consent screen's user type to *Internal* so only Workspace accounts can even
+start. Team tokens keep working alongside for anyone issued one.
+
 Deploy with `vercel --prod`. **Vercel Deployment Protection must be off** for
 production, or every request is blocked before reaching the auth in `api/mcp.js`.
 
