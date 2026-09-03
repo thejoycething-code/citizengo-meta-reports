@@ -236,7 +236,9 @@ npm run tokens -- list                                  # issued, last used, exp
 ```
 
 Tokens **expire 90 days after issue** (`TOKEN_TTL_DAYS`); `list` flags anything
-inside 14 days of expiry and `rotate` renews. Expiry is enforced in
+inside 14 days of expiry and `rotate` renews. The daily watchdog also runs
+`check:access`, which warns 21 days out and fails the run inside 7, so an
+expiry is noticed before the holder finds the tool broken. Expiry is enforced in
 `lib/tokens.js`, not left to the query, so a row written by hand obeys it too.
 
 The connector caches active hashes for 30 seconds per instance; if the table is

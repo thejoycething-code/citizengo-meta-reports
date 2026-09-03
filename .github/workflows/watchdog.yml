@@ -10,6 +10,10 @@ name: Watchdog
 # It also runs at a different time, so a problem affecting one scheduled
 # workflow is less likely to silence both.
 #
+# Since 3 Sep 2026 it also answers: how long until somebody's CONNECTOR access
+# expires? Per-person tokens last 90 days, and one that lapses unannounced looks
+# to its holder like the tool breaking.
+#
 # Since 29 Aug 2026 it answers a second question: how long until the Meta token
 # expires? Access runs through a personal Facebook profile - the citizenGO
 # portfolio cannot have apps added, so a System User is not possible - and those
@@ -67,6 +71,13 @@ jobs:
         if: always() && github.event.inputs.test_alert != 'true'
         run: node scripts/check-token-expiry.js --warn-days 21 --fail-days 7
 
+      # Per-person connector tokens expire 90 days after issue. Same if:
+      # always() reasoning as above: an expiring credential is worth reporting
+      # even when something else in this job has already failed.
+      - name: Check how long the access tokens have left
+        if: always() && github.event.inputs.test_alert != 'true'
+        run: node scripts/check-access-tokens.js --warn-days 21 --fail-days 7
+
       - name: Summary
         if: always()
         run: |
@@ -75,7 +86,7 @@ jobs:
           else
             echo "### Collection has stopped" >> "$GITHUB_STEP_SUMMARY"
             echo "" >> "$GITHUB_STEP_SUMMARY"
-            echo "Either no new data for two days, or a Meta token is close to expiring. The step above says which." >> "$GITHUB_STEP_SUMMARY"
+            echo "Either no new data for two days, a Meta token is close to expiring, or a staff access token is. The steps above say which." >> "$GITHUB_STEP_SUMMARY"
             echo "" >> "$GITHUB_STEP_SUMMARY"
             echo "Token renewal: generate a fresh token on the profile that owns it, extend it to 60 days in the Access Token Debugger, then update the META_TOKENS secret." >> "$GITHUB_STEP_SUMMARY"
           fi

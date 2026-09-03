@@ -27,6 +27,7 @@
     "check:tokens": "node scripts/check-token-expiry.js",
     "test:tokens": "node scripts/test-token-expiry.js",
     "test:security": "node scripts/test-security.js",
-    "tokens": "node scripts/tokens.js"
+    "tokens": "node scripts/tokens.js",
+    "check:access": "node scripts/check-access-tokens.js"
   }
 }
