@@ -435,7 +435,9 @@ const ping = { jsonrpc: '2.0', id: 1, method: 'ping' };
       if (!/\/rest\/v1\/meta_access_tokens/.test(req.url)) { res.statusCode = 404; return res.end('{}'); }
       if (req.method === 'PATCH') { patches.push(req.url); res.statusCode = 204; return res.end(); }
       res.setHeader('Content-Type', 'application/json');
-      res.end(JSON.stringify(table.filter((r) => !r.revoked_at).map(({ name, token_hash }) => ({ name, token_hash }))));
+      // expires_at included, or the double silently hides the expiry rule it is
+      // meant to be testing - which is exactly what it did on first run.
+      res.end(JSON.stringify(table.filter((r) => !r.revoked_at).map(({ name, token_hash, expires_at }) => ({ name, token_hash, expires_at: expires_at ?? null }))));
     });
     await new Promise((r) => mock.listen(TPORT, '127.0.0.1', r));
     const saved = { url: process.env.SUPABASE_URL, tokens: process.env.MCP_TOKENS, store: process.env.TOKEN_STORE };
@@ -446,7 +448,8 @@ const ping = { jsonrpc: '2.0', id: 1, method: 'ping' };
 
     const BOB = 'cgo_Hx4Tq9mLw2Pz7Rv3Nk8Bd5Yc';
     const FOURTH = 'cgo_Vz2Mq8Tn4Lr7Kp3Wx9Hd6Sb';
-    table.push({ name: 'bob', token_hash: tokens.hash(BOB), revoked_at: null });
+    const inDays = (n) => new Date(Date.now() + n * 86400_000).toISOString();
+    table.push({ name: 'bob', token_hash: tokens.hash(BOB), revoked_at: null, expires_at: inDays(90) });
     check('the table stores a SHA-256 hex digest, never the token', /^[0-9a-f]{64}$/.test(table[0].token_hash) && !table[0].token_hash.includes(BOB));
 
     const ok = await call(ping, BOB, '203.0.113.170');
@@ -461,6 +464,26 @@ const ping = { jsonrpc: '2.0', id: 1, method: 'ping' };
     tokens.resetCache();
     check('and bites as soon as the cache turns over', (await call(ping, BOB, '203.0.113.173')).status === 401);
     table[0].revoked_at = null;
+
+    // Expiry, added 3 Sep 2026. Enforced in code, not by the query.
+    table[0].expires_at = inDays(-1); tokens.resetCache();
+    check('a token past its expiry does not authenticate', (await call(ping, BOB, '203.0.113.177')).status === 401);
+    table[0].expires_at = inDays(1); tokens.resetCache();
+    check('a token inside its expiry does', (await call(ping, BOB, '203.0.113.178')).status === 200);
+    check('live() reads the boundary and refuses nonsense',
+      tokens.live({ expires_at: inDays(1) }) && !tokens.live({ expires_at: inDays(-1) })
+      && tokens.live({}) && !tokens.live({ expires_at: 'not-a-date' }));
+    // An OAuth session is only as alive as the token that authorised it.
+    {
+      const { sign } = require(path.join(ROOT, 'lib', 'oauth.js'));
+      const EXPECT = { iss: `http://localhost:${PORT}`, aud: `http://localhost:${PORT}/api/mcp` };
+      const bobOauth = sign({ typ: 'access', scope: 'mcp', who: 'bob', ...EXPECT }, 3600);
+      check('and an assistant session it authorised still works while it is live',
+        (await call(ping, bobOauth, '203.0.113.179')).status === 200);
+      table[0].expires_at = inDays(-1); tokens.resetCache();
+      check('but stops when the underlying token expires', (await call(ping, bobOauth, '203.0.113.180')).status === 401);
+    }
+    table[0].expires_at = inDays(90); tokens.resetCache();
 
     // Break-glass: the table is down. The last good list stays in force and
     // MCP_TOKENS still works; the door does not lock everyone out.

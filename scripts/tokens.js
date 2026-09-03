@@ -2,7 +2,7 @@
 'use strict';
 // Issue, revoke and list per-person access tokens for the MCP connector.
 //
-//   npm run tokens -- add <name> [--note "Candela García"]   mint, store the hash, print the token ONCE
+//   npm run tokens -- add <name> [--note "Candela García"]   mint, store the hash, print the token ONCE (valid 90 days)
 //   npm run tokens -- revoke <name>                          next call from that token is 401
 //   npm run tokens -- rotate <name>                          revoke + add
 //   npm run tokens -- list                                   who has one, when it was last used
@@ -16,7 +16,11 @@ const os = require('os');
 const { loadEnv } = require('../lib/graph');
 loadEnv();
 const guard = require('../lib/guard');
-const { hash } = require('../lib/tokens');
+const { hash, live } = require('../lib/tokens');
+
+// 90 days. Long enough not to be a nuisance, short enough that a token nobody
+// re-confirms stops working on its own.
+const TTL_DAYS = Number(process.env.TOKEN_TTL_DAYS || 90);
 
 const url = process.env.SUPABASE_URL;
 const key = process.env.SUPABASE_SERVICE_KEY;
@@ -36,23 +40,28 @@ async function rest(path, init = {}) {
 }
 
 async function active(name) {
-  const rows = await rest(`?select=name&name=eq.${encodeURIComponent(name)}&revoked_at=is.null`);
-  return rows.length > 0;
+  const rows = await rest(`?select=name,expires_at&name=eq.${encodeURIComponent(name)}&revoked_at=is.null`);
+  return rows.some(live);
 }
 
 async function add(rawName, note) {
   const name = slug(rawName);
   if (!name) throw new Error('a name is required, e.g. add candela');
   if (await active(name)) throw new Error(`"${name}" already has an active token. Use: rotate ${name}`);
-  const token = 'cgo_' + crypto.randomBytes(24).toString('base64url');
+  const expiresAt = new Date(Date.now() + TTL_DAYS * 86400_000);
+  // No leading '_' after the prefix: base64url allows it, but a token that
+  // reads as "cgo__..." invites a mangled copy-paste.
+  let token;
+  do { token = 'cgo_' + crypto.randomBytes(24).toString('base64url'); } while (token.startsWith('cgo__'));
   const weak = guard.tokenWeakness(token);
   if (weak) throw new Error(`generated token judged weak (${weak}) - this should not happen`);
   await rest('', {
     method: 'POST', headers: { Prefer: 'return=minimal' },
-    body: JSON.stringify([{ name, token_hash: hash(token), note: note || null, created_by: os.userInfo().username }]),
+    body: JSON.stringify([{ name, token_hash: hash(token), note: note || null, created_by: os.userInfo().username, expires_at: expiresAt.toISOString() }]),
   });
   console.log(`\nToken for ${name}${note ? ` (${note})` : ''} - shown ONCE, not stored anywhere:\n`);
   console.log(`  ${token}\n`);
+  console.log(`Valid for ${TTL_DAYS} days — expires ${expiresAt.toISOString().slice(0, 10)}.`);
   console.log('Send it to them privately. They paste it once on the consent page when connecting.');
   console.log(`To withdraw it: npm run tokens -- revoke ${name}\n`);
 }
@@ -68,15 +77,28 @@ async function revoke(rawName) {
 }
 
 async function list() {
-  const rows = await rest('?select=name,note,created_at,created_by,last_used_at,revoked_at&order=revoked_at.nullsfirst,created_at.asc');
+  const rows = await rest('?select=name,note,created_at,created_by,last_used_at,revoked_at,expires_at&order=revoked_at.nullsfirst,created_at.asc');
   if (!rows.length) { console.log('No tokens issued yet.'); return; }
-  const d = (t) => (t ? String(t).slice(0, 16).replace('T', ' ') : '—');
+  const d = (t) => (t ? String(t).slice(0, 10) : '—');
   const w = Math.max(4, ...rows.map((r) => r.name.length));
-  console.log(`\n${'name'.padEnd(w)}  ${'created'.padEnd(16)}  ${'last used'.padEnd(16)}  ${'revoked'.padEnd(16)}  note`);
+  const days = (t) => Math.round((Date.parse(t) - Date.now()) / 86400_000);
+  const state = (r) => {
+    if (r.revoked_at) return 'revoked';
+    if (!live(r)) return 'EXPIRED';
+    const left = r.expires_at ? days(r.expires_at) : null;
+    if (left === null) return 'active';
+    return left <= 14 ? `${left}d LEFT` : `${left}d`;
+  };
+  console.log(`\n${'name'.padEnd(w)}  ${'issued'.padEnd(10)}  ${'last used'.padEnd(10)}  ${'expires'.padEnd(10)}  ${'state'.padEnd(9)}  note`);
   for (const r of rows) {
-    console.log(`${r.name.padEnd(w)}  ${d(r.created_at).padEnd(16)}  ${d(r.last_used_at).padEnd(16)}  ${d(r.revoked_at).padEnd(16)}  ${r.note || ''}`);
+    console.log(`${r.name.padEnd(w)}  ${d(r.created_at).padEnd(10)}  ${d(r.last_used_at).padEnd(10)}  ${d(r.expires_at).padEnd(10)}  ${state(r).padEnd(9)}  ${r.note || ''}`);
   }
-  console.log(`\n${rows.filter((r) => !r.revoked_at).length} active, ${rows.filter((r) => r.revoked_at).length} revoked.\n`);
+  const usable = rows.filter((r) => !r.revoked_at && live(r));
+  const expired = rows.filter((r) => !r.revoked_at && !live(r));
+  console.log(`\n${usable.length} usable, ${expired.length} expired, ${rows.filter((r) => r.revoked_at).length} revoked.`);
+  const soon = usable.filter((r) => r.expires_at && days(r.expires_at) <= 14);
+  if (soon.length) console.log(`\nExpiring within 14 days: ${soon.map((r) => `${r.name} (${days(r.expires_at)}d)`).join(', ')} — rotate to renew.`);
+  console.log('');
 }
 
 (async () => {

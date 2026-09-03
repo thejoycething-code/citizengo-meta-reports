@@ -463,6 +463,10 @@ create table if not exists public.meta_access_tokens (
   created_by   text,
   last_used_at timestamptz,
   revoked_at   timestamptz,
+  -- 90 days from issue (TOKEN_TTL_DAYS). A credential nobody withdraws and
+  -- nobody re-confirms outlives the reason it was issued. Enforced in
+  -- lib/tokens.js as well, so the rule does not depend on the query.
+  expires_at   timestamptz,
   constraint meta_access_tokens_name_format check (name ~ '^[a-z0-9][a-z0-9-]{0,62}$'),
   constraint meta_access_tokens_hash_format check (token_hash ~ '^[0-9a-f]{64}$')
 );
@@ -472,6 +476,8 @@ create unique index if not exists meta_access_tokens_one_active_per_name
   on public.meta_access_tokens (name) where revoked_at is null;
 create unique index if not exists meta_access_tokens_hash
   on public.meta_access_tokens (token_hash);
+create index if not exists meta_access_tokens_active
+  on public.meta_access_tokens (revoked_at, expires_at);
 
 alter table public.meta_access_tokens enable row level security;
 revoke all on public.meta_access_tokens from anon, authenticated;

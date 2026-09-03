@@ -229,11 +229,15 @@ chatgpt.com and loopback.
 revoke and list them from the repo with no redeploy:
 
 ```bash
-npm run tokens -- add candela --note "Candela García"   # prints the token once
+npm run tokens -- add candela --note "Candela García"   # prints the token once, valid 90 days
 npm run tokens -- revoke candela                        # 401 within 30 seconds
 npm run tokens -- rotate candela
-npm run tokens -- list                                  # created, last used, revoked
+npm run tokens -- list                                  # issued, last used, expires, state
 ```
+
+Tokens **expire 90 days after issue** (`TOKEN_TTL_DAYS`); `list` flags anything
+inside 14 days of expiry and `rotate` renews. Expiry is enforced in
+`lib/tokens.js`, not left to the query, so a row written by hand obeys it too.
 
 The connector caches active hashes for 30 seconds per instance; if the table is
 unreachable the last good list stays in force and `MCP_TOKENS` still applies,
