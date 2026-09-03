@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CitizenGO — organic post performance</title>
+<style>
+  :root {
+    --bg: #f7f7f5; --panel: #fff; --ink: #1a1a18; --muted: #6b6b66;
+    --line: #e2e2dd; --accent: #1d4ed8; --good: #0f7a4d; --warn: #9a6700;
+    --chip: #eeeeea; --null: #b5b5ae;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #16161a; --panel: #1e1e23; --ink: #ecece8; --muted: #9a9a93;
+      --line: #2e2e35; --accent: #7aa2ff; --good: #4cc38a; --warn: #d9a441;
+      --chip: #26262d; --null: #55555d;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif;
+  }
+  .wrap { max-width: 1500px; margin: 0 auto; padding: 28px 20px 60px; }
+  h1 { font-size: 21px; margin: 0 0 2px; letter-spacing: -0.01em; }
+  .sub { color: var(--muted); font-size: 13px; margin-bottom: 22px; }
+  .cards { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); margin-bottom: 22px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+  .card h3 { margin: 0 0 10px; font-size: 14px; display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+  .card h3 span { font-weight: 400; color: var(--muted); font-size: 12px; }
+  .kv { display: grid; grid-template-columns: 1fr auto; gap: 3px 10px; font-size: 13px; }
+  .kv dt { color: var(--muted); }
+  .kv dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
+  .gap { color: var(--warn); }
+  .controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 14px; }
+  select, label.tog { background: var(--panel); color: var(--ink); border: 1px solid var(--line);
+    border-radius: 7px; padding: 6px 9px; font-size: 13px; }
+  label.tog { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
+  .tablewrap { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  th, td { padding: 9px 11px; text-align: left; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  th { position: sticky; top: 0; background: var(--panel); font-weight: 600; font-size: 12px;
+       color: var(--muted); cursor: pointer; user-select: none; }
+  th.active { color: var(--accent); }
+  td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
+  tr:last-child td { border-bottom: 0; }
+  .msg { white-space: normal; min-width: 300px; max-width: 460px; }
+  .msg a { color: inherit; text-decoration: none; }
+  .msg a:hover { text-decoration: underline; }
+  .chip { display: inline-block; background: var(--chip); color: var(--muted);
+    border-radius: 5px; padding: 1px 6px; font-size: 11px; }
+  .nil { color: var(--null); }
+  .bar { display: inline-block; height: 5px; border-radius: 3px; background: var(--accent);
+         opacity: .65; vertical-align: middle; margin-left: 6px; }
+  .note { color: var(--muted); font-size: 12px; margin-top: 12px; }
+  .err { background: #fdeaea; color: #8a1c1c; border: 1px solid #f3c6c6;
+         padding: 12px 14px; border-radius: 9px; margin-bottom: 18px; font-size: 13px; }
+  @media (prefers-color-scheme: dark) { .err { background: #3a1d1d; color: #f3b8b8; border-color: #5a2a2a; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>CitizenGO — organic post performance</h1>
+  <div class="sub" id="sub">loading…</div>
+  <div id="err"></div>
+  <div class="cards" id="cards"></div>
+
+  <div class="controls">
+    <select id="page"><option value="">All pages</option></select>
+    <select id="days">
+      <option value="7">Last 7 days</option>
+      <option value="30" selected>Last 30 days</option>
+      <option value="0">All collected</option>
+    </select>
+    <select id="sort">
+      <option value="recent">Newest first</option>
+      <option value="views">Most views</option>
+      <option value="reach">Most unique reach</option>
+      <option value="beyond">Reached furthest beyond followers</option>
+      <option value="engagement">Most engagement</option>
+      <option value="rate">Best engagement rate</option>
+      <option value="shares">Most shares</option>
+    </select>
+    <label class="tog"><input type="checkbox" id="onlym"> Hide posts with no metrics</label>
+  </div>
+
+  <div class="tablewrap">
+    <table>
+      <thead><tr>
+        <th data-s="recent">Date</th>
+        <th>Page</th>
+        <th>Post</th>
+        <th>Type</th>
+        <th class="n" data-s="views">Views</th>
+        <th class="n" data-s="reach">Unique</th>
+        <th class="n" data-s="beyond">Beyond followers</th>
+        <th class="n">Organic</th>
+        <th class="n">Reactions</th>
+        <th class="n" data-s="shares">Shares</th>
+        <th class="n">Clicks</th>
+        <th class="n" data-s="engagement">Engagement</th>
+        <th class="n" data-s="rate">Rate</th>
+      </tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </div>
+  <div class="note" id="note"></div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const fmt = (n) => n === null || n === undefined ? '<span class="nil">—</span>' : n.toLocaleString('en-GB');
+const fmtPct = (n) => n === null || n === undefined ? '<span class="nil">—</span>' : n.toFixed(1) + '%';
+const esc = (s) => (s || '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+// A shared bearer token in localStorage. Interim only — see api/_auth.js.
+function authHeaders() {
+  const t = localStorage.getItem('dashboard_token');
+  return t ? { Authorization: 'Bearer ' + t } : {};
+}
+
+async function get(path) {
+  const r = await fetch(path, { headers: authHeaders() });
+  if (r.status === 401) {
+    const t = prompt('Dashboard access token:');
+    if (t) { localStorage.setItem('dashboard_token', t); return get(path); }
+    throw new Error('unauthorized');
+  }
+  if (!r.ok) throw new Error('HTTP ' + r.status + ' from ' + path);
+  return r.json();
+}
+
+let state = { sort: 'recent', page: '', days: 30, onlym: false };
+let maxViews = 1;
+
+function sinceParam() {
+  if (!state.days) return '';
+  const d = new Date(Date.now() - state.days * 86400000);
+  return '&since=' + d.toISOString();
+}
+
+function renderCards(pages) {
+  $('cards').innerHTML = pages.map((p) => `
+    <div class="card">
+      <h3>${esc(p.name)}<span>${p.followers_count === null ? '' : fmt(p.followers_count) + ' followers'}</span></h3>
+      <dl class="kv">
+        <dt>Posts</dt><dd>${fmt(p.posts)}</dd>
+        <dt>Total views</dt><dd>${fmt(p.views_total)}</dd>
+        <dt>Unique reach</dt><dd>${fmt(p.views_unique)}</dd>
+        <dt>Median eng. rate</dt><dd>${fmtPct(p.median_engagement_rate)}</dd>
+        <dt>Median beyond followers</dt><dd>${fmtPct(p.median_beyond_followers_pct)}</dd>
+        ${p.posts_missing_metrics ? `<dt class="gap">No metrics</dt><dd class="gap">${p.posts_missing_metrics} posts</dd>` : ''}
+      </dl>
+    </div>`).join('');
+}
+
+function renderRows(data) {
+  maxViews = Math.max(1, ...data.rows.map((r) => r.views_total || 0));
+  $('rows').innerHTML = data.rows.map((r) => {
+    const w = r.views_total ? Math.round((r.views_total / maxViews) * 44) : 0;
+    return `<tr>
+      <td>${r.created_time.slice(0, 10)}</td>
+      <td>${esc(r.page_name || '')}</td>
+      <td class="msg">${r.permalink_url
+        ? `<a href="${esc(r.permalink_url)}" target="_blank" rel="noopener">${esc((r.message || '(no text)').slice(0, 150))}</a>`
+        : esc((r.message || '(no text)').slice(0, 150))}
+        ${r.partial ? ' <span class="chip">partial</span>' : ''}</td>
+      <td><span class="chip">${esc(r.media_type || r.status_type || '—')}</span></td>
+      <td class="n">${fmt(r.views_total)}${w ? `<span class="bar" style="width:${w}px"></span>` : ''}</td>
+      <td class="n">${fmt(r.views_unique)}</td>
+      <td class="n">${fmtPct(r.beyond_followers_pct)}</td>
+      <td class="n">${fmtPct(r.organic_pct)}</td>
+      <td class="n">${fmt(r.reactions_total)}</td>
+      <td class="n">${fmt(r.shares_total)}</td>
+      <td class="n">${fmt(r.clicks_total)}</td>
+      <td class="n">${fmt(r.engagement_total)}</td>
+      <td class="n">${fmtPct(r.engagement_rate)}</td>
+    </tr>`;
+  }).join('');
+  const missing = data.rows.filter((r) => !r.has_metrics).length;
+  $('note').innerHTML = `Showing ${data.rows.length} of ${data.total} posts.`
+    + (missing ? ` <strong>${missing}</strong> have no metrics — Meta returned a permissions error for those posts, so they show “—” rather than zero.` : '')
+    + ` Engagement = reactions + shares + clicks; rate is against views. Comment counts require the <code>pages_read_user_content</code> scope and are not yet collected.`;
+}
+
+async function load() {
+  try {
+    const q = `?sort=${state.sort}${state.page ? '&page_id=' + state.page : ''}${sinceParam()}`
+      + (state.onlym ? '&with_metrics_only=1' : '');
+    const [pages, feed] = await Promise.all([get('/api/pages'), get('/api/posts' + q)]);
+    if (!$('page').dataset.filled) {
+      $('page').innerHTML += pages.pages.map((p) => `<option value="${p.page_id}">${esc(p.name)}</option>`).join('');
+      $('page').dataset.filled = '1';
+    }
+    renderCards(pages.pages);
+    renderRows(feed);
+    const dates = feed.rows.map((r) => r.created_time.slice(0, 10)).sort();
+    $('sub').textContent = pages.pages.length + ' pages · '
+      + (dates.length ? `posts ${dates[0]} to ${dates[dates.length - 1]}` : 'no posts in range');
+  } catch (e) {
+    $('err').innerHTML = `<div class="err"><strong>Could not load data.</strong> ${esc(e.message)}</div>`;
+    $('sub').textContent = '';
+  }
+}
+
+for (const [id, key, cast] of [['page', 'page', String], ['days', 'days', Number], ['sort', 'sort', String]]) {
+  $(id).addEventListener('change', (e) => { state[key] = cast(e.target.value); load(); });
+}
+$('onlym').addEventListener('change', (e) => { state.onlym = e.target.checked; load(); });
+document.querySelectorAll('th[data-s]').forEach((th) => th.addEventListener('click', () => {
+  state.sort = th.dataset.s;
+  $('sort').value = state.sort;
+  document.querySelectorAll('th').forEach((x) => x.classList.remove('active'));
+  th.classList.add('active');
+  load();
+}));
+
+load();
+</script>
+</body>
+</html>

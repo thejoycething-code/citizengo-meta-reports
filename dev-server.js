@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 'use strict';
-// Local dev server. Serves index.html and the same /api/posts and /api/pages
-// contract as the Vercel functions, but backed by data/*.ndjson via fileStore.
+// Local dev server. Serves dev/dashboard.html with a /api/posts and /api/pages
+// contract, backed by data/*.ndjson via fileStore. LOCAL ONLY: the deployed
+// dashboard and its two endpoints were retired on 3 Sep 2026 (never configured
+// in production, and two more endpoints than the connector needs).
 //
 // This exists so the dashboard can be built and verified against real collected
 // data before any Supabase credentials exist. It deliberately does NOT share a
@@ -43,7 +45,7 @@ const server = http.createServer(async (req, res) => {
       return send(200, { pages: shapePages(data) });
     }
     if (url.pathname === '/' || url.pathname === '/index.html') {
-      return send(200, fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8'), 'text/html; charset=utf-8');
+      return send(200, fs.readFileSync(path.join(__dirname, 'dev', 'dashboard.html'), 'utf8'), 'text/html; charset=utf-8');
     }
     send(404, { error: 'not_found' });
   } catch (e) {

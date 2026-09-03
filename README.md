@@ -21,7 +21,7 @@ Node lives at `~/.local/node/bin` and is not on the default PATH.
 npm run db:check        # verify Supabase is reachable and the schema matches
 npm run collect         # collect (writes to Supabase, or data/*.ndjson without it)
 npm run digest          # build the weekly digest
-npm run dev             # dashboard on localhost:4321
+npm run dev             # local-only dashboard on localhost:4321 (dev/dashboard.html)
 npm run mcp             # MCP server over stdio
 ```
 
@@ -51,12 +51,15 @@ Meta Graph API
                               │
              ┌────────────────┼────────────────┐
              ▼                ▼                ▼
-      MCP server        weekly digest      dashboard
-   (stdio + HTTP)      (Actions summary)   (localhost)
+      MCP server        weekly digest     dev dashboard
+   (stdio + HTTP)      (Actions summary)  (localhost only)
 ```
 
-`lib/shape.js` is shared by every read surface, so the dashboard, the digest and
-the MCP tools cannot disagree about what a number means.
+`lib/shape.js` is shared by every read surface, so the local dashboard, the digest
+and the MCP tools cannot disagree about what a number means. The deployed
+dashboard and its `/api/posts` and `/api/pages` endpoints were retired on
+3 Sep 2026: never configured in production, and surface the connector does not
+need. The production root serves a static notice and nothing else.
 
 ### Scheduled workflows
 
