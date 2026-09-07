@@ -264,6 +264,27 @@ create or replace view public.meta_ig_latest as
                               where y.media_id = m.media_id);
 
 -- ---------------------------------------------------------------------------
+-- METRICS THAT DO NOT EXIST ON v23.0. Probed live 7 Sept 2026 by
+-- scripts/probe-coverage.js, with the metrics we do collect passing alongside
+-- as controls. Every one of these returns "must be a valid insights metric" or
+-- an equivalent rejection - they are gone, not unpermitted, so re-adding one on
+-- the strength of a documentation page or an old tutorial will just fail:
+--
+--   post_negative_feedback(_unique|_by_type|_by_type_unique), post_engaged_users,
+--   post_engaged_fan, post_consumptions(_by_type), post_impressions(_unique),
+--   post_video_views_unique, post_video_views_10s, post_video_social_actions,
+--   page_fans, page_fan_adds(_unique), page_fan_removes(_unique),
+--   page_negative_feedback(_by_type), page_impressions(_unique),
+--   clips_replays_count, ig_reels_aggregated_all_plays_count, navigation,
+--   thruplays, online_followers
+--
+-- Worth noting what this costs us: negative feedback is gone at both post and
+-- page level, so hides, unfollow-from-post and spam reports are unmeasurable.
+-- A post that reaches well and quietly costs followers looks identical to one
+-- that does not, and no combination of the surviving metrics recovers it.
+-- ---------------------------------------------------------------------------
+
+-- ---------------------------------------------------------------------------
 -- AUDIENCE DEMOGRAPHICS: NOT COLLECTED. Confirmed retired by Meta, 26 Aug 2026,
 -- tested live across 36 pages. Seven metrics attempted per page -
 -- page_fans_country, page_fans_city, page_fans_locale, page_fans_gender_age,

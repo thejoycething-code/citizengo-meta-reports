@@ -182,9 +182,12 @@ async function probeSet({ label, id, token, set, extra = {} }) {
   // Pick targets that will actually answer: a video post for the video metrics,
   // a FEED and a REELS item for Instagram.
   const fbVideo = await fromStore('meta_posts?select=post_id,page_id,created_time,media_type&media_type=eq.video&order=created_time.desc&limit=60');
-  const fbAny = await fromStore('meta_posts?select=post_id,page_id,created_time,media_type&order=created_time.desc&limit=60');
+  // Genuinely not a video. Ordering by recency and taking the first row gave the
+  // same video post twice on the first run, and labelled it "non-video".
+  const fbPhoto = await fromStore('meta_posts?select=post_id,page_id,created_time,media_type&media_type=neq.video&order=created_time.desc&limit=60');
+  const fbAny = fbPhoto.length ? fbPhoto : fbVideo;
 
-  for (const [name, list] of [['video', fbVideo], ['non-video', fbAny]]) {
+  for (const [name, list] of [['video', fbVideo], ['non-video', fbPhoto]]) {
     for (const p of list) {
       const token = await tokenFor(p.page_id);
       if (!token) continue;
