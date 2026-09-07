@@ -63,10 +63,18 @@ async function fromStore(path) {
   } catch (e) { return []; }
 }
 
-// page_id -> Page access token. Page-scoped edges reject a user token, so the
-// probe has to ask as the page, exactly as the collector does.
-async function pageTokens() {
-  const map = new Map();
+// A Page access token for one page. Page-scoped edges reject a user token, so
+// the probe has to ask as the page, exactly as the collector does.
+//
+// Two routes, because /me/accounts is not the whole picture: it lists only pages
+// the user holds a DIRECT role on, which since 29 Aug 2026 is 14 of our 36. The
+// other 22 still hand over a token when asked for by id (see Step 1b in
+// collector/collect.js). Probing only the enumerated 14 is how the first run of
+// this script missed Instagram entirely.
+const enumerated = new Map();
+const resolved = new Map();
+
+async function enumeratePages() {
   for (const token of TOKENS) {
     let after = null;
     for (let guard = 0; guard < 20; guard++) {
@@ -75,13 +83,25 @@ async function pageTokens() {
       const res = await client.get('/me/accounts', params, { token });
       if (!res.ok) break;
       for (const p of (res.body && res.body.data) || []) {
-        if (p.id && p.access_token && !map.has(p.id)) map.set(p.id, p.access_token);
+        if (p.id && p.access_token && !enumerated.has(p.id)) enumerated.set(p.id, p.access_token);
       }
       after = res.body && res.body.paging && res.body.paging.cursors && res.body.paging.cursors.after;
       if (!after) break;
     }
   }
-  return map;
+}
+
+async function tokenFor(pageId) {
+  if (resolved.has(pageId)) return resolved.get(pageId);
+  let out = enumerated.get(pageId) || null;
+  if (!out) {
+    for (const token of TOKENS) {
+      const r = await client.get(`/${pageId}`, { fields: 'id,access_token' }, { token });
+      if (r.ok && r.body && r.body.access_token) { out = r.body.access_token; break; }
+    }
+  }
+  resolved.set(pageId, out);
+  return out;
 }
 
 // One probe. Returns a row rather than printing, so the summary can be built
@@ -105,40 +125,44 @@ async function probe({ label, id, metric, token, extra = {} }) {
 
 (async () => {
   console.log(`Graph ${VERSION} · ${TOKENS.length} token(s)\n`);
-  const tokens = await pageTokens();
-  console.log(`Page tokens resolved: ${tokens.size}\n`);
-  if (!tokens.size) {
-    console.error('Could not resolve any Page access token — every insights call would fail on permissions.');
-    console.error('Check the token has pages_show_list and the pages are in a Business Portfolio it can see.');
-    process.exit(1);
-  }
+  await enumeratePages();
+  console.log(`Pages enumerated via /me/accounts: ${enumerated.size} (others resolved by id on demand)\n`);
 
   const rows = [];
 
-  // ---- Instagram -----------------------------------------------------------
-  const igMedia = await fromStore('meta_ig_media?select=media_id,page_id,ig_username,media_product_type,timestamp&order=timestamp.desc&limit=40');
-  // One per product type (FEED / REELS), since availability can differ by type.
-  const igPicked = [];
-  for (const m of igMedia) {
-    if (!tokens.has(m.page_id)) continue;
-    if (igPicked.some((p) => p.media_product_type === m.media_product_type)) continue;
-    igPicked.push(m);
-    if (igPicked.length >= 3) break;
+  // Walk newest-first and keep the first candidate per product type whose page
+  // will actually hand over a token.
+  async function pick(candidates, keyOf, want) {
+    const out = [];
+    for (const c of candidates) {
+      if (out.length >= want) break;
+      if (out.some((o) => keyOf(o) === keyOf(c))) continue;
+      const token = await tokenFor(c.page_id);
+      if (!token) continue;
+      out.push({ ...c, token });
+    }
+    return out;
   }
+
+  // ---- Instagram -----------------------------------------------------------
+  const igMedia = await fromStore('meta_ig_media?select=media_id,page_id,ig_username,media_product_type,timestamp&order=timestamp.desc&limit=250');
+  const igPicked = await pick(igMedia, (m) => m.media_product_type, 3);
   if (!igPicked.length) {
-    console.log('INSTAGRAM: no media found whose page has a resolvable token — skipped.\n');
+    console.log(igMedia.length
+      ? `INSTAGRAM: ${igMedia.length} media in the store but no page would hand over a token — cannot probe.`
+      : 'INSTAGRAM: no IG media in the store at all — cannot probe.');
+    console.log('');
   }
   for (const m of igPicked) {
     console.log(`INSTAGRAM  @${m.ig_username}  ${m.media_product_type}  ${String(m.timestamp).slice(0, 10)}`);
-    const token = tokens.get(m.page_id);
     for (const metric of [...IG_CONTROLS, ...IG_CANDIDATES]) {
-      const r = await probe({ label: `IG ${m.media_product_type} ${metric}`, id: m.media_id, metric, token });
+      const r = await probe({ label: `IG ${m.media_product_type} ${metric}`, id: m.media_id, metric, token: m.token });
       console.log(`   ${r.ok ? 'OK  ' : 'ERR '} ${metric.padEnd(18)} ${r.note}`);
       rows.push({ ...r, group: 'instagram', candidate: IG_CANDIDATES.includes(metric) });
-      // Some IG metrics are only served as a total, not a time series.
+      // Some IG metrics are served only as a total, never as a time series.
       if (!r.ok && IG_CANDIDATES.includes(metric)) {
-        const r2 = await probe({ label: `IG ${m.media_product_type} ${metric} (total_value)`, id: m.media_id, metric, token, extra: { metric_type: 'total_value' } });
-        console.log(`   ${r2.ok ? 'OK  ' : 'ERR '} ${(metric + ' [total_value]').padEnd(18)} ${r2.note}`);
+        const r2 = await probe({ label: `IG ${metric} total_value`, id: m.media_id, metric, token: m.token, extra: { metric_type: 'total_value' } });
+        console.log(`   ${r2.ok ? 'OK  ' : 'ERR '} ${(metric + ' [total]').padEnd(18)} ${r2.note}`);
         rows.push({ ...r2, group: 'instagram', candidate: true });
       }
     }
@@ -146,14 +170,13 @@ async function probe({ label, id, metric, token, extra = {} }) {
   }
 
   // ---- Facebook ------------------------------------------------------------
-  const fbPosts = await fromStore('meta_posts?select=post_id,page_id,created_time&order=created_time.desc&limit=60');
-  const fbPicked = fbPosts.filter((p) => tokens.has(p.page_id)).slice(0, 2);
-  if (!fbPicked.length) console.log('FACEBOOK: no post found whose page has a resolvable token — skipped.\n');
+  const fbPosts = await fromStore('meta_posts?select=post_id,page_id,created_time&order=created_time.desc&limit=250');
+  const fbPicked = await pick(fbPosts, (p) => p.page_id, 2);
+  if (!fbPicked.length) { console.log('FACEBOOK: no post on a page that would hand over a token — cannot probe.'); console.log(''); }
   for (const p of fbPicked) {
     console.log(`FACEBOOK   post ${p.post_id}  ${String(p.created_time).slice(0, 10)}`);
-    const token = tokens.get(p.page_id);
     for (const metric of [...FB_CONTROLS, ...FB_CANDIDATES]) {
-      const r = await probe({ label: `FB ${metric}`, id: p.post_id, metric, token });
+      const r = await probe({ label: `FB ${metric}`, id: p.post_id, metric, token: p.token });
       console.log(`   ${r.ok ? 'OK  ' : 'ERR '} ${metric.padEnd(26)} ${r.note}`);
       rows.push({ ...r, group: 'facebook', candidate: FB_CANDIDATES.includes(metric) });
     }
@@ -192,5 +215,13 @@ async function probe({ label, id, metric, token, extra = {} }) {
   console.log(out);
   if (process.env.GITHUB_STEP_SUMMARY) {
     try { require('fs').appendFileSync(process.env.GITHUB_STEP_SUMMARY, out + '\n'); } catch (e) { /* not fatal */ }
+  }
+
+  // A run that probed nothing must go red. Green-but-empty is how the first run
+  // of this script reported "Instagram: skipped" as a success, which is the
+  // failure mode this project keeps relearning.
+  if (!rows.length) {
+    console.error('\nNothing was probed — this run proved nothing. Failing so it is not read as an answer.');
+    process.exit(1);
   }
 })().catch((e) => { console.error('probe failed:', e.message); process.exit(1); });
