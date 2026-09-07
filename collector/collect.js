@@ -306,17 +306,40 @@ const POST_FIELDS = [
   'shares',
 ].join(',');
 
+// Graph error #1, "Please reduce the amount of data you're asking for", is
+// DETERMINISTIC, not a throttle. CitizenGO Magyarország failed on its very
+// first published_posts call in the 90-day backfill of 7 Sept 2026 and failed
+// again ten seconds into a lone retry at concurrency 2 - the request itself is
+// too heavy, because POST_FIELDS asks for attachments and shares on every one
+// of 100 posts and some pages carry far more attachment data per post.
+//
+// So halve the page size and ask again rather than losing the page. Fewer posts
+// per response costs a few more round trips and returns exactly the same data.
+const POST_PAGE_SIZE = 100;
+const POST_PAGE_SIZE_MIN = 10;
+
 async function listPosts(pageId, as) {
   const cutoff = new Date(RUN_STARTED.getTime() - LOOKBACK_DAYS * 86400000);
   const out = [];
   let next = null;
+  let pageSize = POST_PAGE_SIZE;
 
   while (out.length < MAX_POSTS) {
     const params = next
-      ? { fields: POST_FIELDS, limit: 100, after: next }
-      : { fields: POST_FIELDS, limit: 100 };
+      ? { fields: POST_FIELDS, limit: pageSize, after: next }
+      : { fields: POST_FIELDS, limit: pageSize };
     const res = await call(`/${pageId}/published_posts`, params, as);
-    if (!res.ok) return { posts: out, error: res.error };
+    if (!res.ok) {
+      // Retrying the identical request is pointless; a smaller one is not.
+      // `next` is deliberately left untouched, so this resumes from the same
+      // cursor rather than restarting the page.
+      if (res.error && res.error.code === 1 && pageSize > POST_PAGE_SIZE_MIN) {
+        pageSize = Math.max(POST_PAGE_SIZE_MIN, Math.floor(pageSize / 2));
+        console.log(`   published_posts #1 on ${pageId} — too much data, retrying with limit=${pageSize}`);
+        continue;
+      }
+      return { posts: out, error: res.error };
+    }
 
     const rows = (res.body && res.body.data) || [];
     if (!rows.length) break;
