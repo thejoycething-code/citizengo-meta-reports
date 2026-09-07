@@ -74,6 +74,9 @@ const IG_HEADERS = [
   'Date', 'Account', 'Page', 'Caption', 'Permalink', 'Type',
   'Reach', 'Views', 'Saves', 'Saves per 1k reached',
   'Likes', 'Comments', 'Shares', 'Interactions', 'Interaction rate %',
+  // FEED posts only. Blank on Reels and Stories because Meta does not offer
+  // these there - blank is "not measurable", not zero.
+  'Follows', 'Profile visits', 'Profile actions',
   'Collected',
 ];
 
@@ -90,6 +93,7 @@ function igRow(r) {
     cell(r.reach), cell(r.views), cell(r.saved), cell(r.saves_per_1k_reached),
     cell(r.likes), cell(r.comments), cell(r.shares),
     cell(r.total_interactions), cell(r.interaction_rate_pct),
+    cell(r.follows), cell(r.profile_visits), cell(r.profile_activity),
     cell(r.collected_date),
   ];
 }

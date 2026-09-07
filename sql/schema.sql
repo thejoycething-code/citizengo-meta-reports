@@ -215,7 +215,17 @@ create table if not exists public.meta_ig_media_metrics (
   likes              bigint,
   comments           bigint,
   shares             bigint,
-  errors             jsonb
+  errors             jsonb,
+  -- FEED posts only, and null everywhere else - see the FOLLOWERS GAINED PER
+  -- POST note below. Null means "not offered for this media product type",
+  -- never zero, so filter to media_product_type = 'FEED' before aggregating.
+  --
+  -- Listed after errors because that is where production has them: they were
+  -- added by migration on 7 Sept 2026, and a rebuild from this file should
+  -- reproduce the real column order rather than a tidier one.
+  follows            bigint,
+  profile_visits     bigint,
+  profile_activity   bigint
 );
 
 create unique index if not exists meta_ig_media_metrics_day_key
@@ -240,7 +250,12 @@ create or replace view public.meta_ig_latest as
          end as interaction_rate_pct,
          case when coalesce(x.reach, 0) > 0
               then round(coalesce(x.saved, 0)::numeric / x.reach::numeric * 1000, 2)
-         end as saves_per_1k_reached
+         end as saves_per_1k_reached,
+         -- Appended after the derived rates, not beside the other raw metrics:
+         -- create or replace view cannot insert a column mid-list, and dropping
+         -- the view would take its grant to meta_readonly with it. Every
+         -- consumer reads select=*, so position carries no meaning.
+         x.follows, x.profile_visits, x.profile_activity
     from public.meta_ig_media m
     join public.meta_pages g on g.page_id = m.page_id
     join public.meta_ig_media_metrics x on x.media_id = m.media_id
@@ -277,9 +292,15 @@ create or replace view public.meta_ig_latest as
 -- available for a subset of Instagram and nothing else - worth collecting, but
 -- any figure built on it covers IG FEED alone and must say so.
 --
--- Not yet collected. The change is columns here plus entries in IG_METRICS in
--- collector/instagram.js, requested per media_product_type so REELS does not
--- fail the whole insights call.
+-- COLLECTED since 7 Sept 2026, for FEED posts only: the three columns on
+-- meta_ig_media_metrics above, filled from IG_FEED_METRICS in
+-- collector/instagram.js. The request is GATED on media_product_type = 'FEED'
+-- rather than attempted and caught, because attempting it would produce three
+-- guaranteed failures on every Reel and bury the real errors in noise.
+--
+-- Reading these: null is "not offered for this product type", never zero. Any
+-- followers-per-post figure covers Instagram FEED alone and has to say so - a
+-- number blended across Facebook and Reels would be mostly invented.
 --
 -- Re-run scripts/probe-follower-metrics.js (Actions -> "Probe follower
 -- metrics") whenever GRAPH_VERSION moves; Meta adds and retires metrics

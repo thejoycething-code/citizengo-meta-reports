@@ -61,7 +61,9 @@ const EXPECTED = {
   meta_ig_media: ['media_id', 'page_id', 'ig_user_id', 'ig_username', 'media_type',
     'media_product_type', 'caption', 'permalink', 'thumbnail_url', 'timestamp', 'first_seen_at'],
   meta_ig_media_metrics: ['media_id', 'page_id', 'collected_date', 'collected_at',
-    'reach', 'views', 'saved', 'total_interactions', 'likes', 'comments', 'shares', 'errors'],
+    'reach', 'views', 'saved', 'total_interactions', 'likes', 'comments', 'shares', 'errors',
+    // FEED-only follower attribution; null on Reels and Stories by design.
+    'follows', 'profile_visits', 'profile_activity'],
   meta_post_ad_spend: ['post_id', 'page_id', 'ad_id', 'ad_account_id', 'campaign_name',
     'spend', 'currency', 'impressions', 'reach', 'date_start', 'date_stop', 'collected_at'],
   meta_page_metrics: ['page_id', 'metric_date', 'views_total', 'media_view',

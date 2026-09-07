@@ -24,6 +24,18 @@ const IG_MEDIA_FIELDS = [
 // anything unsupported records an error and leaves a null.
 const IG_METRICS = ['reach', 'views', 'saved', 'total_interactions', 'likes', 'comments', 'shares'];
 
+// FEED posts only. These three are the one place in either platform where a
+// follower action can be attributed to a single post - probed live on v23.0,
+// 7 Sept 2026, and confirmed absent everywhere else: a REELS post from the same
+// account rejects all three with "does not support ... for this media product
+// type", and Facebook has no per-post equivalent at all
+// (scripts/probe-follower-metrics.js re-checks both).
+//
+// Gated rather than probed-and-caught because the alternative is three
+// guaranteed failures on every Reel, which would bury the real errors in the
+// errors column under noise we already know the answer to.
+const IG_FEED_METRICS = ['follows', 'profile_visits', 'profile_activity'];
+
 function firstValue(res) {
   if (!res || !res.ok) return null;
   const d = res.body && res.body.data && res.body.data[0];
@@ -86,7 +98,10 @@ async function collectInstagram({ page, as, call, lookbackDays, maxPosts, runSta
   for (const m of media) {
     const errors = {};
     const values = {};
-    for (const metric of IG_METRICS) {
+    const wanted = m.media_product_type === 'FEED'
+      ? [...IG_METRICS, ...IG_FEED_METRICS]
+      : IG_METRICS;
+    for (const metric of wanted) {
       const r = await call(`/${m.media_id}/insights`, { metric }, as);
       if (r.ok) values[metric] = firstValue(r);
       else errors[metric] = { code: r.error ? r.error.code : null, message: r.error ? r.error.message : 'unknown' };
@@ -106,6 +121,12 @@ async function collectInstagram({ page, as, call, lookbackDays, maxPosts, runSta
       likes: m._like_count ?? values.likes ?? null,
       comments: m._comments_count ?? values.comments ?? null,
       shares: values.shares ?? null,
+      // Null on anything that is not a FEED post. That null means "Meta does
+      // not offer this for this media product type", NOT zero followers gained
+      // - never sum or average these without filtering to FEED first.
+      follows: values.follows ?? null,
+      profile_visits: values.profile_visits ?? null,
+      profile_activity: values.profile_activity ?? null,
       errors: Object.keys(errors).length ? errors : null,
     });
   }
@@ -114,4 +135,4 @@ async function collectInstagram({ page, as, call, lookbackDays, maxPosts, runSta
   return { linked: true, username: ig.username, ig_user_id: ig.id, media, metrics };
 }
 
-module.exports = { collectInstagram, IG_METRICS, IG_MEDIA_FIELDS };
+module.exports = { collectInstagram, IG_METRICS, IG_FEED_METRICS, IG_MEDIA_FIELDS };
