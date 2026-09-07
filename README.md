@@ -328,8 +328,18 @@ production, or every request is blocked before reaching the auth in `api/mcp.js`
 
 ## Known gaps
 
-- **Instagram** — 8 accounts and 126 posts collected, metrics blocked on
-  `instagram_manage_insights`
+- **Instagram follower attribution is FEED-only.** 8 accounts and 790 posts are
+  collected with full metrics — the older note here about
+  `instagram_manage_insights` blocking them is long fixed. What remains partial
+  is `follows` / `profile_visits` / `profile_activity`: Meta serves them for
+  FEED posts and refuses them for Reels, which is 374 of our 790 posts. So a
+  followers-per-post number covers feed posts only and must say so; blending it
+  across Reels or Facebook would invent most of it. Facebook has no per-post
+  follower metric at any level. Re-check both with
+  `scripts/probe-follower-metrics.js` when `GRAPH_VERSION` moves.
+- **Nothing is backfilled before 7 September 2026** for those three metrics —
+  they fill going forward as each post is re-polled inside the 14-day window.
+  An older post needs a longer `lookback_days` to pick them up.
 - **Access runs through a personal Facebook profile.** A System User is not
   currently possible: it must live in a Business Portfolio, and the citizenGO
   portfolio — which owns 11 pages carrying **86.7% of all views**, HazteOir alone
