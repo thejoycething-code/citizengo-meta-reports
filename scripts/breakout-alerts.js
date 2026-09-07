@@ -4,8 +4,17 @@
 // other pages can consider reworking it.
 //
 //   node scripts/breakout-alerts.js              # dry run, prints what it would post
-//   node scripts/breakout-alerts.js --post       # actually posts, and records it
+//   node scripts/breakout-alerts.js --post       # posts via webhook, and records it
+//   node scripts/breakout-alerts.js --json       # machine-readable, for a skill to post
+//   node scripts/breakout-alerts.js --record ID  # mark IDs announced, after posting
 //   node scripts/breakout-alerts.js --all        # ignore the alert log, for previewing
+//
+// TWO WAYS TO POST. --post needs SLACK_BREAKOUT_WEBHOOK_URL, which needs Slack
+// app permissions. Where those are not available, --json hands the decisions to
+// a caller that already has a Slack connector (a scheduled Claude task), which
+// posts them and then calls --record. Either route keeps the rule that an
+// announcement is recorded ONLY after Slack has accepted it, so a failure
+// retries tomorrow instead of being silently marked done.
 //
 // WHAT COUNTS AS A DUPLICATE, which is the whole difficulty.
 //
@@ -40,6 +49,14 @@ const CLUSTER_DAYS = Number(process.env.BREAKOUT_CLUSTER_DAYS || 75);
 
 const POST = process.argv.includes('--post');
 const ALL = process.argv.includes('--all');
+const JSON_OUT = process.argv.includes('--json');
+// --record p1 p2 / --record p1,p2 — the ids a caller successfully posted.
+const RECORD = (() => {
+  const i = process.argv.indexOf('--record');
+  if (i === -1) return null;
+  return process.argv.slice(i + 1).filter((a) => !a.startsWith('--'))
+    .flatMap((a) => a.split(',')).map((a) => a.trim()).filter(Boolean);
+})();
 
 const url = process.env.SUPABASE_URL;
 const key = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_MCP_KEY;
@@ -162,6 +179,46 @@ async function main() {
       body: render({ post, pageName, otherPages, metrics: latest[post.post_id], revival }),
     });
     pending.push({ post_id: post.post_id, story_key: story.story_key, media_type: mediaType, first_post_at: story.first.created_time });
+  }
+
+  if (RECORD) {
+    if (!RECORD.length) { console.error('--record needs at least one post id.'); process.exit(2); }
+    const wanted = new Set(RECORD);
+    const rows = toSend.filter((i) => wanted.has(i.post.post_id)).map((i) => ({
+      story_key: i.story.story_key, post_id: i.post.post_id, page_id: i.post.page_id,
+      media_type: i.mediaType, views_at_alert: i.metrics.views_total,
+      first_post_at: i.story.first.created_time,
+    }));
+    const unknown = RECORD.filter((id) => !rows.some((r) => r.post_id === id));
+    if (unknown.length) console.error(`not among today's announcements, ignored: ${unknown.join(', ')}`);
+    if (!rows.length) { console.error('nothing to record.'); return; }
+    const w = await fetch(`${base}/rest/v1/meta_breakout_alerts`, {
+      method: 'POST', headers: { ...H, Prefer: 'return=minimal' }, body: JSON.stringify(rows),
+    });
+    if (!w.ok) { console.error(`recording failed: HTTP ${w.status} ${await w.text()}`); process.exit(1); }
+    console.error(`recorded ${rows.length}: ${rows.map((r) => r.post_id).join(', ')}`);
+    return;
+  }
+
+  if (JSON_OUT) {
+    // stdout is JSON only; every diagnostic goes to stderr, so a caller can pipe
+    // this straight into a parser.
+    process.stdout.write(JSON.stringify({
+      threshold: THRESHOLD, revival_days: REVIVAL_DAYS,
+      channel: process.env.BREAKOUT_CHANNEL || 'C7YFZ17MH',
+      candidates: candidates.length,
+      announce: toSend.map((i) => ({
+        post_id: i.post.post_id, page: i.pageName, published: i.post.created_time,
+        views: i.metrics.views_total, media_type: i.mediaType,
+        permalink: i.post.permalink_url || null, slack_text: i.body,
+      })),
+      suppressed: suppressed.map((x) => ({
+        post_id: x.post.post_id, page: pages[x.post.page_id],
+        views: (latest[x.post.post_id] || {}).views_total || null, reason: x.why,
+      })),
+    }, null, 2) + '\n');
+    console.error(`${toSend.length} to announce, ${suppressed.length} suppressed`);
+    return;
   }
 
   console.error(`candidates over ${n(THRESHOLD)} views, published in the last ${LOOKBACK_DAYS} days: ${candidates.length}`);
