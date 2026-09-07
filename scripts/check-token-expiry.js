@@ -24,6 +24,7 @@
 
 const crypto = require('crypto');
 const { loadEnv } = require('../lib/graph');
+const { mapLimit } = require('../lib/pool');
 
 loadEnv();
 
@@ -52,11 +53,51 @@ const asDate = (secs) => (secs ? new Date(secs * 1000).toISOString().slice(0, 10
 // enormously in coverage - a personal login only offers Pages the person holds a
 // DIRECT role on, so the same person can produce a 36-page token one month and a
 // 14-page one the next without anything looking wrong.
+//
+// But enumeration alone UNDERSTATES reach, and that mattered here. Since
+// 29 Aug 2026 /me/accounts has returned 14 of the 36 pages we collect: pages
+// reached through a Business Portfolio need business_management to ENUMERATE and
+// are perfectly readable without it. So this printed "reaches 14 page(s)" every
+// day while the collector was reaching all 36 - the alarming number became the
+// normal one, which is the worst possible state for a signal to be in. It could
+// no longer distinguish harmless loss of enumeration from a genuinely narrowed
+// token, because both read 14.
+//
+// So this now mirrors what collector/collect.js actually does (its Step 1b):
+// enumerate, then for every page we have collected BEFORE but did not just
+// enumerate, ask for it directly by id. A page that hands over a page token is
+// reachable, however it was found. Same two-stage discovery, same conclusion.
+//
+// Never fails the check on any of this - coverage is diagnostic here, and
+// meta_collection_runs (the watchdog's own coverage check) is what measures
+// sustained loss. But an unreachable page that we used to collect is reported,
+// because that is the shape a real narrowing takes.
+async function knownPageIds() {
+  const base = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_MCP_KEY;
+  if (!base || !key) return null;                 // null = could not check, NOT zero
+  try {
+    const res = await fetch(`${base}/rest/v1/meta_pages?select=page_id&limit=1000`, {
+      headers: { apikey: key, Authorization: `Bearer ${key}` },
+    });
+    if (!res.ok) return null;
+    const rows = await res.json();
+    if (!Array.isArray(rows)) return null;
+    return rows.map((r) => r && r.page_id).filter(Boolean);
+  } catch (e) {
+    return null;
+  }
+}
+
 async function reach(token) {
-  const out = { name: null, pages: 0, ig: 0 };
+  // enumerated/viaPortfolio/unreachable are counts; known === null means the
+  // second stage could not run and the total is a floor, not the estate.
+  const out = { name: null, pages: 0, ig: 0, enumerated: 0, viaPortfolio: 0, unreachable: [], known: null };
   try {
     const me = await (await fetch(`${GRAPH}/me?fields=name&access_token=${encodeURIComponent(token)}`)).json();
     out.name = me.name || null;
+
+    const seen = new Set();
     let after = null;
     do {
       const u = new URL(`${GRAPH}/me/accounts`);
@@ -66,10 +107,34 @@ async function reach(token) {
       if (after) u.searchParams.set('after', after);
       const r = await (await fetch(u)).json();
       const batch = r.data || [];
-      out.pages += batch.length;
-      out.ig += batch.filter((x) => x.instagram_business_account).length;
+      for (const x of batch) if (x && x.id) seen.add(String(x.id));
+      out.enumerated += batch.length;
+      out.ig += batch.filter((x) => x && x.instagram_business_account).length;
       after = r.paging && r.paging.next && r.paging.cursors ? r.paging.cursors.after : null;
     } while (after);
+
+    // Stage 2, exactly as the collector recovers pages: ask by id.
+    const known = await knownPageIds();
+    out.known = known === null ? null : known.length;
+    if (known && known.length) {
+      const missing = known.filter((id) => !seen.has(String(id)));
+      const probed = await mapLimit(missing, 6, async (id) => {
+        try {
+          const u = new URL(`${GRAPH}/${id}`);
+          u.searchParams.set('fields', 'id,instagram_business_account{id},access_token');
+          u.searchParams.set('access_token', token);
+          const r = await (await fetch(u)).json();
+          if (!r || !r.access_token) return { id, ok: false };
+          return { id, ok: true, ig: Boolean(r.instagram_business_account) };
+        } catch (e) {
+          return { id, ok: false };
+        }
+      });
+      for (const x of probed) {
+        if (x.ok) { out.viaPortfolio += 1; if (x.ig) out.ig += 1; } else { out.unreachable.push(x.id); }
+      }
+    }
+    out.pages = out.enumerated + out.viaPortfolio;
   } catch (e) { /* coverage is a nice-to-have; never fail the check on it */ }
   return out;
 }
@@ -121,7 +186,26 @@ async function main() {
     const cov = await reach(token);
     console.log(`  ${label}  app ${d.app_id || '?'}  type ${d.type || '?'}`);
     console.log(`    held by          ${cov.name || 'unknown'}`);
-    console.log(`    reaches          ${cov.pages} page(s), ${cov.ig} with Instagram`);
+    // Says HOW it reaches them, because the two stages fail independently and
+    // the split is the whole diagnostic value. A bare total hid the 29 Aug
+    // enumeration drop for over a week.
+    if (cov.known === null) {
+      console.log(`    reaches          ${cov.pages} page(s) by enumeration, ${cov.ig} with Instagram`);
+      console.log('    NOTE             could not read meta_pages, so pages reachable only via a');
+      console.log('                     Business Portfolio were not counted. This is a FLOOR, not the estate.');
+    } else {
+      console.log(`    reaches          ${cov.pages} page(s) of ${cov.known} collected`
+        + `  (${cov.enumerated} enumerated + ${cov.viaPortfolio} via portfolio), ${cov.ig} with Instagram`);
+    }
+    if (cov.unreachable.length) {
+      // The shape a real narrowing takes: collected before, unreachable now.
+      // Reported, not fatal - meta_collection_runs coverage is what fails on
+      // sustained loss, and one transient Graph error must not cry wolf.
+      warnings.push(`${label} can no longer reach ${cov.unreachable.length} page(s) it has collected before `
+        + `(${cov.unreachable.slice(0, 5).join(', ')}${cov.unreachable.length > 5 ? ', +more' : ''}). `
+        + 'Check the coverage line in the watchdog before renewing anything.');
+      console.log(`    UNREACHABLE      ${cov.unreachable.length} page(s) collected before, not reachable now`);
+    }
     console.log(`    expires          ${asDate(d.expires_at)}${tokenDays === null ? '' : `  (${tokenDays} days)`}`);
     console.log(`    data access ends ${asDate(d.data_access_expires_at)}${dataDays === null ? '' : `  (${dataDays} days)`}`);
 
