@@ -11,10 +11,23 @@
 // Exits non-zero when data is stale, so CI fails loudly, and posts to
 // ALERT_WEBHOOK_URL if one is configured.
 //
+// Exit codes:
+//   0  healthy
+//   1  a real fault - stale, incomplete, or shrinking page coverage
+//   2  misconfigured - no credentials to check with
+//   3  the database could not be REACHED at all
+//
+// 3 exists because a dropped connection used to exit 1 carrying the
+// INCOMPLETE-data message, which asserts that every figure the tools publish is
+// understated. On 6 Sep 2026 a network blip on a laptop said exactly that, and
+// a re-run half a minute later was clean. Whoever reads the alert has to know
+// which of the two it is before touching a token or a workflow.
+//
 // Usage: node scripts/check-freshness.js [--max-age-days 2]
 
 const { loadEnv } = require('../lib/graph');
 const { supabaseStore } = require('../lib/store');
+const { isConnectionError } = require('../lib/retry');
 
 loadEnv();
 
@@ -49,6 +62,22 @@ async function alert(text) {
   }
 }
 
+const EXIT_UNREACHABLE = 3;
+
+// Never returns. Says what could not be done and, pointedly, what this does NOT
+// tell you - an unreachable database is silent about whether collection ran.
+async function unreachable(e, what) {
+  const msg = 'CitizenGO organic reporting: the database could not be reached while '
+    + `${what} — ${e.message}. This says nothing about whether collection is `
+    + 'running; it is equally likely to be a network problem on the machine doing '
+    + 'the checking. Re-run the check before treating it as an outage.';
+  // A warning annotation, not an error one: the exit code still fails the job,
+  // but the wording in the log should not accuse the pipeline.
+  console.error(`::warning::${msg}`);
+  await alert(msg);
+  process.exit(EXIT_UNREACHABLE);
+}
+
 async function main() {
   if (TEST_ONLY) {
     if (!process.env.ALERT_WEBHOOK_URL) {
@@ -68,7 +97,13 @@ async function main() {
   }
   const store = supabaseStore({ url: URL_, serviceKey: KEY });
 
-  const f = await store.freshness();
+  let f;
+  try {
+    f = await store.freshness();
+  } catch (e) {
+    if (isConnectionError(e)) await unreachable(e, 'reading the collection date');
+    throw e;
+  }
   const now = new Date();
 
   if (!f.latest) {
@@ -83,7 +118,16 @@ async function main() {
 
   // Per-page detail, so the alert can say WHICH pages went quiet rather than
   // only that something is wrong.
-  const pages = await store.loadAll().then((d) => d.pages).catch(() => []);
+  // Was .catch(() => []), which turned an unreachable database into a confident
+  // "Pages configured: 0" printed directly above the alert - a made-up figure in
+  // the same output as the thing meant to be trusted.
+  let pages = [];
+  try {
+    pages = (await store.loadAll()).pages;
+  } catch (e) {
+    if (isConnectionError(e)) await unreachable(e, 'loading the page list');
+    console.error(`Page list unavailable: ${e.message}`);
+  }
   console.log(`Pages configured: ${pages.length}`);
 
   // >= not >, so the threshold means what it says. With nightly collection,
@@ -112,6 +156,9 @@ async function main() {
     console.log('Completeness: '
       + Object.entries(exact).map(([t, n]) => `${t.replace('meta_', '')} ${got[t]}/${n}`).join(', '));
   } catch (e) {
+    // The blip on 6 Sep 2026 landed here and was reported as truncated data.
+    // A read that never arrived proves nothing about how many rows exist.
+    if (isConnectionError(e)) await unreachable(e, 'checking completeness');
     mismatches.push(`completeness check failed: ${e.message}`);
   }
 
@@ -179,9 +226,10 @@ async function main() {
   console.log(`Fresh: under the ${MAX_AGE}-day threshold. Nothing to report.`);
 }
 
-main().catch((e) => {
+main().catch(async (e) => {
+  if (isConnectionError(e)) return unreachable(e, 'running the check');
   console.error('freshness check failed:', e.message);
   // A watchdog that cannot run must be loud, not silent.
-  alert(`CitizenGO organic reporting: the freshness check itself failed — ${e.message}`)
-    .finally(() => process.exit(1));
+  await alert(`CitizenGO organic reporting: the freshness check itself failed — ${e.message}`);
+  process.exit(1);
 });
