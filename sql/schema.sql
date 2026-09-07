@@ -258,6 +258,22 @@ create or replace view public.meta_ig_latest as
 -- ---------------------------------------------------------------------------
 
 -- ---------------------------------------------------------------------------
+-- FOLLOWERS GAINED PER POST: NOT AVAILABLE. Followers are held per page per day
+-- only (follows, daily_follows, followers_snapshot above). Do not try to
+-- attribute the daily change to a post: across 3,557 page-days with a non-zero
+-- change, only 16% had exactly one post that day and 67% had none at all, and
+-- the median absolute daily change is 0 on both single-post and no-post days -
+-- the per-post signal is smaller than the noise floor.
+--
+-- Whether Meta will simply tell us is a live question, not a settled one:
+-- Instagram documents `follows` and `profile_visits` as media insights in
+-- recent API versions. Run scripts/probe-follower-metrics.js (Actions ->
+-- "Probe follower metrics") to check against the API rather than the docs, and
+-- re-run it whenever GRAPH_VERSION moves. If Instagram answers, the change is
+-- two columns here and one entry in IG_METRICS in collector/instagram.js.
+-- ---------------------------------------------------------------------------
+
+-- ---------------------------------------------------------------------------
 -- AD SPEND against organic posts. Own table because one post can be promoted by
 -- several ads. Joined via the ad creative's effective_object_story_id, which IS
 -- the page post id - so a boosted post appears in both datasets under one key.
@@ -508,3 +524,42 @@ create index if not exists meta_access_tokens_active
 
 alter table public.meta_access_tokens enable row level security;
 revoke all on public.meta_access_tokens from anon, authenticated;
+
+-- ---------------------------------------------------------------------------
+-- BREAKOUT ALERTS: what has already been announced to Slack past 100,000 views.
+-- Written by scripts/breakout-alerts.js, and only after Slack accepts the
+-- message - recording first would silently swallow an announcement whenever the
+-- webhook failed.
+--
+-- This table IS the deduplication. A post is announced once; a later
+-- translation of the same story is not, unless it lands 35+ days after the
+-- original (BREAKOUT_REVIVAL_DAYS), which makes it a genuine revival rather
+-- than a copy. The (story_key, media_type) pair is what gets compared, so a
+-- video and a photo of the same story both surface - deliberately, since they
+-- are different assets a country team might rework.
+--
+-- story_key identifies the story, not the post: it comes from Titlecase proper
+-- nouns shared across translations (lib/stories.js), which is the one signal
+-- that survives a caption being rewritten in another language.
+create table if not exists public.meta_breakout_alerts (
+  id             bigint generated always as identity primary key,
+  story_key      text        not null,
+  post_id        text        not null,
+  page_id        text,
+  media_type     text,
+  views_at_alert bigint,
+  -- The story's first post, not this one. Feeds the revival window.
+  first_post_at  timestamptz,
+  announced_at   timestamptz not null default now()
+);
+
+-- One announcement per post, enforced rather than trusted: the alerter is
+-- re-run by hand during testing and must not double-post.
+create unique index if not exists meta_breakout_alerts_post
+  on public.meta_breakout_alerts (post_id);
+-- The lookup the dedup actually performs.
+create index if not exists meta_breakout_alerts_story
+  on public.meta_breakout_alerts (story_key, media_type);
+
+alter table public.meta_breakout_alerts enable row level security;
+revoke all on public.meta_breakout_alerts from anon, authenticated;

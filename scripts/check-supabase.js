@@ -67,6 +67,15 @@ const EXPECTED = {
   meta_page_metrics: ['page_id', 'metric_date', 'views_total', 'media_view',
     'media_view_unique', 'post_engagements', 'follows', 'daily_follows',
     'followers_snapshot', 'collected_at', 'errors'],
+  // Per-person connector credentials. Only ever read by the service key, so the
+  // preflight checks the shape rather than the contents.
+  meta_access_tokens: ['name', 'token_hash', 'note', 'created_at', 'created_by',
+    'last_used_at', 'revoked_at', 'expires_at'],
+  // The breakout alerter's own dedup ledger. Listed here because a table in the
+  // DDL that the preflight does not verify is exactly the drift this project has
+  // hit repeatedly - this one went undocumented for a day.
+  meta_breakout_alerts: ['story_key', 'post_id', 'page_id', 'media_type',
+    'views_at_alert', 'first_post_at', 'announced_at'],
 };
 
 const hdrs = (key) => ({ apikey: key, Authorization: 'Bearer ' + key });

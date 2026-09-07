@@ -31,6 +31,7 @@
     "tokens": "node scripts/tokens.js",
     "check:access": "node scripts/check-access-tokens.js",
     "alerts:breakout": "node scripts/breakout-alerts.js",
-    "test:breakout": "node scripts/test-breakout.js"
+    "test:breakout": "node scripts/test-breakout.js",
+    "probe:follows": "node scripts/probe-follower-metrics.js"
   }
 }
