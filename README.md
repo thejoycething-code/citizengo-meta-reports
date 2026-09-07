@@ -298,8 +298,12 @@ so a video of Olivia and a photo of Olivia both surface. A same-format copy is
 suppressed until 35 days after the story's first post, then announced as a
 revival. HazteOir is excluded (`BREAKOUT_EXCLUDE_PAGES`): its median post is
 ~25,000 views, so 100,000 is routine there and including it produced 26 of 37
-alerts in testing. Needs `SLACK_BREAKOUT_WEBHOOK_URL`; the nightly workflow skips
-the step when it is unset. `npm run test:breakout` covers both halves.
+alerts in testing. Two ways to post. `--post` uses `SLACK_BREAKOUT_WEBHOOK_URL` from the nightly
+workflow, which skips the step when it is unset. Where Slack app permissions are
+not available, `--json` emits the decisions and the ready-to-send text, a caller
+with a Slack connector posts them, and `--record <ids>` marks what actually sent
+— see `skills/breakout-alerts/SKILL.md`, which is the scheduled-task version.
+Either route records an announcement only after Slack accepts it. `npm run test:breakout` covers both halves.
 
 **Google sign-in — built, tested, not enabled.** (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`; optional
 `ALLOWED_GOOGLE_DOMAINS`, default `citizengo.net`; `MCP_REVOKED_EMAILS` for
