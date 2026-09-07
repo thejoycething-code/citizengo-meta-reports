@@ -1,0 +1,68 @@
+name: Probe metric coverage
+
+# Diagnostic, run by hand. Answers "what does Meta offer that we are not
+# collecting?" against the live API instead of against documentation.
+#
+# Run this BEFORE any large backfill. A backfill costs roughly nine API calls
+# per post across thousands of posts, so it is worth knowing the full metric set
+# first rather than paying for the pass twice.
+#
+# It lives in Actions rather than on a laptop because META_TOKENS is a repository
+# secret and is deliberately absent from local .env files.
+#
+# READ-ONLY. It requests insights and prints what came back; it writes nothing to
+# Meta and nothing to Supabase. Safe to re-run, and worth re-running whenever
+# GRAPH_VERSION moves, since Meta adds and retires metrics between versions.
+
+on:
+  workflow_dispatch:
+    inputs:
+      graph_version:
+        description: 'Graph API version to probe (blank = the version the collector uses)'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    env:
+      META_TOKENS: ${{ secrets.META_TOKENS }}
+      # Supabase is read only, and only to pick real post and media ids to probe
+      # against. Without it the script still runs but has nothing to aim at.
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL || vars.SUPABASE_URL }}
+      SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+      GRAPH_VERSION: ${{ github.event.inputs.graph_version || vars.GRAPH_VERSION || 'v23.0' }}
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
+        with:
+          node-version: '24'
+
+      - name: Check required secrets
+        run: |
+          echo "Secret visibility to this runner (lengths only, never values):"
+          report() {
+            if [ -n "$2" ]; then
+              echo "  SET      $1  (${#2} chars)"
+            else
+              echo "  MISSING  $1"
+            fi
+          }
+          report META_TOKENS "$META_TOKENS"
+          report SUPABASE_URL "$SUPABASE_URL"
+          report SUPABASE_SERVICE_KEY "$SUPABASE_SERVICE_KEY"
+          echo
+          if [ -z "$META_TOKENS" ]; then
+            echo "META_TOKENS is not set — nothing to probe with."
+            exit 1
+          fi
+
+      - name: Probe
+        run: node scripts/probe-coverage.js

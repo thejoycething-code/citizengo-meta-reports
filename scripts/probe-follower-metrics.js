@@ -63,46 +63,8 @@ async function fromStore(path) {
   } catch (e) { return []; }
 }
 
-// A Page access token for one page. Page-scoped edges reject a user token, so
-// the probe has to ask as the page, exactly as the collector does.
-//
-// Two routes, because /me/accounts is not the whole picture: it lists only pages
-// the user holds a DIRECT role on, which since 29 Aug 2026 is 14 of our 36. The
-// other 22 still hand over a token when asked for by id (see Step 1b in
-// collector/collect.js). Probing only the enumerated 14 is how the first run of
-// this script missed Instagram entirely.
-const enumerated = new Map();
-const resolved = new Map();
-
-async function enumeratePages() {
-  for (const token of TOKENS) {
-    let after = null;
-    for (let guard = 0; guard < 20; guard++) {
-      const params = { fields: 'id,name,access_token', limit: 100 };
-      if (after) params.after = after;
-      const res = await client.get('/me/accounts', params, { token });
-      if (!res.ok) break;
-      for (const p of (res.body && res.body.data) || []) {
-        if (p.id && p.access_token && !enumerated.has(p.id)) enumerated.set(p.id, p.access_token);
-      }
-      after = res.body && res.body.paging && res.body.paging.cursors && res.body.paging.cursors.after;
-      if (!after) break;
-    }
-  }
-}
-
-async function tokenFor(pageId) {
-  if (resolved.has(pageId)) return resolved.get(pageId);
-  let out = enumerated.get(pageId) || null;
-  if (!out) {
-    for (const token of TOKENS) {
-      const r = await client.get(`/${pageId}`, { fields: 'id,access_token' }, { token });
-      if (r.ok && r.body && r.body.access_token) { out = r.body.access_token; break; }
-    }
-  }
-  resolved.set(pageId, out);
-  return out;
-}
+const { makePageTokens } = require('../lib/pagetokens');
+const { enumeratePages, tokenFor } = makePageTokens(client, TOKENS);
 
 // One probe. Returns a row rather than printing, so the summary can be built
 // from the same data the detail came from.
@@ -125,8 +87,8 @@ async function probe({ label, id, metric, token, extra = {} }) {
 
 (async () => {
   console.log(`Graph ${VERSION} · ${TOKENS.length} token(s)\n`);
-  await enumeratePages();
-  console.log(`Pages enumerated via /me/accounts: ${enumerated.size} (others resolved by id on demand)\n`);
+  const n = await enumeratePages();
+  console.log(`Pages enumerated via /me/accounts: ${n} (others resolved by id on demand)\n`);
 
   const rows = [];
 
