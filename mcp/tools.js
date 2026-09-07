@@ -86,17 +86,30 @@ async function topPosts(store, { page_id, days: d = 30, sort = 'views', limit: l
   });
   // Baseline from the same window, so "vs median" compares like with like.
   const base = pageBaseline(feed.rows);
-  const rows = feed.rows.map((r) => withBenchmark(r, base)).map((r) => [
-    r.created_time.slice(0, 10), r.page_name, postLink(r, truncate(r.message, 62)),
-    n(r.views_total), n(r.views_unique), p(r.beyond_followers_pct),
-    n(r.reactions_total), n(r.shares_total), p(r.engagement_rate),
-    r.benchmark && r.benchmark.views_x_median !== null ? r.benchmark.views_x_median + '×' : '—',
-  ]);
+  // Shown only when the result actually contains a video with the data. Most
+  // pages post mainly photos and links, and a column of dashes across ten rows
+  // is worse than no column.
+  const anyVideo = feed.rows.some((r) =>
+    r.video_views_organic !== null || r.video_views_paid !== null);
+  const rows = feed.rows.map((r) => withBenchmark(r, base)).map((r) => {
+    const row = [
+      r.created_time.slice(0, 10), r.page_name, postLink(r, truncate(r.message, 62)),
+      n(r.views_total), n(r.views_unique), p(r.beyond_followers_pct),
+      n(r.reactions_total), n(r.shares_total), p(r.engagement_rate),
+      r.benchmark && r.benchmark.views_x_median !== null ? r.benchmark.views_x_median + '×' : '—',
+    ];
+    if (anyVideo) {
+      row.push(r.video_views_organic === null && r.video_views_paid === null
+        ? '—' : `${n(r.video_views_organic)}/${n(r.video_views_paid)}`);
+    }
+    return row;
+  });
   const label = METRIC_LABELS[sort] || sort;
   return {
     text: `**Top ${feed.rows.length} posts by ${label}**`
       + `${page_id ? '' : ' (all pages)'}${days ? ` · last ${days} days` : ' · all time'}\n\n`
-      + table(['Date', 'Page', 'Post', 'Views', 'Unique', 'Beyond followers', 'Reactions', 'Shares', 'Eng. rate', 'vs median', 'Post ID'],
+      + table(['Date', 'Page', 'Post', 'Views', 'Unique', 'Beyond followers', 'Reactions', 'Shares', 'Eng. rate', 'vs median',
+        ...(anyVideo ? ['Video org/paid'] : []), 'Post ID'],
         rows.map((row, i) => row.concat([feed.rows[i].post_id])))
       + (base.reliable
         ? `\n\n_"vs median" compares each post to this page's own median of ${n(base.median_views)} views over the same window. A raw view count says nothing on its own._`
@@ -461,21 +474,31 @@ async function pageGrowth(store, { page_id, days: d = 30 }) {
       reach: sum('media_view_unique'),
       engagements: sum('post_engagements'),
       newFollows: sum('daily_follows'),
+      unfollows: sum('daily_unfollows'),
+      // Genuinely net, from Meta's own two daily metrics. Null rather than 0
+      // when neither has data, so a page with no coverage does not read as a
+      // page that neither gained nor lost anyone.
+      netFollows: (() => {
+        const f = sum('daily_follows'); const u = sum('daily_unfollows');
+        return f === null && u === null ? null : (f || 0) - (u || 0);
+      })(),
     };
   }).sort((a, b) => (b.views || 0) - (a.views || 0));
 
   return {
     text: `**Page-level trend · last ${days} days**\n\n`
       + table(
-        ['Page', 'Days', 'Followers', 'Page views', 'Reach', 'Engagements', 'New follows'],
+        ['Page', 'Days', 'Followers', 'Page views', 'Reach', 'Engagements', 'Follows', 'Unfollows', 'Net'],
         summary.map((s) => [
           s.name, s.days, n(s.followers),
-          n(s.views), n(s.reach), n(s.engagements), n(s.newFollows),
+          n(s.views), n(s.reach), n(s.engagements),
+          n(s.newFollows), n(s.unfollows), n(s.netFollows),
         ])
       )
       + '\n\n_Page-level figures, not post totals: page views include profile visits, and reach counts people who saw anything from the page. '
-      + '"New follows" is Meta\'s own daily metric and is the reliable growth figure. It counts NEW follows only — Meta does not report unfollows, so it is gross rather than net. '
-      + 'The follower count is as at the last collection, not as at each date, which is why no net change is shown: a backfill stamps every row with one day\'s number._',
+      + '"Net" is follows minus unfollows, both from Meta\'s own daily metrics — a negative number means the page shed followers over the window even if it was reaching people. '
+      + 'Unfollows have only been collected since 7 September 2026, so "—" on an earlier window means not measured, not zero. '
+      + 'The follower count is as at the last collection, not as at each date: a backfill stamps every row with one day\'s number, which is why the snapshot is not used to derive the trend._',
     data: summary,
   };
 }
@@ -494,7 +517,7 @@ async function instagramPosts(store, { page_id, days: d = 30, sort = 'reach', li
   return {
     text: `**Top ${rows.length} Instagram posts by ${label}**${days ? ` · last ${days} days` : ''}\n\n`
       + table(
-        ['Date', 'Account', 'Post', 'Type', 'Reach', 'Views', 'Saves', 'Saves/1k', 'Interactions', 'Rate'],
+        ['Date', 'Account', 'Post', 'Type', 'Reach', 'Views', 'Saves', 'Saves/1k', 'Interactions', 'Rate', 'Follows', 'Avg watch'],
         rows.map((r) => [
           (r.timestamp || '').slice(0, 10),
           r.ig_username ? '@' + r.ig_username : (r.page_name || '—'),
@@ -504,9 +527,17 @@ async function instagramPosts(store, { page_id, days: d = 30, sort = 'reach', li
           r.saves_per_1k_reached !== null && r.saves_per_1k_reached !== undefined ? Number(r.saves_per_1k_reached).toFixed(1) : '—',
           n(r.total_interactions),
           r.interaction_rate_pct !== null && r.interaction_rate_pct !== undefined ? p(Number(r.interaction_rate_pct)) : '—',
+          // The two columns are mutually exclusive by product type, not
+          // patchily populated: Meta serves follows only for FEED and watch
+          // time only for REELS.
+          n(r.follows),
+          r.reels_avg_watch_seconds !== null && r.reels_avg_watch_seconds !== undefined
+            ? Number(r.reels_avg_watch_seconds).toFixed(1) + 's' : '—',
         ])
       )
-      + '\n\n_Saves per 1,000 reached is the intent signal worth watching: saving a post is a deliberate act in a way a like is not, and Facebook has no equivalent metric._',
+      + '\n\n_Saves per 1,000 reached is the intent signal worth watching: saving a post is a deliberate act in a way a like is not, and Facebook has no equivalent metric. '
+      + '"Follows" is followers gained from that post and exists for FEED posts only; "Avg watch" exists for Reels only — Meta refuses each metric on the other type, so "—" means not offered rather than zero. '
+      + 'Both have only been collected since 7 September 2026._',
     data: rows,
   };
 }

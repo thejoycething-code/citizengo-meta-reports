@@ -42,12 +42,28 @@ const POST_HEADERS = [
   'Views', 'Unique reach', 'Organic views', 'Paid views',
   'From followers', 'Beyond followers', 'Beyond followers %',
   'Reactions', 'Shares', 'Clicks', 'Comments',
-  'Engagement', 'Engagement rate %', 'Collected', 'Data status',
+  'Engagement', 'Engagement rate %',
+  // Video posts only; blank on a photo means "not a video", not "no paid views".
+  'Video views organic', 'Video views paid', 'Video watched via',
+  'Collected', 'Data status',
 ];
 
 // Sheets rejects null; empty string is how a genuine gap is represented. It must
 // never become 0 — a missing metric would then read as a performance collapse.
 const cell = (v) => (v === null || v === undefined ? '' : v);
+
+// Meta returns several of the newer metrics as an object keyed by type. A cell
+// holding raw JSON is unreadable and unsortable, so flatten to "key: n" pairs
+// ordered by size - biggest contributor first, which is what anyone scanning
+// the column is looking for.
+function breakdownCell(v) {
+  if (!v || typeof v !== 'object') return '';
+  const parts = Object.entries(v)
+    .filter(([, n2]) => typeof n2 === 'number' && n2 !== 0)
+    .sort((a, b) => b[1] - a[1])
+    .map(([k, n2]) => `${k}: ${n2}`);
+  return parts.length ? parts.join(', ') : '';
+}
 
 function postRow(r) {
   return [
@@ -61,6 +77,7 @@ function postRow(r) {
     cell(r.views_from_followers), cell(r.views_from_nonfollowers), cell(r.beyond_followers_pct),
     cell(r.reactions_total), cell(r.shares_total), cell(r.clicks_total), cell(r.comments_total),
     cell(r.engagement_total), cell(r.engagement_rate),
+    cell(r.video_views_organic), cell(r.video_views_paid), breakdownCell(r.video_views_by_distribution),
     cell(r.collected_date),
     r.has_metrics ? (r.partial ? 'partial' : 'ok') : 'no metrics',
   ];
@@ -77,6 +94,9 @@ const IG_HEADERS = [
   // FEED posts only. Blank on Reels and Stories because Meta does not offer
   // these there - blank is "not measurable", not zero.
   'Follows', 'Profile visits', 'Profile actions',
+  // Reels only, and mutually exclusive with the three above: Meta serves
+  // follows for FEED and watch time for REELS, never both for one post.
+  'Avg watch (s)', 'Total watch (s)',
   'Collected',
 ];
 
@@ -94,6 +114,10 @@ function igRow(r) {
     cell(r.likes), cell(r.comments), cell(r.shares),
     cell(r.total_interactions), cell(r.interaction_rate_pct),
     cell(r.follows), cell(r.profile_visits), cell(r.profile_activity),
+    cell(r.reels_avg_watch_seconds),
+    // Milliseconds in the database; seconds is the only unit anyone quotes.
+    r.reels_total_watch_time_ms === null || r.reels_total_watch_time_ms === undefined
+      ? '' : Math.round(r.reels_total_watch_time_ms / 1000),
     cell(r.collected_date),
   ];
 }
@@ -109,6 +133,30 @@ function pageRow(p) {
     p.name, cell(p.followers_count), p.posts, p.posts_with_metrics, p.posts_missing_metrics,
     cell(p.views_total), cell(p.views_unique), cell(p.views_paid), cell(p.engagement_total),
     cell(p.median_engagement_rate), cell(p.median_beyond_followers_pct),
+  ];
+}
+
+// Per page PER DAY. The Pages tab is one aggregated row per page, so the daily
+// series - and with it follows against unfollows - had nowhere to land. Kept as
+// its own tab rather than widening Pages, because the two answer different
+// questions and have different row counts.
+const GROWTH_HEADERS = [
+  'Date', 'Page', 'Followers', 'Follows', 'Unfollows', 'Net follows',
+  'Page views', 'Reach', 'Engagements', 'Video views', 'Video watch (s)',
+  'Reactions by type',
+];
+
+function growthRow(r) {
+  return [
+    r.metric_date ? String(r.metric_date).slice(0, 10) : '',
+    cell(r.page_name),
+    cell(r.followers_snapshot),
+    cell(r.daily_follows), cell(r.daily_unfollows), cell(r.net_follows),
+    cell(r.views_total), cell(r.media_view_unique), cell(r.post_engagements),
+    cell(r.video_views),
+    r.video_view_time_ms === null || r.video_view_time_ms === undefined
+      ? '' : Math.round(r.video_view_time_ms / 1000),
+    breakdownCell(r.post_reactions_by_type),
   ];
 }
 
@@ -151,7 +199,22 @@ async function main() {
   } catch (e) {
     console.log(`  instagram skipped — ${e.message.slice(0, 80)}`);
   }
-  console.log(`source=${store.name} · ${feed.total} posts · ${pages.length} pages · ${ig.length} instagram posts`);
+  let growth = [];
+  try {
+    // 2000 is the reader's own ceiling: 36 pages x 90 days is 3,240 rows, so ask
+    // per page rather than letting one capped read silently drop the tail.
+    for (const pg of pages) {
+      const rows = typeof store.pageGrowth === 'function'
+        ? await store.pageGrowth({ page_id: pg.page_id, limit: 2000 }) : [];
+      growth.push(...(rows || []));
+    }
+  } catch (e) {
+    console.log(`  page growth skipped — ${e.message.slice(0, 120)}`);
+    growth = [];
+  }
+  growth.sort((a, b) => (a.metric_date < b.metric_date ? 1 : a.metric_date > b.metric_date ? -1 : 0));
+
+  console.log(`source=${store.name} · ${feed.total} posts · ${pages.length} pages · ${ig.length} instagram posts · ${growth.length} page-days`);
 
   const tabs = {
     Posts: [POST_HEADERS, ...feed.rows.map(postRow)],
@@ -160,6 +223,7 @@ async function main() {
   // Omitted entirely when there is nothing, rather than pushing a header-only
   // tab that reads as "Instagram collection is broken".
   if (ig.length) tabs.Instagram = [IG_HEADERS, ...ig.map(igRow)];
+  if (growth.length) tabs.Growth = [GROWTH_HEADERS, ...growth.map(growthRow)];
 
   const outFile = opt('out');
   if (outFile && outFile !== true) {
