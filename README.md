@@ -97,6 +97,26 @@ absence.
 It DMs only on failure. A daily "all fine" message trains the reader to ignore
 the channel, which is precisely what must not happen on the one day it matters.
 
+#### Unreachable is not the same as broken
+
+`check-freshness.js` separates the two by exit code, because they call for
+opposite responses and used to be indistinguishable:
+
+| Exit | Meaning |
+|---|---|
+| 0 | Healthy |
+| 1 | A real fault — stale, incomplete, or shrinking page coverage |
+| 2 | Misconfigured — no credentials to check with |
+| 3 | The database could not be reached at all |
+
+A dropped connection used to exit 1 carrying the INCOMPLETE-data message, which
+asserts that every figure the tools publish is understated. On 6 Sep 2026 a
+network blip on a laptop said exactly that and a re-run half a minute later was
+clean. A check that never got an answer knows nothing about the data, and now
+says so instead of guessing. Exit 3 still fails the workflow — a GitHub runner
+that cannot reach Supabase is worth looking at — but the job summary says
+"could not reach" rather than "collection has stopped".
+
 ---
 
 ## What Meta actually serves

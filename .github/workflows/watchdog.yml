@@ -56,12 +56,23 @@ jobs:
       # Fails the job when data is stale, so the run goes red and GitHub emails
       # even without a webhook configured.
       - name: Check data is still arriving
+        id: freshness
         run: |
           if [ "${{ github.event.inputs.test_alert }}" = "true" ]; then
             node scripts/check-freshness.js --test-alert
-          else
-            node scripts/check-freshness.js --max-age-days 2
+            exit $?
           fi
+          set +e
+          node scripts/check-freshness.js --max-age-days 2
+          code=$?
+          set -e
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          # Exit 3 means the database could not be REACHED from this runner,
+          # which is a different problem from collection having stopped and gets
+          # different wording in the summary. It still fails the job: a runner
+          # that cannot reach Supabase is worth looking at, and staying silent
+          # would hide a real outage behind an assumed network blip.
+          exit $code
 
       # if: always() so an expiring token is still reported when the data is
       # ALSO stale. Those two arrive together far more often than separately -
@@ -83,6 +94,12 @@ jobs:
         run: |
           if [ "${{ job.status }}" = "success" ]; then
             echo "Collection is up to date." >> "$GITHUB_STEP_SUMMARY"
+          elif [ "${{ steps.freshness.outputs.code }}" = "3" ]; then
+            echo "### Could not reach the database" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "This does NOT mean collection has stopped - the check never got an answer either way, so the data may be perfectly fine. Re-run this workflow before changing any token or secret." >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "If it fails the same way twice, check that the Supabase project is running and that SUPABASE_URL is still correct." >> "$GITHUB_STEP_SUMMARY"
           else
             echo "### Collection has stopped" >> "$GITHUB_STEP_SUMMARY"
             echo "" >> "$GITHUB_STEP_SUMMARY"
