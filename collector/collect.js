@@ -137,7 +137,21 @@ const PAGE_METRICS = {
   page_post_engagements: 'post_engagements',
   page_follows: 'follows',
   page_daily_follows: 'daily_follows',
+  // Added 7 Sept 2026 after scripts/probe-coverage.js found them available.
+  // daily_unfollows is the one that changes an answer rather than adding a
+  // column: follows were counted from the start and unfollows never were, so
+  // net growth was not uncertain, it was unknowable.
+  page_daily_unfollows: 'daily_unfollows',
+  page_daily_follows_unique: 'daily_follows_unique',
+  page_video_views: 'video_views',
+  page_video_view_time: 'video_view_time_ms',
+  page_actions_post_reactions_total: 'post_reactions_by_type',
 };
+
+// Page metrics whose daily value is an object, not a number. The series loop
+// below stores numbers and would otherwise write null for these - silently, and
+// indistinguishably from a metric that returned nothing.
+const PAGE_OBJECT_METRICS = new Set(['page_actions_post_reactions_total']);
 
 const METRICS = [
   'post_media_view',
@@ -152,11 +166,22 @@ const METRICS = [
   'post_video_complete_views_30s',
 ];
 
+// Requested only for media_type = 'video'. Gated rather than asked everywhere
+// because ~2,700 posts are mostly photos and links: asking would add three
+// calls per post to collect three nulls. A null in these columns means "not a
+// video", never "no paid views".
+const VIDEO_METRICS = [
+  'post_video_views_organic',
+  'post_video_views_paid',
+  'post_video_views_by_distribution_type',
+];
+
 async function collectPostMetrics(post, as) {
   const errors = {};
 
   const results = {};
-  for (const m of METRICS) {
+  const wanted = post.media_type === 'video' ? [...METRICS, ...VIDEO_METRICS] : METRICS;
+  for (const m of wanted) {
     const r = await call(`/${post.id}/insights`, { metric: m }, as);
     results[m] = r;
     if (!r.ok) {
@@ -209,6 +234,10 @@ async function collectPostMetrics(post, as) {
       return ms === null ? null : Number((ms / 1000).toFixed(1));
     })(),
     video_complete_views_30s: num(firstValue(results.post_video_complete_views_30s)),
+    // Video posts only; firstValue returns null for a metric never requested.
+    video_views_organic: num(firstValue(results.post_video_views_organic)),
+    video_views_paid: num(firstValue(results.post_video_views_paid)),
+    video_views_by_distribution: firstValue(results.post_video_views_by_distribution_type) || null,
 
     // Filled in by listCommentCounts() after this returns; stays null if the
     // token lacks pages_read_user_content.
@@ -254,7 +283,10 @@ async function collectPageInsights(page, as, followersSnapshot) {
           errors: null,
         });
       }
-      byDate.get(date)[column] = typeof point.value === 'number' ? point.value : null;
+      byDate.get(date)[column] = PAGE_OBJECT_METRICS.has(metric)
+        ? (point.value && typeof point.value === 'object' && Object.keys(point.value).length
+          ? point.value : null)
+        : (typeof point.value === 'number' ? point.value : null);
     }
   }
 
@@ -519,6 +551,14 @@ async function collectPageInner(page, pageToken, out) {
       await sink.upsert('meta_ig_media_metrics', ig.metrics);
       const withReach = ig.metrics.filter((m) => m.reach !== null).length;
       console.log(`   instagram: @${ig.username} — ${ig.media.length} posts, ${withReach} with reach`);
+    }
+    // Written whenever an account is linked, NOT only when it posted recently:
+    // follower growth is exactly the thing you want on a quiet week, and
+    // gating it on media.length would leave holes on the days that matter.
+    if (ig.linked && ig.account && ig.account.rows.length) {
+      await sink.upsert('meta_ig_account_metrics', ig.account.rows);
+      console.log(`   instagram: @${ig.username} — ${ig.account.rows.length} account-day row(s)`
+        + `${ig.account.errorCount ? `, ${ig.account.errorCount} metric(s) unavailable` : ''}`);
     }
   } catch (e) {
     // Never let Instagram break the Facebook collection it runs alongside.

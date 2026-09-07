@@ -36,6 +36,36 @@ const IG_METRICS = ['reach', 'views', 'saved', 'total_interactions', 'likes', 'c
 // errors column under noise we already know the answer to.
 const IG_FEED_METRICS = ['follows', 'profile_visits', 'profile_activity'];
 
+// REELS only, and the mirror image of the above: Meta refuses these on a FEED
+// post and serves them on a Reel. Probed live on v23.0, 7 Sept 2026.
+//
+// This is the only watch-through signal available for Reels - clips_replays_count,
+// ig_reels_aggregated_all_plays_count and thruplays are all rejected outright -
+// and Reels are 374 of our 790 Instagram posts, so without these half the
+// Instagram estate has no completion signal at all.
+const IG_REELS_METRICS = ['ig_reels_avg_watch_time', 'ig_reels_video_view_total_time'];
+
+// ACCOUNT level, per day. Two kinds, and the split is forced by the API rather
+// than chosen: these are served as a time series, so one call covers the whole
+// window.
+const IG_ACCOUNT_SERIES = { follower_count: 'follower_count', reach: 'reach' };
+
+// ...while these are only served as a single total_value. Passing since/until
+// returns one number for the whole range, not one per day, so a genuine daily
+// history would cost one call per metric per day. Collected for the current day
+// only; older rows carry the series metrics above and nulls here, which is
+// honest rather than convenient.
+const IG_ACCOUNT_TOTALS = {
+  views: 'views', profile_views: 'profile_views', website_clicks: 'website_clicks',
+  accounts_engaged: 'accounts_engaged', total_interactions: 'total_interactions',
+  replies: 'replies',
+};
+
+// Served as total_value with a breakdown rather than a scalar, so it is stored
+// as jsonb whole instead of being flattened into a number that loses the half
+// of it that matters.
+const IG_ACCOUNT_BREAKDOWNS = { follows_and_unfollows: 'follows_and_unfollows' };
+
 function firstValue(res) {
   if (!res || !res.ok) return null;
   const d = res.body && res.body.data && res.body.data[0];
@@ -98,9 +128,13 @@ async function collectInstagram({ page, as, call, lookbackDays, maxPosts, runSta
   for (const m of media) {
     const errors = {};
     const values = {};
-    const wanted = m.media_product_type === 'FEED'
-      ? [...IG_METRICS, ...IG_FEED_METRICS]
-      : IG_METRICS;
+    // Gated per product type rather than attempted and caught: Meta refuses the
+    // FEED-only metrics on a Reel and the Reels-only metrics on a FEED post, so
+    // asking for both everywhere would guarantee two or three failures on every
+    // single post and bury the real errors under known ones.
+    const wanted = [...IG_METRICS];
+    if (m.media_product_type === 'FEED') wanted.push(...IG_FEED_METRICS);
+    if (m.media_product_type === 'REELS') wanted.push(...IG_REELS_METRICS);
     for (const metric of wanted) {
       const r = await call(`/${m.media_id}/insights`, { metric }, as);
       if (r.ok) values[metric] = firstValue(r);
@@ -127,12 +161,100 @@ async function collectInstagram({ page, as, call, lookbackDays, maxPosts, runSta
       follows: values.follows ?? null,
       profile_visits: values.profile_visits ?? null,
       profile_activity: values.profile_activity ?? null,
+      // REELS only. Milliseconds as Meta reports them; the meta_ig_latest view
+      // derives the seconds figure people actually quote.
+      reels_avg_watch_time_ms: values.ig_reels_avg_watch_time ?? null,
+      reels_total_watch_time_ms: values.ig_reels_video_view_total_time ?? null,
       errors: Object.keys(errors).length ? errors : null,
     });
   }
 
   media.forEach((m) => { delete m._like_count; delete m._comments_count; });
-  return { linked: true, username: ig.username, ig_user_id: ig.id, media, metrics };
+
+  const account = await collectAccountMetrics({
+    ig, page, as, call, lookbackDays, runStarted, collectedDate,
+  });
+
+  return { linked: true, username: ig.username, ig_user_id: ig.id, media, metrics, account };
 }
 
-module.exports = { collectInstagram, IG_METRICS, IG_FEED_METRICS, IG_MEDIA_FIELDS };
+// Account-level daily metrics. Nothing was collected here before 7 Sept 2026:
+// Facebook follower growth was charted and Instagram had no equivalent, while
+// this function's own `ig` argument already carried followers_count and
+// media_count from the call that finds the linked account - fetched every run
+// and thrown away.
+//
+// Instagram serves account insights for roughly the last 30 days only, unlike
+// Facebook page insights. The window is clamped accordingly, and it is why this
+// table cannot be backfilled the way the post tables can.
+async function collectAccountMetrics({ ig, page, as, call, lookbackDays, runStarted, collectedDate }) {
+  const errors = {};
+  const byDate = new Map();
+  const rowFor = (date) => {
+    if (!byDate.has(date)) {
+      byDate.set(date, {
+        ig_user_id: ig.id,
+        page_id: page.page_id,
+        ig_username: ig.username || null,
+        metric_date: date,
+        collected_at: runStarted.toISOString(),
+        followers_snapshot: null,
+        media_count: null,
+        errors: null,
+      });
+    }
+    return byDate.get(date);
+  };
+
+  const days = Math.min(lookbackDays, 30);
+  const until = Math.floor(runStarted.getTime() / 1000);
+  const since = until - days * 86400;
+
+  for (const [metric, column] of Object.entries(IG_ACCOUNT_SERIES)) {
+    const r = await call(`/${ig.id}/insights`, { metric, period: 'day', since, until }, as);
+    if (!r.ok) {
+      errors[metric] = { code: r.error ? r.error.code : null, message: r.error ? r.error.message : 'unknown' };
+      continue;
+    }
+    const series = (r.body && r.body.data && r.body.data[0] && r.body.data[0].values) || [];
+    for (const point of series) {
+      if (!point || point.end_time === undefined) continue;
+      // end_time is the END of the day the value covers, as on the page series.
+      rowFor(String(point.end_time).slice(0, 10))[column] =
+        typeof point.value === 'number' ? point.value : null;
+    }
+  }
+
+  // The current day gets the point-in-time totals and the total_value metrics.
+  const today = rowFor(collectedDate);
+  today.followers_snapshot = typeof ig.followers_count === 'number' ? ig.followers_count : null;
+  today.media_count = typeof ig.media_count === 'number' ? ig.media_count : null;
+
+  for (const [metric, column] of Object.entries({ ...IG_ACCOUNT_TOTALS, ...IG_ACCOUNT_BREAKDOWNS })) {
+    const r = await call(`/${ig.id}/insights`, { metric, metric_type: 'total_value', period: 'day' }, as);
+    if (!r.ok) {
+      errors[metric] = { code: r.error ? r.error.code : null, message: r.error ? r.error.message : 'unknown' };
+      continue;
+    }
+    const d = r.body && r.body.data && r.body.data[0];
+    const tv = d && d.total_value;
+    if (IG_ACCOUNT_BREAKDOWNS[metric]) {
+      // Keep the breakdown intact, but do not store an empty envelope as if it
+      // were data.
+      today[column] = tv && typeof tv === 'object' && Object.keys(tv).length ? tv : null;
+    } else {
+      today[column] = tv && typeof tv.value === 'number' ? tv.value : null;
+    }
+  }
+
+  const rows = [...byDate.values()];
+  if (Object.keys(errors).length) rows.forEach((r) => { r.errors = errors; });
+  return { rows, errorCount: Object.keys(errors).length };
+}
+
+module.exports = {
+  collectInstagram, collectAccountMetrics,
+  IG_METRICS, IG_FEED_METRICS, IG_REELS_METRICS,
+  IG_ACCOUNT_SERIES, IG_ACCOUNT_TOTALS, IG_ACCOUNT_BREAKDOWNS,
+  IG_MEDIA_FIELDS,
+};

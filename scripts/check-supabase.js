@@ -51,7 +51,9 @@ const EXPECTED = {
     'reactions_wow', 'reactions_haha', 'reactions_sorry', 'reactions_anger',
     'shares_total', 'clicks_total', 'clicks_by_type', 'activity_by_type', 'video_views',
     'comments_total', 'errors', 'video_view_time_ms', 'video_avg_seconds_watched',
-    'video_complete_views_30s'],
+    'video_complete_views_30s',
+    // Video posts only; null on a photo.
+    'video_views_organic', 'video_views_paid', 'video_views_by_distribution'],
   // Written only on failed authentication, by lib/guard.js. Checked here so the
   // consistency check can see it - a table in the DDL that the preflight does
   // not verify is exactly the drift this project has hit repeatedly.
@@ -63,12 +65,22 @@ const EXPECTED = {
   meta_ig_media_metrics: ['media_id', 'page_id', 'collected_date', 'collected_at',
     'reach', 'views', 'saved', 'total_interactions', 'likes', 'comments', 'shares', 'errors',
     // FEED-only follower attribution; null on Reels and Stories by design.
-    'follows', 'profile_visits', 'profile_activity'],
+    'follows', 'profile_visits', 'profile_activity',
+    // REELS-only watch-through; null on FEED by design.
+    'reels_avg_watch_time_ms', 'reels_total_watch_time_ms'],
   meta_post_ad_spend: ['post_id', 'page_id', 'ad_id', 'ad_account_id', 'campaign_name',
     'spend', 'currency', 'impressions', 'reach', 'date_start', 'date_stop', 'collected_at'],
   meta_page_metrics: ['page_id', 'metric_date', 'views_total', 'media_view',
     'media_view_unique', 'post_engagements', 'follows', 'daily_follows',
-    'followers_snapshot', 'collected_at', 'errors'],
+    'followers_snapshot', 'collected_at', 'errors',
+    'daily_unfollows', 'daily_follows_unique', 'video_views', 'video_view_time_ms',
+    'post_reactions_by_type'],
+  // Instagram at account level, per day. The total_value columns are filled for
+  // the current day only - see the DDL note.
+  meta_ig_account_metrics: ['ig_user_id', 'page_id', 'ig_username', 'metric_date',
+    'collected_at', 'followers_snapshot', 'media_count', 'follower_count', 'reach',
+    'views', 'profile_views', 'website_clicks', 'accounts_engaged',
+    'total_interactions', 'replies', 'follows_and_unfollows', 'errors'],
   // Per-person connector credentials. Only ever read by the service key, so the
   // preflight checks the shape rather than the contents.
   meta_access_tokens: ['name', 'token_hash', 'note', 'created_at', 'created_by',

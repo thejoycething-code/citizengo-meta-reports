@@ -70,8 +70,26 @@ function supabaseSink({ url, serviceKey }) {
     meta_page_metrics: 'page_id,metric_date',
     meta_ig_media: 'media_id',
     meta_ig_media_metrics: 'media_id,collected_date',
+    meta_ig_account_metrics: 'ig_user_id,metric_date',
     meta_post_ad_spend: 'ad_id,date_start,date_stop',
   };
+
+  // Append-only by design: a surrogate id primary key and no unique constraint,
+  // so every run adds a row rather than replacing one. A plain insert is
+  // correct here and on_conflict would be wrong.
+  const APPEND_ONLY = new Set(['meta_collection_runs']);
+
+  // Any other table missing from CONFLICT is not a small omission: the POST
+  // would go out with no on_conflict, so each run either duplicates rows or
+  // trips the table's unique index. Both fail quietly enough to go unnoticed
+  // for days, so refuse at the call instead of guessing.
+  function conflictFor(table) {
+    if (APPEND_ONLY.has(table)) return null;
+    if (!CONFLICT[table]) {
+      throw new Error(`no conflict key configured for ${table} — add it to CONFLICT (or APPEND_ONLY) in collector/lib/sinks.js`);
+    }
+    return CONFLICT[table];
+  }
 
   // Pages collected before. Used to recover pages that /me/accounts stops
   // enumerating - see the recovery step in collect.js.
@@ -101,7 +119,7 @@ function supabaseSink({ url, serviceKey }) {
     knownPageIds,
     async upsert(table, rows) {
       if (!rows.length) return { count: 0 };
-      const conflict = CONFLICT[table];
+      const conflict = conflictFor(table);
       const target = base + '/rest/v1/' + table + (conflict ? `?on_conflict=${conflict}` : '');
       // Upserts are idempotent by construction (on_conflict + merge-duplicates),
       // so retrying a write cannot duplicate rows.

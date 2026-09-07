@@ -110,7 +110,13 @@ create table if not exists public.meta_post_metrics (
 
   -- Which metrics failed for this row, so a partial collection is visible as
   -- partial rather than silently reading as zero.
-  errors                    jsonb
+  errors                    jsonb,
+  -- Video posts only (media_type = 'video'), added 7 Sept 2026 after
+  -- scripts/probe-coverage.js found them available. Null on a photo means
+  -- "not a video", never "no paid views".
+  video_views_organic         bigint,
+  video_views_paid            bigint,
+  video_views_by_distribution jsonb
 );
 
 -- Makes reruns idempotent: a second run on the same day updates in place.
@@ -150,7 +156,17 @@ create table if not exists public.meta_page_metrics (
   followers_snapshot bigint,
 
   collected_at       timestamptz not null default now(),
-  errors             jsonb
+  errors             jsonb,
+  -- Added 7 Sept 2026. daily_unfollows is the one that changes an answer
+  -- rather than adding a column: follows were counted from the start and
+  -- unfollows never were, so net growth was unknowable, not merely uncertain.
+  -- meta_page_growth derives net_follows from the pair.
+  daily_unfollows        bigint,
+  daily_follows_unique   bigint,
+  video_views            bigint,
+  video_view_time_ms     bigint,
+  -- Object per day, not a number - see PAGE_OBJECT_METRICS in collect.js.
+  post_reactions_by_type jsonb
 );
 
 create unique index if not exists meta_page_metrics_page_day_key
@@ -175,7 +191,16 @@ select
   m.media_view,
   m.media_view_unique,
   m.post_engagements,
-  m.daily_follows
+  m.daily_follows,
+  m.daily_unfollows,
+  -- The number daily_follows could never give on its own.
+  case when m.daily_follows is null and m.daily_unfollows is null then null
+       else coalesce(m.daily_follows, 0) - coalesce(m.daily_unfollows, 0)
+  end as net_follows,
+  m.daily_follows_unique,
+  m.video_views,
+  m.video_view_time_ms,
+  m.post_reactions_by_type
 from public.meta_page_metrics m
 join public.meta_pages g on g.page_id = m.page_id;
 
@@ -225,7 +250,13 @@ create table if not exists public.meta_ig_media_metrics (
   -- reproduce the real column order rather than a tidier one.
   follows            bigint,
   profile_visits     bigint,
-  profile_activity   bigint
+  profile_activity   bigint,
+  -- REELS only, and the mirror of the three FEED-only columns above: Meta
+  -- refuses these on a FEED post. The only watch-through signal Reels have -
+  -- clips_replays_count, ig_reels_aggregated_all_plays_count and thruplays are
+  -- all rejected. Milliseconds as reported; meta_ig_latest derives seconds.
+  reels_avg_watch_time_ms   bigint,
+  reels_total_watch_time_ms bigint
 );
 
 create unique index if not exists meta_ig_media_metrics_day_key
@@ -255,13 +286,68 @@ create or replace view public.meta_ig_latest as
          -- create or replace view cannot insert a column mid-list, and dropping
          -- the view would take its grant to meta_readonly with it. Every
          -- consumer reads select=*, so position carries no meaning.
-         x.follows, x.profile_visits, x.profile_activity
+         x.follows, x.profile_visits, x.profile_activity,
+         x.reels_avg_watch_time_ms,
+         x.reels_total_watch_time_ms,
+         -- Seconds, because nobody reasons about watch time in milliseconds.
+         round(x.reels_avg_watch_time_ms::numeric / 1000, 1) as reels_avg_watch_seconds
     from public.meta_ig_media m
     join public.meta_pages g on g.page_id = m.page_id
     join public.meta_ig_media_metrics x on x.media_id = m.media_id
    where x.collected_date = (select max(y.collected_date)
                                from public.meta_ig_media_metrics y
                               where y.media_id = m.media_id);
+
+-- ---------------------------------------------------------------------------
+-- INSTAGRAM ACCOUNT level, per day. Nothing was collected here before
+-- 7 Sept 2026: Facebook follower growth was charted and Instagram had no
+-- equivalent, while collector/instagram.js was already fetching the account's
+-- followers_count and media_count on every run and discarding both.
+--
+-- Two kinds of column, and the split is forced by the API rather than chosen.
+-- follower_count and reach are served as a daily time series, so one call fills
+-- the whole window and old rows have real values. Everything else is served
+-- only as a single total_value: passing since/until returns one number for the
+-- range, not one per day, so those are collected for the current day only and
+-- are null on older rows. That is a genuine gap, not a collection failure.
+--
+-- Instagram serves account insights for roughly the last 30 days, unlike
+-- Facebook page insights which go back years. This table therefore cannot be
+-- backfilled the way the post tables can - which is the reason to start
+-- filling it now rather than when it is next wanted.
+create table if not exists public.meta_ig_account_metrics (
+  id                    bigint generated always as identity primary key,
+  ig_user_id            text not null,
+  page_id               text not null references public.meta_pages(page_id),
+  ig_username           text,
+  metric_date           date not null,
+  collected_at          timestamptz not null default now(),
+  -- Point-in-time totals from the account object, not from insights.
+  followers_snapshot    bigint,
+  media_count           bigint,
+  -- Daily series.
+  follower_count        bigint,
+  reach                 bigint,
+  -- total_value only: current day, null on older rows.
+  views                 bigint,
+  profile_views         bigint,
+  website_clicks        bigint,
+  accounts_engaged      bigint,
+  total_interactions    bigint,
+  replies               bigint,
+  follows_and_unfollows jsonb,
+  errors                jsonb
+);
+
+create unique index if not exists meta_ig_account_metrics_day_key
+  on public.meta_ig_account_metrics (ig_user_id, metric_date);
+create index if not exists meta_ig_account_metrics_page
+  on public.meta_ig_account_metrics (page_id, metric_date desc);
+
+alter table public.meta_ig_account_metrics enable row level security;
+revoke all on public.meta_ig_account_metrics from anon, authenticated;
+grant select on public.meta_ig_account_metrics to meta_readonly;
+-- ---------------------------------------------------------------------------
 
 -- ---------------------------------------------------------------------------
 -- METRICS THAT DO NOT EXIST ON v23.0. Probed live 7 Sept 2026 by
@@ -429,7 +515,12 @@ select
   case when coalesce(m.views_total, 0) > 0
        then round(((coalesce(m.reactions_total,0) + coalesce(m.shares_total,0)
                     + coalesce(m.clicks_total,0))::numeric / m.views_total) * 100, 2)
-  end as engagement_rate_pct
+  end as engagement_rate_pct,
+  -- Appended, not slotted in beside the other view columns: create or replace
+  -- view cannot insert a column mid-list.
+  m.video_views_organic,
+  m.video_views_paid,
+  m.video_views_by_distribution
 from public.meta_posts p
 join public.meta_pages g on g.page_id = p.page_id
 join public.meta_post_metrics m on m.post_id = p.post_id
