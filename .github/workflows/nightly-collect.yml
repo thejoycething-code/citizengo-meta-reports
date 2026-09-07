@@ -51,7 +51,11 @@ concurrency:
 jobs:
   collect:
     runs-on: ubuntu-latest
-    timeout-minutes: 180
+    # 180 covers the nightly 14-day window several times over. The higher cap
+    # is for the manual 90-day backfills: ~2,700 posts at 9-12 calls each runs
+    # for two to three hours, and a job killed at 180 minutes leaves the last
+    # pages on stale data with a green tick.
+    timeout-minutes: 330
 
     env:
       META_TOKENS: ${{ secrets.META_TOKENS }}
