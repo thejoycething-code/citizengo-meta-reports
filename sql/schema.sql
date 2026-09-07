@@ -265,12 +265,25 @@ create or replace view public.meta_ig_latest as
 -- the median absolute daily change is 0 on both single-post and no-post days -
 -- the per-post signal is smaller than the noise floor.
 --
--- Whether Meta will simply tell us is a live question, not a settled one:
--- Instagram documents `follows` and `profile_visits` as media insights in
--- recent API versions. Run scripts/probe-follower-metrics.js (Actions ->
--- "Probe follower metrics") to check against the API rather than the docs, and
--- re-run it whenever GRAPH_VERSION moves. If Instagram answers, the change is
--- two columns here and one entry in IG_METRICS in collector/instagram.js.
+-- FACEBOOK: settled. Probed live on v23.0, 7 Sept 2026 - post_follows,
+-- post_new_followers, post_fan_adds, post_page_follows and
+-- post_follows_unique all return "must be a valid insights metric" while the
+-- controls pass, so the metric does not exist rather than being unpermitted.
+--
+-- INSTAGRAM: it DOES exist, on FEED posts only. Same probe, same day: a FEED
+-- post returned follows=3, profile_visits=46, profile_activity=39, while a
+-- REELS post from the same account rejected all three with "does not support
+-- ... for this media product type". So per-post follower attribution is
+-- available for a subset of Instagram and nothing else - worth collecting, but
+-- any figure built on it covers IG FEED alone and must say so.
+--
+-- Not yet collected. The change is columns here plus entries in IG_METRICS in
+-- collector/instagram.js, requested per media_product_type so REELS does not
+-- fail the whole insights call.
+--
+-- Re-run scripts/probe-follower-metrics.js (Actions -> "Probe follower
+-- metrics") whenever GRAPH_VERSION moves; Meta adds and retires metrics
+-- between versions, and this answer is version-specific.
 -- ---------------------------------------------------------------------------
 
 -- ---------------------------------------------------------------------------
