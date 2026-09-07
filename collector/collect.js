@@ -562,7 +562,9 @@ async function collectPageInner(page, pageToken, out) {
     }
   } catch (e) {
     // Never let Instagram break the Facebook collection it runs alongside.
-    console.log(`   instagram: failed — ${e.message.slice(0, 80)}`);
+    // 200, not 80: the useful part of an upsert failure is the PostgREST error
+    // body, and 80 characters cut it off mid-word.
+    console.log(`   instagram: failed — ${e.message.slice(0, 200)}`);
   }
 
   // Page-level series. Independent of posts: a page with nothing published in

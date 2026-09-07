@@ -120,6 +120,24 @@ function supabaseSink({ url, serviceKey }) {
     async upsert(table, rows) {
       if (!rows.length) return { count: 0 };
       const conflict = conflictFor(table);
+      // PostgREST rejects a bulk insert whose objects have differing key sets,
+      // and says only "All object keys must match" with no hint as to which key
+      // or which row. Name them here instead - and do NOT paper over it by
+      // filling the gaps with null, because under merge-duplicates a null
+      // overwrites a real stored value.
+      const keys = Object.keys(rows[0]).sort().join(',');
+      for (let i = 1; i < rows.length; i++) {
+        const k = Object.keys(rows[i]).sort().join(',');
+        if (k !== keys) {
+          const a = new Set(Object.keys(rows[0]));
+          const b = new Set(Object.keys(rows[i]));
+          const only0 = [...a].filter((x) => !b.has(x));
+          const onlyI = [...b].filter((x) => !a.has(x));
+          throw new Error(`${table}: row 0 and row ${i} have different columns`
+            + `${only0.length ? ` — only in row 0: ${only0.join(', ')}` : ''}`
+            + `${onlyI.length ? ` — only in row ${i}: ${onlyI.join(', ')}` : ''}`);
+        }
+      }
       const target = base + '/rest/v1/' + table + (conflict ? `?on_conflict=${conflict}` : '');
       // Upserts are idempotent by construction (on_conflict + merge-duplicates),
       // so retrying a write cannot duplicate rows.

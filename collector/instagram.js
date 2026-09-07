@@ -190,6 +190,16 @@ async function collectInstagram({ page, as, call, lookbackDays, maxPosts, runSta
 async function collectAccountMetrics({ ig, page, as, call, lookbackDays, runStarted, collectedDate }) {
   const errors = {};
   const byDate = new Map();
+  // Every row carries EVERY column, even the ones this date will never fill.
+  // PostgREST rejects a bulk insert whose objects have differing key sets with
+  // a bare "All object keys must match" (PGRST102), and the older dates here
+  // legitimately have fewer values than the current day.
+  const BLANK = Object.fromEntries([
+    ...Object.values(IG_ACCOUNT_SERIES),
+    ...Object.values(IG_ACCOUNT_TOTALS),
+    ...Object.values(IG_ACCOUNT_BREAKDOWNS),
+  ].map((c) => [c, null]));
+
   const rowFor = (date) => {
     if (!byDate.has(date)) {
       byDate.set(date, {
@@ -200,6 +210,7 @@ async function collectAccountMetrics({ ig, page, as, call, lookbackDays, runStar
         collected_at: runStarted.toISOString(),
         followers_snapshot: null,
         media_count: null,
+        ...BLANK,
         errors: null,
       });
     }
