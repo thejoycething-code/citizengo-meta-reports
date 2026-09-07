@@ -284,6 +284,23 @@ hosts are refused before any fetch, see `lib/cimd.js`) and dynamic client
 registration (RFC 7591, used by ChatGPT). Either way the redirect_uri must also
 pass our own allowlist.
 
+**Breakout alerts.** `npm run alerts:breakout` announces a post to
+#comm-social-networks once it passes 100,000 views, so other pages can consider
+reworking it. Dry-runs by default; `--post` sends and records.
+
+The hard part is what counts as a duplicate. The Olivia Maurel surrogacy story
+ran on nine pages in five languages inside a week, so `lib/stories.js` clusters
+posts into stories using Titlecase proper nouns — which survive translation,
+where shared rare words do not: a first attempt keyed on rarity merged 591 posts
+across 23 pages, because an everyday word in a minority language looks rare in a
+Spanish-dominated corpus. The dedup key is then the story **and the media type**,
+so a video of Olivia and a photo of Olivia both surface. A same-format copy is
+suppressed until 35 days after the story's first post, then announced as a
+revival. HazteOir is excluded (`BREAKOUT_EXCLUDE_PAGES`): its median post is
+~25,000 views, so 100,000 is routine there and including it produced 26 of 37
+alerts in testing. Needs `SLACK_BREAKOUT_WEBHOOK_URL`; the nightly workflow skips
+the step when it is unset. `npm run test:breakout` covers both halves.
+
 **Google sign-in — built, tested, not enabled.** (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`; optional
 `ALLOWED_GOOGLE_DOMAINS`, default `citizengo.net`; `MCP_REVOKED_EMAILS` for
 instant revocation). When configured, the consent page offers *Continue with

@@ -67,6 +67,7 @@ jobs:
       SHEET_ID: ${{ secrets.SHEET_ID }}
       GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
       ALERT_WEBHOOK_URL: ${{ secrets.ALERT_WEBHOOK_URL }}
+      SLACK_BREAKOUT_WEBHOOK_URL: ${{ secrets.SLACK_BREAKOUT_WEBHOOK_URL }}
       DRY_RUN: ${{ (github.event.inputs.dry_run == true || github.event.inputs.dry_run == 'true') && 'true' || 'false' }}
 
     steps:
@@ -96,6 +97,7 @@ jobs:
           report SHEET_ID "$SHEET_ID"
           report GOOGLE_SERVICE_ACCOUNT_JSON "$GOOGLE_SERVICE_ACCOUNT_JSON"
           report ALERT_WEBHOOK_URL "$ALERT_WEBHOOK_URL"
+          report SLACK_BREAKOUT_WEBHOOK_URL "$SLACK_BREAKOUT_WEBHOOK_URL"
           echo
 
           missing=""
@@ -139,6 +141,23 @@ jobs:
       - name: Refresh Google Sheet mirror
         if: success() && env.SHEET_ID != '' && env.DRY_RUN != 'true'
         run: node collector/sync-sheet.js --push
+
+      # Breakout alerts. Runs AFTER collection, because it reads the metrics the
+      # collection just wrote, and only on a successful non-dry run - announcing
+      # figures from a half-finished collection would be worse than silence.
+      #
+      # Skipped rather than failed when the webhook is unset, matching the Sheet
+      # step: a missing Slack credential must never block the collector.
+      #
+      # continue-on-error, deliberately: this is a nice-to-have notification, and
+      # a Slack outage or a rate limit should not turn the nightly collection red
+      # and send everyone chasing a data problem that does not exist. The script
+      # records an announcement only after Slack accepts it, so anything missed
+      # here is simply picked up tomorrow.
+      - name: Announce posts past 100,000 views
+        if: success() && env.SLACK_BREAKOUT_WEBHOOK_URL != '' && env.DRY_RUN != 'true'
+        continue-on-error: true
+        run: node scripts/breakout-alerts.js --post
 
       # Kept on failure too — the run log is how you diagnose a token that died
       # or a page that started returning permissions errors.
