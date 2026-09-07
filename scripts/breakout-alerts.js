@@ -80,8 +80,17 @@ async function readAll(path) {
   return out;
 }
 
-// Slack mrkdwn, not Markdown: single asterisks for bold, <url|label> for links.
-function render({ post, pageName, otherPages, metrics, revival }) {
+// TWO FLAVOURS, because the two posting routes want different syntax and getting
+// it wrong mangles every link in the message:
+//   'mrkdwn'   for an incoming webhook - *bold*, <url|label>
+//   'markdown' for the Slack MCP connector, which takes standard Markdown and
+//              converts it itself - **bold**, [label](url)
+// Caught before the first live post: the JSON path feeds the connector, so it
+// must not emit mrkdwn.
+function render({ post, pageName, otherPages, metrics, revival, flavour = 'mrkdwn' }) {
+  const md = flavour === 'markdown';
+  const b = (t) => (md ? `**${t}**` : `*${t}*`);
+  const link = (url, label) => (md ? `[${label}](${url})` : `<${url}|${label}>`);
   const beyond = (metrics.views_total && metrics.views_from_nonfollowers != null)
     ? Math.round((metrics.views_from_nonfollowers / metrics.views_total) * 100) : null;
   const text = String(post.message || '').replace(/\s+/g, ' ').trim();
@@ -90,18 +99,18 @@ function render({ post, pageName, otherPages, metrics, revival }) {
   const L = [];
   L.push('_Automated alert from the Meta reporting connector._');
   L.push('');
-  L.push(`:rocket: *${n(metrics.views_total)} views* — ${pageName}`);
+  L.push(`${md ? '🚀' : ':rocket:'} ${b(n(metrics.views_total) + ' views')} — ${pageName}`);
   L.push('');
   L.push('> ' + quote);
   L.push('');
   const facts = [];
-  if (beyond !== null) facts.push(`*${beyond}%* of its reach was beyond our own followers`);
+  if (beyond !== null) facts.push(`${b(beyond + '%')} of its reach was beyond our own followers`);
   if (metrics.reactions_total) facts.push(`${n(metrics.reactions_total)} reactions`);
   if (metrics.shares_total) facts.push(`${n(metrics.shares_total)} shares`);
   if (metrics.comments_total) facts.push(`${n(metrics.comments_total)} comments`);
   facts.push(post.media_type || 'post');
   L.push(facts.join(' · '));
-  if (post.permalink_url) L.push(`<${post.permalink_url}|See the post>`);
+  if (post.permalink_url) L.push(link(post.permalink_url, 'See the post'));
   L.push('');
   if (revival) {
     L.push(`This story first ran on ${revival.first}, ${revival.days} days ago, and is working again — worth a second look if you skipped it first time.`);
@@ -113,10 +122,10 @@ function render({ post, pageName, otherPages, metrics, revival }) {
     // EVERY page, not a capped list. A cap of six hid Citizengo México behind
     // "and 1 more" - and the pages left out are exactly the ones a reader needs
     // in order to know who has already covered this and who has not.
-    const shown = otherPages.map((o) => (o.url ? `<${o.url}|${o.name}>` : o.name));
+    const shown = otherPages.map((o) => (o.url ? link(o.url, o.name) : o.name));
     L.push(`Already running on ${shown.join(', ')}.`);
   }
-  L.push(`*Could this work on your page?* It is proven copy — worth asking ${pageName} for the assets before writing something new.`);
+  L.push(`${b('Could this work on your page?')} It is proven copy — worth asking ${pageName} for the assets before writing something new.`);
   return L.join('\n');
 }
 
@@ -177,6 +186,7 @@ async function main() {
     toSend.push({
       post, story, mediaType, pageName, metrics: latest[post.post_id],
       body: render({ post, pageName, otherPages, metrics: latest[post.post_id], revival }),
+      bodyMarkdown: render({ post, pageName, otherPages, metrics: latest[post.post_id], revival, flavour: 'markdown' }),
     });
     pending.push({ post_id: post.post_id, story_key: story.story_key, media_type: mediaType, first_post_at: story.first.created_time });
   }
@@ -210,7 +220,11 @@ async function main() {
       announce: toSend.map((i) => ({
         post_id: i.post.post_id, page: i.pageName, published: i.post.created_time,
         views: i.metrics.views_total, media_type: i.mediaType,
-        permalink: i.post.permalink_url || null, slack_text: i.body,
+        permalink: i.post.permalink_url || null,
+        // For the Slack MCP connector, which converts standard Markdown.
+        slack_text: i.bodyMarkdown,
+        // For an incoming webhook, which wants Slack mrkdwn.
+        slack_mrkdwn: i.body,
       })),
       suppressed: suppressed.map((x) => ({
         post_id: x.post.post_id, page: pages[x.post.page_id],
