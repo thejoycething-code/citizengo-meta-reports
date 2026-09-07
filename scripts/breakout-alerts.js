@@ -92,10 +92,12 @@ function render({ post, pageName, otherPages, metrics, revival }) {
     // Each page links to ITS OWN copy, not to the post being announced: someone
     // deciding whether to run this wants to see how it was written for an
     // audience like theirs, and a bare list of page names makes them hunt.
-    const shown = otherPages.slice(0, 6)
-      .map((o) => (o.url ? `<${o.url}|${o.name}>` : o.name));
-    const more = otherPages.length > 6 ? ` and ${otherPages.length - 6} more` : '';
-    L.push(`Already running on ${shown.join(', ')}${more}.`);
+    //
+    // EVERY page, not a capped list. A cap of six hid Citizengo México behind
+    // "and 1 more" - and the pages left out are exactly the ones a reader needs
+    // in order to know who has already covered this and who has not.
+    const shown = otherPages.map((o) => (o.url ? `<${o.url}|${o.name}>` : o.name));
+    L.push(`Already running on ${shown.join(', ')}.`);
   }
   L.push(`*Could this work on your page?* It is proven copy — worth asking ${pageName} for the assets before writing something new.`);
   return L.join('\n');
