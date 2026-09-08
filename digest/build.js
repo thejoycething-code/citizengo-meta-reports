@@ -6,8 +6,19 @@
 //
 // Covers Facebook and, since 3 Sep 2026, Instagram. Instagram is reported in its
 // own section rather than folded in: the metrics are not the same shape - there
-// is no paid split and no follower breakdown, but there IS "saved", which
-// Facebook has no equivalent for and which signals more intent than a like.
+// is no paid split, but there IS "saved", which Facebook has no equivalent for
+// and which signals more intent than a like.
+//
+// Since 8 Sept 2026 it also carries follower growth. Facebook reports follows
+// and unfollows per page per DAY, so net growth gets its own section rather
+// than being attached to posts - the daily change cannot be attributed to a
+// post, and trying would be invention. Instagram reports follows per FEED post
+// and watch time per REEL, each refused on the other type, so both are
+// reported against the posts that can carry them.
+//
+// Deliberately NOT here: the organic/paid split on video views. This digest is
+// organic-only by design, and mixing a paid figure into it would undercut that
+// framing for a number nobody asked the digest for.
 //
 // One statistical rule enforced here, because it is easy to get wrong and
 // impossible to spot afterwards: per-post UNIQUE reach is never summed. Two posts
@@ -53,6 +64,15 @@ function signed(v, suffix = '%') {
   if (v === null || v === undefined) return '—';
   const r = Math.round(v);
   return (r > 0 ? '+' : '') + r + suffix;
+}
+
+// Signed AND thousands-separated. signed() is for percentages, where the number
+// is small; follower counts run to four figures and "+4355" beside "5,111
+// follows" reads as a different kind of number.
+function signedCount(v) {
+  if (v === null || v === undefined) return '—';
+  const r = Math.round(v);
+  return (r > 0 ? '+' : r < 0 ? '−' : '') + Math.abs(r).toLocaleString('en-GB');
 }
 
 // Week-over-week on a handful of posts is noisy, and organic reach is so skewed
@@ -145,7 +165,7 @@ async function main() {
 
   // Instagram, read separately: loadAll covers Facebook only. Wrapped so a
   // failure here cannot take the whole digest down - the same rule the
-  // collector and the Sheet mirror apply.
+  // collector applies.
   let igAll = [];
   if (typeof store.igFeed === 'function') {
     try { igAll = (await store.igFeed()) || []; } catch (e) {
@@ -153,6 +173,21 @@ async function main() {
     }
   }
   if (page) igAll = igAll.filter((r) => r.page_id === page.page_id);
+
+  // The page-day series, for follower growth. Separate read again: loadAll
+  // covers posts, and follows happen on days rather than on posts.
+  let growthAll = [];
+  if (typeof store.pageGrowth === 'function') {
+    try {
+      growthAll = (await store.pageGrowth({
+        page_id: page ? page.page_id : undefined,
+        since: new Date(Date.now() - 21 * DAY).toISOString(),
+        limit: 2000,
+      })) || [];
+    } catch (e) {
+      console.error(`page growth skipped — ${e.message.slice(0, 80)}`);
+    }
+  }
 
   const now = Date.now();
   const thisWeek = windowStats(feed.rows, now - 7 * DAY, now + DAY);
@@ -358,6 +393,75 @@ async function main() {
     }
   }
 
+  // ---- Follower growth -----------------------------------------------------
+  //
+  // Note the exception to this file's central rule: follows and unfollows ARE
+  // additive. They are counts of events, not of unique people, so a week's
+  // total and an estate total both mean something - unlike reach, which is a
+  // count of people and must never be summed.
+  //
+  // Both halves only exist from 7 Sept 2026. Before that the collector asked
+  // for page_daily_follows and never for unfollows, so net growth was not
+  // uncertain, it was unmeasurable. Any window reaching back further is partial
+  // and says so rather than quietly treating a null as a zero.
+  const gWindow = (from, to) => growthAll.filter((r) => {
+    const t = Date.parse(r.metric_date);
+    return !Number.isNaN(t) && t >= from && t < to;
+  });
+  const gThis = gWindow(now - 7 * DAY, now + DAY);
+
+  if (gThis.length) {
+    const gnum = (v) => (v === null || v === undefined ? null : Number(v));
+    const total = (rows, k) => rows.reduce((a, r) => a + (gnum(r[k]) || 0), 0);
+    const measured = gThis.filter((r) => gnum(r.daily_unfollows) !== null);
+    const gained = total(gThis, 'daily_follows');
+    const lost = total(measured, 'daily_unfollows');
+
+    L.push('## Follower growth');
+    L.push('');
+
+    if (!measured.length) {
+      L.push(`- **${n(gained)} new follows** across the week. Unfollows were not collected for these dates, so this is gross growth, not net.`);
+      L.push('');
+    } else {
+      const net = gained - lost;
+      L.push(`- **${n(gained)} follows** and **${n(lost)} unfollows** — net **${signedCount(net)}**`);
+
+      // Per page, so a healthy estate total cannot hide pages going backwards.
+      const byPage = new Map();
+      for (const r of measured) {
+        const k = r.page_name || r.page_id;
+        const cur = byPage.get(k) || { gained: 0, lost: 0 };
+        cur.gained += gnum(r.daily_follows) || 0;
+        cur.lost += gnum(r.daily_unfollows) || 0;
+        byPage.set(k, cur);
+      }
+      const ranked = [...byPage.entries()]
+        .map(([name, v]) => ({ name, net: v.gained - v.lost, ...v }))
+        .sort((a, b) => a.net - b.net);
+      const shrinking = ranked.filter((x) => x.net < 0);
+
+      if (!page && ranked.length > 1) {
+        const best = ranked[ranked.length - 1];
+        L.push(`- Strongest: **${best.name}** at ${signedCount(best.net)} (${n(best.gained)} in, ${n(best.lost)} out)`);
+        if (shrinking.length) {
+          const worst = shrinking[0];
+          L.push(`- **${shrinking.length} page${shrinking.length === 1 ? '' : 's'} lost followers on the week**, worst ${worst.name} at ${signedCount(worst.net)}`);
+        } else {
+          L.push('- No page went backwards on the week');
+        }
+      }
+      if (measured.length < gThis.length) {
+        L.push(`- _Unfollows are known for ${measured.length} of ${gThis.length} page-days here; the rest predate collection and are left out of the net rather than counted as zero._`);
+      }
+      L.push('');
+      if (shrinking.length) {
+        L.push('_A page can reach more people than ever and still shed followers: the two are measured separately and move independently. Worth reading alongside "What did not land" rather than on its own._');
+        L.push('');
+      }
+    }
+  }
+
   // ---- Instagram -----------------------------------------------------------
   //
   // Same discipline as the Facebook sections above: views are summed, REACH IS
@@ -389,10 +493,29 @@ async function main() {
     if (bestReach && num(bestReach.reach)) {
       L.push(`- Best single post reached **${n(num(bestReach.reach))} accounts**`);
     }
-    L.push(`- **${n(igSaves)} saves** and ${n(sum(igThis, 'total_interactions'))} interactions`);
+    const igInteractions = sum(igThis, 'total_interactions');
+    L.push(`- **${n(igSaves)} save${igSaves === 1 ? '' : 's'}** and ${n(igInteractions)} interaction${igInteractions === 1 ? '' : 's'}`);
     const medRate = medOf(igThis, 'interaction_rate_pct');
     if (medRate !== null) L.push(`- Typical post: ${pc(medRate)} interaction rate`);
     if (igDelta !== null) L.push(`- Typical post **${signed(igDelta)}** on views against the week before`);
+
+    // The two metrics Meta serves for one product type and refuses for the
+    // other: follows on FEED posts, watch time on REELS. Reported against the
+    // count of posts that could carry them, never against all posts - dividing
+    // feed follows by every post would understate it by roughly half.
+    const igFeed = igThis.filter((r) => r.media_product_type === 'FEED');
+    const igReels = igThis.filter((r) => r.media_product_type === 'REELS');
+    const feedFollows = igFeed.filter((r) => num(r.follows) !== null);
+    if (feedFollows.length) {
+      const gained = feedFollows.reduce((a, r) => a + (num(r.follows) || 0), 0);
+      L.push(`- **${n(gained)} new follower${gained === 1 ? '' : 's'}** came from ${feedFollows.length} feed post${feedFollows.length === 1 ? '' : 's'}`
+        + `${igReels.length ? ` (Meta does not report this for the ${igReels.length} Reel${igReels.length === 1 ? '' : 's'})` : ''}`);
+    }
+    const watched = igReels.filter((r) => num(r.reels_avg_watch_seconds) !== null);
+    if (watched.length) {
+      const medWatch = median(watched.map((r) => num(r.reels_avg_watch_seconds)));
+      L.push(`- Typical Reel held attention for **${medWatch.toFixed(1)}s** across ${watched.length} Reel${watched.length === 1 ? '' : 's'}`);
+    }
 
     // Why the comparison may not mean what it looks like. On 3 Sep 2026 the
     // median fell 91% because ONE account published 63 posts the week before and
@@ -440,6 +563,25 @@ async function main() {
       L.push(`Most worth keeping: ${page ? '' : `${label}'s `}"${clean(saved.caption, 70)}" — **${Number(saved.saves_per_1k_reached).toFixed(1)} saves per 1,000 reached**, against ${n(num(saved.reach))} accounts reached.${link}`);
       L.push('');
       L.push('_Saving a post is a deliberate act in a way a like is not, so saves per 1,000 reached says which posts people wanted to come back to — regardless of how big the audience was._');
+      L.push('');
+    }
+
+    // Held attention longest. Floored at 200 accounts reached, for the same
+    // reason the saves callout is floored: on a handful of views an average
+    // watch time is one person's behaviour, not a finding.
+    // Skips whichever posts the two callouts above already used, so one strong
+    // post cannot fill the section three times over.
+    const alreadyShown = new Set([bestReach && bestReach.media_id, saved && saved.media_id].filter(Boolean));
+    const held = [...igThis]
+      .filter((r) => num(r.reels_avg_watch_seconds) !== null && (num(r.reach) || 0) >= 200)
+      .filter((r) => !alreadyShown.has(r.media_id))
+      .sort((a, b) => num(b.reels_avg_watch_seconds) - num(a.reels_avg_watch_seconds))[0];
+    if (held) {
+      const label = held.ig_username ? `@${held.ig_username}` : (held.page_name || 'Instagram');
+      const link = held.permalink ? ` [See the post](${held.permalink}).` : '';
+      L.push(`Held attention longest: ${page ? '' : `${label}'s `}"${clean(held.caption, 70)}" — **${Number(held.reels_avg_watch_seconds).toFixed(1)}s average watch**, ${n(num(held.reach))} accounts reached.${link}`);
+      L.push('');
+      L.push('_Watch time is the only completion signal Reels give us, and it exists for Reels alone — a feed post shows a dash rather than a zero._');
       L.push('');
     }
   } else if (igAll.length) {
