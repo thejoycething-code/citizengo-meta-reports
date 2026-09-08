@@ -160,7 +160,36 @@ function growthRow(r) {
   ];
 }
 
+// A tab that does not exist yet cannot be cleared or written: both calls fail
+// with "Unable to parse range". Because the push loops tab by tab, adding a new
+// tab to this script would overwrite Posts, Pages and Instagram and THEN abort
+// on the new one - a half-done mirror behind a failed command. So create any
+// missing tabs up front, before a single value is written.
+async function ensureTabs({ sheetId, token, names }) {
+  const meta = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}?fields=sheets.properties.title`,
+    { headers: { Authorization: 'Bearer ' + token } });
+  if (!meta.ok) throw new Error(`read sheet metadata failed: HTTP ${meta.status} ${await meta.text()}`);
+  const body = await meta.json();
+  const existing = new Set((body.sheets || []).map((sh) => sh.properties && sh.properties.title));
+  const missing = names.filter((n) => !existing.has(n));
+  if (!missing.length) return [];
+  const res = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}:batchUpdate`,
+    {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        requests: missing.map((title) => ({ addSheet: { properties: { title } } })),
+      }),
+    });
+  if (!res.ok) throw new Error(`create tab(s) ${missing.join(', ')} failed: HTTP ${res.status} ${await res.text()}`);
+  console.log(`  created missing tab(s): ${missing.join(', ')}`);
+  return missing;
+}
+
 async function pushToSheets({ sheetId, token, tabs }) {
+  await ensureTabs({ sheetId, token, names: Object.keys(tabs) });
   for (const [tab, values] of Object.entries(tabs)) {
     // Clear first: a shrinking dataset would otherwise leave stale rows behind
     // the new ones, which is how a mirror silently starts lying.

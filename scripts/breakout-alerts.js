@@ -42,7 +42,17 @@ const EXCLUDE_PAGES = String(process.env.BREAKOUT_EXCLUDE_PAGES || '154268578340
   .split(',').map((s) => s.trim()).filter(Boolean);
 // How far back to look for candidates. Deliberately short: this runs nightly and
 // a post that crossed the line weeks ago is not news.
-const LOOKBACK_DAYS = Number(process.env.BREAKOUT_LOOKBACK_DAYS || 10);
+//
+// Cut from 10 to 4 on 8 Sept 2026, after both of the first two live alerts were
+// deleted by hand for being stale: a 28 Aug post announced on 7 Sept, and a
+// 2 Sept post announced on 8 Sept. The cause is upstream - meta_post_metrics
+// refreshes only ~370 posts a day and sweeps all ~2,650 irregularly, so a post
+// that crosses 100,000 views after leaving the daily slice is unseen until the
+// next sweep, by which time it is a week old. Four days will therefore emit
+// nothing most days: on the day of the change it took the candidate count from
+// 2 to 0. That is the intended trade - a rare fresh alert is worth acting on,
+// a stale one is not. Raise this again if the daily collection is ever widened.
+const LOOKBACK_DAYS = Number(process.env.BREAKOUT_LOOKBACK_DAYS || 4);
 // How far back to read for CLUSTERING, which must be able to see a story's first
 // post even when it is older than the revival window.
 const CLUSTER_DAYS = Number(process.env.BREAKOUT_CLUSTER_DAYS || 75);
@@ -221,10 +231,10 @@ async function main() {
         post_id: i.post.post_id, page: i.pageName, published: i.post.created_time,
         views: i.metrics.views_total, media_type: i.mediaType,
         permalink: i.post.permalink_url || null,
-        // For the Slack MCP connector, which converts standard Markdown.
+        // Standard Markdown, for the Slack MCP connector that converts it.
+        // The --post webhook path sends item.body (Slack mrkdwn) straight to the
+        // hook and does not read this payload, so it is unaffected.
         slack_text: i.bodyMarkdown,
-        // For an incoming webhook, which wants Slack mrkdwn.
-        slack_mrkdwn: i.body,
       })),
       suppressed: suppressed.map((x) => ({
         post_id: x.post.post_id, page: pages[x.post.page_id],
