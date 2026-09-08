@@ -488,8 +488,10 @@ revoke all on public.meta_post_metrics    from anon, authenticated;
 revoke all on public.meta_collection_runs from anon, authenticated;
 
 -- ---------------------------------------------------------------------------
--- Convenience view for the dashboard and the Sheet mirror: latest snapshot per
--- post, with engagement rate against the reach figure that still exists.
+-- Convenience view for the dashboard, the MCP tools and the spreadsheet
+-- export: latest snapshot per post, with engagement rate against the reach
+-- figure that still exists. (The nightly Sheet mirror was retired 8 Sept 2026;
+-- exports are on demand. See collector/sync-sheet.js.)
 -- ---------------------------------------------------------------------------
 create or replace view public.meta_post_latest as
 select

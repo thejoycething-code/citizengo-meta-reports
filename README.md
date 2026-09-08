@@ -235,7 +235,6 @@ fail differently:
 | `SUPABASE_URL` | yes | Storage (may be a repo variable) |
 | `SUPABASE_SERVICE_KEY` | yes | Storage |
 | `ALERT_WEBHOOK_URL` | no | Slack/Chat alerts when collection stops |
-| `SHEET_ID`, `GOOGLE_SERVICE_ACCOUNT_JSON` | no | Sheet mirror |
 
 ### Hosted MCP (Vercel)
 

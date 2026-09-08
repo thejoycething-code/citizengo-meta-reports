@@ -1,7 +1,10 @@
 name: Nightly collection
 
 # Runs the organic post collector against every Business Portfolio we hold a
-# token for, writes to Supabase, then refreshes the Google Sheet mirror.
+# token for and writes to Supabase, which is the source of truth. There is no
+# Sheet mirror step: it was configured but never had its secrets set, so it
+# silently skipped on every run from the start and nothing consumed it.
+# Spreadsheet exports are on-demand instead - see collector/sync-sheet.js.
 #
 # Why GitHub Actions rather than Vercel Cron: at 35 pages the collector runs for
 # 15-25 minutes (roughly 9 API calls per post). Vercel functions cap at 300s even
@@ -68,8 +71,6 @@ jobs:
       PAGE_IDS: ${{ github.event.inputs.page_ids }}
       # Declared at JOB level so the step-level `if` conditions below can read
       # them. Step-level env is invisible to that step's own `if`.
-      SHEET_ID: ${{ secrets.SHEET_ID }}
-      GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
       ALERT_WEBHOOK_URL: ${{ secrets.ALERT_WEBHOOK_URL }}
       SLACK_BREAKOUT_WEBHOOK_URL: ${{ secrets.SLACK_BREAKOUT_WEBHOOK_URL }}
       DRY_RUN: ${{ (github.event.inputs.dry_run == true || github.event.inputs.dry_run == 'true') && 'true' || 'false' }}
@@ -98,8 +99,6 @@ jobs:
           report META_TOKENS "$META_TOKENS"
           report SUPABASE_URL "$SUPABASE_URL"
           report SUPABASE_SERVICE_KEY "$SUPABASE_SERVICE_KEY"
-          report SHEET_ID "$SHEET_ID"
-          report GOOGLE_SERVICE_ACCOUNT_JSON "$GOOGLE_SERVICE_ACCOUNT_JSON"
           report ALERT_WEBHOOK_URL "$ALERT_WEBHOOK_URL"
           report SLACK_BREAKOUT_WEBHOOK_URL "$SLACK_BREAKOUT_WEBHOOK_URL"
           echo
@@ -140,18 +139,12 @@ jobs:
             --concurrency "$CONCURRENCY" \
             $FLAG $PAGE_IDS
 
-      # Mirror refresh. Skipped rather than failed when unconfigured, so the
-      # collection itself is never blocked by Sheet credentials.
-      - name: Refresh Google Sheet mirror
-        if: success() && env.SHEET_ID != '' && env.DRY_RUN != 'true'
-        run: node collector/sync-sheet.js --push
-
       # Breakout alerts. Runs AFTER collection, because it reads the metrics the
       # collection just wrote, and only on a successful non-dry run - announcing
       # figures from a half-finished collection would be worse than silence.
       #
-      # Skipped rather than failed when the webhook is unset, matching the Sheet
-      # step: a missing Slack credential must never block the collector.
+      # Skipped rather than failed when the webhook is unset: a missing Slack
+      # credential must never block the collector.
       #
       # continue-on-error, deliberately: this is a nice-to-have notification, and
       # a Slack outage or a rate limit should not turn the nightly collection red

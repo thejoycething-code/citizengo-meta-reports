@@ -1,15 +1,24 @@
 #!/usr/bin/env node
 'use strict';
-// Google Sheet mirror. The Sheet is a MIRROR generated from the store, never a
-// second source of truth — it is built from lib/shape.js, the same module the
-// dashboard API uses, so the two surfaces cannot disagree.
+// ON DEMAND ONLY. There is no automated Sheet mirror and there never really
+// was: the nightly workflow had a --push step gated on SHEET_ID, that secret
+// was never set, so the step skipped silently on every run and no Sheet was
+// ever created. Retired on 8 Sept 2026 rather than finished, because Supabase
+// is the source of truth and the MCP connector already serves the same data to
+// the team, per person and token-gated. A nightly Drive copy would only add a
+// second version to drift and a wider surface holding every post's full text.
 //
-// Three tabs: "Posts" (one row per Facebook post, latest snapshot), "Pages"
-// (rollup) and "Instagram" (one row per Instagram post, latest snapshot).
+// What survives is this script's manual exports - --out, --tsv, --csv, and
+// --push for a genuine one-off Sheet. Use those when someone wants to pivot
+// something themselves; do not wire any of them back into the nightly.
 //
-// Instagram was collected from the start - caption and permalink included, 723
-// of 723 media rows carry a link - but never mirrored here, so the Sheet showed
-// Facebook only. Added 3 Sep 2026.
+// Whatever it writes is DERIVED, never a second source of truth - it is built
+// from lib/shape.js, the same module the dashboard API uses, so the two
+// surfaces cannot disagree.
+//
+// Four tabs: "Posts" (one row per Facebook post, latest snapshot), "Pages"
+// (rollup), "Instagram" (one row per Instagram post, latest snapshot) and
+// "Growth" (one row per page per DAY, which the Pages rollup cannot express).
 //
 // Modes:
 //   --out <file>     write the values matrix as JSON (no network, for inspection)

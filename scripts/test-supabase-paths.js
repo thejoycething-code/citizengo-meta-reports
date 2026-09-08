@@ -83,13 +83,31 @@ async function main() {
   check('missing key surfaces an error rather than empty data', !!authErr,
     authErr ? authErr.slice(0, 60) : 'NO ERROR RAISED');
 
+  // A table the sink KNOWS about (it has a conflict key) but the database has
+  // not had the schema applied for. meta_ig_account_metrics is the newest
+  // table, so it is the one a stale database is most likely to be missing.
+  // Using a made-up name here instead would no longer reach PostgREST at all -
+  // the sink now refuses unconfigured tables up front, which the next check
+  // covers.
   let missingTable = null;
   try {
-    await sink.upsert('meta_not_a_table', [{ x: 1 }]);
+    await sink.upsert('meta_ig_account_metrics', [{ ig_user_id: 'x', metric_date: '2026-01-01' }]);
   } catch (e) { missingTable = e.message; }
   check('unapplied schema reports relation-does-not-exist',
     !!missingTable && /does not exist/.test(missingTable),
     missingTable ? missingTable.slice(0, 70) : 'NO ERROR RAISED');
+
+  // The other half: a table with no conflict key must be refused BEFORE the
+  // request. Without this the POST would go out with no on_conflict and either
+  // duplicate rows every run or trip the table's unique index - both quiet
+  // enough to go unnoticed for days.
+  let unconfigured = null;
+  try {
+    await sink.upsert('meta_not_a_table', [{ x: 1 }]);
+  } catch (e) { unconfigured = e.message; }
+  check('a table with no conflict key is refused before any request',
+    !!unconfigured && /no conflict key configured/.test(unconfigured),
+    unconfigured ? unconfigured.slice(0, 70) : 'NO ERROR RAISED');
 
   console.log('\n8. Request audit (what we actually sent)');
   mock.send('dump');
