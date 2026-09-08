@@ -359,6 +359,102 @@ production, or every request is blocked before reaching the auth in `api/mcp.js`
 
 ---
 
+---
+
+## X (Twitter) source — groundwork, not live
+
+Scoped 8 Sep 2026 (Asana task 1218268802872745; brief in Drive, "X data via MCP –
+scoping brief"). Everything below is committed and tested but **dormant**: no
+schema applied, no workflow enabled, no tool visible, no endpoint configured.
+Nothing about the Meta pipeline changes until the checklist at the end is
+worked through, and each step is independently reversible.
+
+### What X gives us, and what it does not
+
+Verified against X's own documentation on 8 Sep 2026 (`docs.x.com`), not yet
+against the live API — `npm run probe:x` is that check and must run first.
+
+- **Private metrics have a 30-day window.** `non_public_metrics` (link clicks,
+  profile clicks), `organic_metrics` and `promoted_metrics` are served only for
+  the account's OWN posts and only while the post is under 30 days old. There
+  is no backfill. `public_metrics` (impressions, likes, reposts, replies,
+  quotes, bookmarks) have no window and cover the 3,200 most recent posts.
+- **Billing is per resource RETURNED**, prepaid: $0.001 per own post, $0.005
+  per anyone else's, $0.010 per user lookup; repeats within a UTC day charged
+  once. So the collection schedule is the cost. `lib/xschedule.js`: every post
+  is re-read daily for 7 days, then once at day 26-29 for its final value.
+  30 accounts at 3-8 posts/day is **$31-67/month**; re-reading the whole
+  window daily would be $90-225 for the same final numbers. `x_collection_runs`
+  is the ledger; the collector refuses to start once `X_MONTHLY_BUDGET_USD`
+  (default $100) is spent, and `npm run check:x` warns at 80%.
+- **Each account authorises once** (OAuth 2.0 user context, PKCE, read-only
+  scopes). X refresh tokens ROTATE on every refresh, so they live in
+  `x_oauth_tokens`, **sealed**: the Vercel callback encrypts to a public key and
+  only the GitHub Actions collector holds the private key. The deployment that
+  faces the internet can write a credential it cannot read (`lib/xauth.js`).
+- **Spokesperson accounts are collected only for posts carrying a CitizenGO
+  link** (citizengo.org, hazteoir.org, cgo.ac, derechoavivir.org). That rule
+  is in the schema (`x_accounts.kind`), the collector and the tools, because it
+  is a commitment made to the account holders, not a preference.
+- **Attribution stops at the click.** `x_link_posts` lists which post carried
+  which link, its UTM tags and X's click count. Signatures from those clicks
+  are in the Bluebook under the same UTM; our UTM scheme has no
+  per-spokesperson slot and adding one is a URL-shortener change, not ours.
+
+### Pieces
+
+| Piece | File | Dormant because |
+| --- | --- | --- |
+| Schema (5 tables, 3 views) | `sql/x-schema.sql` | not applied; preflight treats it as PENDING |
+| API client with billing tally and one-shot 429 wait | `lib/xapi.js` | nothing calls it |
+| OAuth, PKCE, sealed box, invites | `lib/xauth.js`, `lib/xflow.js` | no keys configured |
+| Enrolment pages | `api/x/authorize.js`, `api/x/callback.js` | answer 503 until `X_*` env exists |
+| Collector (daily + final + optional public backfill) | `collector/x.js` | exits 0 with "no accounts" |
+| Nightly workflow | `.github/workflows/x-collect.yml` | job skipped unless repo var `X_COLLECT_ENABLED=true` |
+| Health check (freshness, re-auth, budget) | `scripts/check-x-health.js` | prints one line and exits 0 with no accounts |
+| Six connector tools | `mcp/x-tools.js` | listed only when `X_TOOLS_ENABLED=true` on Vercel |
+| One-account spike | `scripts/probe-x.js` | needs `X_PROBE_TOKEN` |
+| Tests (no network) | `npm run test:x` | — |
+
+### Go-live checklist
+
+Each step is reversible on its own. Do them in order; stop at 3 if the probe
+contradicts the documentation.
+
+1. **X developer account and app.** Check with Ignacio whether one exists (he
+   uses the X API). Create an OAuth 2.0 app: type Web App, read-only, callback
+   `https://meta-organic-reporting.vercel.app/api/x/callback`. Load $20 of
+   credits and set a spending cap in the console.
+2. **Keys.** `npm run x:keygen`. Private key to GitHub Actions secrets ONLY;
+   public key to Vercel ONLY; invite secret to both and to local `.env`.
+   Also to Vercel: `X_CLIENT_ID`, `X_CLIENT_SECRET` (if confidential),
+   `X_REDIRECT_URI`. To GitHub: `X_CLIENT_ID`, `X_CLIENT_SECRET`.
+3. **Probe.** Get a user-context token for one CitizenGO account (developer
+   portal playground, or the enrolment flow on a preview deployment) and run
+   `X_PROBE_TOKEN=... npm run probe:x -- --days 40`. Confirm: private groups
+   present under 30 days; how X refuses them on an older post (whole request
+   or partial error — the collector assumes partial and must be changed if
+   not); and, next day, that the console's usage matches the owned-read
+   estimate. Reconcile `sql/x-schema.sql` against `fixtures/x-*.json`.
+4. **Schema.** Apply `sql/x-schema.sql` in the Supabase SQL editor. `npm run
+   db:check` should now report the six X tables present.
+5. **Enrol accounts.** `npm run x:invite -- "CitizenGO UK" --country GB` per
+   account; send each link to the holder through Filip's weekly X task. For
+   spokespersons: `--kind spokesperson`, after they have agreed.
+6. **First run by hand.** Actions → X collection → Run workflow (dispatch
+   always runs). Check the step summary's cost line. Optionally a one-off
+   `backfill_days=90` (public metrics only, ~$0.10 per 100 posts).
+7. **Switch on.** Repo variable `X_COLLECT_ENABLED=true`; add
+   `node scripts/check-x-health.js` as a step in `watchdog.yml` (with
+   `if: always()`); set `X_TOOLS_ENABLED=true` on Vercel and redeploy. Tell
+   token holders the connector now answers X questions.
+
+To switch off: unset `X_TOOLS_ENABLED` (tools vanish), set
+`X_COLLECT_ENABLED=false` (collection stops), revoke the app in the X console
+(every credential dies at once). The tables and their data stay.
+
+---
+
 ## Why the connector can hold a service key
 
 The reporting tables are the **only** things PostgREST exposes on this project.
@@ -377,13 +473,14 @@ MCP talks to Postgres directly.
 ## Layout
 
 ```
-collector/     collect.js, instagram.js, adspend.js, sync-sheet.js, verify.js
-lib/           shape.js (shared rules), store.js, graph.js, oauth.js, retry.js
-mcp/           tools.js (10 tools), server.js (stdio), test-client.js
-api/           mcp.js (HTTP transport), oauth/*, posts.js, pages.js
+collector/     collect.js, instagram.js, adspend.js, x.js (X source), sync-sheet.js, verify.js
+lib/           shape.js (shared rules), store.js, graph.js, oauth.js, retry.js,
+               xapi.js, xauth.js, xschedule.js, xflow.js (X source)
+mcp/           tools.js (10 tools), x-tools.js (6, flag-gated), server.js (stdio), test-client.js
+api/           mcp.js (HTTP transport), oauth/*, x/authorize.js + x/callback.js (X account enrolment)
 digest/        build.js — the weekly summary
 scripts/       preflight, watchdog, mocks, tests
-sql/           schema.sql, readonly-role.sql
+sql/           schema.sql, x-schema.sql (X, not yet applied), readonly-role.sql
 probe/         metrics.js — the ledger of what Meta actually serves
 fixtures/      raw probe output, committed as evidence
 ```

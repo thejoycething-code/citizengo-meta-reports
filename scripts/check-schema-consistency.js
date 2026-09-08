@@ -12,6 +12,10 @@ const path = require('path');
 
 const root = path.join(__dirname, '..');
 const sql = fs.readFileSync(path.join(root, 'sql/schema.sql'), 'utf8');
+// The X source keeps its DDL in a second file until it is applied (see the
+// header of sql/x-schema.sql). Same discipline: its preflight block must match
+// its DDL exactly, or the preflight will pass over a column that is missing.
+const xsql = fs.readFileSync(path.join(root, 'sql/x-schema.sql'), 'utf8');
 
 function parseDDL(text) {
   const tables = {};
@@ -31,18 +35,16 @@ function parseDDL(text) {
   return tables;
 }
 
-function parseExpected(file) {
+function parseExpected(file, name = 'EXPECTED') {
   const src = fs.readFileSync(file, 'utf8');
-  const m = src.match(/const EXPECTED = \{([\s\S]*?)\n\};/);
-  if (!m) throw new Error(`no EXPECTED block in ${file}`);
+  const m = src.match(new RegExp(`const ${name} = \\{([\\s\\S]*?)\\n\\};`));
+  if (!m) throw new Error(`no ${name} block in ${file}`);
   // eslint-disable-next-line no-eval
   return eval('({' + m[1] + '})');
 }
 
-const ddl = parseDDL(sql);
-const expected = parseExpected(path.join(root, 'scripts/check-supabase.js'));
-
 let bad = 0;
+function compare(ddl, expected, label) {
 for (const [table, cols] of Object.entries(expected)) {
   const actual = ddl[table];
   if (!actual) { console.log(`FAIL  ${table} — not found in sql/schema.sql`); bad++; continue; }
@@ -60,8 +62,13 @@ for (const [table, cols] of Object.entries(expected)) {
   }
 }
 for (const table of Object.keys(ddl)) {
-  if (!expected[table]) { console.log(`FAIL  ${table} — in the DDL but not checked by the preflight`); bad++; }
+  if (!expected[table]) { console.log(`FAIL  ${table} — in ${label} but not checked by the preflight`); bad++; }
+}
 }
 
-console.log(bad ? `\n${bad} inconsistency(ies)` : '\nPreflight expectations match sql/schema.sql exactly.');
+compare(parseDDL(sql), parseExpected(path.join(root, 'scripts/check-supabase.js')), 'sql/schema.sql');
+console.log('');
+compare(parseDDL(xsql), parseExpected(path.join(root, 'scripts/check-supabase.js'), 'PENDING'), 'sql/x-schema.sql');
+
+console.log(bad ? `\n${bad} inconsistency(ies)` : '\nPreflight expectations match sql/schema.sql and sql/x-schema.sql exactly.');
 process.exit(bad ? 1 : 0);

@@ -1022,6 +1022,10 @@ async function adSpend(store, { page_id, days: d = 90, limit: l = 20 }) {
   };
 }
 
+// X (Twitter) tools ride behind X_TOOLS_ENABLED so the live connector is
+// unchanged until the source exists. See mcp/x-tools.js and README.md.
+const xtools = require('./x-tools');
+
 const TOOLS = [
   {
     name: 'list_pages',
@@ -1166,6 +1170,7 @@ const TOOLS = [
     inputSchema: { type: 'object', properties: {}, additionalProperties: false },
     handler: (store) => dataHealth(store),
   },
+  ...(xtools.enabled() ? xtools.X_TOOLS : []),
 ];
 
 // How old the data may be before a caller is warned. Collection runs nightly,

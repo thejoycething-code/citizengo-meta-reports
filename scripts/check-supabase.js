@@ -99,6 +99,33 @@ const EXPECTED = {
 
 const hdrs = (key) => ({ apikey: key, Authorization: 'Bearer ' + key });
 
+// X source (sql/x-schema.sql). PENDING, not required: these are checked for
+// column drift only once they exist, and their absence is reported as
+// "not applied yet" rather than a failure, so this preflight keeps passing
+// against production until the X go-live checklist reaches the schema step.
+// scripts/check-schema-consistency.js holds this block to the DDL exactly as it
+// holds EXPECTED to schema.sql.
+const PENDING = {
+  x_accounts: ['account_id', 'username', 'name', 'kind', 'country', 'label', 'is_active',
+    'followers_count', 'authorized_at', 'authorized_by', 'first_seen_at', 'last_seen_at'],
+  x_oauth_tokens: ['account_id', 'sealed_refresh', 'scopes', 'authorized_at', 'last_refreshed_at',
+    'last_error', 'revoked_at'],
+  x_posts: ['post_id', 'account_id', 'created_at', 'text', 'lang', 'conversation_id',
+    'in_reply_to_user_id', 'referenced_type', 'referenced_post_id', 'has_media', 'media', 'urls',
+    'citizengo_urls', 'source', 'permalink_url', 'first_seen_at'],
+  x_post_metrics: ['post_id', 'account_id', 'collected_date', 'collected_at', 'post_age_days',
+    'private_window_open', 'impressions', 'likes', 'reposts', 'replies', 'quotes', 'bookmarks',
+    'url_link_clicks', 'user_profile_clicks', 'engagements',
+    'organic_impressions', 'organic_likes', 'organic_reposts', 'organic_replies',
+    'organic_url_clicks', 'organic_profile_clicks',
+    'promoted_impressions', 'promoted_likes', 'promoted_reposts', 'promoted_replies', 'promoted_url_clicks',
+    'video_views', 'video_playback_100', 'errors'],
+  x_account_metrics: ['account_id', 'metric_date', 'collected_at', 'followers_count',
+    'following_count', 'post_count', 'listed_count', 'errors'],
+  x_collection_runs: ['run_id', 'account_id', 'started_at', 'finished_at', 'status', 'posts_seen',
+    'metrics_written', 'api_calls', 'post_reads', 'user_reads', 'est_cost_usd', 'error_code', 'error_message'],
+};
+
 async function req(method, pathAndQuery, { key = KEY, body, prefer } = {}) {
   const headers = hdrs(key);
   if (body) headers['Content-Type'] = 'application/json';
@@ -150,6 +177,21 @@ async function main() {
     console.log(`\n  -> Apply sql/schema.sql in the Supabase SQL editor. Missing: ${missing.join(', ')}`);
     console.log(`\n${pass} passed, ${fail} failed, ${warn} warnings`);
     process.exit(1);
+  }
+
+  console.log('\n2b. X source (pending until go-live)');
+  let xPresent = 0;
+  for (const [table, cols] of Object.entries(PENDING)) {
+    const r = await req('GET', `${table}?select=*&limit=1`);
+    if (r.status === 404 || (r.body && r.body.code === '42P01')) { console.log(`  --    ${table} not applied yet (expected before X go-live)`); continue; }
+    if (!r.ok) { no(`${table} unreadable`, `HTTP ${r.status} ${JSON.stringify(r.body).slice(0, 90)}`); continue; }
+    xPresent++;
+    const c = await req('GET', `${table}?select=${cols.join(',')}&limit=0`);
+    if (c.ok) ok(`${table}: present, all ${cols.length} columns`);
+    else no(`${table} column mismatch`, JSON.stringify(c.body).slice(0, 130));
+  }
+  if (xPresent && xPresent < Object.keys(PENDING).length) {
+    no('x-schema.sql is PARTLY applied', `${xPresent} of ${Object.keys(PENDING).length} X tables exist - apply the whole file`);
   }
 
   console.log('\n3. Columns match what the collector writes');

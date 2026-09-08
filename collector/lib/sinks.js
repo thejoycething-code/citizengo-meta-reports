@@ -25,7 +25,12 @@ function jsonSink({ dir }) {
     if (table === 'meta_ig_media') return row.media_id;
     if (table === 'meta_ig_media_metrics') return `${row.media_id}|${row.collected_date}`;
     if (table === 'meta_post_ad_spend') return `${row.ad_id}|${row.date_start}|${row.date_stop}`;
-    return null; // collection_runs is append-only
+    // X source - see sql/x-schema.sql.
+    if (table === 'x_accounts') return row.account_id;
+    if (table === 'x_posts') return row.post_id;
+    if (table === 'x_post_metrics') return `${row.post_id}|${row.collected_date}`;
+    if (table === 'x_account_metrics') return `${row.account_id}|${row.metric_date}`;
+    return null; // *_collection_runs are append-only
   }
 
   return {
@@ -73,12 +78,19 @@ function supabaseSink({ url, serviceKey }) {
     meta_ig_account_metrics: 'ig_user_id,metric_date',
     meta_ig_media_transcript: 'media_id',
     meta_post_ad_spend: 'ad_id,date_start,date_stop',
+    // X source - see sql/x-schema.sql. x_oauth_tokens is deliberately absent:
+    // credentials are written by api/x/callback.js and PATCHed by the collector,
+    // never bulk-upserted.
+    x_accounts: 'account_id',
+    x_posts: 'post_id',
+    x_post_metrics: 'post_id,collected_date',
+    x_account_metrics: 'account_id,metric_date',
   };
 
   // Append-only by design: a surrogate id primary key and no unique constraint,
   // so every run adds a row rather than replacing one. A plain insert is
   // correct here and on_conflict would be wrong.
-  const APPEND_ONLY = new Set(['meta_collection_runs']);
+  const APPEND_ONLY = new Set(['meta_collection_runs', 'x_collection_runs']);
 
   // Any other table missing from CONFLICT is not a small omission: the POST
   // would go out with no on_conflict, so each run either duplicates rows or

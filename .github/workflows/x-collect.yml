@@ -1,0 +1,117 @@
+name: X collection
+
+# X (Twitter) source. DORMANT: the scheduled run does nothing until the
+# repository VARIABLE X_COLLECT_ENABLED is set to 'true' - that is the go-live
+# switch, and it is a variable rather than a secret so that flipping it is
+# visible in the settings UI. workflow_dispatch always runs, for the spike and
+# for manual backfills.
+#
+# Separate from nightly-collect.yml on purpose: X bills per post returned, so a
+# bug that reruns this job costs money where a Meta rerun costs minutes. Keeping
+# it apart means a Meta problem can never trigger an X spend and vice versa.
+#
+# 05:15 UTC - after the Meta run starts (04:30) so the two never contend, and
+# late enough that yesterday's posts have a full day of metrics.
+
+on:
+  schedule:
+    - cron: '15 5 * * *'
+  workflow_dispatch:
+    inputs:
+      lookback_days:
+        description: 'Daily window in days (7 nightly). Must stay <= 29 for private metrics.'
+        required: false
+        default: '7'
+      backfill_days:
+        description: 'One-off backfill this many days back, PUBLIC metrics only (0 = none). Billed per post.'
+        required: false
+        default: '0'
+      accounts:
+        description: 'Space-separated account ids or handles to restrict to (blank = all)'
+        required: false
+        default: ''
+      dry_run:
+        description: 'Write to data/x_*.ndjson instead of Supabase'
+        type: boolean
+        required: false
+        default: false
+
+permissions:
+  contents: read
+
+# Two overlapping runs would double the bill for the same numbers.
+concurrency:
+  group: x-collect
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    if: github.event_name == 'workflow_dispatch' || vars.X_COLLECT_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    # Thirty accounts at ~8 posts a day is under 3,000 resources: minutes, not
+    # hours. A long timeout here would only let a loop spend more.
+    timeout-minutes: 30
+
+    env:
+      X_CLIENT_ID: ${{ secrets.X_CLIENT_ID }}
+      X_CLIENT_SECRET: ${{ secrets.X_CLIENT_SECRET }}
+      X_TOKEN_PRIVATE_KEY: ${{ secrets.X_TOKEN_PRIVATE_KEY }}
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL || vars.SUPABASE_URL }}
+      SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+      X_MONTHLY_BUDGET_USD: ${{ vars.X_MONTHLY_BUDGET_USD || '100' }}
+      LOOKBACK_DAYS: ${{ github.event.inputs.lookback_days || '7' }}
+      BACKFILL_DAYS: ${{ github.event.inputs.backfill_days || '0' }}
+      ACCOUNTS: ${{ github.event.inputs.accounts }}
+      ALERT_WEBHOOK_URL: ${{ secrets.ALERT_WEBHOOK_URL }}
+      DRY_RUN: ${{ (github.event.inputs.dry_run == true || github.event.inputs.dry_run == 'true') && 'true' || 'false' }}
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
+        with:
+          node-version: '24'
+
+      - name: Check required secrets
+        run: |
+          echo "dry run: $DRY_RUN · budget: \$$X_MONTHLY_BUDGET_USD"
+          report() { if [ -n "$2" ]; then echo "  SET      $1  (${#2} chars)"; else echo "  MISSING  $1"; fi; }
+          report X_CLIENT_ID "$X_CLIENT_ID"
+          report X_CLIENT_SECRET "$X_CLIENT_SECRET"
+          report X_TOKEN_PRIVATE_KEY "$X_TOKEN_PRIVATE_KEY"
+          report SUPABASE_URL "$SUPABASE_URL"
+          report SUPABASE_SERVICE_KEY "$SUPABASE_SERVICE_KEY"
+          missing=""
+          [ -z "$X_CLIENT_ID" ] && missing="$missing X_CLIENT_ID"
+          [ -z "$X_TOKEN_PRIVATE_KEY" ] && missing="$missing X_TOKEN_PRIVATE_KEY"
+          [ -z "$SUPABASE_URL" ] && missing="$missing SUPABASE_URL"
+          [ -z "$SUPABASE_SERVICE_KEY" ] && missing="$missing SUPABASE_SERVICE_KEY"
+          if [ -n "$missing" ]; then
+            echo "::error::Missing required secrets:$missing (Settings > Secrets and variables > Actions > Secrets tab)"
+            exit 1
+          fi
+
+      - name: Collect
+        run: |
+          FLAG=""
+          if [ "$DRY_RUN" = "true" ]; then FLAG="--dry-run"; fi
+          ACC=""
+          if [ -n "$ACCOUNTS" ]; then ACC="--accounts $ACCOUNTS"; fi
+          BF=""
+          if [ "$BACKFILL_DAYS" != "0" ]; then BF="--backfill-days $BACKFILL_DAYS"; fi
+          node collector/x.js --lookback-days "$LOOKBACK_DAYS" $BF $FLAG $ACC
+
+      - name: Upload output and logs
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: x-collection-${{ github.run_number }}
+          path: data/
+          retention-days: 14
+          if-no-files-found: ignore
+
+      - name: Alert on failure
+        if: failure() && env.ALERT_WEBHOOK_URL != ''
+        run: |
+          curl -s -X POST -H 'Content-Type: application/json' \
+            -d "{\"text\":\"X collector FAILED - run ${{ github.run_number }}. See ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}" \
+            "$ALERT_WEBHOOK_URL" || true

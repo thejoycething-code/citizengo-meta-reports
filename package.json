@@ -2,7 +2,7 @@
   "name": "citizengo-meta-reports",
   "version": "5.8.0",
   "private": true,
-  "description": "Organic Facebook + Instagram post data pipeline for CitizenGO pages.",
+  "description": "Organic Facebook + Instagram post data pipeline for CitizenGO pages, with X (Twitter) groundwork.",
   "scripts": {
     "probe": "node probe/probe.js",
     "collect": "node collector/collect.js",
@@ -36,6 +36,13 @@
     "alerts:breakout": "node scripts/breakout-alerts.js",
     "test:breakout": "node scripts/test-breakout.js",
     "probe:follows": "node scripts/probe-follower-metrics.js",
-    "probe:coverage": "node scripts/probe-coverage.js"
+    "probe:coverage": "node scripts/probe-coverage.js",
+    "collect:x": "node collector/x.js",
+    "collect:x:dry": "node collector/x.js --dry-run",
+    "probe:x": "node scripts/probe-x.js",
+    "test:x": "node scripts/test-x.js",
+    "check:x": "node scripts/check-x-health.js",
+    "x:invite": "node scripts/x-invite.js",
+    "x:keygen": "node scripts/x-keygen.js"
   }
 }
