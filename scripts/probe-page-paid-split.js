@@ -91,6 +91,21 @@ function plainTotal(res) {
     console.log('');
   }
 
+  // Raw end_time, because the date we STORE is derived from it. Meta returns the
+  // instant the day closed, in the page's own timezone - so whether metric_date
+  // is one day ahead of the day it describes depends on that offset, and it
+  // cannot be assumed uniform across 36 pages in different countries.
+  const raw = await client.get(`/${PAGE}/insights`, { metric: 'page_media_view', ...range }, { token });
+  const vals = (raw.ok && raw.body && raw.body.data && raw.body.data[0] && raw.body.data[0].values) || [];
+  console.log('raw end_time samples (what metric_date is sliced from):');
+  for (const v of vals.slice(0, 4)) {
+    const iso = String(v.end_time);
+    const stored = iso.slice(0, 10);
+    const describes = new Date(Date.parse(iso) - 86400000).toISOString().slice(0, 10);
+    console.log(`  end_time=${iso}  -> we store ${stored}  -> minus 24h = ${describes}  value=${v.value}`);
+  }
+  console.log('');
+
   console.log('Reading this: for is_from_ads, "1" (or true) is the paid segment.');
   console.log('If paid is non-zero and the segments reconcile with the plain total, then the');
   console.log('page-level views figure - and Business Suite, which matches it - includes ads.');
