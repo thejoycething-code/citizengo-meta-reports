@@ -25,12 +25,12 @@ function sinceFor(days) {
   return new Date(Date.now() - days * 86400000).toISOString();
 }
 
-// meta_page_metrics.metric_date comes from Meta's end_time, which is the END of
-// the day the value covers - the row dated 2 Aug describes 1 Aug. A calendar
-// window therefore has to be asked for one day later, or every month total is
-// wrong at both ends. Verified twice against the live API: July as 2 Jul-1 Aug
-// returns 1,700,950 and August as 2 Aug-1 Sep returns 787,058, matching
-// page_media_view to the unit.
+// meta_page_metrics.metric_date names the day the value DESCRIBES, as of the
+// re-date on 9 Sept 2026, so a calendar window is read literally. It used to be
+// Meta's end_time date - a day later - and this reader compensated by asking
+// one day out; both the stored rows and the collector were fixed instead, so
+// that compensation is gone. Verified after the migration: a literal July
+// filter returns 1,700,950 and August 787,058, matching page_media_view.
 const shiftDay = (iso, days) =>
   new Date(Date.parse(String(iso).slice(0, 10)) + days * 86400000).toISOString().slice(0, 10);
 
@@ -164,10 +164,7 @@ async function pageSummary(store, { page_id, days: d = 30, since, until }) {
   if (typeof store.pageGrowth === 'function') {
     try {
       pageRows = (await store.pageGrowth({
-        page_id,
-        since: shiftDay(win.from, 1),
-        until: shiftDay(win.to, 1),
-        limit: 400,
+        page_id, since: win.from, until: win.to, limit: 400,
       })) || [];
     } catch (e) { pageRows = []; }
   }

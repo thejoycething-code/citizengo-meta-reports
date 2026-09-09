@@ -142,6 +142,12 @@ create index if not exists meta_post_metrics_page_date_idx
 create table if not exists public.meta_page_metrics (
   id                 bigint generated always as identity primary key,
   page_id            text not null references public.meta_pages(page_id),
+  -- The day the value DESCRIBES. Meta returns end_time - the instant the day
+  -- closed, always 07:00:00+0000, midnight Pacific and its own account-day
+  -- boundary, not the page's. The collector subtracts a day before storing, so
+  -- a calendar filter here is read literally. Re-dated on 9 Sept 2026: rows
+  -- previously carried the end_time date, which made every month total wrong at
+  -- both ends (the UK page's July read 1,693,933 against the API's 1,700,950).
   metric_date        date not null,
 
   views_total        bigint,   -- page_views_total
@@ -325,7 +331,11 @@ create table if not exists public.meta_ig_account_metrics (
   -- Point-in-time totals from the account object, not from insights.
   followers_snapshot    bigint,
   media_count           bigint,
-  -- Daily series.
+  -- Daily series, dated the day the value DESCRIBES (see meta_page_metrics:
+  -- Meta's end_time is when the day closed, so the collector subtracts a day).
+  -- ONLY these two are dated that way - everything below is keyed to the
+  -- collection date, which is why the two groups must never be shifted
+  -- together. Re-dated on 9 Sept 2026, series columns only.
   follower_count        bigint,
   reach                 bigint,
   -- total_value only: current day, null on older rows.

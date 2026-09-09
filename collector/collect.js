@@ -148,6 +148,19 @@ const PAGE_METRICS = {
   page_actions_post_reactions_total: 'post_reactions_by_type',
 };
 
+// Meta's end_time is the instant the day CLOSED, always 07:00:00+0000 - midnight
+// Pacific, Meta's own account-day boundary rather than the page's. Probed on
+// three pages in three countries on 9 Sept 2026; all returned 07:00+0000, so
+// the offset is Meta's and uniform.
+//
+// So the day a value DESCRIBES is the one before its end_time, and that is what
+// gets stored: a column called metric_date which names the day the figure
+// closed rather than the day it covers is a trap for every reader, and it cost
+// a wrong answer once already - the UK page's July read 1,693,933 against
+// page_media_view's 1,700,950 until the existing rows were re-dated.
+const dayDescribed = (endTime) =>
+  new Date(Date.parse(endTime) - 86400000).toISOString().slice(0, 10);
+
 // Page metrics whose daily value is an object, not a number. The series loop
 // below stores numbers and would otherwise write null for these - silently, and
 // indistinguishably from a metric that returned nothing.
@@ -272,8 +285,7 @@ async function collectPageInsights(page, as, followersSnapshot) {
     const series = (res.body && res.body.data && res.body.data[0] && res.body.data[0].values) || [];
     for (const point of series) {
       if (!point || point.end_time === undefined) continue;
-      // end_time is the END of the day the value covers.
-      const date = String(point.end_time).slice(0, 10);
+      const date = dayDescribed(point.end_time);
       if (!byDate.has(date)) {
         byDate.set(date, {
           page_id: page.page_id,

@@ -66,6 +66,11 @@ const IG_ACCOUNT_TOTALS = {
 // of it that matters.
 const IG_ACCOUNT_BREAKDOWNS = { follows_and_unfollows: 'follows_and_unfollows' };
 
+// See collect.js: Meta's end_time is when the day closed (07:00Z, midnight
+// Pacific), so the day it covers is the one before.
+const dayDescribed = (endTime) =>
+  new Date(Date.parse(endTime) - 86400000).toISOString().slice(0, 10);
+
 function firstValue(res) {
   if (!res || !res.ok) return null;
   const d = res.body && res.body.data && res.body.data[0];
@@ -230,8 +235,11 @@ async function collectAccountMetrics({ ig, page, as, call, lookbackDays, runStar
     const series = (r.body && r.body.data && r.body.data[0] && r.body.data[0].values) || [];
     for (const point of series) {
       if (!point || point.end_time === undefined) continue;
-      // end_time is the END of the day the value covers, as on the page series.
-      rowFor(String(point.end_time).slice(0, 10))[column] =
+      // The day the value DESCRIBES, not the day it closed - same rule and same
+      // reason as the page series in collect.js. Only these series columns are
+      // dated this way; the total_value columns below are keyed to the
+      // collection date, which is why the two must never be shifted together.
+      rowFor(dayDescribed(point.end_time))[column] =
         typeof point.value === 'number' ? point.value : null;
     }
   }
