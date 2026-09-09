@@ -66,3 +66,8 @@ jobs:
 
       - name: Probe
         run: node scripts/probe-coverage.js
+
+      # Answers a narrower question that keeps coming up: whether the page-level
+      # views figure (the one Business Suite agrees with) includes ads.
+      - name: Probe page paid split
+        run: node scripts/probe-page-paid-split.js
