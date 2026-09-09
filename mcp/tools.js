@@ -25,6 +25,33 @@ function sinceFor(days) {
   return new Date(Date.now() - days * 86400000).toISOString();
 }
 
+// meta_page_metrics.metric_date comes from Meta's end_time, which is the END of
+// the day the value covers - the row dated 2 Aug describes 1 Aug. A calendar
+// window therefore has to be asked for one day later, or every month total is
+// wrong at both ends. Verified twice against the live API: July as 2 Jul-1 Aug
+// returns 1,700,950 and August as 2 Aug-1 Sep returns 787,058, matching
+// page_media_view to the unit.
+const shiftDay = (iso, days) =>
+  new Date(Date.parse(String(iso).slice(0, 10)) + days * 86400000).toISOString().slice(0, 10);
+
+// A calendar window from explicit dates, else the trailing `days`.
+function windowFor({ since, until, days }) {
+  if (since) {
+    const from = String(since).slice(0, 10);
+    const to = until ? String(until).slice(0, 10) : new Date().toISOString().slice(0, 10);
+    return { from, to, label: `${prettyDay(from)} – ${prettyDay(to)}`, explicit: true };
+  }
+  const to = new Date().toISOString().slice(0, 10);
+  const from = shiftDay(to, -(days || 30));
+  return { from, to, label: `last ${days || 30} days`, explicit: false };
+}
+
+const PRETTY_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+function prettyDay(iso) {
+  const d = new Date(iso);
+  return `${d.getUTCDate()} ${PRETTY_MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+}
+
 const n = (v) => (v === null || v === undefined ? '—' : v.toLocaleString('en-GB'));
 const p = (v) => (v === null || v === undefined ? '—' : v.toFixed(1) + '%');
 
@@ -119,30 +146,87 @@ async function topPosts(store, { page_id, days: d = 30, sort = 'views', limit: l
   };
 }
 
-async function pageSummary(store, { page_id, days: d = 30 }) {
+async function pageSummary(store, { page_id, days: d = 30, since, until }) {
   const days = clampDays(d, 30);
+  const win = windowFor({ since, until, days });
   const data = await store.loadAll();
   const all = shapePages(data);
   const page = all.find((g) => g.page_id === page_id);
   if (!page) {
     return { text: `No page with id ${page_id} is being collected. Use list_pages to see what is available.`, data: null };
   }
-  const feed = shapeFeed(data, { page_id, since: sinceFor(days), sort: 'views' });
-  const scored = feed.rows.filter((r) => r.has_metrics);
+
+  // PAGE level first, deliberately. "How did the page do in July" means the
+  // number Business Suite shows, and that is this one - page_media_view. The
+  // post-level sum below is a different quantity and answering with it alone
+  // reads as though the pipeline disagrees with Meta.
+  let pageRows = [];
+  if (typeof store.pageGrowth === 'function') {
+    try {
+      pageRows = (await store.pageGrowth({
+        page_id,
+        since: shiftDay(win.from, 1),
+        until: shiftDay(win.to, 1),
+        limit: 400,
+      })) || [];
+    } catch (e) { pageRows = []; }
+  }
+  const pageSum = (k) => (pageRows.length
+    ? pageRows.reduce((a, r) => a + (Number(r[k]) || 0), 0) : null);
+  const pageViews = pageSum('media_view');
+  const pageEng = pageSum('post_engagements');
+
+  // POST level, for posts PUBLISHED in the window.
+  const feed = shapeFeed(data, { page_id, since: `${win.from}T00:00:00.000Z`, sort: 'views' });
+  const inWindow = feed.rows.filter((r) => String(r.created_time).slice(0, 10) <= win.to);
+  const scored = inWindow.filter((r) => r.has_metrics);
   const best = scored[0];
   const widest = [...scored].sort((a, b) => (b.beyond_followers_pct ?? -1) - (a.beyond_followers_pct ?? -1))[0];
+  const postViews = scored.reduce((a, r) => a + (r.views_total || 0), 0);
+  const postInteractions = scored.reduce((a, r) => a
+    + (r.reactions_total || 0) + (r.shares_total || 0) + (r.comments_total || 0), 0);
 
-  const lines = [
-    `**${page.name}** · ${n(page.followers_count)} followers · last ${days} days`,
-    '',
-    `- Posts published: **${feed.rows.length}** (${scored.length} with metrics)`,
-    `- Total views: **${n(scored.reduce((a, r) => a + (r.views_total || 0), 0))}**`,
-    `- Median engagement rate: **${p(page.median_engagement_rate)}**`,
-    `- Median reach beyond followers: **${p(page.median_beyond_followers_pct)}**`,
-  ];
-  if (best) lines.push('', `Best performing by views: ${postLink(best, '"' + truncate(best.message, 90) + '"')} — ${n(best.views_total)} views, ${p(best.engagement_rate)} engagement rate. \`${best.post_id}\``);
-  if (widest) lines.push(`Travelled furthest beyond followers: ${postLink(widest, '"' + truncate(widest.message, 90) + '"')} — ${p(widest.beyond_followers_pct)} of views came from non-followers. \`${widest.post_id}\``);
-  return { text: lines.join('\n') + gapNote(feed.rows), data: { page, posts: feed.total } };
+  const lines = [`**${page.name}** · ${n(page.followers_count)} followers · ${win.label}`, ''];
+
+  if (pageViews !== null) {
+    lines.push(`- **Views: ${n(pageViews)}** — the Business Suite figure. Page level: every surface, ads included, counted when the view happened.`);
+    if (pageEng !== null) {
+      lines.push(`- Post engagements: ${n(pageEng)} — Meta's page metric, which counts clicks too, so it runs higher than Business Suite's "Interactions".`);
+    }
+  } else {
+    lines.push('- Page-level views: not held for this window, so the Business Suite figure cannot be shown here.');
+  }
+
+  lines.push('');
+  lines.push(`**${inWindow.length} post${inWindow.length === 1 ? '' : 's'} published in this window**${scored.length !== inWindow.length ? ` (${scored.length} with metrics)` : ''}`);
+  // Median over THIS window's posts, not the page's all-time median. Using the
+  // rollup put a real-looking rate next to a window containing no posts at all.
+  const medRate = scored.length
+    ? median(scored.map((r) => r.engagement_rate).filter((v) => v !== null && v !== undefined))
+    : null;
+  if (scored.length) {
+    lines.push(`- Post views: ${n(postViews)} · reactions + shares + comments: ${n(postInteractions)}`
+      + `${medRate === null ? '' : ` · median engagement rate ${p(medRate)}`}`);
+  } else {
+    lines.push('- No posts with metrics in this window, so there are no post-level figures.');
+  }
+  if (best) lines.push(`- Best by views: ${postLink(best, '"' + truncate(best.message, 70) + '"')} — ${n(best.views_total)} views. \`${best.post_id}\``);
+  if (widest) lines.push(`- Furthest beyond followers: ${postLink(widest, '"' + truncate(widest.message, 70) + '"')} — ${p(widest.beyond_followers_pct)} from non-followers.`);
+
+  if (pageViews !== null) {
+    lines.push('');
+    lines.push('_The two view figures are different quantities and will not tie: post views are lifetime totals for posts published in the window, so a July post keeps adding views in August._');
+  }
+
+  return {
+    text: lines.join('\n') + gapNote(inWindow),
+    data: {
+      page,
+      window: { from: win.from, to: win.to },
+      page_level: { views: pageViews, post_engagements: pageEng, days: pageRows.length },
+      post_level: { posts: inWindow.length, with_metrics: scored.length, views: postViews, interactions: postInteractions },
+    },
+  };
 }
 
 async function comparePages(store, { days: d = 30 }) {
@@ -615,12 +699,14 @@ const TOOLS = [
   },
   {
     name: 'page_summary',
-    description: 'Headline performance for a single page over a period, including its best post and the post that travelled furthest beyond its followers. Use for "how did <page> do last month".',
+    description: 'Headline performance for a single page over a period. Leads with the PAGE-level view count — the same figure Business Suite shows — then the post-level numbers for posts published in the window, its best post and the one that travelled furthest beyond its followers. Use for "how did <page> do in July" or "last month". Pass since/until for a calendar month; the two view figures are different quantities and are explained in the answer.',
     inputSchema: {
       type: 'object',
       properties: {
         page_id: { type: 'string', description: 'The page to summarise. Get ids from list_pages.' },
-        days: { type: 'number', description: 'Look back this many days (default 30).' },
+        days: { type: 'number', description: 'Look back this many days (default 30). Ignored when since is given.' },
+        since: { type: 'string', description: 'Window start, YYYY-MM-DD. Use for a calendar month, e.g. 2026-07-01.' },
+        until: { type: 'string', description: 'Window end INCLUSIVE, YYYY-MM-DD, e.g. 2026-07-31. Defaults to today.' },
       },
       required: ['page_id'],
       additionalProperties: false,
