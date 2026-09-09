@@ -597,7 +597,10 @@ async function main() {
   L.push('- Reactions, comments and shares are counted the same way Facebook counts them on the post itself, so they should match what you see. Any small difference is timing — these are taken once a night and people keep reacting.');
   L.push('- "Beyond your followers" is the share of views from people who do not follow the page — the closest thing to a measure of whether a post travelled.');
   if (igThis.length) {
-    L.push('- Instagram is reported separately because the metrics differ: no paid split, no follower breakdown, but **saves**, which Facebook has no equivalent for. Instagram reach counts accounts, not people.');
+    // "no follower breakdown" stopped being true on 7 Sept 2026, when follows
+  // per FEED post started being collected - and this digest now prints that
+  // figure a few lines above, so the caveat was contradicting the report.
+  L.push('- Instagram is reported separately because the metrics differ: no paid split, but there are **saves**, which Facebook has no equivalent for, and followers gained per post — which Facebook does not report at all. Instagram reach counts accounts, not people.');
   }
   L.push('- Views can be added together; **people cannot**. Two posts reaching 1,000 people each have not reached 2,000 different people, so this digest never adds up reach across posts.');
   if (thisWeek.no_metrics) {
