@@ -21,6 +21,18 @@ on:
         description: 'Graph API version to probe (blank = the version the collector uses)'
         required: false
         default: ''
+      page_id:
+        description: 'Page for the paid-split probe (blank = Citizen GO UK)'
+        required: false
+        default: ''
+      since:
+        description: 'Paid-split window start, YYYY-MM-DD (blank = 2026-08-01)'
+        required: false
+        default: ''
+      until:
+        description: 'Paid-split window end, exclusive, YYYY-MM-DD (blank = 2026-09-01)'
+        required: false
+        default: ''
 
 permissions:
   contents: read
@@ -70,4 +82,8 @@ jobs:
       # Answers a narrower question that keeps coming up: whether the page-level
       # views figure (the one Business Suite agrees with) includes ads.
       - name: Probe page paid split
-        run: node scripts/probe-page-paid-split.js
+        run: |
+          node scripts/probe-page-paid-split.js \
+            "${{ github.event.inputs.page_id || '105872884133170' }}" \
+            "${{ github.event.inputs.since || '2026-08-01' }}" \
+            "${{ github.event.inputs.until || '2026-09-01' }}"
