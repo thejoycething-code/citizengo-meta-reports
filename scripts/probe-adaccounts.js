@@ -45,6 +45,23 @@ function show(label, res, pick) {
   const me = await client.get('/me', { fields: 'id,name' });
   show('/me', me, (b) => ({ id: b.id, name: b.name }));
 
+  // Decisive: Meta lists the scopes actually granted, so this separates "wrong
+  // endpoint" from "permission never granted" without guessing from error text.
+  console.log('\nScopes granted to this token:');
+  const perms = await client.get('/me/permissions', {});
+  if (perms.ok) {
+    const rows = (perms.body && perms.body.data) || [];
+    const granted = rows.filter((r) => r.status === 'granted').map((r) => r.permission).sort();
+    const declined = rows.filter((r) => r.status !== 'granted').map((r) => r.permission).sort();
+    console.log(`  granted (${granted.length}): ${granted.join(', ')}`);
+    if (declined.length) console.log(`  NOT granted: ${declined.join(', ')}`);
+    for (const need of ['ads_read', 'ads_management', 'business_management']) {
+      console.log(`  ${granted.includes(need) ? 'yes' : 'NO '}  ${need}`);
+    }
+  } else {
+    console.log(`  could not read /me/permissions: ${perms.error && perms.error.message}`);
+  }
+
   console.log('\nThe route the collector uses today:');
   await (async () => { show('/me/adaccounts', await client.get('/me/adaccounts', { fields: 'id,name', limit: 100 })); })();
 
