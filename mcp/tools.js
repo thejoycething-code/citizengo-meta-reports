@@ -351,8 +351,23 @@ async function shareAmplification(store, { page_id, days: d = 90, limit: l = 15 
   };
 }
 
+// Ad spend rides on ads_read, a permission nothing else here needs, so it can
+// go silent while collection stays green. Report its age rather than its
+// presence: a stale table that still answers queries is the failure mode.
+async function adSpendLine(store) {
+  if (typeof store.adSpendCoverage !== 'function') return null;
+  let c;
+  try { c = await store.adSpendCoverage(); } catch (e) { return null; }
+  if (!c || !c.latest) return '- Ad spend: **none collected** (needs `ads_read` on the token)';
+  const days = Math.floor((Date.now() - Date.parse(c.latest)) / 86400000);
+  if (days <= 3) return `- Ad spend: current to ${c.latest}`;
+  return `- Ad spend: **stale — newest row is ${c.latest}, ${days} days old**. `
+    + 'Collection is still running and still green; ad spend alone is failing, which happens when the token loses `ads_read`. Treat any paid figure older than this date as incomplete.';
+}
+
 async function dataHealth(store) {
   const igStatus = (await igLine(store)) || '- Instagram: status unavailable';
+  const adStatus = await adSpendLine(store);
   const data = await store.loadAll();
   const feed = shapeFeed(data, {});
   const pages = shapePages(data);
@@ -369,6 +384,7 @@ async function dataHealth(store) {
       `- Posts: **${feed.total}**, covering ${dates[0] || '—'} to ${dates[dates.length - 1] || '—'}`,
       `- Posts with no metrics at all: **${missing.length}** (Meta permissions error)`,
       `- Posts missing only unique reach: **${partial.length}** (Meta suppresses it on low-follower pages)`,
+      adStatus,
       noComments
         ? `- Posts with no comment count: **${noComments}** (needs the pages_read_user_content scope)`
         : '- Comment counts: **complete** on every post',
