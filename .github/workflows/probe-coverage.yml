@@ -81,6 +81,10 @@ jobs:
 
       # Answers a narrower question that keeps coming up: whether the page-level
       # views figure (the one Business Suite agrees with) includes ads.
+      # Why ad spend has collected nothing since 29 Aug.
+      - name: Probe ad account access
+        run: node scripts/probe-adaccounts.js
+
       - name: Probe page paid split
         run: |
           node scripts/probe-page-paid-split.js \
