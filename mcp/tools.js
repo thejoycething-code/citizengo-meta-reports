@@ -73,6 +73,27 @@ function truncate(s, len) {
   return one.length > len ? one.slice(0, len - 1) + '…' : one;
 }
 
+// A pipe closes a table cell, so any text going into one has to be escaped.
+const mdCell = (s) => String(s).replace(/\|/g, '\\|');
+
+// Search results showed the FIRST n characters of the post, which for a
+// 500-character Instagram caption usually does not contain the word that was
+// searched for - the reader gets a list of openings and no evidence of why any
+// of them matched. Show a window around the match instead, and fall back to the
+// opening only when there is no match to centre on (a Facebook row can match on
+// a field this snippet never sees).
+function snippet(text, query, width = 150) {
+  const one = String(text || '').replace(/\s+/g, ' ').trim();
+  if (!one) return '(no text)';
+  const q = String(query || '');
+  const at = q ? one.toLowerCase().indexOf(q.toLowerCase()) : -1;
+  if (at < 0 || one.length <= width) return truncate(one, width);
+  const pad = Math.max(0, Math.floor((width - q.length) / 2));
+  const start = Math.max(0, at - pad);
+  const end = Math.min(one.length, start + width);
+  return (start > 0 ? '…' : '') + one.slice(start, end) + (end < one.length ? '…' : '');
+}
+
 // Appended wherever numbers are shown, so the model reports gaps rather than
 // quietly presenting partial data as complete.
 function gapNote(rows) {
@@ -490,25 +511,29 @@ async function searchPosts(store, { query, page_id, days: d = 0, limit: l = 15 }
   if (!query || !String(query).trim()) {
     return { text: 'Give a search term — a word or phrase that appears in the post text.', data: null };
   }
-  const rows = await store.searchPosts({
-    q: query, page_id, since: sinceFor(days), limit,
-  });
+  const since = sinceFor(days);
+  // Both platforms, always. Searching only Facebook and captioning the result
+  // "posts matching x" reported half the library as the whole of it.
+  const [rows, igRows] = await Promise.all([
+    store.searchPosts({ q: query, page_id, since, limit }),
+    store.searchIgMedia({ q: query, page_id, since, limit }),
+  ]);
 
-  if (!rows.length) {
+  if (!rows.length && !igRows.length) {
     return {
       text: `No posts matching "${query}"${page_id ? ' on that page' : ''}${days ? ` in the last ${days} days` : ''}.\n\n`
-        + '_Only collected pages are searchable, and only the period that has been collected. '
+        + '_Searched Facebook post copy and Instagram captions. Only collected pages are searchable, and only the period that has been collected. '
         + 'A blank result may mean the post exists but has not been collected, rather than that it was never written._',
       data: null,
     };
   }
 
-  const table_ = table(
+  const fbTable = table(
     ['Date', 'Page', 'Post', 'Reach', 'Views', 'Beyond followers', 'Shares', 'Comments', 'Eng. rate', 'Post ID'],
     rows.map((r) => [
       (r.created_time || '').slice(0, 10),
       r.page_name || '—',
-      postLink(r, truncate(r.message, 62)),
+      postLink(r, snippet(r.message, query, 110)),
       n(r.views_unique),
       n(r.views_total),
       r.views_total > 0 ? p((r.views_from_nonfollowers / r.views_total) * 100) : '—',
@@ -519,13 +544,36 @@ async function searchPosts(store, { query, page_id, days: d = 0, limit: l = 15 }
     ])
   );
 
+  const igTable = table(
+    ['Date', 'Account', 'Caption', 'Type', 'Reach', 'Views', 'Saves', 'Interactions', 'Rate'],
+    igRows.map((r) => {
+      const text_ = mdCell(snippet(r.caption, query, 110)).replace(/\]/g, ')');
+      return [
+        (r.timestamp || '').slice(0, 10),
+        r.ig_username ? '@' + r.ig_username : (r.page_name || '—'),
+        r.permalink ? `[${text_}](${r.permalink})` : text_,
+        r.media_product_type || r.media_type || '—',
+        n(r.reach), n(r.views), n(r.saved), n(r.total_interactions),
+        r.interaction_rate_pct !== null && r.interaction_rate_pct !== undefined
+          ? p(Number(r.interaction_rate_pct)) : '—',
+      ];
+    })
+  );
+
+  const total = rows.length + igRows.length;
+  // Both counts are stated even when one is zero. A silently absent section
+  // reads as "there were none of those", which is the same sentence as "that
+  // half was never searched" - and until now it was the second one.
   return {
-    text: `**${rows.length} post${rows.length === 1 ? '' : 's'} matching "${query}"**`
-      + `${page_id ? ' on one page' : ' across all collected pages'}`
+    text: `**${total} post${total === 1 ? '' : 's'} matching "${query}"**`
+      + ` · ${rows.length} on Facebook, ${igRows.length} on Instagram`
+      + `${page_id ? ' · one page' : ' · all collected pages'}`
       + `${days ? ` · last ${days} days` : ''} · ranked by reach\n\n`
-      + table_
-      + '\n\n_Matches the post text only. Ranked by how many people each reached, not by relevance._',
-    data: rows,
+      + `**Facebook**\n\n${rows.length ? fbTable : '_No Facebook post copy matched._'}\n\n`
+      + `**Instagram**\n\n${igRows.length ? igTable : '_No Instagram captions matched._'}`
+      + '\n\n_Matches post copy and Instagram captions, not comments. The text shown is a window around the match, not the opening of the post. '
+      + 'Each platform is ranked by its own reach and the two are not directly comparable — Facebook reach and Instagram reach are differently defined by Meta._',
+    data: { facebook: rows, instagram: igRows },
   };
 }
 
@@ -738,7 +786,7 @@ const TOOLS = [
   },
   {
     name: 'search_posts',
-    description: 'Search the text of collected posts across every page and return them ranked by reach. Use this whenever someone asks about a topic, campaign or specific post rather than about a page overall — "how did our marriage posts do", "what did we publish about assisted dying", "find the Sarah Morse posts". Searches post copy only, not comments.',
+    description: 'Search the text of collected posts across every page — Facebook post copy AND Instagram captions — and return them ranked by reach, in separate sections per platform. Use this whenever someone asks about a topic, campaign or specific post rather than about a page overall — "how did our marriage posts do", "what did we publish about assisted dying", "find the Sarah Morse posts". Searches the text the page wrote, not comments, and not anything spoken or shown inside a video.',
     inputSchema: {
       type: 'object',
       properties: {

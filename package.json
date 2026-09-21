@@ -24,6 +24,7 @@
     "test:truncation": "node scripts/test-truncation.js",
     "mint:readonly": "node scripts/mint-readonly-key.js",
     "test:tool-size": "node scripts/test-tool-size.js",
+    "test:search": "node scripts/test-search-posts.js",
     "check:tokens": "node scripts/check-token-expiry.js",
     "test:retry": "node scripts/test-retry.js",
     "test:tokens": "node scripts/test-token-expiry.js",

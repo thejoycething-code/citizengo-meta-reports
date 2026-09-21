@@ -85,6 +85,12 @@ jobs:
       - name: Probe ad account access
         run: node scripts/probe-adaccounts.js
 
+      # Whether transcribing Reels is even possible: Graph has to hand us a
+      # fetchable video file, and no documented IG field carries a transcript.
+      # Answers that before anyone prices an ASR service.
+      - name: Probe Instagram video source
+        run: node scripts/probe-ig-video-source.js --count=3
+
       - name: Probe page paid split
         run: |
           node scripts/probe-page-paid-split.js \
