@@ -106,6 +106,9 @@ function looksLikeNoise(text) {
   // long: the Khmer sample was ten characters, which an earlier 20-character
   // floor let through. Real short utterances are safe because they are varied:
   // "Firma la petición." is sixteen characters and twelve distinct.
+  // One or two distinct characters is never speech, at any length worth
+  // storing: "ლლლლლ" is five characters and slipped an eight-character floor.
+  if (dense.length >= 4 && uniq <= 2) return true;
   if (dense.length >= 8 && uniq <= 3) return true;
   if (dense.length >= 20 && uniq <= 4) return true;
   // The same short token repeated to fill the clip.

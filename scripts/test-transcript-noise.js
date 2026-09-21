@@ -20,6 +20,8 @@ t('parenthesised tag in Spanish', '(música de fondo)', true);
 t('empty', '', true);
 t('whitespace only', '   \n  ', true);
 t('one word repeated to fill the clip', 'gracias gracias gracias gracias gracias gracias', true);
+t('a five-character run, below the old floor', 'ლლლლლ', true);
+t('four of the same character', 'aaaa', true);
 
 console.log('\nreal speech must survive');
 t('Spanish, from the first batch', 'Acto de irse acercado a la manifestación por la vida para reivindicar principalmente dos cosas.', false);
@@ -28,6 +30,8 @@ t('Italian', 'Oggi parliamo di eutanasia e di cosa significa davvero per i malat
 t('short but real', 'Firma la petición.', false);
 t('a real line that happens to contain a tag', '[Música] Hoy hablamos del aborto en España y de lo que viene.', false);
 t('two distinct words repeated is a chant, not noise', 'vida sí vida sí vida sí muerte no', false);
+t('a very short real utterance survives', 'Sí sí', false);
+t('Galician-ish Spanish, real speech', 'E é sorprendente, e lo digo sin agresividad, pero con toda a contundencia.', false);
 
 console.log(bad ? `\n${bad} failed` : '\nall passed');
 process.exit(bad ? 1 : 0);
