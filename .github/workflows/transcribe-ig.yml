@@ -16,9 +16,13 @@ on:
   workflow_dispatch:
     inputs:
       limit:
+        # Was default: '50', while the description promised "blank = every one
+        # still pending". Dispatching with an empty limit therefore silently ran
+        # 50 and stopped, and the backfill sat at 109 of 402 looking finished -
+        # two green runs, no error, and a description that was simply untrue.
         description: 'How many Reels this run (blank = every one still pending)'
         required: false
-        default: '50'
+        default: ''
       since:
         description: 'Only Reels posted on or after this date, YYYY-MM-DD (blank = all collected history)'
         required: false
