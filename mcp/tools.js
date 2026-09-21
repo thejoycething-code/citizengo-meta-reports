@@ -94,6 +94,25 @@ function snippet(text, query, width = 150) {
   return (start > 0 ? '…' : '') + one.slice(start, end) + (end < one.length ? '…' : '');
 }
 
+// This tool is a LEAGUE TABLE, and a league table cannot reach a post that does
+// not place. On a page posting several a day, a mid-table post sits beyond the
+// hundred-row ceiling on every sort there is - the HazteOir Colombia earthquake
+// post ranked 420th by views, 428th by reach, 410th by reactions and 480th by
+// shares out of 681, so no combination of sort and limit would surface it and
+// its reactions were simply unobtainable by this route.
+//
+// Saying which posts are missing is not possible; saying HOW MANY, and naming
+// the tool that does not rank, is. search_posts filters by text, so a post's
+// position on its own page is irrelevant there.
+function rankNote(feed, limit, sort) {
+  const shown = feed.rows.length;
+  const total = feed.total ?? null;   // post-filter, pre-limit count from shapeFeed
+  if (!total || total <= shown) return '';
+  return `\n\n_Showing ${shown} of ${n(total)} posts in this window, ranked by ${METRIC_LABELS[sort] || sort}. `
+    + `**The other ${n(total - shown)} cannot be reached by changing the sort** — a mid-table post places nowhere on any of them. `
+    + `To get engagement for a specific post regardless of where it ranks, use search_posts with a word from the post._`;
+}
+
 // Appended wherever numbers are shown, so the model reports gaps rather than
 // quietly presenting partial data as complete.
 function gapNote(rows) {
@@ -129,11 +148,19 @@ async function topPosts(store, { page_id, days: d = 30, sort = 'views', limit: l
       data: null,
     };
   }
-  const feed = shapeFeed(data, {
-    page_id, since: sinceFor(days), sort, limit, with_metrics_only: false,
+  // Shaped WITHOUT limit, then sliced, because the baseline has to come from
+  // the whole window rather than from the rows on screen. Passing `limit` here
+  // made pageBaseline() take the median of the posts being displayed - the
+  // biggest ones - so HazteOir's 90-day median read 1,090,875 views at
+  // limit=5 when the real figure is 25,757. Every "vs median" multiple on the
+  // page was measured against a bar roughly forty times too high, which is
+  // the opposite of what this column exists to do.
+  const windowFeed = shapeFeed(data, {
+    page_id, since: sinceFor(days), sort, with_metrics_only: false,
   });
-  // Baseline from the same window, so "vs median" compares like with like.
-  const base = pageBaseline(feed.rows);
+  const feed = { total: windowFeed.total, rows: windowFeed.rows.slice(0, limit) };
+  // Baseline from the whole window, so "vs median" compares like with like.
+  const base = pageBaseline(windowFeed.rows);
   // Shown only when the result actually contains a video with the data. Most
   // pages post mainly photos and links, and a column of dashes across ten rows
   // is worse than no column.
@@ -162,6 +189,7 @@ async function topPosts(store, { page_id, days: d = 30, sort = 'views', limit: l
       + (base.reliable
         ? `\n\n_"vs median" compares each post to this page's own median of ${n(base.median_views)} views over the same window. A raw view count says nothing on its own._`
         : `\n\n_Too few posts with metrics (${base.n}) to establish a baseline, so no comparison is shown._`)
+      + rankNote(feed, limit, sort)
       + gapNote(feed.rows),
     data: { ...feed, baseline: base },
   };
@@ -528,16 +556,22 @@ async function searchPosts(store, { query, page_id, days: d = 0, limit: l = 15 }
     };
   }
 
+  // Reactions and a total were missing, so a general question came back with
+  // reach and no engagement, and reactions had to be chased page by page
+  // through top_posts - which cannot reach a post ranked below its page's
+  // first hundred at all.
   const fbTable = table(
-    ['Date', 'Page', 'Post', 'Reach', 'Views', 'Beyond followers', 'Shares', 'Comments', 'Eng. rate', 'Post ID'],
+    ['Date', 'Page', 'Post', 'Reach', 'Views', 'Beyond followers',
+      'Reactions', 'Comments', 'Shares', 'Clicks', 'Engagement', 'Eng. rate', 'Post ID'],
     rows.map((r) => [
       (r.created_time || '').slice(0, 10),
       r.page_name || '—',
-      postLink(r, snippet(r.message, query, 110)),
+      postLink(r, snippet(r.message, query, 90)),
       n(r.views_unique),
       n(r.views_total),
       r.views_total > 0 ? p((r.views_from_nonfollowers / r.views_total) * 100) : '—',
-      n(r.shares_total), n(r.comments_total),
+      n(r.reactions_total), n(r.comments_total), n(r.shares_total), n(r.clicks_total),
+      n(r.engagement_total),
       r.engagement_rate_pct !== null && r.engagement_rate_pct !== undefined
         ? p(Number(r.engagement_rate_pct)) : '—',
       r.post_id,
@@ -577,6 +611,11 @@ async function searchPosts(store, { query, page_id, days: d = 0, limit: l = 15 }
   const untranscribed = videoRows.filter((r) => !r.transcript && !r.transcript_error).length;
 
   const total = rows.length + igRows.length;
+  // A capped result that does not say so reads as the complete answer.
+  const moreFb = rows.matchedTotal && rows.matchedTotal > rows.length
+    ? `\n\n_Showing the top ${rows.length} of **${rows.matchedTotal}** matching Facebook posts, ranked by reach. `
+      + `Raise \`limit\` (max 100) or narrow the query to see the rest._`
+    : '';
   // Both counts are stated even when one is zero. A silently absent section
   // reads as "there were none of those", which is the same sentence as "that
   // half was never searched" - and until now it was the second one.
@@ -585,13 +624,14 @@ async function searchPosts(store, { query, page_id, days: d = 0, limit: l = 15 }
       + ` · ${rows.length} on Facebook, ${igRows.length} on Instagram`
       + `${page_id ? ' · one page' : ' · all collected pages'}`
       + `${days ? ` · last ${days} days` : ''} · ranked by reach\n\n`
-      + `**Facebook**\n\n${rows.length ? fbTable : '_No Facebook post copy matched._'}\n\n`
+      + `**Facebook**\n\n${rows.length ? fbTable + moreFb : '_No Facebook post copy matched._'}\n\n`
       + `**Instagram**\n\n${igRows.length ? igTable : '_No Instagram captions matched._'}`
       + '\n\n_Matches Facebook post copy, Instagram captions and the spoken words in transcribed Reels — not comments. '
       + '"Matched" says which of those the hit came from. The text shown is a window around the match, not the opening of the post. '
       + (untranscribed
         ? `**${untranscribed} of the ${videoRows.length} Reels shown have not been transcribed yet, so they were searched on their caption alone** — a Reel can say the word out loud and not appear here. `
         : '')
+      + 'Engagement is reactions + comments + shares + clicks, the same definition top_posts uses, over total views. '
       + 'Each platform is ranked by its own reach and the two are not directly comparable — Facebook reach and Instagram reach are differently defined by Meta._',
     data: { facebook: rows, instagram: igRows },
   };

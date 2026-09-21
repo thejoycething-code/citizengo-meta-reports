@@ -585,15 +585,33 @@ select
   m.shares_total,
   m.clicks_total,
   m.comments_total,
+  -- Comments ARE engagement. They were left out of this numerator while
+  -- lib/shape.js counted them, so the SAME post reported two different
+  -- engagement rates depending on which tool you asked: the HazteOir Colombia
+  -- earthquake post read 6.88% through search_posts and 7.55% through
+  -- top_posts. Aligned to shape.js on 21 Sept 2026.
   case when coalesce(m.views_total, 0) > 0
        then round(((coalesce(m.reactions_total,0) + coalesce(m.shares_total,0)
-                    + coalesce(m.clicks_total,0))::numeric / m.views_total) * 100, 2)
+                    + coalesce(m.clicks_total,0) + coalesce(m.comments_total,0))::numeric
+                   / m.views_total) * 100, 2)
   end as engagement_rate_pct,
   -- Appended, not slotted in beside the other view columns: create or replace
   -- view cannot insert a column mid-list.
   m.video_views_organic,
   m.video_views_paid,
-  m.video_views_by_distribution
+  m.video_views_by_distribution,
+  -- The figure behind the rate, so a reader sees what was counted instead of
+  -- reconstructing it from four columns. Mirrors sumOrNull() in lib/shape.js:
+  -- null ONLY when all four components are null (Meta refused them). A real
+  -- zero stays zero - an early draft used nullif(sum,0) and turned genuine
+  -- zero engagement into "no data", which is the one confusion this schema
+  -- works hardest to avoid.
+  case when m.reactions_total is null and m.shares_total is null
+            and m.clicks_total is null and m.comments_total is null
+       then null
+       else coalesce(m.reactions_total,0) + coalesce(m.shares_total,0)
+            + coalesce(m.clicks_total,0) + coalesce(m.comments_total,0)
+  end as engagement_total
 from public.meta_posts p
 join public.meta_pages g on g.page_id = p.page_id
 join public.meta_post_metrics m on m.post_id = p.post_id
