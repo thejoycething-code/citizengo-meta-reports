@@ -91,6 +91,11 @@ jobs:
       - name: Probe Instagram video source
         run: node scripts/probe-ig-video-source.js --count=3
 
+      # Eight Reels return HTTP 200 with no media_url, across three pages.
+      # Subjects against controls from the same page and month.
+      - name: Probe missing media_url
+        run: node scripts/probe-missing-media-url.js
+
       - name: Probe page paid split
         run: |
           node scripts/probe-page-paid-split.js \
