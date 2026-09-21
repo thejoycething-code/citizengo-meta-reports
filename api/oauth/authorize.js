@@ -123,7 +123,7 @@ ${withGoogle ? `<a class="btn" href="${esc(googleHref(params))}">Continue with G
 <p>Use your ${esc(google.allowedDomains().join(' or '))} account. Nothing to paste, nothing to remember.</p>
 <div class="or">or</div>` : ''}
 <form method="POST">${hidden}
-<label for="t">${withGoogle ? 'Access token, if you were given one' : 'Team access token'}</label>
+<label for="t">${withGoogle ? 'Access token, if you were given one' : 'Individual access token'}</label>
 <input id="t" name="team_token" type="password" autocomplete="off" ${withGoogle ? '' : 'autofocus'} required>
 <button type="submit" class="btn${withGoogle ? ' alt' : ''}">Allow access</button>
 </form>
