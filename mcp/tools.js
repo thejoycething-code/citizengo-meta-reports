@@ -122,6 +122,19 @@ function rankNote(feed, limit, sort) {
     + `To get engagement for a specific post regardless of where it ranks, use search_posts with a word from the post._`;
 }
 
+// EVERY collected post has a permalink - 0 missing of 3,419 Facebook and 915
+// Instagram rows on 22 Sept 2026 - so the post text in these tables is always
+// a link to the original, and postLink()'s plain-text fallback never fires in
+// practice. Nothing is ever synthesised from an id: a constructed URL that
+// 404s is worse than no link.
+//
+// The link only reaches the reader if whoever writes the answer carries it
+// through, which is what this sentence is for. Same reasoning as the totals
+// line in search_posts: a rewrite drops table columns easily and drops an
+// explicit instruction far less easily.
+const SOURCE_NOTE = "Each post's text is a link to the original on Facebook or Instagram — "
+  + '**keep the links when you report a post**, so the reader can open it.';
+
 // Appended wherever numbers are shown, so the model reports gaps rather than
 // quietly presenting partial data as complete.
 function gapNote(rows) {
@@ -199,6 +212,7 @@ async function topPosts(store, { page_id, days: d = 30, sort = 'views', limit: l
         ? `\n\n_"vs median" compares each post to this page's own median of ${n(base.median_views)} views over the same window. A raw view count says nothing on its own._`
         : `\n\n_Too few posts with metrics (${base.n}) to establish a baseline, so no comparison is shown._`)
       + rankNote(feed, limit, sort)
+      + `\n\n_${SOURCE_NOTE}_`
       + gapNote(feed.rows),
     data: { ...feed, baseline: base },
   };
@@ -530,7 +544,7 @@ async function outliers(store, { page_id, days: d = 90, limit: l = OUTLIER_ROWS 
       '',
       under.length ? table(head, shown(under).map(fmt)) + omitted(under) : '_None._',
       '',
-      '_Shares are usually what separates the two: a post reaches beyond its followers when supporters carry it, not when the page posts it._',
+      `_Shares are usually what separates the two: a post reaches beyond its followers when supporters carry it, not when the page posts it. ${SOURCE_NOTE}_`,
     ].join('\n') + gapNote(feed.rows),
     data: { baseline: base, over: over.length, under: under.length },
   };
@@ -672,6 +686,7 @@ async function searchPosts(store, { query, page_id, days: d = 0, limit: l = 15 }
         : '')
       + 'Engagement is reactions + comments + shares + clicks, the same definition top_posts uses, over total views. '
       + '**When summarising this, report the engagement figures, not reach alone** — reach says how many saw it, engagement says whether it landed. '
+      + SOURCE_NOTE + ' '
       + 'Each platform is ranked by its own reach and the two are not directly comparable — Facebook reach and Instagram reach are differently defined by Meta._',
     data: { facebook: rows, instagram: igRows },
   };
@@ -782,7 +797,8 @@ async function instagramPosts(store, { page_id, days: d = 30, sort = 'reach', li
       )
       + '\n\n_Saves per 1,000 reached is the intent signal worth watching: saving a post is a deliberate act in a way a like is not, and Facebook has no equivalent metric. '
       + '"Follows" is followers gained from that post and exists for FEED posts only; "Avg watch" exists for Reels only — Meta refuses each metric on the other type, so "—" means not offered rather than zero. '
-      + 'Both have only been collected since 7 September 2026._',
+      + 'Both have only been collected since 7 September 2026. '
+      + SOURCE_NOTE + '_',
     data: rows,
   };
 }
