@@ -25,6 +25,7 @@
     "mint:readonly": "node scripts/mint-readonly-key.js",
     "test:tool-size": "node scripts/test-tool-size.js",
     "test:search": "node scripts/test-search-posts.js",
+    "test:noise": "node scripts/test-transcript-noise.js",
     "check:tokens": "node scripts/check-token-expiry.js",
     "test:retry": "node scripts/test-retry.js",
     "test:tokens": "node scripts/test-token-expiry.js",

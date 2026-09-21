@@ -82,13 +82,46 @@ async function rest(pathname, init = {}) {
 const NO_AUDIO = 'no-audio: ';
 const isNoAudio = (msg) => /does not contain any stream|Output file .* no audio|does not contain any audio/i.test(String(msg));
 
+// Whisper HALLUCINATES on audio with no speech in it. A music-only Reel does
+// not come back empty - it comes back as a long run of one character in an
+// unrelated script, or as a sound tag. Observed in the first real batch:
+//
+//   ლლლლლლლლლლლლ...        (Georgian, 47 s of music)
+//   ្្្្្្្្                (Khmer, 14 s)
+//   [MÜZİK ÇALIYOR]         (Turkish for "music playing", 39 s)
+//
+// Stored as transcripts these are searchable garbage that a reader would take
+// for a real utterance, and they drag the language histogram with them. Settled
+// like a silent video: there is nothing said, and re-running changes nothing.
+const NO_SPEECH = 'no-speech: ';
+function looksLikeNoise(text) {
+  const t = String(text || '').trim();
+  if (!t) return true;
+  // Nothing but bracketed sound tags: [MUSIC], (música), [MÜZİK ÇALIYOR].
+  if (/^(\s*[[(][^\])]*[\])]\s*)+$/.test(t)) return true;
+  const dense = t.replace(/\s+/g, '');
+  const uniq = new Set(dense).size;
+  // Speech uses a lot of distinct characters. A string drawing on two or three
+  // is a stuck decoder, whatever script it is in - and it does not have to be
+  // long: the Khmer sample was ten characters, which an earlier 20-character
+  // floor let through. Real short utterances are safe because they are varied:
+  // "Firma la petición." is sixteen characters and twelve distinct.
+  if (dense.length >= 8 && uniq <= 3) return true;
+  if (dense.length >= 20 && uniq <= 4) return true;
+  // The same short token repeated to fill the clip.
+  const words = t.split(/\s+/);
+  if (words.length >= 6 && new Set(words).size <= 2) return true;
+  return false;
+}
+
 async function pending() {
   if (ONE) {
     return rest(`meta_ig_media?select=media_id,page_id,timestamp,permalink&media_id=eq.${encodeURIComponent(ONE)}`);
   }
   // Settled = transcribed, or proven to have no audio to transcribe.
   const done = REDO ? [] : await rest(
-    `meta_ig_media_transcript?select=media_id&or=(error.is.null,error.like.${encodeURIComponent(NO_AUDIO)}*)&limit=100000`);
+    'meta_ig_media_transcript?select=media_id&or=(error.is.null,'
+    + `error.like.${encodeURIComponent(NO_AUDIO)}*,error.like.${encodeURIComponent(NO_SPEECH)}*)&limit=100000`);
   const seen = new Set(done.map((r) => r.media_id));
   const parts = ['select=media_id,page_id,timestamp,permalink', 'media_type=eq.VIDEO', 'order=timestamp.asc', 'limit=100000'];
   if (SINCE) parts.push(`timestamp=gte.${encodeURIComponent(SINCE)}`);
@@ -180,7 +213,11 @@ async function main() {
       const tok = (await pt.tokenFor(m.page_id)) || tokens[0];
       const r = await client.get(`/${m.media_id}`, { fields: 'media_url,media_type' }, { token: tok });
       if (!r.ok || !r.body.media_url) {
-        throw new Error(`no media_url: ${(r.body && r.body.error && r.body.error.message) || `HTTP ${r.status}`}`);
+        // "HTTP 200" alone reads as a contradiction and taught us nothing about
+        // the six that hit this. Say what Graph actually returned instead.
+        const why = (r.body && r.body.error && r.body.error.message)
+          || (r.ok ? `Graph returned 200 with no media_url (fields: ${Object.keys(r.body || {}).join(',') || 'none'})` : `HTTP ${r.status}`);
+        throw new Error(`no media_url: ${why}`);
       }
 
       const head = await fetch(r.body.media_url, { method: 'HEAD' });
@@ -194,14 +231,24 @@ async function main() {
       const { transcript, language } = runWhisper(wav, outBase);
       seconds += secs;
 
+      const noise = looksLikeNoise(transcript);
       await save({
-        media_id: m.media_id, page_id: m.page_id, transcript: transcript || null,
-        language, duration_seconds: secs, engine: ENGINE, model: MODEL,
+        media_id: m.media_id, page_id: m.page_id,
+        // Deliberately NOT stored: a hallucination in the transcript column is
+        // indistinguishable from speech once it is in the search index.
+        transcript: noise ? null : transcript,
+        language: noise ? null : language,
+        duration_seconds: secs, engine: ENGINE, model: MODEL,
         source_bytes: bytes || null, transcribed_at: new Date().toISOString(),
-        error: transcript ? null : 'whisper returned no text',
+        error: noise ? `${NO_SPEECH}${JSON.stringify(String(transcript).slice(0, 60))}` : null,
       });
-      ok++;
-      console.log(`${tag} — ${secs}s ${language || '??'} · ${transcript.length} chars · "${transcript.slice(0, 60).replace(/\s+/g, ' ')}…"`);
+      if (noise) {
+        settled++;
+        console.log(`${tag} — ${secs}s, no speech (settled): ${JSON.stringify(String(transcript).slice(0, 40))}`);
+      } else {
+        ok++;
+        console.log(`${tag} — ${secs}s ${language || '??'} · ${transcript.length} chars · "${transcript.slice(0, 60).replace(/\s+/g, ' ')}…"`);
+      }
     } catch (e) {
       const silent = isNoAudio(e.message);
       if (silent) settled++; else failed++;
