@@ -544,13 +544,23 @@ async function searchPosts(store, { query, page_id, days: d = 0, limit: l = 15 }
     ])
   );
 
+  // Which field matched matters: "we said it in the video" and "we wrote it in
+  // the caption" are different editorial facts, and a row that does not say
+  // which invites the reader to assume the caption.
+  const hits = (hay, q) => String(hay || '').toLowerCase().includes(String(q).toLowerCase());
   const igTable = table(
-    ['Date', 'Account', 'Caption', 'Type', 'Reach', 'Views', 'Saves', 'Interactions', 'Rate'],
+    ['Date', 'Account', 'Matched', 'Text', 'Type', 'Reach', 'Views', 'Saves', 'Interactions', 'Rate'],
     igRows.map((r) => {
-      const text_ = mdCell(snippet(r.caption, query, 110)).replace(/\]/g, ')');
+      const inCaption = hits(r.caption, query);
+      const inSpoken = hits(r.transcript, query);
+      const where = inCaption && inSpoken ? 'both' : inSpoken ? 'spoken' : 'caption';
+      // Show the field that actually matched, so the snippet is evidence.
+      const source = inCaption ? r.caption : (inSpoken ? r.transcript : r.caption);
+      const text_ = mdCell(snippet(source, query, 100)).replace(/\]/g, ')');
       return [
         (r.timestamp || '').slice(0, 10),
         r.ig_username ? '@' + r.ig_username : (r.page_name || '—'),
+        where,
         r.permalink ? `[${text_}](${r.permalink})` : text_,
         r.media_product_type || r.media_type || '—',
         n(r.reach), n(r.views), n(r.saved), n(r.total_interactions),
@@ -559,6 +569,12 @@ async function searchPosts(store, { query, page_id, days: d = 0, limit: l = 15 }
       ];
     })
   );
+
+  // Reels with no transcript were searched on their caption alone. Saying so
+  // is the difference between "not said in any video" and "most videos have
+  // not been listened to yet".
+  const videoRows = igRows.filter((r) => (r.media_type || '') === 'VIDEO');
+  const untranscribed = videoRows.filter((r) => !r.transcript && !r.transcript_error).length;
 
   const total = rows.length + igRows.length;
   // Both counts are stated even when one is zero. A silently absent section
@@ -571,7 +587,11 @@ async function searchPosts(store, { query, page_id, days: d = 0, limit: l = 15 }
       + `${days ? ` · last ${days} days` : ''} · ranked by reach\n\n`
       + `**Facebook**\n\n${rows.length ? fbTable : '_No Facebook post copy matched._'}\n\n`
       + `**Instagram**\n\n${igRows.length ? igTable : '_No Instagram captions matched._'}`
-      + '\n\n_Matches post copy and Instagram captions, not comments. The text shown is a window around the match, not the opening of the post. '
+      + '\n\n_Matches Facebook post copy, Instagram captions and the spoken words in transcribed Reels — not comments. '
+      + '"Matched" says which of those the hit came from. The text shown is a window around the match, not the opening of the post. '
+      + (untranscribed
+        ? `**${untranscribed} of the ${videoRows.length} Reels shown have not been transcribed yet, so they were searched on their caption alone** — a Reel can say the word out loud and not appear here. `
+        : '')
       + 'Each platform is ranked by its own reach and the two are not directly comparable — Facebook reach and Instagram reach are differently defined by Meta._',
     data: { facebook: rows, instagram: igRows },
   };

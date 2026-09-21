@@ -71,6 +71,7 @@ function supabaseSink({ url, serviceKey }) {
     meta_ig_media: 'media_id',
     meta_ig_media_metrics: 'media_id,collected_date',
     meta_ig_account_metrics: 'ig_user_id,metric_date',
+    meta_ig_media_transcript: 'media_id',
     meta_post_ad_spend: 'ad_id,date_start,date_stop',
   };
 

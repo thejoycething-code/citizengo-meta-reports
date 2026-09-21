@@ -90,6 +90,11 @@ const EXPECTED = {
   // hit repeatedly - this one went undocumented for a day.
   meta_breakout_alerts: ['story_key', 'post_id', 'page_id', 'media_type',
     'views_at_alert', 'first_post_at', 'announced_at'],
+  // What is SAID in a Reel: our own output, not collected data. A row with
+  // error set means "tried and could not"; an ABSENT row means "not attempted
+  // yet", and the preflight checks the shape that keeps those distinguishable.
+  meta_ig_media_transcript: ['media_id', 'page_id', 'transcript', 'language',
+    'duration_seconds', 'engine', 'model', 'source_bytes', 'transcribed_at', 'error'],
 };
 
 const hdrs = (key) => ({ apikey: key, Authorization: 'Bearer ' + key });

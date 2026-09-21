@@ -1,0 +1,127 @@
+name: Transcribe Instagram Reels
+
+# What is SAID in a Reel. Meta does not offer it - probed on Graph v23.0 on
+# 21 Sept 2026, media_url returns a fetchable mp4 and captions/transcript/source
+# are refused outright - so speech recognition runs here, on the runner, with
+# whisper.cpp. Nothing is sent to a third-party transcription service.
+#
+# Run by hand. It writes to meta_ig_media_transcript and nothing else, and it
+# is safe to re-run: media already transcribed without error are skipped unless
+# `redo` is set, so a backfill can be walked through in batches.
+#
+# It lives in Actions rather than on a laptop because META_TOKENS is a
+# repository secret and is deliberately absent from local .env files.
+
+on:
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: 'How many Reels this run (blank = every one still pending)'
+        required: false
+        default: '50'
+      since:
+        description: 'Only Reels posted on or after this date, YYYY-MM-DD (blank = all collected history)'
+        required: false
+        default: ''
+      model:
+        description: 'whisper.cpp model: base is ~3x faster, small is markedly better on non-English'
+        required: false
+        default: 'small'
+        type: choice
+        options: ['small', 'base', 'medium']
+      budget_minutes:
+        description: 'Stop after this many minutes of AUDIO processed (blank = no cap; the job timeout still applies)'
+        required: false
+        default: ''
+      dry_run:
+        description: 'List what would be transcribed and write nothing'
+        required: false
+        default: false
+        type: boolean
+      redo:
+        description: 'Re-transcribe media that already have a transcript (use after changing model)'
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  # Two runs would fight over the same pending list and transcribe the same
+  # Reels twice, paying for the compute twice to write the same rows.
+  group: transcribe-ig
+  cancel-in-progress: false
+
+jobs:
+  transcribe:
+    runs-on: ubuntu-latest
+    # A 402-Reel backfill at roughly 45 s of audio each is around five hours of
+    # audio. Well inside this on a multi-core runner, but batch it with `limit`
+    # rather than betting a whole backfill on one job.
+    timeout-minutes: 350
+
+    env:
+      META_TOKENS: ${{ secrets.META_TOKENS }}
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL || vars.SUPABASE_URL }}
+      SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+      GRAPH_VERSION: ${{ vars.GRAPH_VERSION || 'v23.0' }}
+      WHISPER_MODEL: ${{ github.event.inputs.model || 'small' }}
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
+        with:
+          node-version: '24'
+
+      - name: Check required secrets
+        run: |
+          report() {
+            if [ -n "$2" ]; then echo "  SET      $1  (${#2} chars)"; else echo "  MISSING  $1"; fi
+          }
+          report META_TOKENS "$META_TOKENS"
+          report SUPABASE_URL "$SUPABASE_URL"
+          report SUPABASE_SERVICE_KEY "$SUPABASE_SERVICE_KEY"
+          for v in META_TOKENS SUPABASE_URL SUPABASE_SERVICE_KEY; do
+            if [ -z "${!v}" ]; then echo "$v is not set — cannot run."; exit 1; fi
+          done
+
+      # The build is the slow part, not the transcription, so it is cached on
+      # the commit of whisper.cpp rather than rebuilt every run.
+      - name: Cache whisper.cpp
+        id: whisper-cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4.3.0
+        with:
+          path: |
+            whisper.cpp/build/bin
+            whisper.cpp/models/ggml-${{ github.event.inputs.model || 'small' }}.bin
+          key: whisper-v1-${{ runner.os }}-${{ github.event.inputs.model || 'small' }}
+
+      - name: Build whisper.cpp and fetch the model
+        if: steps.whisper-cache.outputs.cache-hit != 'true'
+        run: |
+          set -euo pipefail
+          git clone --depth 1 https://github.com/ggml-org/whisper.cpp
+          cd whisper.cpp
+          cmake -B build -DCMAKE_BUILD_TYPE=Release
+          cmake --build build --config Release -j"$(nproc)"
+          ./models/download-ggml-model.sh "${WHISPER_MODEL}"
+
+      - name: Transcribe
+        env:
+          WHISPER_BIN: ${{ github.workspace }}/whisper.cpp/build/bin/whisper-cli
+          WHISPER_MODEL_PATH: ${{ github.workspace }}/whisper.cpp/models/ggml-${{ github.event.inputs.model || 'small' }}.bin
+        run: |
+          node collector/transcribe-ig.js \
+            ${{ github.event.inputs.limit && format('--limit={0}', github.event.inputs.limit) || '' }} \
+            ${{ github.event.inputs.since && format('--since={0}', github.event.inputs.since) || '' }} \
+            ${{ github.event.inputs.budget_minutes && format('--budget-minutes={0}', github.event.inputs.budget_minutes) || '' }} \
+            ${{ github.event.inputs.dry_run == 'true' && '--dry-run' || '' }} \
+            ${{ github.event.inputs.redo == 'true' && '--redo' || '' }}
+
+      # Coverage, and the failures by reason. A run that transcribed 40 and
+      # quietly failed 10 looks identical to a clean run without this.
+      - name: Report coverage
+        if: always()
+        run: node scripts/transcript-coverage.js

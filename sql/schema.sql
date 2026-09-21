@@ -360,6 +360,67 @@ grant select on public.meta_ig_account_metrics to meta_readonly;
 -- ---------------------------------------------------------------------------
 
 -- ---------------------------------------------------------------------------
+-- WHAT IS SAID IN A REEL
+--
+-- Not collected data: our own output. Probed on Graph v23.0, 21 Sept 2026
+-- (scripts/probe-ig-video-source.js) - Instagram returns media_url and refuses
+-- captions, transcript and source outright, so the only way to the spoken word
+-- is to fetch the mp4 and run speech recognition over it ourselves.
+--
+-- A FAILURE IS A ROW, with error set and transcript null. A media_id absent
+-- from this table means "not attempted yet"; a row with an error means "tried
+-- and could not". Collapsing those two into an absent row is how a backfill
+-- silently stops covering a page and nobody notices.
+create table if not exists public.meta_ig_media_transcript (
+  media_id         text primary key references public.meta_ig_media(media_id),
+  page_id          text not null references public.meta_pages(page_id),
+  transcript       text,
+  -- Whisper's own detection, not the page's country: CitizenGO Reels run to at
+  -- least nine languages and some pages mix them within a week.
+  language         text,
+  duration_seconds numeric,
+  -- A transcript from base and one from small are not the same artefact. Re-run
+  -- on a better model should be visible rather than silently replacing.
+  engine           text not null,
+  model            text not null,
+  source_bytes     bigint,
+  transcribed_at   timestamptz not null default now(),
+  error            text
+);
+create index if not exists meta_ig_media_transcript_page
+  on public.meta_ig_media_transcript (page_id);
+-- 'simple' rather than a language config: the corpus is multilingual and
+-- per-language stemming would need a config per row for little gain on text
+-- this short.
+create index if not exists meta_ig_media_transcript_fts
+  on public.meta_ig_media_transcript
+  using gin (to_tsvector('simple', coalesce(transcript, '')));
+
+alter table public.meta_ig_media_transcript enable row level security;
+revoke all on public.meta_ig_media_transcript from anon, authenticated;
+grant select on public.meta_ig_media_transcript to meta_readonly;
+
+-- meta_ig_latest plus the spoken word, so one query searches the caption the
+-- page wrote and what was said in the video together.
+--
+-- LEFT join on purpose: a Reel with no transcript yet must still be findable
+-- by its caption. An inner join would make "not transcribed yet" look like
+-- "does not exist" - the exact confusion the transcript table's error rows
+-- exist to prevent.
+create or replace view public.meta_ig_searchable as
+  select l.*,
+         t.transcript,
+         t.language      as transcript_language,
+         t.model         as transcript_model,
+         t.error         as transcript_error,
+         t.transcribed_at
+    from public.meta_ig_latest l
+    left join public.meta_ig_media_transcript t on t.media_id = l.media_id;
+
+grant select on public.meta_ig_searchable to meta_readonly;
+-- ---------------------------------------------------------------------------
+
+-- ---------------------------------------------------------------------------
 -- METRICS THAT DO NOT EXIST ON v23.0. Probed live 7 Sept 2026 by
 -- scripts/probe-coverage.js, with the metrics we do collect passing alongside
 -- as controls. Every one of these returns "must be a valid insights metric" or

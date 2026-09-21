@@ -75,6 +75,50 @@ const fakeStore = {
   const blank = await callTool(fakeStore, 'search_posts', { query: '   ' });
   check('a blank query asks for a term rather than searching', /Give a search term/.test(blank.text));
 
+  // --- the spoken word -----------------------------------------------------
+  // A hit in a transcript and a hit in a caption are different editorial
+  // facts. A row that does not say which invites the reader to assume the
+  // page wrote the word down.
+  const spokenStore = {
+    ...fakeStore,
+    async searchPosts() { return []; },
+    async searchIgMedia() {
+      return [
+        { timestamp: '2026-09-03T10:00:00Z', ig_username: 'citizengo_italia', media_id: 'ig2',
+          caption: 'Guarda il video e firma la petizione.', permalink: 'https://instagram.com/p/ig2',
+          media_product_type: 'REELS', media_type: 'VIDEO',
+          transcript: 'Oggi parliamo di eutanasia e di cosa significa davvero per i malati.',
+          transcript_language: 'it',
+          reach: 500, views: 900, saved: 5, total_interactions: 30, interaction_rate_pct: 6.0 },
+        { timestamp: '2026-09-04T10:00:00Z', ig_username: 'citizengo_italia', media_id: 'ig3',
+          caption: 'La eutanasia avanza in Europa.', permalink: 'https://instagram.com/p/ig3',
+          media_product_type: 'REELS', media_type: 'VIDEO',
+          transcript: null, transcript_error: null,
+          reach: 400, views: 800, saved: 4, total_interactions: 20, interaction_rate_pct: 5.0 },
+      ];
+    },
+  };
+  const spoken = await callTool(spokenStore, 'search_posts', { query: 'eutanasia' });
+  const rowSpoken = spoken.text.split('\n').find((l) => l.includes('/ig2')) || '';
+  const rowCaption = spoken.text.split('\n').find((l) => l.includes('/ig3')) || '';
+
+  check('a transcript-only hit is labelled spoken', / spoken /.test(rowSpoken), rowSpoken.slice(0, 100));
+  check('and shows the spoken text as the evidence', /parliamo di eutanasia/.test(rowSpoken));
+  check('a caption hit is labelled caption', / caption /.test(rowCaption), rowCaption.slice(0, 100));
+  check('warns that untranscribed Reels were searched on caption alone',
+    /1 of the 2 Reels shown have not been transcribed yet/.test(spoken.text));
+
+  // The warning must disappear once everything shown has been listened to.
+  const allDone = await callTool({
+    ...spokenStore,
+    async searchIgMedia() {
+      const rows = await spokenStore.searchIgMedia();
+      return [{ ...rows[0] }];
+    },
+  }, 'search_posts', { query: 'eutanasia' });
+  check('no warning when every Reel shown has a transcript',
+    !/have not been transcribed yet/.test(allDone.text));
+
   console.log(`\n${failed ? failed + ' failed' : 'all passed'}`);
   process.exit(failed ? 1 : 0);
 })().catch((e) => { console.error(e); process.exit(1); });
