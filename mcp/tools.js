@@ -620,6 +620,34 @@ async function searchPosts(store, { query, page_id, days: d = 0, limit: l = 15 }
   const untranscribed = videoRows.filter((r) => !r.transcript && !r.transcript_error).length;
 
   const total = rows.length + igRows.length;
+  // Totals as PROSE, above the table.
+  //
+  // A model answering "how did our Colombia posts do" reads this output and
+  // writes its own summary, and when it does that it picks columns - one such
+  // answer came back as Page / Reach / Beyond followers, with every engagement
+  // figure dropped, even though the table carried them. Columns are easy to
+  // discard; a sentence is not. This is the same reason the caveats below the
+  // tables are sentences rather than flags.
+  const sumOr = (rows_, key) => {
+    const present = rows_.map((r) => r[key]).filter((v) => typeof v === 'number');
+    return present.length ? present.reduce((a, b) => a + b, 0) : null;
+  };
+  const fbTotals = rows.length ? [
+    `${rows.length} post${rows.length === 1 ? '' : 's'}`,
+    `${n(sumOr(rows, 'views_unique'))} reach`,
+    `${n(sumOr(rows, 'reactions_total'))} reactions`,
+    `${n(sumOr(rows, 'comments_total'))} comments`,
+    `${n(sumOr(rows, 'shares_total'))} shares`,
+    `${n(sumOr(rows, 'clicks_total'))} clicks`,
+    `**${n(sumOr(rows, 'engagement_total'))} total engagement**`,
+  ].join(' · ') : '';
+  const igTotals = igRows.length ? [
+    `${igRows.length} post${igRows.length === 1 ? '' : 's'}`,
+    `${n(sumOr(igRows, 'reach'))} reach`,
+    `${n(sumOr(igRows, 'saved'))} saves`,
+    `**${n(sumOr(igRows, 'total_interactions'))} total interactions**`,
+  ].join(' · ') : '';
+
   // A capped result that does not say so reads as the complete answer.
   const moreFb = rows.matchedTotal && rows.matchedTotal > rows.length
     ? `\n\n_Showing the top ${rows.length} of **${rows.matchedTotal}** matching Facebook posts, ranked by reach. `
@@ -633,14 +661,17 @@ async function searchPosts(store, { query, page_id, days: d = 0, limit: l = 15 }
       + ` · ${rows.length} on Facebook, ${igRows.length} on Instagram`
       + `${page_id ? ' · one page' : ' · all collected pages'}`
       + `${days ? ` · last ${days} days` : ''} · ranked by reach\n\n`
-      + `**Facebook**\n\n${rows.length ? fbTable + moreFb : '_No Facebook post copy matched._'}\n\n`
-      + `**Instagram**\n\n${igRows.length ? igTable : '_No Instagram captions matched._'}`
+      + `**Facebook** — ${rows.length ? fbTotals : 'nothing matched'}\n\n`
+      + `${rows.length ? fbTable + moreFb : '_No Facebook post copy matched._'}\n\n`
+      + `**Instagram** — ${igRows.length ? igTotals : 'nothing matched'}\n\n`
+      + `${igRows.length ? igTable : '_No Instagram captions matched._'}`
       + '\n\n_Matches Facebook post copy, Instagram captions and the spoken words in transcribed Reels — not comments. '
       + '"Matched" says which of those the hit came from. The text shown is a window around the match, not the opening of the post. '
       + (untranscribed
         ? `**${untranscribed} of the ${videoRows.length} Reels shown have not been transcribed yet, so they were searched on their caption alone** — a Reel can say the word out loud and not appear here. `
         : '')
       + 'Engagement is reactions + comments + shares + clicks, the same definition top_posts uses, over total views. '
+      + '**When summarising this, report the engagement figures, not reach alone** — reach says how many saw it, engagement says whether it landed. '
       + 'Each platform is ranked by its own reach and the two are not directly comparable — Facebook reach and Instagram reach are differently defined by Meta._',
     data: { facebook: rows, instagram: igRows },
   };
