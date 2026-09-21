@@ -87,6 +87,16 @@ jobs:
             if [ -z "${!v}" ]; then echo "$v is not set — cannot run."; exit 1; fi
           done
 
+      # NOT preinstalled on the ubuntu-24.04 image, despite being on older ones.
+      # Its absence failed three Reels with ENOENT before this step existed.
+      # whisper.cpp takes 16 kHz mono wav and nothing else, so this is required,
+      # not a convenience.
+      - name: Install ffmpeg
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends ffmpeg
+          ffmpeg -version | head -1
+
       # The build is the slow part, not the transcription, so it is cached on
       # the commit of whisper.cpp rather than rebuilt every run.
       - name: Cache whisper.cpp
