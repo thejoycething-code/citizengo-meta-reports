@@ -30,14 +30,17 @@ async function main() {
   const rows = await q('meta_ig_media_transcript?select=media_id,language,duration_seconds,error,model&limit=100000');
 
   const good = rows.filter((r) => !r.error);
-  const bad = rows.filter((r) => r.error);
+  // Videos with no audio track: settled, not failed. Counting them as failures
+  // makes coverage look permanently broken when it is actually complete.
+  const silent = rows.filter((r) => r.error && String(r.error).startsWith('no-audio: '));
+  const bad = rows.filter((r) => r.error && !String(r.error).startsWith('no-audio: '));
   const untried = videos.length - rows.length;
   const pct = videos.length ? ((good.length / videos.length) * 100).toFixed(1) : '0.0';
   const mins = Math.round(good.reduce((a, r) => a + (Number(r.duration_seconds) || 0), 0) / 60);
 
   console.log('\nTranscript coverage');
   console.log(`  ${good.length} of ${videos.length} Reels transcribed (${pct}%) · ${mins} min of audio`);
-  console.log(`  ${bad.length} failed · ${untried} not yet attempted`);
+  console.log(`  ${silent.length} have no audio track (settled) · ${bad.length} failed · ${untried} not yet attempted`);
 
   const byModel = {};
   for (const r of good) byModel[r.model] = (byModel[r.model] || 0) + 1;

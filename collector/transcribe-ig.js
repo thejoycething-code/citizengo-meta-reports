@@ -74,11 +74,21 @@ async function rest(pathname, init = {}) {
 
 // Every VIDEO media not yet attempted, oldest first so a partial run leaves a
 // contiguous covered tail rather than a random scatter.
+// A video with no audio track will never produce a transcript, no matter how
+// many times it is retried, and each retry costs a fresh download. It is
+// SETTLED, not failed - recorded with this prefix and never picked up again.
+// Without it the backfill would carry a growing tail of silent videos it
+// re-downloads on every run forever.
+const NO_AUDIO = 'no-audio: ';
+const isNoAudio = (msg) => /does not contain any stream|Output file .* no audio|does not contain any audio/i.test(String(msg));
+
 async function pending() {
   if (ONE) {
     return rest(`meta_ig_media?select=media_id,page_id,timestamp,permalink&media_id=eq.${encodeURIComponent(ONE)}`);
   }
-  const done = REDO ? [] : await rest('meta_ig_media_transcript?select=media_id&error=is.null&limit=100000');
+  // Settled = transcribed, or proven to have no audio to transcribe.
+  const done = REDO ? [] : await rest(
+    `meta_ig_media_transcript?select=media_id&or=(error.is.null,error.like.${encodeURIComponent(NO_AUDIO)}*)&limit=100000`);
   const seen = new Set(done.map((r) => r.media_id));
   const parts = ['select=media_id,page_id,timestamp,permalink', 'media_type=eq.VIDEO', 'order=timestamp.asc', 'limit=100000'];
   if (SINCE) parts.push(`timestamp=gte.${encodeURIComponent(SINCE)}`);
@@ -155,7 +165,7 @@ async function main() {
   if (!todo.length) { console.log('nothing to do'); return; }
 
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'ig-asr-'));
-  let ok = 0; let failed = 0; let seconds = 0;
+  let ok = 0; let failed = 0; let settled = 0; let seconds = 0;
 
   for (const [i, m] of todo.entries()) {
     const tag = `[${i + 1}/${todo.length}] ${m.media_id}`;
@@ -193,16 +203,19 @@ async function main() {
       ok++;
       console.log(`${tag} — ${secs}s ${language || '??'} · ${transcript.length} chars · "${transcript.slice(0, 60).replace(/\s+/g, ' ')}…"`);
     } catch (e) {
-      failed++;
+      const silent = isNoAudio(e.message);
+      if (silent) settled++; else failed++;
       // The row is the point: without it this media looks untried forever.
       try {
         await save({
           media_id: m.media_id, page_id: m.page_id, transcript: null, language: null,
           duration_seconds: null, engine: ENGINE, model: MODEL, source_bytes: null,
-          transcribed_at: new Date().toISOString(), error: String(e.message).slice(0, 500),
+          transcribed_at: new Date().toISOString(),
+          error: (silent ? NO_AUDIO : '') + String(e.message).slice(0, 480),
         });
       } catch (e2) { console.error(`${tag} — could not even record the failure: ${e2.message}`); }
-      console.error(`${tag} — FAILED: ${e.message}`);
+      if (silent) console.log(`${tag} — no audio track, nothing to transcribe (settled, will not retry)`);
+      else console.error(`${tag} — FAILED: ${e.message}`);
     } finally {
       for (const f of [wav, `${outBase}.txt`, `${outBase}.json`]) {
         try { if (fs.existsSync(f)) fs.unlinkSync(f); } catch (e) { /* tmp dir goes anyway */ }
@@ -211,7 +224,7 @@ async function main() {
   }
 
   try { fs.rmSync(tmp, { recursive: true, force: true }); } catch (e) { /* best effort */ }
-  console.log(`\n${ok} transcribed, ${failed} failed, ${Math.round(seconds / 60)} min of audio`);
+  console.log(`\n${ok} transcribed, ${settled} with no audio, ${failed} failed, ${Math.round(seconds / 60)} min of audio`);
   // A failure is recorded, not fatal: a run that stops at the first bad Reel
   // never gets through a backfill. The rows say what happened.
   if (ok === 0 && failed > 0) process.exit(1);
