@@ -119,6 +119,33 @@ const fakeStore = {
   check('no warning when every Reel shown has a transcript',
     !/have not been transcribed yet/.test(allDone.text));
 
+  // --- text safety ------------------------------------------------------
+  // Slicing UTF-16 code units can cut an emoji's surrogate pair in half. A lone
+  // surrogate is not valid JSON: it broke an MCP client outright with "lone
+  // leading surrogate in hex escape" on a caption containing a flag emoji. It
+  // only happens at the widths where the cut lands mid-pair, which is why it
+  // looked intermittent rather than broken.
+  const lone = (str) => /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?:^|[^\uD800-\uDBFF])[\uDC00-\uDFFF]/.test(str);
+  const emojiStore = {
+    ...fakeStore,
+    async searchPosts() {
+      return [{
+        created_time: '2026-08-10T10:00:00Z', page_name: 'CitizenGO Latam', post_id: 'e1',
+        message: 'Colombia \u{1F1E8}\u{1F1F4} ha sido sacudida por un potente terremoto de magnitud 7,4 hoy \u{1F64F}',
+        permalink_url: 'https://facebook.com/e1',
+        views_unique: 100, views_total: 200, views_from_nonfollowers: 50,
+        reactions_total: 5, shares_total: 1, comments_total: 2, clicks_total: 3,
+        engagement_total: 11, engagement_rate_pct: 5.5,
+      }];
+    },
+    async searchIgMedia() { return []; },
+  };
+  const emo = await callTool(emojiStore, 'search_posts', { query: 'terremoto' });
+  check('no lone surrogate in the rendered output', !lone(emo.text));
+  check('the output survives a JSON round trip', (() => {
+    try { JSON.parse(JSON.stringify({ text: emo.text })); return true; } catch (e) { return false; }
+  })());
+
   console.log(`\n${failed ? failed + ' failed' : 'all passed'}`);
   process.exit(failed ? 1 : 0);
 })().catch((e) => { console.error(e); process.exit(1); });

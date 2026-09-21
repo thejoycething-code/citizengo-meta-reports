@@ -68,9 +68,18 @@ function postLink(r, label) {
   return r.permalink_url ? `[${safe}](${r.permalink_url})` : safe;
 }
 
+// Slicing a JS string cuts UTF-16 CODE UNITS, so a cut can land in the middle
+// of an emoji's surrogate pair and leave half of one behind. That is not merely
+// ugly - a lone surrogate is not valid JSON, and it broke an MCP client outright
+// with "lone leading surrogate in hex escape" on a caption containing 🇨🇴.
+// Every slice in this file goes through here.
+const stripLoneSurrogates = (s) => String(s)
+  .replace(/^[\uDC00-\uDFFF]+/, '')      // low surrogate orphaned at the start
+  .replace(/[\uD800-\uDBFF]+$/, '');     // high surrogate orphaned at the end
+
 function truncate(s, len) {
   const one = (s || '(no text)').replace(/\s+/g, ' ');
-  return one.length > len ? one.slice(0, len - 1) + '…' : one;
+  return one.length > len ? stripLoneSurrogates(one.slice(0, len - 1)) + '…' : one;
 }
 
 // A pipe closes a table cell, so any text going into one has to be escaped.
@@ -91,7 +100,7 @@ function snippet(text, query, width = 150) {
   const pad = Math.max(0, Math.floor((width - q.length) / 2));
   const start = Math.max(0, at - pad);
   const end = Math.min(one.length, start + width);
-  return (start > 0 ? '…' : '') + one.slice(start, end) + (end < one.length ? '…' : '');
+  return (start > 0 ? '…' : '') + stripLoneSurrogates(one.slice(start, end)) + (end < one.length ? '…' : '');
 }
 
 // This tool is a LEAGUE TABLE, and a league table cannot reach a post that does
