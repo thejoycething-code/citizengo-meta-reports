@@ -93,6 +93,24 @@ const isNoAudio = (msg) => /does not contain any stream|Output file .* no audio|
 // Stored as transcripts these are searchable garbage that a reader would take
 // for a real utterance, and they drag the language histogram with them. Settled
 // like a silent video: there is nothing said, and re-running changes nothing.
+// Graph answers 200 and simply omits media_url for a small share of Reels -
+// eight of the first ~143, about 6%. Probed on 21 Sept 2026
+// (scripts/probe-missing-media-url.js) against controls from the same page and
+// the same day, twice, hours apart. What that ruled OUT:
+//
+//   token, page, permission  - controls on the same page returned the URL
+//   ownership                - owner.id is identical and is the page's own
+//   a copyright flag         - copyright_check_information reads not_started
+//                              on subjects and controls alike
+//   the post being unhealthy - reach, views and interactions are all normal
+//   transience               - still absent on every retry, across two runs
+//
+// The cause is not exposed by Graph. Whatever it is, it does not change
+// between calls, so retrying costs a Graph call per run forever and gains
+// nothing. Settled like the others - but under its own prefix, because this
+// one is unexplained rather than understood, and may start working again.
+// `--redo` re-attempts them deliberately.
+const NO_MEDIA_URL = 'no-media-url: ';
 const NO_SPEECH = 'no-speech: ';
 function looksLikeNoise(text) {
   const t = String(text || '').trim();
@@ -122,9 +140,10 @@ async function pending() {
     return rest(`meta_ig_media?select=media_id,page_id,timestamp,permalink&media_id=eq.${encodeURIComponent(ONE)}`);
   }
   // Settled = transcribed, or proven to have no audio to transcribe.
+  const settledPrefixes = [NO_AUDIO, NO_SPEECH, NO_MEDIA_URL]
+    .map((x) => `error.like.${encodeURIComponent(x)}*`).join(',');
   const done = REDO ? [] : await rest(
-    'meta_ig_media_transcript?select=media_id&or=(error.is.null,'
-    + `error.like.${encodeURIComponent(NO_AUDIO)}*,error.like.${encodeURIComponent(NO_SPEECH)}*)&limit=100000`);
+    `meta_ig_media_transcript?select=media_id&or=(error.is.null,${settledPrefixes})&limit=100000`);
   const seen = new Set(done.map((r) => r.media_id));
   const parts = ['select=media_id,page_id,timestamp,permalink', 'media_type=eq.VIDEO', 'order=timestamp.asc', 'limit=100000'];
   if (SINCE) parts.push(`timestamp=gte.${encodeURIComponent(SINCE)}`);
@@ -215,12 +234,14 @@ async function main() {
       // Requested here and used immediately: the URL is signed and short-lived.
       const tok = (await pt.tokenFor(m.page_id)) || tokens[0];
       const r = await client.get(`/${m.media_id}`, { fields: 'media_url,media_type' }, { token: tok });
-      if (!r.ok || !r.body.media_url) {
-        // "HTTP 200" alone reads as a contradiction and taught us nothing about
-        // the six that hit this. Say what Graph actually returned instead.
-        const why = (r.body && r.body.error && r.body.error.message)
-          || (r.ok ? `Graph returned 200 with no media_url (fields: ${Object.keys(r.body || {}).join(',') || 'none'})` : `HTTP ${r.status}`);
-        throw new Error(`no media_url: ${why}`);
+      if (!r.ok) {
+        // A Graph ERROR is worth retrying - a bad token, a rate limit, an
+        // outage. Distinct from a clean 200 that simply has no URL in it.
+        throw new Error(`no media_url: ${(r.body && r.body.error && r.body.error.message) || `HTTP ${r.status}`}`);
+      }
+      if (!r.body.media_url) {
+        throw new Error(`${NO_MEDIA_URL}Graph returned 200 without the field `
+          + `(got: ${Object.keys(r.body || {}).join(',') || 'nothing'})`);
       }
 
       const head = await fetch(r.body.media_url, { method: 'HEAD' });
@@ -254,17 +275,20 @@ async function main() {
       }
     } catch (e) {
       const silent = isNoAudio(e.message);
-      if (silent) settled++; else failed++;
+      const noUrl = String(e.message).startsWith(NO_MEDIA_URL);
+      if (silent || noUrl) settled++; else failed++;
       // The row is the point: without it this media looks untried forever.
       try {
         await save({
           media_id: m.media_id, page_id: m.page_id, transcript: null, language: null,
           duration_seconds: null, engine: ENGINE, model: MODEL, source_bytes: null,
           transcribed_at: new Date().toISOString(),
+          // noUrl messages already carry their own prefix.
           error: (silent ? NO_AUDIO : '') + String(e.message).slice(0, 480),
         });
       } catch (e2) { console.error(`${tag} — could not even record the failure: ${e2.message}`); }
       if (silent) console.log(`${tag} — no audio track, nothing to transcribe (settled, will not retry)`);
+      else if (noUrl) console.log(`${tag} — Meta withheld the video file (settled; --redo to re-attempt)`);
       else console.error(`${tag} — FAILED: ${e.message}`);
     } finally {
       for (const f of [wav, `${outBase}.txt`, `${outBase}.json`]) {

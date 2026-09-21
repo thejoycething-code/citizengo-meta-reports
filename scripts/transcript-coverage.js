@@ -33,9 +33,11 @@ async function main() {
   // Videos with no audio track: settled, not failed. Counting them as failures
   // makes coverage look permanently broken when it is actually complete.
   // Settled, not failed: nothing was said, and re-running changes nothing.
-  const settledPrefix = (r) => String(r.error).startsWith('no-audio: ') || String(r.error).startsWith('no-speech: ');
+  const SETTLED = ['no-audio: ', 'no-speech: ', 'no-media-url: '];
+  const settledPrefix = (r) => SETTLED.some((x) => String(r.error).startsWith(x));
   const silent = rows.filter((r) => r.error && String(r.error).startsWith('no-audio: '));
   const noSpeech = rows.filter((r) => r.error && String(r.error).startsWith('no-speech: '));
+  const noUrl = rows.filter((r) => r.error && String(r.error).startsWith('no-media-url: '));
   const bad = rows.filter((r) => r.error && !settledPrefix(r));
   const untried = videos.length - rows.length;
   const pct = videos.length ? ((good.length / videos.length) * 100).toFixed(1) : '0.0';
@@ -43,8 +45,13 @@ async function main() {
 
   console.log('\nTranscript coverage');
   console.log(`  ${good.length} of ${videos.length} Reels transcribed (${pct}%) · ${mins} min of audio`);
-  console.log(`  ${silent.length} no audio track · ${noSpeech.length} no speech in the audio (both settled)`);
+  console.log(`  ${silent.length} no audio track · ${noSpeech.length} no speech in the audio`);
+  console.log(`  ${noUrl.length} Meta withheld the file (cause undetermined — see probe-missing-media-url.js)`);
   console.log(`  ${bad.length} failed · ${untried} not yet attempted`);
+  const reachable = videos.length - noUrl.length;
+  if (noUrl.length) {
+    console.log(`  of the ${reachable} we can actually fetch, ${((good.length / reachable) * 100).toFixed(1)}% are transcribed`);
+  }
 
   const byModel = {};
   for (const r of good) byModel[r.model] = (byModel[r.model] || 0) + 1;
