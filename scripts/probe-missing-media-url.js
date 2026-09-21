@@ -23,8 +23,14 @@ const VERSION = process.env.GRAPH_VERSION || 'v23.0';
 // Everything that might explain the absence. Asked one field at a time where
 // it matters, because a single unavailable field fails the whole combined
 // request and would look like the media being unreachable.
-const SOLO = ['media_url', 'thumbnail_url', 'media_type', 'media_product_type',
-  'is_shared_to_feed', 'owner', 'username', 'shortcode', 'like_comment_enabled'];
+const SOLO = ['media_url', 'media_type', 'media_product_type',
+  // The hypothesis worth killing first: a Reel co-authored with, or shared
+  // from, another account is not wholly ours, and Meta may decline to hand
+  // over the file. owner.id against the page's own IG user id settles it.
+  'owner', 'username', 'shortcode', 'is_shared_to_feed',
+  // Licensed audio is the other candidate. No documented field exposes it,
+  // so these are asked on the off-chance the version has grown one.
+  'music_metadata', 'copyright_check_information', 'alt_media_url'];
 
 const SB = String(process.env.SUPABASE_URL || '').replace(/\/rest\/v1\/?$/, '').replace(/\/+$/, '');
 const KEY = process.env.SUPABASE_SERVICE_KEY;
@@ -74,7 +80,11 @@ async function main() {
     for (const f of SOLO) {
       const r = await client.get(`/${m.media_id}`, { fields: f }, { token: tok });
       const present = r.ok && Object.prototype.hasOwnProperty.call(r.body || {}, f);
-      const v = present ? String(r.body[f]) : null;
+      // Objects stringify to "[object Object]", which is how the first run
+      // threw away the owner - the one field that would show whether these
+      // Reels belong to somebody else.
+      const raw = present ? r.body[f] : null;
+      const v = present ? (typeof raw === 'object' ? JSON.stringify(raw) : String(raw)) : null;
       const err = r.ok ? '' : ` — ${(r.body && r.body.error && r.body.error.message) || `HTTP ${r.status}`}`;
       console.log(`  ${f.padEnd(22)} ${present ? (v.length > 60 ? v.slice(0, 57) + '...' : v) : 'ABSENT'}${err}`);
     }
@@ -88,8 +98,15 @@ async function main() {
   for (const m of meta) await look(m, 'SUBJECT');
   for (const c of controls) await look(c, 'CONTROL');
 
-  console.log('\nRead it this way: if the controls return media_url and the subjects do not,');
-  console.log('the difference is in the media itself, not the token, the page or the date.');
+  // The page's own IG user id, to compare owner against.
+  const owners = await q(`meta_ig_media?select=page_id,ig_user_id,ig_username&media_id=in.(${ids.join(',')})`);
+  console.log('\nPage IG user ids, to compare against owner.id above:');
+  for (const o of [...new Map(owners.map((o) => [o.page_id, o])).values()]) {
+    console.log(`  ${o.ig_username.padEnd(24)} ig_user_id ${o.ig_user_id}`);
+  }
+  console.log('\nControls returned media_url and subjects did not, on the same pages and days,');
+  console.log('so the difference is in the media. If owner.id differs from the page ig_user_id');
+  console.log('above, these Reels are not wholly ours and that is the reason.');
 }
 
 main().catch((e) => { console.error(e); process.exit(1); });
