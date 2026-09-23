@@ -85,6 +85,64 @@ const trueMedian = allViews.length % 2
   check('no cap note when every post is shown', !/cannot be reached/.test(nothingHidden.text));
   check('but the note does appear at limit=100 with 101 posts', /Showing 100 of 101/.test(all.text));
 
+  // --- formats -----------------------------------------------------------
+  // media_type alone calls every Facebook video "video": 924 of 926
+  // added_video posts are /reel/ URLs. The permalink is what separates them.
+  const fmtStore = {
+    name: 'fake',
+    async freshness() { return { latest: '2026-09-20', recentFailures: 0 }; },
+    async loadAll() {
+      const mk = (id, extra) => ({
+        post_id: `p1_${id}`, page_id: 'p1', created_time: '2026-09-01T10:00:00Z',
+        message: `post ${id}`, ...extra,
+      });
+      return {
+        pages: [PAGE],
+        posts: [
+          mk('reel', { permalink_url: 'https://www.facebook.com/reel/123/', media_type: 'video', status_type: 'added_video' }),
+          mk('video', { permalink_url: 'https://www.facebook.com/x/videos/9/', media_type: 'video', status_type: 'added_video' }),
+          mk('photo', { permalink_url: 'https://www.facebook.com/x/posts/1', media_type: 'photo', status_type: 'added_photos' }),
+          mk('album', { permalink_url: 'https://www.facebook.com/x/posts/2', media_type: 'album', status_type: 'added_photos' }),
+          mk('link', { permalink_url: 'https://www.facebook.com/x/posts/3', media_type: 'link', status_type: 'shared_story' }),
+          mk('text', { permalink_url: 'https://www.facebook.com/x/posts/4', media_type: null, status_type: 'mobile_status_update' }),
+        ],
+        metrics: ['reel', 'video', 'photo', 'album', 'link', 'text'].map((id, i) => ({
+          post_id: `p1_${id}`, collected_date: '2026-09-20',
+          views_total: 1000 - i, views_unique: 700, reactions_total: 10,
+          shares_total: 2, clicks_total: 3, comments_total: 4,
+        })),
+      };
+    },
+  };
+  const fmt = await callTool(fmtStore, 'top_posts', { page_id: 'p1', days: 90, limit: 10 });
+  for (const [label, want] of [['reel', 'Reel'], ['video', 'Video'], ['photo', 'Photo'],
+    ['album', 'Album'], ['link', 'Shared link'], ['text', 'Text']]) {
+    const row = fmt.text.split('\n').find((l) => l.includes(`p1_${label} `) || l.includes(`p1_${label}|`) || l.includes(`| p1_${label} |`)) || '';
+    check(`${label} is labelled "${want}"`, row.includes(`| ${want} |`), row.slice(0, 95));
+  }
+
+  // --- export ------------------------------------------------------------
+  // A ranked view can never reach a mid-table post. compact pages through the
+  // whole window and must never exceed the 60,000-character response cap.
+  let offset = 0; let blocks = 0; let exported = 0; let biggest = 0;
+  const seen = new Set();
+  for (;;) {
+    const out = await callTool(fakeStore, 'top_posts', { page_id: 'p1', days: 90, compact: true, offset });
+    const rows = out.text.split('\n').filter((l) => /^\| 20\d\d-/.test(l));
+    rows.forEach((r) => seen.add(r));
+    exported += rows.length; blocks++;
+    biggest = Math.max(biggest, out.text.length);
+    const next = out.text.match(/offset: (\d+)/);
+    if (!next || blocks > 20) break;
+    offset = Number(next[1]);
+  }
+  check('the export covers every post in the window', exported === 101, `exported ${exported} of 101`);
+  check('no row is repeated across blocks', seen.size === exported, `${seen.size} unique of ${exported}`);
+  check('every block stays inside the 60,000-character cap', biggest <= 60000, `largest ${biggest}`);
+  check('the last block declares the export finished',
+    /End of the export/.test((await callTool(fakeStore, 'top_posts',
+      { page_id: 'p1', days: 90, compact: true, offset: 100 })).text));
+
   console.log(failed ? `\n${failed} failed` : '\nall passed');
   process.exit(failed ? 1 : 0);
 })().catch((e) => { console.error(e); process.exit(1); });

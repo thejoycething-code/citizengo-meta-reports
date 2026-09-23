@@ -122,6 +122,39 @@ function rankNote(feed, limit, sort) {
     + `To get engagement for a specific post regardless of where it ranks, use search_posts with a word from the post._`;
 }
 
+// What KIND of post it is, beyond "video or not".
+//
+// Facebook needs all three fields together. media_type alone calls every video
+// "video": of 926 added_video posts, 924 are /reel/ URLs and 2 are classic
+// videos, so the PERMALINK is what separates a Reel from a video. status_type
+// separates our own post from a reshare of somebody else's. The thirteen
+// status_type x media_type combinations in the store collapse to these.
+function formatOf(r) {
+  // Instagram rows carry media_product_type; Facebook rows never do.
+  if (r.media_product_type || r.ig_username) {
+    if (r.media_product_type === 'REELS') return 'Reel';
+    if (r.media_product_type === 'STORY') return 'Story';
+    if (r.media_type === 'CAROUSEL_ALBUM') return 'Carousel';
+    if (r.media_type === 'IMAGE') return 'Image';
+    if (r.media_type === 'VIDEO') return 'Video';
+    return r.media_product_type || r.media_type || '—';
+  }
+  const url = String(r.permalink_url || '');
+  if (url.includes('/reel/')) return 'Reel';
+  const shared = r.status_type === 'shared_story';
+  switch (r.media_type) {
+    case 'album': return shared ? 'Shared album' : 'Album';
+    case 'photo': return shared ? 'Shared photo' : 'Photo';
+    case 'video': return shared ? 'Shared video' : 'Video';
+    case 'link': return shared ? 'Shared link' : 'Link';
+    case 'event': return 'Event';
+    case 'music': return 'Music';
+    // No attachment at all. Not a gap - a plain text post.
+    case null: case undefined: case '': return 'Text';
+    default: return r.media_type;
+  }
+}
+
 // EVERY collected post has a permalink - 0 missing of 3,419 Facebook and 915
 // Instagram rows on 22 Sept 2026 - so the post text in these tables is always
 // a link to the original, and postLink()'s plain-text fallback never fires in
@@ -161,8 +194,21 @@ async function listPages(store) {
   };
 }
 
-async function topPosts(store, { page_id, days: d = 30, sort = 'views', limit: l = 10 }) {
-  const days = clampDays(d, 30); const limit = clampRows(l, 10, 100);
+// limit is deliberately NOT defaulted in the destructure: the default differs
+// by mode, and `l = 10` made compact exports return ten rows a block because
+// "not supplied" and "supplied as 10" became indistinguishable.
+async function topPosts(store, { page_id, days: d = 30, sort = 'views', limit: l,
+  offset: off = 0, compact = false }) {
+  const days = clampDays(d, 30);
+  const offset = Math.max(0, Math.floor(Number(off)) || 0);
+  // compact is the EXPORT path: a page posting several a day has more posts
+  // than any league table can show, so this drops the wide columns and fills
+  // to a character budget instead of a row count, then names the offset to ask
+  // for next. A fixed row cap either wastes the budget or overruns it, and the
+  // response limit is in characters, not rows.
+  const limit = compact
+    ? Math.min(Math.max(Math.floor(Number(l)) || 1000, 1), 1000)
+    : clampRows(l, 10, 100);
   const data = await store.loadAll();
   if (page_id && !data.pages.some((g) => g.page_id === page_id)) {
     return {
@@ -180,7 +226,7 @@ async function topPosts(store, { page_id, days: d = 30, sort = 'views', limit: l
   const windowFeed = shapeFeed(data, {
     page_id, since: sinceFor(days), sort, with_metrics_only: false,
   });
-  const feed = { total: windowFeed.total, rows: windowFeed.rows.slice(0, limit) };
+  const feed = { total: windowFeed.total, rows: windowFeed.rows.slice(offset, offset + limit) };
   // Baseline from the whole window, so "vs median" compares like with like.
   const base = pageBaseline(windowFeed.rows);
   // Shown only when the result actually contains a video with the data. Most
@@ -189,8 +235,19 @@ async function topPosts(store, { page_id, days: d = 30, sort = 'views', limit: l
   const anyVideo = feed.rows.some((r) =>
     r.video_views_organic !== null || r.video_views_paid !== null);
   const rows = feed.rows.map((r) => withBenchmark(r, base)).map((r) => {
+    if (compact) {
+      // The id carries the link, so an export stays clickable without spending
+      // 60 characters a row on post text nobody reads in a spreadsheet.
+      return [
+        r.created_time.slice(0, 10), formatOf(r),
+        n(r.views_total), n(r.views_unique),
+        n(r.reactions_total), n(r.comments_total), n(r.shares_total),
+        n(r.engagement_total), p(r.engagement_rate),
+        r.permalink_url ? `[${r.post_id}](${r.permalink_url})` : r.post_id,
+      ];
+    }
     const row = [
-      r.created_time.slice(0, 10), r.page_name, postLink(r, truncate(r.message, 62)),
+      r.created_time.slice(0, 10), r.page_name, formatOf(r), postLink(r, truncate(r.message, 56)),
       n(r.views_total), n(r.views_unique), p(r.beyond_followers_pct),
       n(r.reactions_total), n(r.shares_total), p(r.engagement_rate),
       r.benchmark && r.benchmark.views_x_median !== null ? r.benchmark.views_x_median + '×' : '—',
@@ -201,17 +258,43 @@ async function topPosts(store, { page_id, days: d = 30, sort = 'views', limit: l
     }
     return row;
   });
+
+  // Fill to the budget, not to a row count. The response cap is 60,000
+  // characters; stopping at 48,000 leaves room for the header, the baseline
+  // line and the notes below, which are not optional.
+  const BUDGET = 48000;
+  let kept = rows;
+  if (compact) {
+    let used = 0;
+    kept = [];
+    for (const row of rows) {
+      const cost = row.join(' | ').length + 8;
+      if (used + cost > BUDGET) break;
+      used += cost; kept.push(row);
+    }
+  }
+  const nextOffset = offset + kept.length;
+  const more = feed.total - nextOffset;
   const label = METRIC_LABELS[sort] || sort;
   return {
-    text: `**Top ${feed.rows.length} posts by ${label}**`
-      + `${page_id ? '' : ' (all pages)'}${days ? ` · last ${days} days` : ' · all time'}\n\n`
-      + table(['Date', 'Page', 'Post', 'Views', 'Unique', 'Beyond followers', 'Reactions', 'Shares', 'Eng. rate', 'vs median',
-        ...(anyVideo ? ['Video org/paid'] : []), 'Post ID'],
-        rows.map((row, i) => row.concat([feed.rows[i].post_id])))
+    text: (compact
+      ? `**Export: posts ${offset + 1}–${nextOffset} of ${n(feed.total)}**`
+      : `**Top ${kept.length} posts by ${label}**`)
+      + `${page_id ? '' : ' (all pages)'}${days ? ` · last ${days} days` : ' · all time'}`
+      + `${offset && !compact ? ` · from rank ${offset + 1}` : ''}\n\n`
+      + (compact
+        ? table(['Date', 'Format', 'Views', 'Reach', 'Reactions', 'Comments', 'Shares', 'Engagement', 'Eng. rate', 'Post'], kept)
+        : table(['Date', 'Page', 'Format', 'Post', 'Views', 'Unique', 'Beyond followers', 'Reactions', 'Shares', 'Eng. rate', 'vs median',
+          ...(anyVideo ? ['Video org/paid'] : []), 'Post ID'],
+          kept.map((row, i) => row.concat([feed.rows[i].post_id]))))
+      + (compact && more > 0
+        ? `\n\n_**${n(more)} more.** Call again with \`offset: ${nextOffset}\` and \`compact: true\` for the next block — repeat until this line stops appearing._`
+        : '')
+      + (compact && more <= 0 ? '\n\n_End of the export: every post in this window is above._' : '')
       + (base.reliable
         ? `\n\n_"vs median" compares each post to this page's own median of ${n(base.median_views)} views over the same window. A raw view count says nothing on its own._`
         : `\n\n_Too few posts with metrics (${base.n}) to establish a baseline, so no comparison is shown._`)
-      + rankNote(feed, limit, sort)
+      + (compact ? '' : rankNote(feed, limit, sort))
       + `\n\n_${SOURCE_NOTE}_`
       + gapNote(feed.rows),
     data: { ...feed, baseline: base },
@@ -584,12 +667,13 @@ async function searchPosts(store, { query, page_id, days: d = 0, limit: l = 15 }
   // through top_posts - which cannot reach a post ranked below its page's
   // first hundred at all.
   const fbTable = table(
-    ['Date', 'Page', 'Post', 'Reach', 'Views', 'Beyond followers',
+    ['Date', 'Page', 'Format', 'Post', 'Reach', 'Views', 'Beyond followers',
       'Reactions', 'Comments', 'Shares', 'Clicks', 'Engagement', 'Eng. rate', 'Post ID'],
     rows.map((r) => [
       (r.created_time || '').slice(0, 10),
       r.page_name || '—',
-      postLink(r, snippet(r.message, query, 90)),
+      formatOf(r),
+      postLink(r, snippet(r.message, query, 80)),
       n(r.views_unique),
       n(r.views_total),
       r.views_total > 0 ? p((r.views_from_nonfollowers / r.views_total) * 100) : '—',
@@ -619,7 +703,7 @@ async function searchPosts(store, { query, page_id, days: d = 0, limit: l = 15 }
         r.ig_username ? '@' + r.ig_username : (r.page_name || '—'),
         where,
         r.permalink ? `[${text_}](${r.permalink})` : text_,
-        r.media_product_type || r.media_type || '—',
+        formatOf(r),
         n(r.reach), n(r.views), n(r.saved), n(r.total_interactions),
         r.interaction_rate_pct !== null && r.interaction_rate_pct !== undefined
           ? p(Number(r.interaction_rate_pct)) : '—',
@@ -861,14 +945,16 @@ const TOOLS = [
   },
   {
     name: 'top_posts',
-    description: 'Rank organic posts by a chosen metric. Use this to answer "which of our posts performed best". Sort by "beyond" to find posts that spread furthest past existing followers — usually the most useful measure of whether content travelled, as opposed to merely reaching people who already follow the page.',
+    description: 'Rank organic posts by a chosen metric, or export every post for a page. Use this to answer "which of our posts performed best". Sort by "beyond" to find posts that spread furthest past existing followers — usually the most useful measure of whether content travelled, as opposed to merely reaching people who already follow the page. For a FULL EXPORT of a high-volume page rather than a ranking, set compact: true and page through with offset. Every row names its format (Reel, Photo, Carousel, Link, Album, Text, Shared link…), not just video or not.',
     inputSchema: {
       type: 'object',
       properties: {
         page_id: { type: 'string', description: 'Restrict to one page. Omit for all pages. Get ids from list_pages.' },
         days: { type: 'number', description: 'Look back this many days (default 30). Use 0 for all collected data.' },
         sort: { type: 'string', enum: ['views', 'reach', 'beyond', 'engagement', 'rate', 'shares', 'recent'], description: 'Ranking metric (default views).' },
-        limit: { type: 'number', description: 'How many posts to return (default 10).' },
+        limit: { type: 'number', description: 'How many posts to return (default 10, max 100 — or up to 1000 with compact, subject to the response budget).' },
+        offset: { type: 'number', description: 'Skip this many ranked posts before returning. Use with compact to walk a whole page in blocks.' },
+        compact: { type: 'boolean', description: 'EXPORT MODE. Drops post text and the baseline comparison, keeps date, format, views, reach, reactions, comments, shares, engagement and a linked post id, and returns as many rows as fit. Use this when someone wants every post for a page rather than a top ten — a high-volume page has hundreds, and the ranked view can only ever show the first hundred. The output names the offset to ask for next until the export is complete.' },
       },
       additionalProperties: false,
     },
