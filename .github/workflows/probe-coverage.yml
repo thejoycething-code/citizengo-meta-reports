@@ -96,6 +96,12 @@ jobs:
       - name: Probe missing media_url
         run: node scripts/probe-missing-media-url.js
 
+      # Who shared our posts. We measure the EFFECT of resharing but hold no
+      # identity for a single sharer; sharedposts is the only documented route
+      # and is heavily restricted. Asked on our most-shared posts.
+      - name: Probe who shared
+        run: node scripts/probe-who-shared.js
+
       - name: Probe page paid split
         run: |
           node scripts/probe-page-paid-split.js \
