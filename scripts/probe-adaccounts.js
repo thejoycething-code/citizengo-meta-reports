@@ -55,7 +55,13 @@ function show(label, res, pick) {
     const declined = rows.filter((r) => r.status !== 'granted').map((r) => r.permission).sort();
     console.log(`  granted (${granted.length}): ${granted.join(', ')}`);
     if (declined.length) console.log(`  NOT granted: ${declined.join(', ')}`);
-    for (const need of ['ads_read', 'ads_management', 'business_management']) {
+    // leads_retrieval is checked because the ads and leads questions get asked
+    // together and a probe that answers only half of one invites the wrong
+    // conclusion. The organic six are listed so a regenerated token that
+    // silently DROPPED one is visible here rather than three days later.
+    for (const need of ['ads_read', 'leads_retrieval', 'ads_management', 'business_management',
+      'pages_show_list', 'pages_read_engagement', 'pages_read_user_content',
+      'read_insights', 'instagram_basic', 'instagram_manage_insights']) {
       console.log(`  ${granted.includes(need) ? 'yes' : 'NO '}  ${need}`);
     }
   } else {
@@ -64,6 +70,25 @@ function show(label, res, pick) {
 
   console.log('\nThe route the collector uses today:');
   await (async () => { show('/me/adaccounts', await client.get('/me/adaccounts', { fields: 'id,name', limit: 100 })); })();
+
+  // Scope granted is not the same as leads reachable: lead forms are a
+  // SEPARATE asset assignment on the Page, so a token can hold leads_retrieval
+  // and still see nothing.
+  console.log('\nLead forms (needs leads_retrieval AND Leads access on the Page):');
+  try {
+    const pagesRes = await client.get('/me/accounts', { fields: 'id,name', limit: 3 });
+    const pages = (pagesRes.body && pagesRes.body.data) || [];
+    if (!pages.length) console.log('  (no pages returned, so nothing to ask)');
+    for (const pg of pages) {
+      const f = await client.get(`/${pg.id}/leadgen_forms`, { limit: 3 }, { token: pg.access_token });
+      if (!f.ok) {
+        console.log(`  no  ${pg.name.padEnd(28)} ${((f.body && f.body.error && f.body.error.message) || `HTTP ${f.status}`).slice(0, 80)}`);
+      } else {
+        const forms = (f.body && f.body.data) || [];
+        console.log(`  OK  ${pg.name.padEnd(28)} ${forms.length} lead form(s)`);
+      }
+    }
+  } catch (e) { console.log(`  lead-form probe failed: ${e.message}`); }
 
   console.log('\nBusiness-scoped routes (what a System User would use):');
   const biz = show('/me/businesses', await client.get('/me/businesses', { fields: 'id,name', limit: 50 }));
