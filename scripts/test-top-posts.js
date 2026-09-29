@@ -143,6 +143,51 @@ const trueMedian = allViews.length % 2
     /End of the export/.test((await callTool(fakeStore, 'top_posts',
       { page_id: 'p1', days: 90, compact: true, offset: 100 })).text));
 
+  // --- export rows carry the post text ------------------------------------
+  // An export row with only an id could not be identified without opening its
+  // link (Scorecard feedback, 29 Sept 2026).
+  const firstBlock = await callTool(fakeStore, 'top_posts', { page_id: 'p1', days: 90, compact: true });
+  check('export rows carry a linked snippet of the post text',
+    /\| \[post number \d+\]\(https:\/\/facebook\.com\/p1_\d+\) \|/.test(firstBlock.text));
+
+  // --- Facebook Reels watch time ------------------------------------------
+  // Collected all along, never shown. Appears only when a row has it.
+  const watchStore = {
+    ...fmtStore,
+    async loadAll() {
+      const d = await fmtStore.loadAll();
+      d.metrics = d.metrics.map((m) => (m.post_id === 'p1_reel' ? { ...m, video_avg_seconds_watched: 14.26 } : m));
+      return d;
+    },
+  };
+  const watched = await callTool(watchStore, 'top_posts', { page_id: 'p1', days: 90, limit: 10 });
+  const reelRow = watched.text.split('\n').find((l) => l.includes('| p1_reel |')) || '';
+  check('Reel rows show average watch time', reelRow.includes('| 14.3s |'), reelRow.slice(-60));
+  check('the watch column is explained', /"Avg watch" is Meta/.test(watched.text));
+  const watchedExport = await callTool(watchStore, 'top_posts', { page_id: 'p1', days: 90, compact: true });
+  check('the export carries watch time too', /\| 14\.3s \|/.test(watchedExport.text));
+  check('no watch column when no row has the data', !/Avg watch/.test(fmt.text));
+
+  // --- page_growth takes exact dates --------------------------------------
+  let asked = null;
+  const growthStore = {
+    ...fakeStore,
+    async pageGrowth(opts) {
+      asked = opts;
+      return [
+        { page_id: 'p1', page_name: 'Test Page', metric_date: '2026-09-22', daily_follows: 10, daily_unfollows: 2 },
+        { page_id: 'p1', page_name: 'Test Page', metric_date: '2026-09-28', daily_follows: 5, daily_unfollows: 1 },
+      ];
+    },
+  };
+  const week = await callTool(growthStore, 'page_growth', { page_id: 'p1', since: '2026-09-22', until: '2026-09-28' });
+  check('page_growth passes since and until to the store',
+    asked && asked.since === '2026-09-22' && asked.until === '2026-09-28', JSON.stringify(asked));
+  check('page_growth names the calendar window it covers', /22 Sep 2026 – 28 Sep 2026/.test(week.text));
+  check('page_growth nets follows against unfollows over the window', /\| 15 \| 3 \| 12 \|/.test(week.text));
+  await callTool(growthStore, 'page_growth', { page_id: 'p1', days: 7 });
+  check('a rolling window still sends no until', asked && asked.until === undefined);
+
   console.log(failed ? `\n${failed} failed` : '\nall passed');
   process.exit(failed ? 1 : 0);
 })().catch((e) => { console.error(e); process.exit(1); });

@@ -234,17 +234,25 @@ async function topPosts(store, { page_id, days: d = 30, sort = 'views', limit: l
   // is worse than no column.
   const anyVideo = feed.rows.some((r) =>
     r.video_views_organic !== null || r.video_views_paid !== null);
+  // Facebook Reels average watch time. Collected all along and never shown,
+  // until the Scorecard asked for it (29 Sept 2026). Same rule as anyVideo.
+  const anyWatch = feed.rows.some((r) => r.video_avg_seconds_watched !== null);
+  const watch = (r) => (r.video_avg_seconds_watched === null
+    ? '—' : Number(r.video_avg_seconds_watched).toFixed(1) + 's');
   const rows = feed.rows.map((r) => withBenchmark(r, base)).map((r) => {
     if (compact) {
-      // The id carries the link, so an export stays clickable without spending
-      // 60 characters a row on post text nobody reads in a spreadsheet.
-      return [
-        r.created_time.slice(0, 10), formatOf(r),
+      // A short linked snippet rather than the bare post id it replaced: with
+      // only the id, identifying any row meant opening its link, which defeats
+      // an export (Scorecard feedback, 29 Sept 2026). 48 characters is enough
+      // to recognise a post and costs roughly a quarter of the rows per block.
+      const row = [
+        r.created_time.slice(0, 10), formatOf(r), postLink(r, truncate(r.message, 48)),
         n(r.views_total), n(r.views_unique),
         n(r.reactions_total), n(r.comments_total), n(r.shares_total),
         n(r.engagement_total), p(r.engagement_rate),
-        r.permalink_url ? `[${r.post_id}](${r.permalink_url})` : r.post_id,
       ];
+      if (anyWatch) row.push(watch(r));
+      return row;
     }
     const row = [
       r.created_time.slice(0, 10), r.page_name, formatOf(r), postLink(r, truncate(r.message, 56)),
@@ -256,6 +264,7 @@ async function topPosts(store, { page_id, days: d = 30, sort = 'views', limit: l
       row.push(r.video_views_organic === null && r.video_views_paid === null
         ? '—' : `${n(r.video_views_organic)}/${n(r.video_views_paid)}`);
     }
+    if (anyWatch) row.push(watch(r));
     return row;
   });
 
@@ -283,9 +292,10 @@ async function topPosts(store, { page_id, days: d = 30, sort = 'views', limit: l
       + `${page_id ? '' : ' (all pages)'}${days ? ` · last ${days} days` : ' · all time'}`
       + `${offset && !compact ? ` · from rank ${offset + 1}` : ''}\n\n`
       + (compact
-        ? table(['Date', 'Format', 'Views', 'Reach', 'Reactions', 'Comments', 'Shares', 'Engagement', 'Eng. rate', 'Post'], kept)
+        ? table(['Date', 'Format', 'Post', 'Views', 'Reach', 'Reactions', 'Comments', 'Shares', 'Engagement', 'Eng. rate',
+          ...(anyWatch ? ['Avg watch'] : [])], kept)
         : table(['Date', 'Page', 'Format', 'Post', 'Views', 'Unique', 'Beyond followers', 'Reactions', 'Shares', 'Eng. rate', 'vs median',
-          ...(anyVideo ? ['Video org/paid'] : []), 'Post ID'],
+          ...(anyVideo ? ['Video org/paid'] : []), ...(anyWatch ? ['Avg watch'] : []), 'Post ID'],
           kept.map((row, i) => row.concat([feed.rows[i].post_id]))))
       + (compact && more > 0
         ? `\n\n_**${n(more)} more.** Call again with \`offset: ${nextOffset}\` and \`compact: true\` for the next block — repeat until this line stops appearing._`
@@ -296,6 +306,9 @@ async function topPosts(store, { page_id, days: d = 30, sort = 'views', limit: l
         : `\n\n_Too few posts with metrics (${base.n}) to establish a baseline, so no comparison is shown._`)
       + (compact ? '' : rankNote(feed, limit, sort))
       + `\n\n_${SOURCE_NOTE}_`
+      + (anyWatch
+        ? '\n\n_"Avg watch" is Meta\'s average time each view of a Facebook Reel lasted. Meta offers it on Reels only, so "—" on any other format means not offered, not zero._'
+        : '')
       + gapNote(feed.rows),
     data: { ...feed, baseline: base },
   };
@@ -319,7 +332,7 @@ async function pageSummary(store, { page_id, days: d = 30, since, until }) {
   if (typeof store.pageGrowth === 'function') {
     try {
       pageRows = (await store.pageGrowth({
-        page_id, since: win.from, until: win.to, limit: 400,
+        page_id, since: win.from, until: win.to,
       })) || [];
     } catch (e) { pageRows = []; }
   }
@@ -778,9 +791,14 @@ async function searchPosts(store, { query, page_id, days: d = 0, limit: l = 15 }
 
 // Page-level trend, as opposed to individual post performance. Answers "are we
 // growing" rather than "did this post work".
-async function pageGrowth(store, { page_id, days: d = 30 }) {
+async function pageGrowth(store, { page_id, days: d = 30, since, until }) {
   const days = clampDays(d, 30);
-  const rows = await store.pageGrowth({ page_id, since: sinceFor(days) });
+  // since/until for a calendar week or month, the way page_summary takes them:
+  // a rolling N days never lines up with a Monday-to-Sunday Scorecard week.
+  const win = windowFor({ since, until, days });
+  const rows = await store.pageGrowth({
+    page_id, since: win.explicit ? win.from : sinceFor(days), until: win.explicit ? win.to : undefined,
+  });
   if (!rows || !rows.length) {
     return {
       text: 'No page-level data yet. It is collected alongside posts, so it appears after the next collection run.',
@@ -804,16 +822,15 @@ async function pageGrowth(store, { page_id, days: d = 30 }) {
       const vals = series.map((x) => x[k]).filter((v) => typeof v === 'number');
       return vals.length ? vals.reduce((a, b) => a + b, 0) : null;
     };
-    const startF = first.followers_snapshot;
-    const endF = last.followers_snapshot;
+    // The latest reading in the window, not simply the last row's: since
+    // 29 Sept 2026 the count is written to one date per collection, so most
+    // rows legitimately have none.
+    const withF = series.filter((x) => typeof x.followers_snapshot === 'number');
+    const endF = withF.length ? withF[withF.length - 1].followers_snapshot : null;
     return {
       name: last.page_name,
       days: series.length,
       followers: endF,
-      // Only meaningful once there are snapshots from different days; on a
-      // single collection every snapshot is identical, so this reads 0 rather
-      // than pretending to be a trend.
-      followerChange: (typeof startF === 'number' && typeof endF === 'number') ? endF - startF : null,
       views: sum('views_total'),
       reach: sum('media_view_unique'),
       engagements: sum('post_engagements'),
@@ -829,8 +846,13 @@ async function pageGrowth(store, { page_id, days: d = 30 }) {
     };
   }).sort((a, b) => (b.views || 0) - (a.views || 0));
 
+  const ig = await igGrowthSection(store, {
+    page_id, since: win.explicit ? win.from : sinceFor(days), until: win.explicit ? win.to : undefined,
+  });
+
   return {
-    text: `**Page-level trend · last ${days} days**\n\n`
+    text: `**Page-level trend · ${win.explicit ? win.label : `last ${days} days`}**\n\n`
+      + '**Facebook**\n\n'
       + table(
         ['Page', 'Days', 'Followers', 'Page views', 'Reach', 'Engagements', 'Follows', 'Unfollows', 'Net'],
         summary.map((s) => [
@@ -841,8 +863,69 @@ async function pageGrowth(store, { page_id, days: d = 30 }) {
       )
       + '\n\n_Page-level figures, not post totals: page views include profile visits, and reach counts people who saw anything from the page. '
       + '"Net" is follows minus unfollows, both from Meta\'s own daily metrics — a negative number means the page shed followers over the window even if it was reaching people. '
-      + 'Unfollows have only been collected since 7 September 2026, so "—" on an earlier window means not measured, not zero. '
-      + 'The follower count is as at the last collection, not as at each date: a backfill stamps every row with one day\'s number, which is why the snapshot is not used to derive the trend._',
+      // Was "only collected since 7 September". The 7 Sept and 28 Sept
+      // backfills re-read the page series, and unfollows now run from 10 June.
+      + 'Unfollows are held from June 2026; "—" means Meta returned nothing for that window, not zero. '
+      + '"Followers" is the latest count held in the window. Before 29 Sept 2026 each collection wrote one day\'s count across its whole window, so older stored counts are not a history and the trend is taken from follows and unfollows instead._'
+      + (ig ? ig.text : ''),
+    data: { facebook: summary, instagram: ig ? ig.data : null },
+  };
+}
+
+// Instagram follower movement for page_growth. Returned as its own section
+// because the two platforms' numbers are different quantities from different
+// APIs, and adding them together would be a figure neither platform reports.
+//
+// Net needs BOTH halves for EVERY day in the window. New followers go back as
+// far as the account table does; unfollows only from the first collection that
+// asked for them the right way (29 Sept 2026, reaching back ~30 days). A net
+// over a window where some days lack unfollows would count those days' gains
+// and none of their losses, so it is withheld and the coverage stated instead.
+async function igGrowthSection(store, { page_id, since, until }) {
+  if (typeof store.igAccountGrowth !== 'function') return null;
+  let rows;
+  try { rows = await store.igAccountGrowth({ page_id, since, until }); } catch (e) { return null; }
+  if (!rows || !rows.length) return null;
+
+  const byAccount = new Map();
+  for (const r of rows) {
+    const k = r.ig_username || r.page_id;
+    if (!byAccount.has(k)) byAccount.set(k, []);
+    byAccount.get(k).push(r);
+  }
+  const num = (v) => (typeof v === 'number' ? v : null);
+  const summary = [...byAccount.entries()].map(([name, series]) => {
+    series.sort((a, b) => (a.metric_date < b.metric_date ? -1 : 1));
+    // daily_follows and follower_count are the same number from two metrics
+    // (they matched on every day probed); prefer the split's own figure.
+    const gained = series.map((x) => num(x.daily_follows) ?? num(x.follower_count)).filter((v) => v !== null);
+    const lostDays = series.filter((x) => num(x.daily_unfollows) !== null);
+    const dayCount = series.filter((x) => (num(x.daily_follows) ?? num(x.follower_count)) !== null).length;
+    const newFollowers = gained.length ? gained.reduce((a, b) => a + b, 0) : null;
+    const unfollows = lostDays.length ? lostDays.reduce((a, x) => a + x.daily_unfollows, 0) : null;
+    const complete = dayCount > 0 && lostDays.length >= dayCount;
+    const withF = series.filter((x) => num(x.followers_snapshot) !== null);
+    return {
+      name,
+      followers: withF.length ? withF[withF.length - 1].followers_snapshot : null,
+      newFollowers,
+      unfollows,
+      net: complete ? newFollowers - unfollows : null,
+      measured: `${lostDays.length} of ${dayCount}`,
+    };
+  }).sort((a, b) => (b.followers || 0) - (a.followers || 0));
+
+  const partial = summary.some((s) => s.net === null && s.newFollowers !== null);
+  return {
+    text: '\n\n**Instagram**\n\n'
+      + table(['Account', 'Followers', 'New followers', 'Unfollows', 'Net', 'Days with unfollows'],
+        summary.map((s) => ['@' + s.name, n(s.followers), n(s.newFollowers), n(s.unfollows), n(s.net), s.measured]))
+      + '\n\n_"Unfollows" counts accounts that unfollowed or left Instagram, from Meta\'s follows_and_unfollows metric, day by day. '
+      + '"Net" is new followers minus unfollows, and is shown only when unfollows were measured on every day of the window'
+      + (partial
+        ? ' — "—" here means some days lack unfollows, so a net would count those days\' gains and none of their losses. Unfollows are held only from roughly the end of August 2026, when collection began asking for them; choose a window inside that for a net.'
+        : '.')
+      + ' Instagram serves account insights for about the last 30 days only, so an older window cannot be filled in later._',
     data: summary,
   };
 }
@@ -881,7 +964,10 @@ async function instagramPosts(store, { page_id, days: d = 30, sort = 'reach', li
       )
       + '\n\n_Saves per 1,000 reached is the intent signal worth watching: saving a post is a deliberate act in a way a like is not, and Facebook has no equivalent metric. '
       + '"Follows" is followers gained from that post and exists for FEED posts only; "Avg watch" exists for Reels only — Meta refuses each metric on the other type, so "—" means not offered rather than zero. '
-      + 'Both have only been collected since 7 September 2026. '
+      // Was "only collected since 7 September", which stopped being true when
+      // the backfills re-read every Reel from July on: both are lifetime
+      // figures, so any post inside a collection window gets them.
+      + 'Both are lifetime figures re-read on every collection, so "—" on an older post means it has not been re-read since they were added, not zero. '
       + SOURCE_NOTE + '_',
     data: rows,
   };
@@ -945,7 +1031,7 @@ const TOOLS = [
   },
   {
     name: 'top_posts',
-    description: 'Rank organic posts by a chosen metric, or export every post for a page. Use this to answer "which of our posts performed best". Sort by "beyond" to find posts that spread furthest past existing followers — usually the most useful measure of whether content travelled, as opposed to merely reaching people who already follow the page. For a FULL EXPORT of a high-volume page rather than a ranking, set compact: true and page through with offset. Every row names its format (Reel, Photo, Carousel, Link, Album, Text, Shared link…), not just video or not.',
+    description: 'Rank organic posts by a chosen metric, or export every post for a page. Use this to answer "which of our posts performed best". Sort by "beyond" to find posts that spread furthest past existing followers — usually the most useful measure of whether content travelled, as opposed to merely reaching people who already follow the page. For a FULL EXPORT of a high-volume page rather than a ranking, set compact: true and page through with offset. Every row names its format (Reel, Photo, Carousel, Link, Album, Text, Shared link…), not just video or not, and Facebook Reels show their average watch time.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -954,7 +1040,7 @@ const TOOLS = [
         sort: { type: 'string', enum: ['views', 'reach', 'beyond', 'engagement', 'rate', 'shares', 'recent'], description: 'Ranking metric (default views).' },
         limit: { type: 'number', description: 'How many posts to return (default 10, max 100 — or up to 1000 with compact, subject to the response budget).' },
         offset: { type: 'number', description: 'Skip this many ranked posts before returning. Use with compact to walk a whole page in blocks.' },
-        compact: { type: 'boolean', description: 'EXPORT MODE. Drops post text and the baseline comparison, keeps date, format, views, reach, reactions, comments, shares, engagement and a linked post id, and returns as many rows as fit. Use this when someone wants every post for a page rather than a top ten — a high-volume page has hundreds, and the ranked view can only ever show the first hundred. The output names the offset to ask for next until the export is complete.' },
+        compact: { type: 'boolean', description: 'EXPORT MODE. Shortens post text to a linked snippet and drops the baseline comparison, keeps date, format, views, reach, reactions, comments, shares, engagement and Reel watch time, and returns as many rows as fit. Use this when someone wants every post for a page rather than a top ten — a high-volume page has hundreds, and the ranked view can only ever show the first hundred. The output names the offset to ask for next until the export is complete.' },
       },
       additionalProperties: false,
     },
@@ -988,7 +1074,7 @@ const TOOLS = [
   },
   {
     name: 'search_posts',
-    description: 'Search the text of collected posts across every page — Facebook post copy AND Instagram captions — and return them ranked by reach, in separate sections per platform. Use this whenever someone asks about a topic, campaign or specific post rather than about a page overall — "how did our marriage posts do", "what did we publish about assisted dying", "find the Sarah Morse posts". Searches the text the page wrote, not comments, and not anything spoken or shown inside a video.',
+    description: 'Search the text of collected posts across every page — Facebook post copy AND Instagram captions — and return them ranked by reach, in separate sections per platform. Use this whenever someone asks about a topic, campaign or specific post rather than about a page overall — "how did our marriage posts do", "what did we publish about assisted dying", "find the Sarah Morse posts". Also searches what is SPOKEN in Instagram Reels, from transcripts made of the audio, and says when a post matched on its spoken words rather than its caption. Does not search comments, text shown on screen inside a video, or speech in Facebook videos.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -1023,7 +1109,9 @@ const TOOLS = [
       type: 'object',
       properties: {
         page_id: { type: 'string', description: 'Restrict to one page. Omit for every collected page.' },
-        days: { type: 'number', description: 'Window in days (default 30).' },
+        days: { type: 'number', description: 'Window in days (default 30). Ignored when since is given.' },
+        since: { type: 'string', description: 'Window start, YYYY-MM-DD. Use with until for an exact calendar week or month, e.g. a Monday-to-Sunday Scorecard week.' },
+        until: { type: 'string', description: 'Window end INCLUSIVE, YYYY-MM-DD. Defaults to today.' },
       },
       additionalProperties: false,
     },
