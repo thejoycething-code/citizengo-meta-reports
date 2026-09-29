@@ -185,7 +185,7 @@ alter table public.meta_page_metrics enable row level security;
 
 -- Daily follower change is computed, not stored, so it cannot drift out of step
 -- with the snapshots it derives from.
-create or replace view public.meta_page_growth as
+create or replace view public.meta_page_growth with (security_invoker = true) as
 select
   m.page_id,
   g.name as page_name,
@@ -277,7 +277,7 @@ create unique index if not exists meta_ig_media_metrics_day_key
 -- INNER JOIN on metrics, deliberately: a media row with no metrics yet has
 -- nothing to report, and showing it with every figure blank invites reading a
 -- collection gap as zero performance.
-create or replace view public.meta_ig_latest as
+create or replace view public.meta_ig_latest with (security_invoker = true) as
   select m.media_id, m.page_id, g.name as page_name, m.ig_username,
          m.media_type, m.media_product_type, m.caption, m.permalink, m."timestamp",
          x.collected_date, x.reach, x.views, x.saved, x.total_interactions,
@@ -418,7 +418,7 @@ grant select on public.meta_ig_media_transcript to meta_readonly;
 -- by its caption. An inner join would make "not transcribed yet" look like
 -- "does not exist" - the exact confusion the transcript table's error rows
 -- exist to prevent.
-create or replace view public.meta_ig_searchable as
+create or replace view public.meta_ig_searchable with (security_invoker = true) as
   select l.*,
          t.transcript,
          t.language      as transcript_language,
@@ -575,7 +575,7 @@ revoke all on public.meta_collection_runs from anon, authenticated;
 -- figure that still exists. (The nightly Sheet mirror was retired 8 Sept 2026;
 -- exports are on demand. See collector/sync-sheet.js.)
 -- ---------------------------------------------------------------------------
-create or replace view public.meta_post_latest as
+create or replace view public.meta_post_latest with (security_invoker = true) as
 select
   p.post_id,
   p.page_id,
@@ -698,7 +698,7 @@ revoke all on public.meta_auth_failures from anon, authenticated;
 -- INSIGHTS figure, so both columns were the same number and every post would
 -- read as exactly 1.00x - indistinguishable from a genuine result, and wrong for
 -- every widely-shared post in the archive.
-create or replace view public.meta_post_amplification as
+create or replace view public.meta_post_amplification with (security_invoker = true) as
 with latest as (
   select distinct on (m.post_id)
     m.post_id, m.page_id, m.collected_date,
@@ -811,3 +811,78 @@ create index if not exists meta_breakout_alerts_story
 
 alter table public.meta_breakout_alerts enable row level security;
 revoke all on public.meta_breakout_alerts from anon, authenticated;
+
+-- ---------------------------------------------------------------------------
+-- PUBLIC-KEY LOCKDOWN (29 Sept 2026)
+--
+-- Supabase's linter found five views that ran as their owner (SECURITY
+-- DEFINER) and a transcript table with RLS off. Tested with the project's
+-- publishable key - which is public by design - all six returned data:
+-- every Instagram post and transcript, every page's daily series, and ad spend
+-- per post. Two causes, both invisible from this file:
+--
+--   * Supabase grants anon/authenticated on every new object in public by
+--     default. The revokes above covered the tables written first and missed
+--     the views and the later tables.
+--   * `create or replace view` RESETS a view's options unless the statement
+--     repeats them. meta_post_latest had `alter view ... security_invoker = on`
+--     below its definition, and a later migration that recreated the view
+--     silently dropped it. So the setting now lives INSIDE every view
+--     definition, where recreating the view cannot lose it.
+--
+-- The connector, collector and digest use the service key, which bypasses RLS,
+-- so none of this changes what they read. meta_readonly has a select policy on
+-- every table a view reads, so it keeps working through security_invoker views.
+
+-- Was created directly in the database and never written here; a rebuild
+-- would not have recreated it. Definition taken from the live view.
+create or replace view public.meta_post_paid_vs_organic with (security_invoker = true) as
+with spend as (
+  select post_id,
+         sum(spend)       as total_spend,
+         max(currency)    as currency,
+         sum(impressions) as ad_impressions,
+         sum(reach)       as ad_reach,
+         count(*)         as ad_count,
+         min(date_start)  as first_day,
+         max(date_stop)   as last_day
+    from public.meta_post_ad_spend
+   group by post_id
+)
+select p.post_id, p.page_name, p.created_time, p.message, p.permalink_url,
+       p.views_total, p.views_unique, p.views_organic, p.views_paid,
+       s.total_spend, s.currency, s.ad_reach, s.ad_impressions, s.ad_count,
+       s.first_day, s.last_day,
+       case when coalesce(s.ad_reach, 0) > 0
+            then round(s.total_spend / s.ad_reach * 1000, 2) end as cost_per_1k_reached,
+       case when coalesce(p.views_paid, 0) > 0 and p.views_organic is not null
+            then round(p.views_organic::numeric / p.views_paid::numeric, 2) end as organic_to_paid_ratio
+  from public.meta_post_latest p
+  join spend s on s.post_id = p.post_id;
+grant select on public.meta_post_paid_vs_organic to meta_readonly;
+
+-- Belt and braces for stores built before the WITH clauses above existed.
+alter view public.meta_ig_latest            set (security_invoker = true);
+alter view public.meta_ig_searchable        set (security_invoker = true);
+alter view public.meta_page_growth          set (security_invoker = true);
+alter view public.meta_post_amplification   set (security_invoker = true);
+alter view public.meta_post_latest          set (security_invoker = true);
+alter view public.meta_post_paid_vs_organic set (security_invoker = true);
+
+alter table public.meta_ig_media_transcript enable row level security;
+drop policy if exists meta_readonly_select_meta_ig_media_transcript on public.meta_ig_media_transcript;
+create policy meta_readonly_select_meta_ig_media_transcript
+  on public.meta_ig_media_transcript for select to meta_readonly using (true);
+drop policy if exists meta_readonly_select_meta_ig_account_metrics on public.meta_ig_account_metrics;
+create policy meta_readonly_select_meta_ig_account_metrics
+  on public.meta_ig_account_metrics for select to meta_readonly using (true);
+
+revoke all on public.meta_ig_latest, public.meta_ig_searchable, public.meta_page_growth,
+  public.meta_post_amplification, public.meta_post_paid_vs_organic, public.meta_post_latest,
+  public.meta_ig_media_transcript, public.meta_ig_media, public.meta_ig_media_metrics,
+  public.meta_page_metrics, public.meta_post_ad_spend, public.meta_ig_account_metrics
+  from anon, authenticated;
+
+-- New objects in public no longer auto-grant the public roles. This is what
+-- would have prevented the leak; the revokes above only clean it up.
+alter default privileges in schema public revoke all on tables from anon, authenticated;
