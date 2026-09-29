@@ -61,10 +61,27 @@ const IG_ACCOUNT_TOTALS = {
   replies: 'replies',
 };
 
-// Served as total_value with a breakdown rather than a scalar, so it is stored
-// as jsonb whole instead of being flattened into a number that loses the half
-// of it that matters.
-const IG_ACCOUNT_BREAKDOWNS = { follows_and_unfollows: 'follows_and_unfollows' };
+// Served as total_value with a breakdown rather than a scalar. Empty since
+// follows_and_unfollows moved to its own per-day pass below: asked for here,
+// without breakdown=follow_type and without a date range, it returned an empty
+// envelope every night from August to 29 Sept 2026 and the jsonb column it
+// filled holds nothing. The column is left in place; nothing writes to it.
+const IG_ACCOUNT_BREAKDOWNS = {};
+
+// FOLLOWS AND UNFOLLOWS, one Meta day at a time - the only route to Instagram
+// NET follower growth, which the Scorecard needs (29 Sept 2026). follower_count
+// above is new followers only.
+//
+// Probed live (scripts/probe-ig-follows.js): breakdown=follow_type returns
+// FOLLOWER and NON_FOLLOWER counts for any range inside roughly the last five
+// weeks, including a SINGLE day - but only when since/until sit on Meta's day
+// boundary. A UTC-midnight day and an 08:00Z day both came back empty in
+// September, when the boundary was 07:00Z (Pacific midnight, summer time).
+// So the boundaries are taken from follower_count's own end_time values rather
+// than computed, which also carries this through the November clock change
+// without anyone remembering to. FOLLOWER matched follower_count exactly on
+// every day checked (HazteOir 27 Sept: 870 and 870), which is the control.
+const IG_FOLLOW_SPLIT = { metric: 'follows_and_unfollows', metric_type: 'total_value', period: 'day', breakdown: 'follow_type' };
 
 // See collect.js: Meta's end_time is when the day closed (07:00Z, midnight
 // Pacific), so the day it covers is the one before.
@@ -195,16 +212,17 @@ async function collectInstagram({ page, as, call, lookbackDays, maxPosts, runSta
 async function collectAccountMetrics({ ig, page, as, call, lookbackDays, runStarted, collectedDate }) {
   const errors = {};
   const byDate = new Map();
-  // Every row carries EVERY column, even the ones this date will never fill.
-  // PostgREST rejects a bulk insert whose objects have differing key sets with
-  // a bare "All object keys must match" (PGRST102), and the older dates here
-  // legitimately have fewer values than the current day.
-  const BLANK = Object.fromEntries([
-    ...Object.values(IG_ACCOUNT_SERIES),
-    ...Object.values(IG_ACCOUNT_TOTALS),
-    ...Object.values(IG_ACCOUNT_BREAKDOWNS),
-  ].map((c) => [c, null]));
-
+  // A row carries ONLY the columns observed for its date. Older dates get the
+  // series metrics and nothing else; the current day also gets the snapshot
+  // and the total_value metrics.
+  //
+  // This used to fill every row with every column, nulls included, to satisfy
+  // PostgREST's rule that a bulk insert's objects share one key set (PGRST102).
+  // Under merge-duplicates those nulls overwrote the stored values, so each
+  // night blanked the follower count, views and profile visits that the night
+  // before had saved - HazteOir held 52 days of rows and a follower count on
+  // one of them (29 Sept 2026). The collector now upserts one batch per key
+  // set (upsertByShape in collect.js), which is why the rows here may differ.
   const rowFor = (date) => {
     if (!byDate.has(date)) {
       byDate.set(date, {
@@ -213,9 +231,6 @@ async function collectAccountMetrics({ ig, page, as, call, lookbackDays, runStar
         ig_username: ig.username || null,
         metric_date: date,
         collected_at: runStarted.toISOString(),
-        followers_snapshot: null,
-        media_count: null,
-        ...BLANK,
         errors: null,
       });
     }
@@ -226,6 +241,7 @@ async function collectAccountMetrics({ ig, page, as, call, lookbackDays, runStar
   const until = Math.floor(runStarted.getTime() / 1000);
   const since = until - days * 86400;
 
+  const dayEnds = [];
   for (const [metric, column] of Object.entries(IG_ACCOUNT_SERIES)) {
     const r = await call(`/${ig.id}/insights`, { metric, period: 'day', since, until }, as);
     if (!r.ok) {
@@ -233,6 +249,9 @@ async function collectAccountMetrics({ ig, page, as, call, lookbackDays, runStar
       continue;
     }
     const series = (r.body && r.body.data && r.body.data[0] && r.body.data[0].values) || [];
+    if (metric === 'follower_count') {
+      for (const point of series) if (point && point.end_time) dayEnds.push(point.end_time);
+    }
     for (const point of series) {
       if (!point || point.end_time === undefined) continue;
       // The day the value DESCRIBES, not the day it closed - same rule and same
@@ -242,6 +261,36 @@ async function collectAccountMetrics({ ig, page, as, call, lookbackDays, runStar
       rowFor(dayDescribed(point.end_time))[column] =
         typeof point.value === 'number' ? point.value : null;
     }
+  }
+
+  // One call per day, on the boundaries follower_count just reported. A day
+  // Meta answers with no results is left UNSET rather than written as null or
+  // zero, so a hiccup cannot blank a day an earlier night stored.
+  let splitErrors = 0;
+  for (const end of dayEnds) {
+    const untilDay = Math.floor(Date.parse(end) / 1000);
+    const r = await call(`/${ig.id}/insights`, { ...IG_FOLLOW_SPLIT, since: untilDay - 86400, until: untilDay }, as);
+    if (!r.ok) {
+      splitErrors++;
+      errors.follows_and_unfollows = { code: r.error ? r.error.code : null, message: r.error ? r.error.message : 'unknown' };
+      continue;
+    }
+    const d = r.body && r.body.data && r.body.data[0];
+    const bd = d && d.total_value && d.total_value.breakdowns && d.total_value.breakdowns[0];
+    const results = (bd && bd.results) || [];
+    const valueOf = (type) => {
+      const hit = results.find((x) => x.dimension_values && x.dimension_values[0] === type);
+      return hit && typeof hit.value === 'number' ? hit.value : null;
+    };
+    const follows = valueOf('FOLLOWER');
+    const unfollows = valueOf('NON_FOLLOWER');
+    if (follows === null && unfollows === null) continue;
+    const row = rowFor(dayDescribed(end));
+    row.daily_follows = follows;
+    row.daily_unfollows = unfollows;
+  }
+  if (splitErrors && splitErrors < dayEnds.length) {
+    errors.follows_and_unfollows.days_failed = splitErrors;
   }
 
   // The current day gets the point-in-time totals and the total_value metrics.
@@ -274,6 +323,6 @@ async function collectAccountMetrics({ ig, page, as, call, lookbackDays, runStar
 module.exports = {
   collectInstagram, collectAccountMetrics,
   IG_METRICS, IG_FEED_METRICS, IG_REELS_METRICS,
-  IG_ACCOUNT_SERIES, IG_ACCOUNT_TOTALS, IG_ACCOUNT_BREAKDOWNS,
+  IG_ACCOUNT_SERIES, IG_ACCOUNT_TOTALS, IG_ACCOUNT_BREAKDOWNS, IG_FOLLOW_SPLIT,
   IG_MEDIA_FIELDS,
 };

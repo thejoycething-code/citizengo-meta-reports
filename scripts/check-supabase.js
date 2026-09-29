@@ -80,7 +80,7 @@ const EXPECTED = {
   meta_ig_account_metrics: ['ig_user_id', 'page_id', 'ig_username', 'metric_date',
     'collected_at', 'followers_snapshot', 'media_count', 'follower_count', 'reach',
     'views', 'profile_views', 'website_clicks', 'accounts_engaged',
-    'total_interactions', 'replies', 'follows_and_unfollows', 'errors'],
+    'total_interactions', 'replies', 'follows_and_unfollows', 'daily_follows', 'daily_unfollows', 'errors'],
   // Per-person connector credentials. Only ever read by the service key, so the
   // preflight checks the shape rather than the contents.
   meta_access_tokens: ['name', 'token_hash', 'note', 'created_at', 'created_by',

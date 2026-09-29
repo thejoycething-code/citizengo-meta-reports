@@ -290,7 +290,6 @@ async function collectPageInsights(page, as, followersSnapshot) {
         byDate.set(date, {
           page_id: page.page_id,
           metric_date: date,
-          followers_snapshot: followersSnapshot ?? null,
           collected_at: RUN_STARTED.toISOString(),
           errors: null,
         });
@@ -304,7 +303,39 @@ async function collectPageInsights(page, as, followersSnapshot) {
 
   const rows = [...byDate.values()];
   if (Object.keys(errors).length) rows.forEach((r) => { r.errors = errors; });
+
+  // The follower count is a point-in-time reading taken NOW, so it belongs to
+  // one date only: the newest day in the series. It used to be stamped on
+  // every row, and under merge-duplicates that rewrote the whole lookback
+  // window with today's number each night - the 28 Sept 90-day backfill left
+  // HazteOir reading 307,788 on every day from July on, and a history of
+  // follower counts could never accumulate. Rows without the key leave the
+  // stored value alone (upsertByShape below), so each night now adds one
+  // reading and keeps the ones before it.
+  if (rows.length && typeof followersSnapshot === 'number') {
+    const newest = rows.reduce((a, b) => (a.metric_date > b.metric_date ? a : b));
+    newest.followers_snapshot = followersSnapshot;
+  }
   return { rows, errorCount: Object.keys(errors).length };
+}
+
+// Upsert rows that do not all carry the same columns, one batch per shape.
+//
+// PostgREST refuses a bulk insert whose objects have different keys, and the
+// tempting fix - fill the gaps with null - is exactly wrong under
+// merge-duplicates, where a null overwrites whatever was stored. That is how
+// the Instagram account table lost every day's follower count, views and
+// profile visits but the latest: each night rewrote the previous 30 days with
+// nulls in the columns only the current day can fill. A row should carry the
+// columns it actually observed and nothing else; this groups them so it can.
+async function upsertByShape(table, rows) {
+  const groups = new Map();
+  for (const r of rows) {
+    const shape = Object.keys(r).sort().join(',');
+    if (!groups.has(shape)) groups.set(shape, []);
+    groups.get(shape).push(r);
+  }
+  for (const group of groups.values()) await sink.upsert(table, group);
 }
 
 // --- post listing ----------------------------------------------------------
@@ -591,7 +622,7 @@ async function collectPageInner(page, pageToken, out) {
     // follower growth is exactly the thing you want on a quiet week, and
     // gating it on media.length would leave holes on the days that matter.
     if (ig.linked && ig.account && ig.account.rows.length) {
-      await sink.upsert('meta_ig_account_metrics', ig.account.rows);
+      await upsertByShape('meta_ig_account_metrics', ig.account.rows);
       console.log(`   instagram: @${ig.username} — ${ig.account.rows.length} account-day row(s)`
         + `${ig.account.errorCount ? `, ${ig.account.errorCount} metric(s) unavailable` : ''}`);
     }
@@ -606,7 +637,7 @@ async function collectPageInner(page, pageToken, out) {
   // the window still has views and follower movement worth recording.
   const { rows: pageRows, errorCount: pageErrors } = await collectPageInsights(page, as, page.followers_count);
   if (pageRows.length) {
-    await sink.upsert('meta_page_metrics', pageRows);
+    await upsertByShape('meta_page_metrics', pageRows);
     console.log(`   page insights: ${pageRows.length} day(s)${pageErrors ? ` · ${pageErrors} metric(s) unavailable` : ''}`);
   } else {
     console.log(`   page insights: none returned${pageErrors ? ` · ${pageErrors} metric(s) errored` : ''}`);

@@ -345,9 +345,20 @@ create table if not exists public.meta_ig_account_metrics (
   accounts_engaged      bigint,
   total_interactions    bigint,
   replies               bigint,
+  -- Never filled: asked for without breakdown=follow_type it returned an empty
+  -- envelope every night. Superseded by the two columns below (29 Sept 2026).
   follows_and_unfollows jsonb,
+  -- follows_and_unfollows split by follow_type, one Meta day at a time, dated
+  -- like the series columns (the day described). daily_follows is FOLLOWER
+  -- and matches follower_count; daily_unfollows is NON_FOLLOWER - accounts
+  -- that unfollowed or left Instagram - and is the half that makes a net.
+  daily_follows         bigint,
+  daily_unfollows       bigint,
   errors                jsonb
 );
+-- For stores created before the columns existed.
+alter table public.meta_ig_account_metrics add column if not exists daily_follows bigint;
+alter table public.meta_ig_account_metrics add column if not exists daily_unfollows bigint;
 
 create unique index if not exists meta_ig_account_metrics_day_key
   on public.meta_ig_account_metrics (ig_user_id, metric_date);
