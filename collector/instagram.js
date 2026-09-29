@@ -72,15 +72,24 @@ const IG_ACCOUNT_BREAKDOWNS = {};
 // NET follower growth, which the Scorecard needs (29 Sept 2026). follower_count
 // above is new followers only.
 //
-// Probed live (scripts/probe-ig-follows.js): breakdown=follow_type returns
-// FOLLOWER and NON_FOLLOWER counts for any range inside roughly the last five
-// weeks, including a SINGLE day - but only when since/until sit on Meta's day
-// boundary. A UTC-midnight day and an 08:00Z day both came back empty in
-// September, when the boundary was 07:00Z (Pacific midnight, summer time).
-// So the boundaries are taken from follower_count's own end_time values rather
-// than computed, which also carries this through the November clock change
-// without anyone remembering to. FOLLOWER matched follower_count exactly on
-// every day checked (HazteOir 27 Sept: 870 and 870), which is the control.
+// Probed live (scripts/probe-ig-follows.js, three rounds on 29 Sept 2026):
+// breakdown=follow_type returns FOLLOWER and NON_FOLLOWER counts for any range
+// inside roughly the last five weeks. Meta sums every DAY WHOSE CLOSING TIME
+// (end_time) FALLS INSIDE [since, until], both ends inclusive. So:
+//
+//   [end - 1 day, end]        covers TWO closings - two days summed. The first
+//                             version of this code did exactly that, and stored
+//                             every day as itself plus the day before
+//                             (HazteOir 22 Sept: 1,209 = 670 + 539).
+//   [end - 1 day + 1s, end]   covers ONE closing - one day. Used below.
+//   a window holding no closing time returns an empty envelope, which is why
+//   UTC-midnight and 08:00Z single days came back empty in round one.
+//
+// The closings are taken from follower_count's own end_time values rather than
+// computed, which carries this through the November clock change without
+// anyone remembering to. The control: FOLLOWER for one closing equals
+// follower_count for the same end_time on every account probed (HazteOir 539,
+// Citizen GO UK 2, CitizenGO Canada 0 for the day closing 23 Sept 07:00Z).
 const IG_FOLLOW_SPLIT = { metric: 'follows_and_unfollows', metric_type: 'total_value', period: 'day', breakdown: 'follow_type' };
 
 // See collect.js: Meta's end_time is when the day closed (07:00Z, midnight
@@ -263,13 +272,14 @@ async function collectAccountMetrics({ ig, page, as, call, lookbackDays, runStar
     }
   }
 
-  // One call per day, on the boundaries follower_count just reported. A day
-  // Meta answers with no results is left UNSET rather than written as null or
-  // zero, so a hiccup cannot blank a day an earlier night stored.
+  // One call per day: a window holding exactly one closing time, the one
+  // follower_count just reported. A day Meta answers with no results is left
+  // UNSET rather than written as null or zero, so a hiccup cannot blank a day
+  // an earlier night stored.
   let splitErrors = 0;
   for (const end of dayEnds) {
-    const untilDay = Math.floor(Date.parse(end) / 1000);
-    const r = await call(`/${ig.id}/insights`, { ...IG_FOLLOW_SPLIT, since: untilDay - 86400, until: untilDay }, as);
+    const closing = Math.floor(Date.parse(end) / 1000);
+    const r = await call(`/${ig.id}/insights`, { ...IG_FOLLOW_SPLIT, since: closing - 86400 + 1, until: closing }, as);
     if (!r.ok) {
       splitErrors++;
       errors.follows_and_unfollows = { code: r.error ? r.error.code : null, message: r.error ? r.error.message : 'unknown' };

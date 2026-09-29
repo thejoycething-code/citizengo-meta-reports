@@ -31,18 +31,22 @@ async function call(path, params) {
     return { ok: true, body: { data: [{ values: ENDS.map((end_time, i) => ({ end_time, value: GAINED[i] })) }] } };
   }
   if (params.metric === 'follows_and_unfollows') {
-    const i = ENDS.findIndex((e) => Math.floor(Date.parse(e) / 1000) === params.until);
-    // Only a request on the day boundary gets results - as Meta behaves.
-    if (i < 0 || params.since !== params.until - 86400 || params.breakdown !== 'follow_type') {
-      return { ok: true, body: { data: [{ total_value: { breakdowns: [{ dimension_keys: ['follow_type'] }] } }] } };
-    }
+    // As Meta behaves (probed 29 Sept 2026): sum every day whose closing time
+    // falls inside [since, until], both ends inclusive; no closing inside, no
+    // results. The first version asked [end - 1 day, end] and got two days.
+    const inside = ENDS.map((e, i) => [Math.floor(Date.parse(e) / 1000), i])
+      .filter(([t]) => t >= params.since && t <= params.until).map(([, i]) => i);
+    const empty = { ok: true, body: { data: [{ total_value: { breakdowns: [{ dimension_keys: ['follow_type'] }] } }] } };
+    if (!inside.length || params.breakdown !== 'follow_type') return empty;
+    const i = inside[inside.length - 1];
     // The middle day comes back empty, to prove an empty day is left unset.
     if (i === 1) return { ok: true, body: { data: [{ total_value: { breakdowns: [{ dimension_keys: ['follow_type'] }] } }] } };
+    const sum = (arr) => inside.reduce((a, k) => a + arr[k], 0);
     return {
       ok: true,
       body: { data: [{ total_value: { breakdowns: [{ dimension_keys: ['follow_type'], results: [
-        { dimension_values: ['FOLLOWER'], value: GAINED[i] },
-        { dimension_values: ['NON_FOLLOWER'], value: LOST[i] },
+        { dimension_values: ['FOLLOWER'], value: sum(GAINED) },
+        { dimension_values: ['NON_FOLLOWER'], value: sum(LOST) },
       ] }] } }] },
     };
   }
@@ -82,9 +86,14 @@ async function call(path, params) {
 
   const splitCalls = calls.filter((c) => c.params.metric === 'follows_and_unfollows');
   check('one follows_and_unfollows call per day', splitCalls.length === ENDS.length, `${splitCalls.length}`);
-  check('every call sits on a boundary follower_count reported',
-    splitCalls.every((c) => ENDS.some((e) => Math.floor(Date.parse(e) / 1000) === c.params.until)
-      && c.params.since === c.params.until - 86400));
+  check('every call covers exactly ONE closing time follower_count reported',
+    splitCalls.every((c) => ENDS.filter((e) => {
+      const t = Math.floor(Date.parse(e) / 1000);
+      return t >= c.params.since && t <= c.params.until;
+    }).length === 1));
+  check('each day equals follower_count for the same closing (the control)',
+    rows.filter((r) => 'daily_follows' in r).every((r) => r.daily_follows === r.follower_count),
+    rows.filter((r) => 'daily_follows' in r).map((r) => `${r.metric_date}:${r.daily_follows}/${r.follower_count}`).join(' '));
   check('the old no-breakdown request is gone',
     !calls.some((c) => c.params.metric === 'follows_and_unfollows' && !c.params.breakdown));
 
