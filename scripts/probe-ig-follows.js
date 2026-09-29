@@ -43,6 +43,14 @@ const ATTEMPTS = [
   { label: 'breakdown, yesterday only', params: { metric: 'follows_and_unfollows', metric_type: 'total_value', period: 'day', breakdown: 'follow_type', since: today0 - DAY, until: today0 } },
   { label: 'breakdown, last 7 days', params: { metric: 'follows_and_unfollows', metric_type: 'total_value', period: 'day', breakdown: 'follow_type', since: today0 - 7 * DAY, until: today0 } },
   { label: 'breakdown, 28-35 days ago', params: { metric: 'follows_and_unfollows', metric_type: 'total_value', period: 'day', breakdown: 'follow_type', since: today0 - 35 * DAY, until: today0 - 28 * DAY } },
+  // Round 2 (29 Sept): the UTC-midnight single day came back empty while 7-day
+  // ranges worked. Meta's day closes at 07:00Z (Pacific midnight, summer), so
+  // try single days on that boundary, and a 2-day range, to find which it is.
+  { label: 'breakdown, 1 day on 07:00Z boundary', params: { metric: 'follows_and_unfollows', metric_type: 'total_value', period: 'day', breakdown: 'follow_type', since: today0 - 2 * DAY + 7 * 3600, until: today0 - DAY + 7 * 3600 } },
+  { label: 'breakdown, 1 day on 08:00Z boundary', params: { metric: 'follows_and_unfollows', metric_type: 'total_value', period: 'day', breakdown: 'follow_type', since: today0 - 2 * DAY + 8 * 3600, until: today0 - DAY + 8 * 3600 } },
+  { label: 'breakdown, 2 days on 07:00Z boundary', params: { metric: 'follows_and_unfollows', metric_type: 'total_value', period: 'day', breakdown: 'follow_type', since: today0 - 3 * DAY + 7 * 3600, until: today0 - DAY + 7 * 3600 } },
+  { label: 'breakdown, 2 days UTC midnight', params: { metric: 'follows_and_unfollows', metric_type: 'total_value', period: 'day', breakdown: 'follow_type', since: today0 - 2 * DAY, until: today0 } },
+  { label: 'breakdown, 1 day, a week back', params: { metric: 'follows_and_unfollows', metric_type: 'total_value', period: 'day', breakdown: 'follow_type', since: today0 - 7 * DAY + 7 * 3600, until: today0 - 6 * DAY + 7 * 3600 } },
   // Control: the gross series we already store, same window, to compare against.
   { label: 'control: follower_count, last 7 days', params: { metric: 'follower_count', period: 'day', since: today0 - 7 * DAY, until: today0 } },
 ];
