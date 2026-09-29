@@ -154,6 +154,11 @@ jobs:
       - name: Announce posts past 100,000 views
         if: success() && env.SLACK_BREAKOUT_WEBHOOK_URL != '' && env.DRY_RUN != 'true'
         continue-on-error: true
+        # Step-level, not job-level: only this step calls the API, so the
+        # collector steps never see the key. Unset, alerts still post, each
+        # carrying a warning that the fact check could not be run.
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: node scripts/breakout-alerts.js --post
 
       # Kept on failure too — the run log is how you diagnose a token that died
