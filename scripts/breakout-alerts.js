@@ -231,6 +231,10 @@ async function main() {
         post_id: i.post.post_id, page: i.pageName, published: i.post.created_time,
         views: i.metrics.views_total, media_type: i.mediaType,
         permalink: i.post.permalink_url || null,
+        // The full caption, for the fact check the scheduled task runs before
+        // posting. slack_text quotes only the first 240 characters, and a claim
+        // past that point would otherwise go unchecked.
+        message: i.post.message || null,
         // Standard Markdown, for the Slack MCP connector that converts it.
         // The --post webhook path sends item.body (Slack mrkdwn) straight to the
         // hook and does not read this payload, so it is unaffected.
