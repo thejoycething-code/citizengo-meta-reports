@@ -51,6 +51,26 @@ const ATTEMPTS = [
   { label: 'breakdown, 2 days on 07:00Z boundary', params: { metric: 'follows_and_unfollows', metric_type: 'total_value', period: 'day', breakdown: 'follow_type', since: today0 - 3 * DAY + 7 * 3600, until: today0 - DAY + 7 * 3600 } },
   { label: 'breakdown, 2 days UTC midnight', params: { metric: 'follows_and_unfollows', metric_type: 'total_value', period: 'day', breakdown: 'follow_type', since: today0 - 2 * DAY, until: today0 } },
   { label: 'breakdown, 1 day, a week back', params: { metric: 'follows_and_unfollows', metric_type: 'total_value', period: 'day', breakdown: 'follow_type', since: today0 - 7 * DAY + 7 * 3600, until: today0 - 6 * DAY + 7 * 3600 } },
+  // Round 3 (29 Sept): the collector's [end - 1 day, end] window returned TWO
+  // days summed - stored value for day D was follower_count(D-1) + (D) on every
+  // day, e.g. HazteOir 22 Sept 1,209 = 670 + 539. Meta appears to count both
+  // boundary dates. Find the form that returns exactly one. The target is the
+  // day follower_count labels end_time 2026-09-23T07:00 (539; the day before is
+  // 670). Fixed dates, so this round is comparable with the stored series.
+  ...(() => {
+    const e = Math.floor(Date.parse('2026-09-23T07:00:00Z') / 1000);
+    const f = { metric: 'follows_and_unfollows', metric_type: 'total_value', period: 'day', breakdown: 'follow_type' };
+    return [
+      { label: 'R3 since=until=end', params: { ...f, since: e, until: e } },
+      { label: 'R3 since=end-1d, until=end-1s', params: { ...f, since: e - DAY, until: e - 1 } },
+      { label: 'R3 since=end-1d+1s, until=end', params: { ...f, since: e - DAY + 1, until: e } },
+      { label: 'R3 since=end-1d+1s, until=end-1s', params: { ...f, since: e - DAY + 1, until: e - 1 } },
+      { label: 'R3 since=end-1d, until=end-1d+1h', params: { ...f, since: e - DAY, until: e - DAY + 3600 } },
+      { label: 'R3 since=end-1h, until=end', params: { ...f, since: e - 3600, until: e } },
+      { label: 'R3 since=end, until=end+1d (next)', params: { ...f, since: e, until: e + DAY } },
+      { label: 'R3 control follower_count 21-24', params: { metric: 'follower_count', period: 'day', since: e - 2 * DAY, until: e + DAY } },
+    ];
+  })(),
   // Control: the gross series we already store, same window, to compare against.
   { label: 'control: follower_count, last 7 days', params: { metric: 'follower_count', period: 'day', since: today0 - 7 * DAY, until: today0 } },
 ];
