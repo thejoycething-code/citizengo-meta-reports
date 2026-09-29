@@ -4,7 +4,7 @@
 // other pages can consider reworking it.
 //
 //   node scripts/breakout-alerts.js              # dry run, prints what it would post
-//   node scripts/breakout-alerts.js --post       # posts via webhook (not fact-checked), and records it
+//   node scripts/breakout-alerts.js --post       # figure-checks (no AI), posts via webhook, records it
 //   node scripts/breakout-alerts.js --json       # machine-readable, for a skill to post
 //   node scripts/breakout-alerts.js --record ID  # mark IDs announced, after posting
 //   node scripts/breakout-alerts.js --all        # ignore the alert log, for previewing
@@ -33,6 +33,7 @@
 // it would have drowned the channel. It can have its own rule if it wants one.
 
 const { cluster, shouldAnnounce } = require('../lib/stories');
+const { factCheck, renderFactCheck, withFactCheck } = require('../lib/fact-check');
 const { loadEnv } = require('../lib/graph');
 loadEnv();
 
@@ -58,7 +59,6 @@ const LOOKBACK_DAYS = Number(process.env.BREAKOUT_LOOKBACK_DAYS || 4);
 const CLUSTER_DAYS = Number(process.env.BREAKOUT_CLUSTER_DAYS || 75);
 
 const POST = process.argv.includes('--post');
-const NOT_CHECKED = '*⚠️ Not fact-checked. Verify the claims before reusing.*';
 const ALL = process.argv.includes('--all');
 const JSON_OUT = process.argv.includes('--json');
 // --record p1 p2 / --record p1,p2 — the ids a caller successfully posted.
@@ -264,13 +264,13 @@ async function main() {
   const hook = process.env.SLACK_BREAKOUT_WEBHOOK_URL;
   if (!hook) { console.error('SLACK_BREAKOUT_WEBHOOK_URL is not set, so there is nothing to post to.'); process.exit(2); }
   for (const item of toSend) {
-    // This route has no fact check. The check needs a model with web search,
-    // and Christopher ruled out spending Claude API tokens on it (29 Sept
-    // 2026), so only the scheduled Claude task checks posts. Rather than let an
-    // unchecked alert look checked, this route says so under the first line,
-    // where the scheduled task puts its own warnings.
-    const nl = item.body.indexOf('\n');
-    const text = `${item.body.slice(0, nl)}\n\n${NOT_CHECKED}\n${item.body.slice(nl)}`;
+    // Fact-checked with no AI and no API tokens (lib/fact-check.js): the
+    // caption's figures against news headlines from around the post's date.
+    // Narrower than the scheduled task's check, and the block says so. The
+    // alert posts whatever the result; a problem becomes a warning.
+    const result = await factCheck({ message: item.post.message, published: item.post.created_time });
+    if (!result.ok) console.error(`fact check failed for ${item.post.post_id}: ${result.error} — posting with a warning`);
+    const text = withFactCheck(item.body, renderFactCheck(result));
     const res = await fetch(hook, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text, unfurl_links: false }),
