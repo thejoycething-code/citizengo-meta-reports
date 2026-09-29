@@ -4,18 +4,21 @@
 // other pages can consider reworking it.
 //
 //   node scripts/breakout-alerts.js              # dry run, prints what it would post
-//   node scripts/breakout-alerts.js --post       # fact-checks, posts via webhook, records it
-//   node scripts/breakout-alerts.js --fact-check # dry run with the fact check, nothing posted
 //   node scripts/breakout-alerts.js --json       # machine-readable, for a skill to post
 //   node scripts/breakout-alerts.js --record ID  # mark IDs announced, after posting
 //   node scripts/breakout-alerts.js --all        # ignore the alert log, for previewing
 //
-// TWO WAYS TO POST. --post needs SLACK_BREAKOUT_WEBHOOK_URL, which needs Slack
-// app permissions. Where those are not available, --json hands the decisions to
-// a caller that already has a Slack connector (a scheduled Claude task), which
-// posts them and then calls --record. Either route keeps the rule that an
-// announcement is recorded ONLY after Slack has accepted it, so a failure
+// ONE WAY TO POST: the scheduled Claude task on Christopher's computer
+// (skills/breakout-alerts/SKILL.md). It reads --json, fact-checks each post,
+// posts through its Slack connector and then calls --record, so an
+// announcement is recorded ONLY after Slack has accepted it and a failure
 // retries tomorrow instead of being silently marked done.
+//
+// There used to be a second route, --post, sending through a Slack webhook from
+// the nightly GitHub workflow. It was removed on 29 Sept 2026, because every
+// alert must be fact-checked and the fact check runs as a skill on
+// Christopher's computer, on his own Claude usage. A route that could post
+// without it has no place here.
 //
 // WHAT COUNTS AS A DUPLICATE, which is the whole difficulty.
 //
@@ -34,8 +37,6 @@
 // it would have drowned the channel. It can have its own rule if it wants one.
 
 const { cluster, shouldAnnounce } = require('../lib/stories');
-const { factCheck, renderFactCheck, withFactCheck } = require('../lib/fact-check');
-const { claudeFactCheck, renderClaims } = require('../lib/claude-fact-check');
 const { loadEnv } = require('../lib/graph');
 loadEnv();
 
@@ -60,10 +61,6 @@ const LOOKBACK_DAYS = Number(process.env.BREAKOUT_LOOKBACK_DAYS || 4);
 // post even when it is older than the revival window.
 const CLUSTER_DAYS = Number(process.env.BREAKOUT_CLUSTER_DAYS || 75);
 
-const POST = process.argv.includes('--post');
-// --fact-check: run the fact check in a dry run too, printing the alerts as
-// they would post. For testing the subscription token in CI without posting.
-const FACT_CHECK_DRY = process.argv.includes('--fact-check');
 const ALL = process.argv.includes('--all');
 const JSON_OUT = process.argv.includes('--json');
 // --record p1 p2 / --record p1,p2 — the ids a caller successfully posted.
@@ -143,27 +140,6 @@ function render({ post, pageName, otherPages, metrics, revival, flavour = 'mrkdw
   }
   L.push(`${b('Could this work on your page?')} It is proven copy — worth asking ${pageName} for the assets before writing something new.`);
   return L.join('\n');
-}
-
-// The alert text with its fact check, for the webhook route. Two checks, best
-// first, and never a Claude API token:
-//   1. Claude Code headless on Christopher's subscription (lib/claude-fact-check.js),
-//      the same judgement the 09:00 scheduled task makes.
-//   2. If that cannot run (no token, subscription limit, timeout), the no-AI
-//      figures-against-headlines check (lib/fact-check.js), which says it is one.
-// If both fail, the alert still posts, warning that no check could be run.
-async function checked(item) {
-  const claude = await claudeFactCheck({
-    message: item.post.message, pageName: item.pageName, published: item.post.created_time,
-  });
-  if (claude.ok) {
-    console.error(`fact check (Claude Code, subscription) ${item.post.post_id}: ${claude.claims.map((c) => c.verdict).join(', ') || 'no claims'}`);
-    return withFactCheck(item.body, renderClaims(claude.claims, { mediaType: item.mediaType }));
-  }
-  console.error(`Claude Code fact check unavailable for ${item.post.post_id}: ${claude.error} — using the no-AI check`);
-  const result = await factCheck({ message: item.post.message, published: item.post.created_time });
-  if (!result.ok) console.error(`no-AI fact check failed for ${item.post.post_id}: ${result.error} — posting with a warning`);
-  return withFactCheck(item.body, renderFactCheck(result));
 }
 
 async function main() {
@@ -263,8 +239,6 @@ async function main() {
         // past that point would otherwise go unchecked.
         message: i.post.message || null,
         // Standard Markdown, for the Slack MCP connector that converts it.
-        // The --post webhook path sends item.body (Slack mrkdwn) straight to the
-        // hook and does not read this payload, so it is unaffected.
         slack_text: i.bodyMarkdown,
       })),
       suppressed: suppressed.map((x) => ({
@@ -282,33 +256,9 @@ async function main() {
 
   for (const item of toSend) {
     console.log('\n' + '='.repeat(72));
-    console.log(FACT_CHECK_DRY && !POST ? await checked(item) : item.body);
+    console.log(item.body);
   }
-
-  if (!POST) { console.error('\ndry run — nothing posted, nothing recorded. Use --post to send.'); return; }
-
-  const hook = process.env.SLACK_BREAKOUT_WEBHOOK_URL;
-  if (!hook) { console.error('SLACK_BREAKOUT_WEBHOOK_URL is not set, so there is nothing to post to.'); process.exit(2); }
-  for (const item of toSend) {
-    const text = await checked(item);
-    const res = await fetch(hook, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text, unfurl_links: false }),
-    });
-    if (!res.ok) { console.error(`post failed: HTTP ${res.status} ${await res.text()}`); continue; }
-    // Recorded only after a successful post, so a Slack failure retries tomorrow
-    // rather than being silently marked as done.
-    const w = await fetch(`${base}/rest/v1/meta_breakout_alerts`, {
-      method: 'POST', headers: { ...H, Prefer: 'return=minimal' },
-      body: JSON.stringify([{
-        story_key: item.story.story_key, post_id: item.post.post_id, page_id: item.post.page_id,
-        media_type: item.mediaType, views_at_alert: item.metrics.views_total,
-        first_post_at: item.story.first.created_time,
-      }]),
-    });
-    if (!w.ok) console.error(`WARNING: posted but failed to record ${item.post.post_id}: HTTP ${w.status} — it may announce again`);
-    else console.error(`posted and recorded: ${item.pageName} ${n(item.metrics.views_total)} views`);
-  }
+  console.error('\ndry run — nothing posted, nothing recorded. The scheduled task posts, via --json and --record.');
 }
 
 main().catch((e) => { console.error('breakout alerts failed:', e.message); process.exit(1); });

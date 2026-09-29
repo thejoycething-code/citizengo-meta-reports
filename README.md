@@ -285,7 +285,8 @@ pass our own allowlist.
 
 **Breakout alerts.** `npm run alerts:breakout` announces a post to
 #comm-social-networks once it passes 100,000 views, so other pages can consider
-reworking it. Dry-runs by default; `--post` sends and records.
+reworking it. The script only decides and dry-runs; the scheduled Claude task
+on Christopher's computer fact-checks and posts.
 
 The hard part is what counts as a duplicate. The Olivia Maurel surrogacy story
 ran on nine pages in five languages inside a week, so `lib/stories.js` clusters
@@ -297,12 +298,13 @@ so a video of Olivia and a photo of Olivia both surface. A same-format copy is
 suppressed until 35 days after the story's first post, then announced as a
 revival. HazteOir is excluded (`BREAKOUT_EXCLUDE_PAGES`): its median post is
 ~25,000 views, so 100,000 is routine there and including it produced 26 of 37
-alerts in testing. Two ways to post. `--post` uses `SLACK_BREAKOUT_WEBHOOK_URL` from the nightly
-workflow, which skips the step when it is unset. Where Slack app permissions are
-not available, `--json` emits the decisions and the ready-to-send text, a caller
-with a Slack connector posts them, and `--record <ids>` marks what actually sent
-— see `skills/breakout-alerts/SKILL.md`, which is the scheduled-task version.
-Either route records an announcement only after Slack accepts it. `npm run test:breakout` covers both halves.
+alerts in testing. One way to post: `--json` emits the decisions and the
+ready-to-send text, the scheduled task in `skills/breakout-alerts/SKILL.md`
+fact-checks each post (factual claims only; a problem posts with a warning),
+posts through its Slack connector, and `--record <ids>` marks what actually
+sent, so an announcement is recorded only after Slack accepts it. The webhook
+route (`--post`) was removed on 29 Sept 2026 so that no alert can skip the
+fact check. `npm run test:breakout` covers both halves.
 
 **Google sign-in — built, tested, not enabled.** (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`; optional
 `ALLOWED_GOOGLE_DOMAINS`, default `citizengo.net`; `MCP_REVOKED_EMAILS` for
