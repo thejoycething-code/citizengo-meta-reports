@@ -4,7 +4,8 @@
 // other pages can consider reworking it.
 //
 //   node scripts/breakout-alerts.js              # dry run, prints what it would post
-//   node scripts/breakout-alerts.js --post       # figure-checks (no AI), posts via webhook, records it
+//   node scripts/breakout-alerts.js --post       # fact-checks, posts via webhook, records it
+//   node scripts/breakout-alerts.js --fact-check # dry run with the fact check, nothing posted
 //   node scripts/breakout-alerts.js --json       # machine-readable, for a skill to post
 //   node scripts/breakout-alerts.js --record ID  # mark IDs announced, after posting
 //   node scripts/breakout-alerts.js --all        # ignore the alert log, for previewing
@@ -34,6 +35,7 @@
 
 const { cluster, shouldAnnounce } = require('../lib/stories');
 const { factCheck, renderFactCheck, withFactCheck } = require('../lib/fact-check');
+const { claudeFactCheck, renderClaims } = require('../lib/claude-fact-check');
 const { loadEnv } = require('../lib/graph');
 loadEnv();
 
@@ -59,6 +61,9 @@ const LOOKBACK_DAYS = Number(process.env.BREAKOUT_LOOKBACK_DAYS || 4);
 const CLUSTER_DAYS = Number(process.env.BREAKOUT_CLUSTER_DAYS || 75);
 
 const POST = process.argv.includes('--post');
+// --fact-check: run the fact check in a dry run too, printing the alerts as
+// they would post. For testing the subscription token in CI without posting.
+const FACT_CHECK_DRY = process.argv.includes('--fact-check');
 const ALL = process.argv.includes('--all');
 const JSON_OUT = process.argv.includes('--json');
 // --record p1 p2 / --record p1,p2 — the ids a caller successfully posted.
@@ -138,6 +143,27 @@ function render({ post, pageName, otherPages, metrics, revival, flavour = 'mrkdw
   }
   L.push(`${b('Could this work on your page?')} It is proven copy — worth asking ${pageName} for the assets before writing something new.`);
   return L.join('\n');
+}
+
+// The alert text with its fact check, for the webhook route. Two checks, best
+// first, and never a Claude API token:
+//   1. Claude Code headless on Christopher's subscription (lib/claude-fact-check.js),
+//      the same judgement the 09:00 scheduled task makes.
+//   2. If that cannot run (no token, subscription limit, timeout), the no-AI
+//      figures-against-headlines check (lib/fact-check.js), which says it is one.
+// If both fail, the alert still posts, warning that no check could be run.
+async function checked(item) {
+  const claude = await claudeFactCheck({
+    message: item.post.message, pageName: item.pageName, published: item.post.created_time,
+  });
+  if (claude.ok) {
+    console.error(`fact check (Claude Code, subscription) ${item.post.post_id}: ${claude.claims.map((c) => c.verdict).join(', ') || 'no claims'}`);
+    return withFactCheck(item.body, renderClaims(claude.claims, { mediaType: item.mediaType }));
+  }
+  console.error(`Claude Code fact check unavailable for ${item.post.post_id}: ${claude.error} — using the no-AI check`);
+  const result = await factCheck({ message: item.post.message, published: item.post.created_time });
+  if (!result.ok) console.error(`no-AI fact check failed for ${item.post.post_id}: ${result.error} — posting with a warning`);
+  return withFactCheck(item.body, renderFactCheck(result));
 }
 
 async function main() {
@@ -256,7 +282,7 @@ async function main() {
 
   for (const item of toSend) {
     console.log('\n' + '='.repeat(72));
-    console.log(item.body);
+    console.log(FACT_CHECK_DRY && !POST ? await checked(item) : item.body);
   }
 
   if (!POST) { console.error('\ndry run — nothing posted, nothing recorded. Use --post to send.'); return; }
@@ -264,13 +290,7 @@ async function main() {
   const hook = process.env.SLACK_BREAKOUT_WEBHOOK_URL;
   if (!hook) { console.error('SLACK_BREAKOUT_WEBHOOK_URL is not set, so there is nothing to post to.'); process.exit(2); }
   for (const item of toSend) {
-    // Fact-checked with no AI and no API tokens (lib/fact-check.js): the
-    // caption's figures against news headlines from around the post's date.
-    // Narrower than the scheduled task's check, and the block says so. The
-    // alert posts whatever the result; a problem becomes a warning.
-    const result = await factCheck({ message: item.post.message, published: item.post.created_time });
-    if (!result.ok) console.error(`fact check failed for ${item.post.post_id}: ${result.error} — posting with a warning`);
-    const text = withFactCheck(item.body, renderFactCheck(result));
+    const text = await checked(item);
     const res = await fetch(hook, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text, unfurl_links: false }),

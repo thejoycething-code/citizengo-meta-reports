@@ -154,7 +154,27 @@ jobs:
       - name: Announce posts past 100,000 views
         if: success() && env.SLACK_BREAKOUT_WEBHOOK_URL != '' && env.DRY_RUN != 'true'
         continue-on-error: true
-        run: node scripts/breakout-alerts.js --post
+        # The fact check runs Claude Code on Christopher's Claude SUBSCRIPTION
+        # (CLAUDE_CODE_OAUTH_TOKEN, from `claude setup-token`), never the API.
+        # Step-level so the collector steps never see the token. Unset, alerts
+        # still post, with the no-AI figures check instead.
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+        run: |
+          # Refuse outright if an API key is visible: Claude Code would prefer
+          # it over the subscription and bill the API. The script strips it from
+          # the child's environment too; this makes a misconfiguration loud.
+          if [ -n "${ANTHROPIC_API_KEY:-}${ANTHROPIC_AUTH_TOKEN:-}" ]; then
+            echo "::error::An Anthropic API key is set in this job. The fact check must use the subscription only. Remove it."
+            exit 1
+          fi
+          # The Claude Code CLI, installed on the runner only (not a project
+          # dependency; the repo stays at zero). Pinned, and only when a token
+          # exists, so a run without one spends no minutes installing it.
+          if [ -n "$CLAUDE_CODE_OAUTH_TOKEN" ]; then
+            npm install -g --no-fund --no-audit @anthropic-ai/claude-code@2.1.284
+          fi
+          node scripts/breakout-alerts.js --post
 
       # Kept on failure too — the run log is how you diagnose a token that died
       # or a page that started returning permissions errors.

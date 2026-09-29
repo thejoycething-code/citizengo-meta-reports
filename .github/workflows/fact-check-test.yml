@@ -1,0 +1,41 @@
+name: Fact check test (posts nothing)
+
+# Manual only. Runs today's breakout candidates through the fact check exactly
+# as the webhook route would, prints the alerts, and posts and records NOTHING.
+# Use it after adding or renewing CLAUDE_CODE_OAUTH_TOKEN, to see that Claude
+# Code signs in with the subscription and the check comes back.
+#
+# --all ignores the alert log, so there is something to check on most days.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL || vars.SUPABASE_URL }}
+      SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
+        with:
+          node-version: '24'
+      - name: Check the subscription token (length only, never the value)
+        run: |
+          if [ -n "${ANTHROPIC_API_KEY:-}${ANTHROPIC_AUTH_TOKEN:-}" ]; then
+            echo "::error::An Anthropic API key is set. The fact check must use the subscription only."
+            exit 1
+          fi
+          if [ -n "$CLAUDE_CODE_OAUTH_TOKEN" ]; then echo "CLAUDE_CODE_OAUTH_TOKEN set (${#CLAUDE_CODE_OAUTH_TOKEN} chars)"
+          else echo "::warning::CLAUDE_CODE_OAUTH_TOKEN is not set - this will show the no-AI fallback only"; fi
+      - name: Install Claude Code
+        if: env.CLAUDE_CODE_OAUTH_TOKEN != ''
+        run: npm install -g --no-fund --no-audit @anthropic-ai/claude-code@2.1.284
+      - name: Fact-check today's candidates (dry run)
+        run: node scripts/breakout-alerts.js --all --fact-check
