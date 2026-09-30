@@ -89,6 +89,15 @@ jobs:
         if: always() && github.event.inputs.test_alert != 'true'
         run: node scripts/check-access-tokens.js --warn-days 21 --fail-days 7
 
+      # X source. Silent (one line, exit 0) until an account has authorised, so
+      # this can sit here ahead of go-live without a daily false alarm. Same
+      # if: always() reasoning as the token checks above.
+      - name: Check the X source (freshness, re-authorisation, budget)
+        if: always() && github.event.inputs.test_alert != 'true'
+        env:
+          X_MONTHLY_BUDGET_USD: ${{ vars.X_MONTHLY_BUDGET_USD || '100' }}
+        run: node scripts/check-x-health.js
+
       - name: Summary
         if: always()
         run: |

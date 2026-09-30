@@ -221,7 +221,7 @@ create index if not exists x_collection_runs_started_idx
 -- reads. Derived rates guard against a zero denominator the same way
 -- meta_ig_latest does.
 -- ---------------------------------------------------------------------------
-create or replace view public.x_post_latest as
+create or replace view public.x_post_latest with (security_invoker = true) as
   select p.post_id, p.account_id, a.username, a.name as account_name, a.kind, a.country,
          p.created_at, p.text, p.lang, p.referenced_type, p.has_media, p.permalink_url,
          p.urls, p.citizengo_urls,
@@ -249,7 +249,7 @@ create or replace view public.x_post_latest as
                               where y.post_id = p.post_id);
 
 -- Follower movement per account per day, derived from consecutive snapshots.
-create or replace view public.x_account_growth as
+create or replace view public.x_account_growth with (security_invoker = true) as
   select s.account_id, a.username, a.name as account_name, a.kind, a.country,
          s.metric_date, s.followers_count, s.following_count, s.post_count,
          s.followers_count - lag(s.followers_count) over (partition by s.account_id order by s.metric_date)
@@ -260,7 +260,7 @@ create or replace view public.x_account_growth as
     join public.x_accounts a on a.account_id = s.account_id;
 
 -- Month-to-date spend, for the budget guard and the health check.
-create or replace view public.x_spend_month_to_date as
+create or replace view public.x_spend_month_to_date with (security_invoker = true) as
   select date_trunc('month', started_at)::date as month,
          count(*) as runs,
          sum(post_reads) as post_reads,
@@ -269,3 +269,51 @@ create or replace view public.x_spend_month_to_date as
     from public.x_collection_runs
    where started_at >= date_trunc('month', now())
    group by 1;
+
+-- ---------------------------------------------------------------------------
+-- PUBLIC-KEY LOCKDOWN, same discipline as the 29 Sept 2026 block in schema.sql:
+-- Supabase grants anon/authenticated on every new object in public, so every
+-- table here gets RLS and a revoke, every view a revoke, and meta_readonly a
+-- select policy so it keeps working through the security_invoker views. The
+-- collector and connector use the service key and are unaffected.
+--
+-- x_oauth_tokens is the one table meta_readonly must NOT read: the blobs are
+-- sealed, but a credential table has no business on any read surface.
+-- ---------------------------------------------------------------------------
+alter table public.x_accounts        enable row level security;
+alter table public.x_oauth_tokens    enable row level security;
+alter table public.x_posts           enable row level security;
+alter table public.x_post_metrics    enable row level security;
+alter table public.x_account_metrics enable row level security;
+alter table public.x_collection_runs enable row level security;
+
+revoke all on public.x_accounts, public.x_oauth_tokens, public.x_posts, public.x_post_metrics,
+  public.x_account_metrics, public.x_collection_runs,
+  public.x_post_latest, public.x_account_growth, public.x_spend_month_to_date
+  from anon, authenticated;
+
+grant select on public.x_accounts, public.x_posts, public.x_post_metrics,
+  public.x_account_metrics, public.x_collection_runs,
+  public.x_post_latest, public.x_account_growth, public.x_spend_month_to_date
+  to meta_readonly;
+
+drop policy if exists meta_readonly_select_x_accounts on public.x_accounts;
+create policy meta_readonly_select_x_accounts
+  on public.x_accounts for select to meta_readonly using (true);
+drop policy if exists meta_readonly_select_x_posts on public.x_posts;
+create policy meta_readonly_select_x_posts
+  on public.x_posts for select to meta_readonly using (true);
+drop policy if exists meta_readonly_select_x_post_metrics on public.x_post_metrics;
+create policy meta_readonly_select_x_post_metrics
+  on public.x_post_metrics for select to meta_readonly using (true);
+drop policy if exists meta_readonly_select_x_account_metrics on public.x_account_metrics;
+create policy meta_readonly_select_x_account_metrics
+  on public.x_account_metrics for select to meta_readonly using (true);
+drop policy if exists meta_readonly_select_x_collection_runs on public.x_collection_runs;
+create policy meta_readonly_select_x_collection_runs
+  on public.x_collection_runs for select to meta_readonly using (true);
+
+-- Belt and braces, as in schema.sql.
+alter view public.x_post_latest         set (security_invoker = true);
+alter view public.x_account_growth      set (security_invoker = true);
+alter view public.x_spend_month_to_date set (security_invoker = true);
