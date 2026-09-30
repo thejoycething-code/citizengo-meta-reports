@@ -37,36 +37,67 @@ const daysAgo = (n) => new Date(NOW.getTime() - n * D).toISOString();
 // ---------------------------------------------------------------------------
 console.log('\nSchedule (lib/xschedule.js)\n');
 eq('ageDays: 6.9 days ago floors to 6', sched.ageDays(daysAgo(6.9), NOW), 6);
-eq('daily window starts 7 days back', sched.dailyWindow(NOW).start_time, daysAgo(7));
 ok('private window is inside X\'s 30 days', sched.PRIVATE_WINDOW_DAYS < 30);
-eq('final band is 26..29 days', [sched.FINAL_READ_FROM, sched.FINAL_READ_TO], [26, 29]);
 
-const due = sched.dueForFinalRead([
-  { post_id: 'young', created_at: daysAgo(10), last_collected_at: daysAgo(3) },     // too young
-  { post_id: 'due-never', created_at: daysAgo(27), last_collected_at: null },        // in band, never read
-  { post_id: 'due-early', created_at: daysAgo(27), last_collected_at: daysAgo(20) }, // read at age 7
-  { post_id: 'done', created_at: daysAgo(28), last_collected_at: daysAgo(1) },        // read at age 27 - done
-  { post_id: 'gone', created_at: daysAgo(31), last_collected_at: null },              // window closed
+eq('daily window covers days 0-7 (eight nights)', sched.dailyWindow(NOW).start_time, daysAgo(8));
+eq('checkpoints are 14, 28, 60, 85; 12 reads per post', [sched.CHECKPOINTS, sched.READS_PER_POST], [[14, 28, 60, 85], 12]);
+eq('checkpointFor maps an age to the last checkpoint reached', [5, 14, 27, 28, 59, 60, 84, 85, 89].map(sched.checkpointFor), [null, 14, 14, 28, 28, 60, 60, 85, 85]);
+const dueC = sched.dueForCheckpoint([
+  { post_id: 'young', created_at: daysAgo(10), last_collected_at: daysAgo(3) },     // no checkpoint yet
+  { post_id: 'd14', created_at: daysAgo(14), last_collected_at: daysAgo(7) },       // read at 7, now 14
+  { post_id: 'd14-late', created_at: daysAgo(20), last_collected_at: daysAgo(13) }, // missed nights: read at 7, now 20
+  { post_id: 'd14-done', created_at: daysAgo(20), last_collected_at: daysAgo(5) },  // read at 15: done until 28
+  { post_id: 'd28', created_at: daysAgo(28), last_collected_at: daysAgo(14) },      // read at 14, now 28
+  { post_id: 'd60-never', created_at: daysAgo(61), last_collected_at: null },       // held, never read
+  { post_id: 'd85', created_at: daysAgo(86), last_collected_at: daysAgo(26) },      // read at 60, now 86
+  { post_id: 'past', created_at: daysAgo(90), last_collected_at: daysAgo(30) },     // beyond the ceiling
 ], NOW);
-eq('final read: only in-band posts whose last snapshot predates the band', due, ['due-never', 'due-early']);
+eq('due: each post at the checkpoint it has reached, only if not read since',
+  dueC, [{ post_id: 'd14', checkpoint: 14 }, { post_id: 'd14-late', checkpoint: 14 }, { post_id: 'd28', checkpoint: 28 },
+    { post_id: 'd60-never', checkpoint: 60 }, { post_id: 'd85', checkpoint: 85 }]);
+// A post read on schedule every night gets exactly 12 reads over its life.
+{
+  const created = new Date('2026-06-01T12:00:00Z');
+  let last = null; let reads = 0;
+  for (let day = 0; day <= 120; day++) {
+    const run = new Date(created.getTime() + day * D + 60_000);
+    const age = sched.ageDays(created, run);
+    const daily = age < sched.DAILY_DAYS;
+    const cp = !daily && sched.dueForCheckpoint([{ post_id: 'p', created_at: created.toISOString(), last_collected_at: last }], run).length === 1;
+    if (daily || cp) { reads++; last = run.toISOString(); }
+  }
+  eq('simulated nightly runs: one post is read exactly 12 times', reads, 12);
+}
+// Missing nights costs reads, never a checkpoint's worth of data.
+{
+  const created = new Date('2026-06-01T12:00:00Z');
+  let last = null; const readAt = [];
+  for (let day = 0; day <= 120; day++) {
+    if (day % 3 !== 0) continue; // runs only every third night
+    const run = new Date(created.getTime() + day * D + 60_000);
+    const age = sched.ageDays(created, run);
+    const cp = age >= sched.DAILY_DAYS && sched.dueForCheckpoint([{ post_id: 'p', created_at: created.toISOString(), last_collected_at: last }], run).length === 1;
+    if (age < sched.DAILY_DAYS || cp) { readAt.push(age); last = run.toISOString(); }
+  }
+  eq('runs every third night: every checkpoint still gets a read, late', readAt.filter((a) => a >= 14), [15, 30, 60, 87]);
+}
 ok('private window open at 29 days', sched.privateWindowOpen(daysAgo(29), NOW));
 ok('private window closed at 30 days', !sched.privateWindowOpen(daysAgo(30), NOW));
 eq('chunk splits ids at 100', sched.chunk(Array.from({ length: 250 }, (_, i) => i)).map((c) => c.length), [100, 100, 50]);
 
-const bw = sched.backfillWindow(NOW, 100, 7);
-eq('backfill ends exactly where the daily window starts (no 8-29 day hole)', [bw.start_time, bw.end_time], [daysAgo(100), daysAgo(7)]);
+const bw = sched.backfillWindow(NOW, 100, 8);
+eq('backfill ends exactly where the daily window starts (no hole)', [bw.start_time, bw.end_time], [daysAgo(100), daysAgo(8)]);
 eq('backfill ends at the widened first-run window too', sched.backfillWindow(NOW, 100, 29).end_time, daysAgo(29));
-eq('no backfill when it would not reach past the daily window', sched.backfillWindow(NOW, 7, 7), null);
-eq('first run for an account reaches the whole private window', [sched.firstRunDays(0), sched.firstRunDays(12)], [29, 7]);
+eq('no backfill when it would not reach past the daily window', sched.backfillWindow(NOW, 8, 8), null);
+eq('first run for an account reaches the observed ceiling, so checkpoints have posts', [sched.firstRunDays(0), sched.firstRunDays(12)], [89, 8]);
 
 console.log('\nCost (the figures in the scoping brief)\n');
 eq('owned read is $0.001, user read $0.010', sched.estimateCost({ postReads: 1000, userReads: 10 }), 1.1);
 eq('outsider rate is $0.005', sched.estimateCost({ postReads: 1000, userReads: 0, owned: false }), 5);
-// Brief: 30 accounts, 8 posts/day, 7 daily reads + 1 final = $57.60 posts + $9 users
-eq('30 accounts x 8/day on the 7+1 schedule = $66.60/month', sched.projectMonthly({ accounts: 30, postsPerDay: 8 }), 66.6);
-eq('30 accounts x 3/day on the 7+1 schedule = $30.60/month', sched.projectMonthly({ accounts: 30, postsPerDay: 3 }), 30.6);
-// Daily re-read of the whole 30-day window: 30 reads per post
-eq('re-reading the full window daily = $225/month at 8/day', sched.projectMonthly({ accounts: 30, postsPerDay: 8, dailyDays: 30, finalReads: 0 }), 225);
+// Agreed 30 Sep 2026: 18 accounts x 5 posts/day, 12 reads per post, 540 follower lookups.
+eq('18 accounts x 5/day on 0-7/14/28/60/85 = $37.80/month', sched.projectMonthly({ accounts: 18, postsPerDay: 5 }), 37.8);
+eq('same at the ordinary read rate = $167.40/month', sched.projectMonthly({ accounts: 18, postsPerDay: 5, owned: false }), 167.4);
+eq('one account at 2.4/day (@CitizenGO today) = $1.16/month', sched.projectMonthly({ accounts: 1, postsPerDay: 2.4 }), 1.164);
 
 console.log('\nLink attribution\n');
 const ent = { urls: [

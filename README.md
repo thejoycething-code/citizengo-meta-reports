@@ -397,12 +397,18 @@ against the live API — `npm run probe:x` is that check and must run first.
   `failed` or `partial`, never `ok` with zero posts.
 - **Billing is per resource RETURNED**, prepaid: $0.001 per own post, $0.005
   per anyone else's, $0.010 per user lookup; repeats within a UTC day charged
-  once. So the collection schedule is the cost. `lib/xschedule.js`: every post
-  is re-read daily for 7 days, then once at day 26-29 for its final value.
-  30 accounts at 3-8 posts/day is **$31-67/month**; re-reading the whole
-  window daily would be $90-225 for the same final numbers. `x_collection_runs`
-  is the ledger; the collector refuses to start once `X_MONTHLY_BUDGET_USD`
-  (default $100) is spent, and `npm run check:x` warns at 80%.
+  once. So the collection schedule is the cost. Agreed 30 Sep 2026
+  (`lib/xschedule.js`): every post is read **daily for days 0-7, then at days
+  14, 28, 60 and 85** - 12 reads per post. Day 28 is the insurance read inside
+  X's documented 30 days; 60 and 85 rely on the observed ~89. A missed night
+  catches up at the next run (`dueForCheckpoint`). Steady state from the third
+  month: 18 accounts at 5 posts/day is **$37.80/month** ($167.40 if X bills the
+  ordinary rate); @CitizenGO alone is about $1.20. `x_collection_runs` is the
+  ledger; the collector refuses to start once `X_MONTHLY_BUDGET_USD` (default
+  $100) is spent, and `npm run check:x` warns at 80%.
+- **The watchdog watches the slack.** If reads of posts aged 31-89 days stop
+  returning private metrics, `check-x-health.js` warns that X has tightened
+  and the day-60 and day-85 checkpoints are buying public metrics only.
 - **Each account authorises once** (OAuth 2.0 user context, PKCE, read-only
   scopes). X refresh tokens ROTATE on every refresh, so they live in
   `x_oauth_tokens`, **sealed**: the Vercel callback encrypts to a public key and
@@ -425,7 +431,7 @@ against the live API — `npm run probe:x` is that check and must run first.
 | API client with billing tally, 429 wait, 5xx retry | `lib/xapi.js` | live |
 | OAuth, PKCE, sealed box, invites | `lib/xauth.js`, `lib/xflow.js` | live; keys in GitHub, Vercel, local .env |
 | Enrolment pages | `api/x/authorize.js`, `api/x/callback.js` | live; invite-gated |
-| Collector (daily + final + optional backfill) | `collector/x.js` | live |
+| Collector (daily 0-7, checkpoints 14/28/60/85, optional backfill) | `collector/x.js` | live |
 | Nightly workflow | `.github/workflows/x-collect.yml` | on: repo var `X_COLLECT_ENABLED=true` |
 | Health check (freshness, re-auth, budget) | `scripts/check-x-health.js` | in the daily watchdog |
 | Six connector tools | `mcp/x-tools.js` | on: `X_TOOLS_ENABLED=true` on Vercel |

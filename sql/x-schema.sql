@@ -271,6 +271,16 @@ create or replace view public.x_spend_month_to_date with (security_invoker = tru
    where started_at >= date_trunc('month', now())
    group by 1;
 
+-- One row per post with the time of its newest snapshot. The checkpoint pass
+-- (collector/x.js) reads this instead of every snapshot: one row per post
+-- rather than ~12, which keeps each account well under PostgREST's 1,000-row
+-- response cap. Added 30 Sep 2026 with the 0-7/14/28/60/85 schedule.
+create or replace view public.x_post_last_collected with (security_invoker = true) as
+  select p.post_id, p.account_id, p.created_at, max(m.collected_at) as last_collected_at
+    from public.x_posts p
+    left join public.x_post_metrics m on m.post_id = p.post_id
+   group by p.post_id, p.account_id, p.created_at;
+
 -- ---------------------------------------------------------------------------
 -- PUBLIC-KEY LOCKDOWN, same discipline as the 29 Sept 2026 block in schema.sql:
 -- Supabase grants anon/authenticated on every new object in public, so every
@@ -290,12 +300,14 @@ alter table public.x_collection_runs enable row level security;
 
 revoke all on public.x_accounts, public.x_oauth_tokens, public.x_posts, public.x_post_metrics,
   public.x_account_metrics, public.x_collection_runs,
-  public.x_post_latest, public.x_account_growth, public.x_spend_month_to_date
+  public.x_post_latest, public.x_account_growth, public.x_spend_month_to_date,
+  public.x_post_last_collected
   from anon, authenticated;
 
 grant select on public.x_accounts, public.x_posts, public.x_post_metrics,
   public.x_account_metrics, public.x_collection_runs,
-  public.x_post_latest, public.x_account_growth, public.x_spend_month_to_date
+  public.x_post_latest, public.x_account_growth, public.x_spend_month_to_date,
+  public.x_post_last_collected
   to meta_readonly;
 
 drop policy if exists meta_readonly_select_x_accounts on public.x_accounts;
@@ -318,3 +330,4 @@ create policy meta_readonly_select_x_collection_runs
 alter view public.x_post_latest         set (security_invoker = true);
 alter view public.x_account_growth      set (security_invoker = true);
 alter view public.x_spend_month_to_date set (security_invoker = true);
+alter view public.x_post_last_collected set (security_invoker = true);

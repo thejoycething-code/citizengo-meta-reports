@@ -11,15 +11,18 @@
 //   1. Refresh the account's access token; re-seal and persist the ROTATED
 //      refresh token before anything else, because the old one is now dead.
 //   2. /2/users/me - who this is, follower count today. One billable user read.
-//   3. DAILY pass - every post from the last 7 days, all metric groups.
-//      Each post returned is one billable read; that is the intended spend.
-//   4. FINAL pass - posts aged 26-29 days whose last snapshot predates the
-//      band, fetched by id, all metric groups. The last value X will ever
-//      serve for the private groups.
-//   5. Optional BACKFILL (--backfill-days N) - older posts, all metric groups.
-//      X serves private groups past its documented 30 days (to ~76-89 days on
-//      30 Sep 2026) and refuses older ones with a partial error; public
-//      metrics always arrive.
+//   3. DAILY pass - every post aged 0-7 days, all metric groups. Each post
+//      returned is one billable read; that is the intended spend. An account's
+//      first run reaches back 89 days instead, so checkpoints have posts to revisit.
+//   4. BACKFILL, if asked (below).
+//   5. CHECKPOINT pass - held posts at day 14, 28, 60 or 85 whose last snapshot
+//      predates that checkpoint, fetched by id. Missed nights catch up on their
+//      own (lib/xschedule.js dueForCheckpoint). Posts already read this run by
+//      the passes above are skipped.
+//   Optional BACKFILL (--backfill-days N) - posts older than the daily window,
+//      all metric groups. X serves private groups past its documented 30 days
+//      (to ~89 on 30 Sep 2026) and refuses older ones with a partial error;
+//      public metrics always arrive.
 //   6. A run row with reads and estimated cost. Refuses to START when the
 //      month's estimated spend has reached X_MONTHLY_BUDGET_USD.
 //
@@ -28,7 +31,7 @@
 //
 // Usage:
 //   node collector/x.js [--dry-run] [--lookback-days 7] [--backfill-days 90]
-//                       [--no-final] [--include-retweets] [--accounts <id> <id>] [--budget-usd 100]
+//                       [--no-checkpoints] [--include-retweets] [--accounts <id> <id>] [--budget-usd 100]
 //
 // Dry runs without a database can still exercise the API using
 // X_ACCESS_TOKENS="label:access_token,..." - that is how the one-account spike
@@ -52,7 +55,7 @@ const flag = (name, fallback) => {
   return i !== -1 && args[i + 1] && !args[i + 1].startsWith('--') ? args[i + 1] : fallback;
 };
 const DRY_RUN = args.includes('--dry-run');
-const NO_FINAL = args.includes('--no-final');
+const NO_CHECKPOINTS = args.includes('--no-checkpoints') || args.includes('--no-final');
 // Retweets are excluded unless asked for. The first live probe showed why: a
 // retweet reports its OWN impressions (tens) beside the ORIGINAL's repost count
 // (thousands), serves no private metrics, and was a sixth of every read. Our
@@ -302,7 +305,10 @@ async function collectAccount(account, out) {
   log(`   @${u.username} · ${num(pm.followers_count) === null ? '?' : pm.followers_count.toLocaleString('en-GB')} followers`);
 
   const posts = new Map();
-  const metrics = [];
+  // Keyed on post_id: one snapshot per post per run. Two passes returning the
+  // same post would otherwise put it in one upsert batch twice, which Postgres
+  // refuses ("ON CONFLICT DO UPDATE command cannot affect row a second time").
+  const metricsById = new Map();
   // Every pass that fails is recorded here. A failed daily pass returns zero
   // posts, and "zero posts" must never be reported as "ok" - that is the
   // silent-failure shape this project keeps meeting (see README, Failure modes).
@@ -318,7 +324,7 @@ async function collectAccount(account, out) {
       const rows = toRows(t, { account: { account_id: String(u.id) }, username: u.username, includes, errors: errs, privateWindow, now });
       if (!keep(rows.post)) continue;
       posts.set(rows.post.post_id, rows.post);
-      metrics.push(rows.metric);
+      metricsById.set(rows.metric.post_id, rows.metric);
       kept++;
     }
     const unexpected = errs.filter((e) => !xapi.expectedRefusal(e));
@@ -327,7 +333,8 @@ async function collectAccount(account, out) {
   }
 
   // 3. Daily pass. An account we hold no posts for gets a first-run window of
-  // the full private cut-off, so nothing between day 8 and day 29 is skipped.
+  // the observed private ceiling (89 days), because the checkpoint pass only
+  // revisits posts already held.
   let dailyDays = LOOKBACK_DAYS;
   if (SUPABASE && !account.inline && !LOOKBACK_EXPLICIT) {
     const held = await pg('GET', `x_posts?select=post_id&account_id=eq.${encodeURIComponent(String(u.id))}&limit=1`);
@@ -336,7 +343,10 @@ async function collectAccount(account, out) {
     if (firstRun) log(`   first collection for this account: daily window widened to ${dailyDays} days`);
   }
   const win = sched.dailyWindow(now, dailyDays);
-  const privateOk = dailyDays <= sched.PRIVATE_WINDOW_DAYS;
+  // Private groups are always requested. The groundwork withheld them past 29
+  // days for fear X would fail the whole request; the probe showed X answers
+  // with per-field partial errors and still sends public metrics.
+  const privateOk = true;
   let token = null; let pages = 0; let returned = 0; let kept = 0;
   do {
     const res = await client.userPosts(u.id, { start_time: win.start_time, pagination_token: token, privateWindow: privateOk, excludeRetweets: !INCLUDE_RETWEETS });
@@ -352,35 +362,7 @@ async function collectAccount(account, out) {
   } while (token && returned < MAX_POSTS);
   log(`   ${win.label}: ${returned} post(s) returned, ${kept} kept, ${pages} page(s)`);
 
-  // 4. Final pass - only with a database, since it is defined by what we hold.
-  let finalDue = 0;
-  if (!NO_FINAL && SUPABASE && !account.inline) {
-    const from = new Date(now.getTime() - (sched.FINAL_READ_TO + 1) * 86_400_000).toISOString();
-    const to = new Date(now.getTime() - (sched.FINAL_READ_FROM - 1) * 86_400_000).toISOString();
-    const cand = await pg('GET', `x_posts?select=post_id,created_at&account_id=eq.${encodeURIComponent(String(u.id))}&created_at=gte.${encodeURIComponent(from)}&created_at=lte.${encodeURIComponent(to)}&limit=2000`);
-    const ids = (cand.ok && Array.isArray(cand.body) ? cand.body : []);
-    if (ids.length) {
-      const idList = ids.map((r) => `"${r.post_id}"`).join(',');
-      const snaps = await pg('GET', `x_post_metrics?select=post_id,collected_at&post_id=in.(${idList})&order=collected_at.desc&limit=10000`);
-      const latest = new Map();
-      for (const s of (snaps.ok && Array.isArray(snaps.body) ? snaps.body : [])) if (!latest.has(s.post_id)) latest.set(s.post_id, s.collected_at);
-      const due = sched.dueForFinalRead(ids.map((r) => ({ ...r, last_collected_at: latest.get(r.post_id) || null })), now);
-      finalDue = due.length;
-      for (const batch of sched.chunk(due, 100)) {
-        const res = await client.postsByIds(batch, { privateWindow: true });
-        if (!res.ok) {
-          const why = res.detail || res.title || `HTTP ${res.status}`;
-          log(`   final pass FAILED: ${why}`);
-          passFailures.push({ pass: 'final', status: res.status, why: String(why) });
-          break;
-        }
-        absorb(res, true, 'final');
-      }
-    }
-    log(`   final reads: ${finalDue} post(s) due at day ${sched.FINAL_READ_FROM}-${sched.FINAL_READ_TO}`);
-  }
-
-  // 5. Backfill of posts older than the daily window's private cut-off. Private
+  // 4. Backfill of posts older than the daily window. Private
   // groups ARE requested: X documents 30 days but served them to ~76-89 days on
   // 30 Sep 2026, refusing older posts with a partial error while still sending
   // public metrics. So one request per page gets whatever X will give, and a
@@ -404,7 +386,50 @@ async function collectAccount(account, out) {
     log(`   backfill ${BACKFILL_DAYS}d: ${got} post(s), ${pg2} page(s) (private metrics wherever X still serves them)`);
   }
 
+  // 5. Checkpoint pass - only with a database, since it is defined by what we
+  // hold. Reads x_post_last_collected, one row per post with its newest
+  // snapshot time, rather than every snapshot: at 18 accounts that is ~400 rows
+  // per account instead of ~5,000, and PostgREST caps a response at 1,000.
+  let checkpointDue = 0;
+  const dueBy = {};
+  if (!NO_CHECKPOINTS && SUPABASE && !account.inline) {
+    const from = new Date(now.getTime() - (sched.OBSERVED_PRIVATE_DAYS + 1) * 86_400_000).toISOString();
+    const to = new Date(now.getTime() - (sched.CHECKPOINTS[0] - 1) * 86_400_000).toISOString();
+    const held = [];
+    for (let offset = 0; ; offset += 1000) {
+      const page = await pg('GET', `x_post_last_collected?select=post_id,created_at,last_collected_at`
+        + `&account_id=eq.${encodeURIComponent(String(u.id))}`
+        + `&created_at=gte.${encodeURIComponent(from)}&created_at=lte.${encodeURIComponent(to)}`
+        + `&order=post_id.asc&limit=1000&offset=${offset}`);
+      if (!page.ok) {
+        passFailures.push({ pass: 'checkpoint', status: page.status, why: `could not read x_post_last_collected (HTTP ${page.status})` });
+        log(`   checkpoint pass FAILED: could not read x_post_last_collected (HTTP ${page.status})`);
+        break;
+      }
+      const rows = Array.isArray(page.body) ? page.body : [];
+      held.push(...rows);
+      if (rows.length < 1000) break;
+    }
+    // Skip anything the daily pass or backfill already read this run.
+    const due = sched.dueForCheckpoint(held, now).filter((d) => !metricsById.has(d.post_id));
+    checkpointDue = due.length;
+    for (const d of due) dueBy[d.checkpoint] = (dueBy[d.checkpoint] || 0) + 1;
+    for (const batch of sched.chunk(due.map((d) => d.post_id), 100)) {
+      const res = await client.postsByIds(batch, { privateWindow: true });
+      if (!res.ok) {
+        const why = res.detail || res.title || `HTTP ${res.status}`;
+        log(`   checkpoint pass FAILED: ${why}`);
+        passFailures.push({ pass: 'checkpoint', status: res.status, why: String(why) });
+        break;
+      }
+      absorb(res, true, 'checkpoint');
+    }
+    const split = sched.CHECKPOINTS.map((c) => `d${c}:${dueBy[c] || 0}`).join(' ');
+    log(`   checkpoint reads: ${checkpointDue} post(s) due (${split})`);
+  }
+
   if (posts.size) await sink.upsert('x_posts', [...posts.values()]);
+  const metrics = [...metricsById.values()];
   if (metrics.length) await sink.upsert('x_post_metrics', metrics);
 
   const cost = sched.estimateCost({ postReads: client.tally.postReads, userReads: client.tally.userReads, owned: true });
@@ -437,7 +462,7 @@ async function collectAccount(account, out) {
 // ---------------------------------------------------------------------------
 async function main() {
   console.log(`X collector ${RUN_ID} · sink=${sink.name}${DRY_RUN ? ' (dry run)' : ''} · daily window ${LOOKBACK_DAYS}d`
-    + `${BACKFILL_DAYS ? ` · backfill ${BACKFILL_DAYS}d` : ''}${NO_FINAL ? ' · no final pass' : ''}`);
+    + `${BACKFILL_DAYS ? ` · backfill ${BACKFILL_DAYS}d` : ''}${NO_CHECKPOINTS ? ' · no checkpoint pass' : ''}`);
 
   // Budget guard first. A collector that has already spent the month's money
   // must not spend more; and it must say so, not skip quietly.

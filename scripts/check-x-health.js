@@ -47,7 +47,7 @@ async function main() {
     const age = Math.floor((Date.now() - new Date(fresh.latest + 'T00:00:00Z').getTime()) / 86_400_000);
     console.log(`  latest collection  ${fresh.latest}  (${age} day(s) ago)`);
     if (age > MAX_AGE) {
-      problems.push(`X collection has stopped: last data is ${age} days old. Posts now aged ${sched.FINAL_READ_FROM}-${sched.FINAL_READ_TO} days are losing their final private metrics every day this continues.`);
+      problems.push(`X collection has stopped: last data is ${age} days old. Checkpoint reads catch up once it restarts, but posts that pass day ${sched.OBSERVED_PRIVATE_DAYS} meanwhile lose their final link and profile clicks for good.`);
     }
   }
   if (fresh.recentFailures) console.log(`  failed runs        ${fresh.recentFailures} in the recent ledger`);
@@ -61,6 +61,29 @@ async function main() {
   }
   if (shaky.length) warnings.push(`${shaky.length} account(s) had a refresh error on the last run: ${shaky.map((a) => '@' + a.username).join(', ')}.`);
 
+  // 2b. Has X tightened the private-metric window? The day-60 and day-85
+  // checkpoints exist only because X served private metrics to ~89 days on
+  // 30 Sep 2026, against a documented 30. If reads of posts aged 31-89 stop
+  // returning them, those checkpoints are buying public metrics only, and the
+  // schedule should drop them. A warning, not a failure: collection still works.
+  try {
+    const since = new Date(Date.now() - 3 * 86_400_000).toISOString();
+    const base = String(url).trim().replace(/\/rest\/v1\/?$/, '').replace(/\/+$/, '');
+    const r = await fetch(`${base}/rest/v1/x_post_metrics?select=private_window_open`
+      + `&collected_at=gte.${encodeURIComponent(since)}&post_age_days=gt.${sched.PRIVATE_WINDOW_DAYS + 1}`
+      + `&post_age_days=lte.${sched.OBSERVED_PRIVATE_DAYS}&limit=1000`,
+      { headers: { apikey: key, Authorization: `Bearer ${key}` } });
+    const rows = r.ok ? await r.json() : [];
+    const late = Array.isArray(rows) ? rows : [];
+    const got = late.filter((x) => x.private_window_open).length;
+    console.log(`\n  late reads (31-${sched.OBSERVED_PRIVATE_DAYS}d, last 3 days)  ${got} of ${late.length} returned private metrics`);
+    if (late.length >= 3 && got === 0) {
+      warnings.push(`X appears to have tightened its private-metric window: none of the last ${late.length} reads of posts aged 31-${sched.OBSERVED_PRIVATE_DAYS} days returned link or profile clicks. The day-60 and day-85 checkpoints now buy public metrics only; consider removing them from CHECKPOINTS in lib/xschedule.js.`);
+    }
+  } catch (e) {
+    console.log(`  late-read check skipped: ${e.message}`);
+  }
+
   // 3. Budget
   if (spend) {
     const spent = Number(spend.est_cost_usd || 0);
@@ -69,7 +92,8 @@ async function main() {
     if (pct >= 100) problems.push(`X budget spent: est. $${spent.toFixed(2)} of $${spend.budget}. The collector refuses to run until X_MONTHLY_BUDGET_USD is raised or the month rolls over.`);
     else if (pct >= WARN_AT) warnings.push(`X spend is at ${pct}% of the $${spend.budget} monthly budget.`);
     const projected = sched.projectMonthly({ accounts: accounts.length, postsPerDay: 5 });
-    console.log(`  for reference      ~$${projected.toFixed(0)}/month expected at 5 posts/day/account on the 7+1 schedule`);
+    console.log(`  for reference      ~$${projected.toFixed(2)}/month at steady state, 5 posts/day/account, `
+      + `${sched.READS_PER_POST} reads per post (days 0-7, ${sched.CHECKPOINTS.join(', ')})`);
   }
 
   if (problems.length) {
