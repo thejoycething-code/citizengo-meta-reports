@@ -91,6 +91,23 @@ eq('backfill ends at the widened first-run window too', sched.backfillWindow(NOW
 eq('no backfill when it would not reach past the daily window', sched.backfillWindow(NOW, 8, 8), null);
 eq('first run for an account reaches the observed ceiling, so checkpoints have posts', [sched.firstRunDays(0), sched.firstRunDays(12)], [89, 8]);
 
+console.log('\nEnrolment guard (lib/xflow.js)\n');
+{
+  const { enrolmentConflict } = require('../lib/xflow');
+  const uk = { label: 'CitizenGO UK', kind: 'organisation', country: 'GB' };
+  const globalRow = { account_id: '1264712994', username: 'CitizenGO', label: 'CitizenGO', kind: 'organisation', is_active: true };
+  eq('new account, unused label: allowed', enrolmentConflict({ accountId: '9', username: 'CitizenGO_UK', invite: uk, existing: null, holders: [] }), null);
+  eq('UK invite opened while signed in as @CitizenGO: refused, Global not relabelled',
+    enrolmentConflict({ accountId: '1264712994', username: 'CitizenGO', invite: uk, existing: globalRow, holders: [] }).code, 'ACCOUNT_ALREADY_CONNECTED');
+  eq('same account, same label (renewal): allowed',
+    enrolmentConflict({ accountId: '1264712994', username: 'CitizenGO', invite: { label: 'citizengo ', kind: 'organisation' }, existing: globalRow, holders: [globalRow] }), null);
+  eq('label already held by another X account: refused',
+    enrolmentConflict({ accountId: '77', username: 'someone_else', invite: uk, existing: null, holders: [{ account_id: '9', username: 'CitizenGO_UK', label: 'CitizenGO UK', is_active: true }] }).code, 'LABEL_ALREADY_CONNECTED');
+  eq('same account as spokesperson under an organisation label: refused',
+    enrolmentConflict({ accountId: '1264712994', username: 'CitizenGO', invite: { label: 'CitizenGO', kind: 'spokesperson' }, existing: globalRow, holders: [] }).code, 'ACCOUNT_ALREADY_CONNECTED');
+  eq('a retired (inactive) row does not block re-use', enrolmentConflict({ accountId: '9', username: 'x', invite: uk, existing: { ...globalRow, is_active: false }, holders: [] }), null);
+}
+
 console.log('\nCost (the figures in the scoping brief)\n');
 eq('owned read is $0.001, user read $0.010', sched.estimateCost({ postReads: 1000, userReads: 10 }), 1.1);
 eq('outsider rate is $0.005', sched.estimateCost({ postReads: 1000, userReads: 0, owned: false }), 5);

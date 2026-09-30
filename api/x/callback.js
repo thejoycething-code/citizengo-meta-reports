@@ -73,6 +73,25 @@ module.exports = async (req, res) => {
   const invite = ticket.invite;
   const now = new Date().toISOString();
 
+  // Refuse to enrol the wrong account before writing anything. See
+  // lib/xflow.js enrolmentConflict for why this exists.
+  let conflict;
+  try {
+    const existing = await (await pg('GET', `x_accounts?select=account_id,username,label,kind,is_active&account_id=eq.${encodeURIComponent(String(u.id))}`)).json();
+    const holders = await (await pg('GET', `x_accounts?select=account_id,username,label,is_active&is_active=eq.true&label=ilike.${encodeURIComponent(String(invite.label).replace(/[*%,()]/g, ''))}`)).json();
+    conflict = flow.enrolmentConflict({ accountId: String(u.id), username: u.username, invite,
+      existing: Array.isArray(existing) ? existing[0] || null : null, holders: Array.isArray(holders) ? holders : [] });
+  } catch (e) {
+    return flow.page(res, 500, 'Could not check', `<h1>Could not check whether this account is already connected</h1><p class="err">${flow.esc(e.message)}</p><p>Nothing was saved. Try the invite again in a few minutes.</p>`);
+  }
+  if (conflict) {
+    // The grant we just received is unwanted; hand it back rather than leave a
+    // live refresh token sitting unused on X's side.
+    try { await xauth.revoke({ clientId: cfg.clientId, clientSecret: cfg.clientSecret, token: granted.refresh_token }); } catch (e) { /* best effort */ }
+    console.log(JSON.stringify({ at: now, event: 'x/enrol-refused', code: conflict.code, account_id: String(u.id), username: u.username, invite_label: invite.label }));
+    return flow.page(res, 409, conflict.title, `<h1>${flow.esc(conflict.title)}</h1><p>${flow.esc(conflict.message)}</p><p class="muted">Nothing was changed. Your X account has not been connected by this attempt.</p>`);
+  }
+
   try {
     await pg('POST', 'x_accounts?on_conflict=account_id', [{
       account_id: String(u.id), username: u.username, name: u.name || null,
