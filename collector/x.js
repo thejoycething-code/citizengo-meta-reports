@@ -88,6 +88,12 @@ const CLIENT_SECRET = process.env.X_CLIENT_SECRET || '';
 // PEM in an env var arrives with literal "\n" more often than not.
 const PRIVATE_KEY = String(process.env.X_TOKEN_PRIVATE_KEY || '').replace(/\\n/g, '\n');
 
+// Spend in THIS run, shared across accounts collected in parallel, and what the
+// month's budget leaves. The start-of-run guard alone could not stop one large
+// run - a full-history backfill of 12 accounts is ~$86 - from overshooting the
+// cap, so every backfill page is checked against these before it is requested.
+const RUN_SPEND = { spent: 0, remaining: Infinity, stoppedAtBudget: false };
+
 const RUN_STARTED = new Date();
 const RUN_ID = `xrun-${RUN_STARTED.toISOString().slice(0, 19).replace(/[:T]/g, '')}`;
 const COLLECTED_DATE = RUN_STARTED.toISOString().slice(0, 10);
@@ -370,6 +376,17 @@ async function collectAccount(account, out) {
   } while (token && returned < MAX_POSTS);
   log(`   ${win.label}: ${returned} post(s) returned, ${kept} kept, ${pages} page(s)`);
 
+  // What this account has cost so far in the run, and a way to add it to the
+  // shared counter as it grows.
+  const owned = Boolean(APP_OWNER_ID) && String(u.id) === APP_OWNER_ID;
+  let charged = 0;
+  const charge = () => {
+    const now = sched.estimateCost({ postReads: client.tally.postReads, userReads: client.tally.userReads, owned });
+    RUN_SPEND.spent += now - charged;
+    charged = now;
+  };
+  const perPostRate = owned ? sched.PRICES.ownedPostRead : sched.PRICES.postRead;
+
   // 4. Backfill of posts older than the daily window. Private
   // groups ARE requested: X documents 30 days but served them to ~76-89 days on
   // 30 Sep 2026, refusing older posts with a partial error while still sending
@@ -378,9 +395,30 @@ async function collectAccount(account, out) {
   const bw = sched.backfillWindow(now, BACKFILL_DAYS, BACKFILL_FROM_DAYS === null ? dailyDays : Math.max(BACKFILL_FROM_DAYS, dailyDays));
   if (bw) {
     const start = bw.start_time;
-    const end = bw.end_time;
+    let end = bw.end_time;
+    // RESUMABLE: start below the oldest post already held, so a run that stops
+    // (budget, credits, an outage) continues where it left off. Without this a
+    // re-run re-fetches the whole window, and X only waives repeat charges
+    // within the same UTC day.
+    if (SUPABASE && !account.inline) {
+      const oldest = await pg('GET', `x_posts?select=created_at&account_id=eq.${encodeURIComponent(String(u.id))}&order=created_at.asc&limit=1`);
+      const o = oldest.ok && Array.isArray(oldest.body) && oldest.body[0] ? oldest.body[0].created_at : null;
+      if (o && Date.parse(o) < Date.parse(end)) {
+        end = new Date(Date.parse(o) - 1000).toISOString();
+        log(`   backfill resumes below the oldest post held (${o.slice(0, 10)})`);
+      }
+    }
     let tok = null; let got = 0; let pg2 = 0;
     do {
+      if (Date.parse(end) <= Date.parse(start)) break;
+      charge();
+      // Assume a full page (100 posts) so the check can only err on the safe side.
+      if (RUN_SPEND.spent + 100 * perPostRate > RUN_SPEND.remaining) {
+        RUN_SPEND.stoppedAtBudget = true;
+        log(`   backfill STOPPED at the monthly budget after ${got} post(s). Re-run once the budget allows; it resumes from here.`);
+        passFailures.push({ pass: 'backfill', status: null, why: 'stopped at the monthly budget; resumable' });
+        break;
+      }
       const res = await client.userPosts(u.id, { start_time: start, end_time: end, pagination_token: tok, privateWindow: true, excludeRetweets: !INCLUDE_RETWEETS });
       if (!res.ok) {
         const why = res.detail || res.title || `HTTP ${res.status}`;
@@ -448,7 +486,7 @@ async function collectAccount(account, out) {
   // under-counted spend five-fold: the ledger said $2.39 on 30 Sep 2026 when
   // the X console said $10.40, so the budget guard would have let spend run
   // well past the cap. X_APP_OWNER_ID names the owning account.
-  const owned = Boolean(APP_OWNER_ID) && String(u.id) === APP_OWNER_ID;
+  charge();
   const cost = sched.estimateCost({ postReads: client.tally.postReads, userReads: client.tally.userReads, owned });
   // Counted on private_window_open, NOT on url_link_clicks: X returns link
   // clicks only for posts that contain a link, so counting those reported 24 of
@@ -490,6 +528,7 @@ async function main() {
     process.exit(1);
   }
   if (spent) console.log(`  month to date: est $${spent.toFixed(2)} of $${BUDGET_USD} budget`);
+  RUN_SPEND.remaining = BUDGET_USD - spent;
 
   let accounts = await loadAccounts();
   if (ONLY.length) accounts = accounts.filter((a) => ONLY.includes(a.account_id) || ONLY.includes(a.label) || ONLY.includes(a.username));
@@ -523,6 +562,7 @@ async function main() {
   console.log('\nSummary');
   for (const s of summary) console.log(`  ${String(s.status).padEnd(8)} ${s.label} — ${s.posts} posts, ${s.metrics} metric rows, est $${(s.cost || 0).toFixed(4)}`);
   console.log(`  estimated cost this run: $${totals.cost.toFixed(4)} · month to date after run: $${(spent + totals.cost).toFixed(2)} of $${BUDGET_USD}`);
+  if (RUN_SPEND.stoppedAtBudget) console.log('  NOTE: the backfill stopped at the monthly budget. Re-run it next month (or after raising X_MONTHLY_BUDGET_USD); it resumes where it stopped.');
   if (Object.keys(written).length) {
     console.log('\nWritten to data/:');
     for (const [t, n] of Object.entries(written)) console.log(`  ${t}.ndjson — ${n} rows`);
