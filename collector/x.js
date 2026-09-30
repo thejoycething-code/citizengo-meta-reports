@@ -30,7 +30,7 @@
 // Everything else on a personal account is discarded before it is written.
 //
 // Usage:
-//   node collector/x.js [--dry-run] [--lookback-days 7] [--backfill-days 90]
+//   node collector/x.js [--dry-run] [--lookback-days 8] [--backfill-days 3650] [--backfill-from-days 90]
 //                       [--no-checkpoints] [--include-retweets] [--accounts <id> <id>] [--budget-usd 100]
 //
 // Dry runs without a database can still exercise the API using
@@ -65,6 +65,10 @@ const LOOKBACK_DAYS = Number(flag('lookback-days', process.env.X_LOOKBACK_DAYS |
 // Set when the caller chose the window, which then wins over the first-run widening.
 const LOOKBACK_EXPLICIT = args.includes('--lookback-days');
 const BACKFILL_DAYS = Number(flag('backfill-days', 0));
+// Where the backfill stops, in days back. Default: where the daily window starts.
+// Set 90 to take only history the daily and checkpoint passes never read, so a
+// deep backfill of an account already collected does not pay again for 8-89.
+const BACKFILL_FROM_DAYS = flag('backfill-from-days', null) === null ? null : Number(flag('backfill-from-days', null));
 const MAX_POSTS = Number(flag('max-posts', process.env.X_MAX_POSTS || 1000));
 const BUDGET_USD = Number(flag('budget-usd', process.env.X_MONTHLY_BUDGET_USD || 100));
 const ONLY = (() => {
@@ -367,7 +371,7 @@ async function collectAccount(account, out) {
   // 30 Sep 2026, refusing older posts with a partial error while still sending
   // public metrics. So one request per page gets whatever X will give, and a
   // tightening by X costs nothing but the private columns.
-  const bw = sched.backfillWindow(now, BACKFILL_DAYS, dailyDays);
+  const bw = sched.backfillWindow(now, BACKFILL_DAYS, BACKFILL_FROM_DAYS === null ? dailyDays : Math.max(BACKFILL_FROM_DAYS, dailyDays));
   if (bw) {
     const start = bw.start_time;
     const end = bw.end_time;
@@ -382,7 +386,9 @@ async function collectAccount(account, out) {
       }
       got += absorb(res, true, 'backfill').returned; pg2++;
       tok = res.body && res.body.meta && res.body.meta.next_token;
-    } while (tok && got < MAX_POSTS * 4);
+    // X serves at most the 3,200 most recent posts, so 4,000 is a loop guard,
+    // not a limit anyone should reach.
+    } while (tok && got < Math.max(MAX_POSTS * 4, 4000));
     log(`   backfill ${BACKFILL_DAYS}d: ${got} post(s), ${pg2} page(s) (private metrics wherever X still serves them)`);
   }
 

@@ -26,6 +26,10 @@ on:
         description: 'One-off backfill this many days back, PUBLIC metrics only (0 = none). Billed per post.'
         required: false
         default: '0'
+      backfill_from_days:
+        description: 'Backfill stops this many days back (blank = where the daily window starts; 90 = skip what daily and checkpoints already read)'
+        required: false
+        default: ''
       accounts:
         description: 'Space-separated account ids or handles to restrict to (blank = all)'
         required: false
@@ -61,6 +65,7 @@ jobs:
       X_MONTHLY_BUDGET_USD: ${{ vars.X_MONTHLY_BUDGET_USD || '100' }}
       LOOKBACK_DAYS: ${{ github.event.inputs.lookback_days }}
       BACKFILL_DAYS: ${{ github.event.inputs.backfill_days || '0' }}
+      BACKFILL_FROM_DAYS: ${{ github.event.inputs.backfill_from_days }}
       ACCOUNTS: ${{ github.event.inputs.accounts }}
       ALERT_WEBHOOK_URL: ${{ secrets.ALERT_WEBHOOK_URL }}
       DRY_RUN: ${{ (github.event.inputs.dry_run == true || github.event.inputs.dry_run == 'true') && 'true' || 'false' }}
@@ -98,6 +103,7 @@ jobs:
           if [ -n "$ACCOUNTS" ]; then ACC="--accounts $ACCOUNTS"; fi
           BF=""
           if [ "$BACKFILL_DAYS" != "0" ]; then BF="--backfill-days $BACKFILL_DAYS"; fi
+          if [ -n "$BACKFILL_FROM_DAYS" ]; then BF="$BF --backfill-from-days $BACKFILL_FROM_DAYS"; fi
           # Passed only when chosen: an explicit window disables the first-run
           # widening that stops a new account missing posts aged 8-29 days.
           LB=""
