@@ -92,7 +92,23 @@ const PRIVATE_KEY = String(process.env.X_TOKEN_PRIVATE_KEY || '').replace(/\\n/g
 // month's budget leaves. The start-of-run guard alone could not stop one large
 // run - a full-history backfill of 12 accounts is ~$86 - from overshooting the
 // cap, so every backfill page is checked against these before it is requested.
-const RUN_SPEND = { spent: 0, remaining: Infinity, stoppedAtBudget: false };
+const RUN_SPEND = { spent: 0, remaining: Infinity, nightlyReserve: 0, stoppedAtBudget: false };
+
+// Days of history a new account's first run backfills. 3650 reaches X's
+// 3,200-post limit for every account we hold. 0 turns the automatic backfill off.
+const FIRST_RUN_BACKFILL_DAYS = Number(process.env.X_FIRST_RUN_BACKFILL_DAYS ?? 3650);
+
+// What the nightly collection needs for the rest of the month. A backfill must
+// never spend it: the start-of-run guard refuses to run at all once the budget
+// is gone, so a backfill that emptied it would stop the NIGHTLY collection too,
+// and posts passing day 89 meanwhile lose their link clicks for good. Priced at
+// the ordinary rate from the measured ~2 posts a day per account (30 Sep 2026).
+function nightlyReserveFor(accountCount, now = new Date()) {
+  const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
+  const daysLeft = Math.max(1, Math.ceil((end - now) / 86_400_000));
+  const perAccountPerDay = sched.estimateCost({ postReads: 2 * sched.READS_PER_POST, userReads: 1, owned: false });
+  return Math.round(accountCount * perAccountPerDay * daysLeft * 100) / 100;
+}
 
 const RUN_STARTED = new Date();
 const RUN_ID = `xrun-${RUN_STARTED.toISOString().slice(0, 19).replace(/[:T]/g, '')}`;
@@ -350,11 +366,13 @@ async function collectAccount(account, out) {
   // the observed private ceiling (89 days), because the checkpoint pass only
   // revisits posts already held.
   let dailyDays = LOOKBACK_DAYS;
+  let firstRunForAccount = false;
   if (SUPABASE && !account.inline && !LOOKBACK_EXPLICIT) {
     const held = await pg('GET', `x_posts?select=post_id&account_id=eq.${encodeURIComponent(String(u.id))}&limit=1`);
     const firstRun = held.ok && Array.isArray(held.body) && held.body.length === 0;
     dailyDays = firstRun ? sched.firstRunDays(0) : LOOKBACK_DAYS;
     if (firstRun) log(`   first collection for this account: daily window widened to ${dailyDays} days`);
+    firstRunForAccount = firstRun;
   }
   const win = sched.dailyWindow(now, dailyDays);
   // Private groups are always requested. The groundwork withheld them past 29
@@ -392,7 +410,15 @@ async function collectAccount(account, out) {
   // 30 Sep 2026, refusing older posts with a partial error while still sending
   // public metrics. So one request per page gets whatever X will give, and a
   // tightening by X costs nothing but the private columns.
-  const bw = sched.backfillWindow(now, BACKFILL_DAYS, BACKFILL_FROM_DAYS === null ? dailyDays : Math.max(BACKFILL_FROM_DAYS, dailyDays));
+  // Every account gets its FULL history, to X's 3,200-post limit - the same as
+  // the 12 accounts backfilled by hand on 30 Sep 2026, and what the team was
+  // told. x_accounts.history_complete records when that is done; until then
+  // each night resumes the backfill from the oldest post held, so a backfill
+  // paused by the budget or a dropped connection finishes on its own.
+  const historyPending = SUPABASE && !account.inline && account.history_complete !== true;
+  const backfillDays = BACKFILL_DAYS || (historyPending ? FIRST_RUN_BACKFILL_DAYS : 0);
+  if (!BACKFILL_DAYS && historyPending && backfillDays) log(`   full history not yet collected: backfilling (to X's 3,200-post limit)`);
+  const bw = sched.backfillWindow(now, backfillDays, BACKFILL_FROM_DAYS === null ? dailyDays : Math.max(BACKFILL_FROM_DAYS, dailyDays));
   if (bw) {
     const start = bw.start_time;
     let end = bw.end_time;
@@ -413,9 +439,9 @@ async function collectAccount(account, out) {
       if (Date.parse(end) <= Date.parse(start)) break;
       charge();
       // Assume a full page (100 posts) so the check can only err on the safe side.
-      if (RUN_SPEND.spent + 100 * perPostRate > RUN_SPEND.remaining) {
+      if (RUN_SPEND.spent + 100 * perPostRate > RUN_SPEND.remaining - RUN_SPEND.nightlyReserve) {
         RUN_SPEND.stoppedAtBudget = true;
-        log(`   backfill STOPPED at the monthly budget after ${got} post(s). Re-run once the budget allows; it resumes from here.`);
+        log(`   backfill PAUSED at the monthly budget (less the nightly reserve) after ${got} post(s). It resumes on its own next month, or re-run after raising X_MONTHLY_BUDGET_USD.`);
         passFailures.push({ pass: 'backfill', status: null, why: 'stopped at the monthly budget; resumable' });
         break;
       }
@@ -431,7 +457,14 @@ async function collectAccount(account, out) {
     // X serves at most the 3,200 most recent posts, so 4,000 is a loop guard,
     // not a limit anyone should reach.
     } while (tok && got < Math.max(MAX_POSTS * 4, 4000));
-    log(`   backfill ${BACKFILL_DAYS}d: ${got} post(s), ${pg2} page(s) (private metrics wherever X still serves them)`);
+    log(`   backfill ${backfillDays}d: ${got} post(s), ${pg2} page(s) (private metrics wherever X still serves them)`);
+    // Finished only if X ran out of pages (or the window was already empty),
+    // not if the budget or a failure ended the loop.
+    const finished = !tok && !passFailures.some((f) => f.pass === 'backfill');
+    if (finished && SUPABASE && !account.inline && !DRY_RUN) {
+      await pg('PATCH', `x_accounts?account_id=eq.${encodeURIComponent(String(u.id))}`, { history_complete: true }, 'return=minimal');
+      log('   full history collected; nightly runs will not backfill this account again');
+    }
   }
 
   // 5. Checkpoint pass - only with a database, since it is defined by what we
@@ -538,6 +571,8 @@ async function main() {
     process.exit(0);
   }
   console.log(`${accounts.length} account(s)`);
+  RUN_SPEND.nightlyReserve = nightlyReserveFor(accounts.length);
+  if (Number.isFinite(RUN_SPEND.remaining)) console.log(`  backfill may spend up to $${Math.max(0, RUN_SPEND.remaining - RUN_SPEND.nightlyReserve).toFixed(2)} (keeping $${RUN_SPEND.nightlyReserve.toFixed(2)} for the rest of the month's nightly runs)`);
 
   const summary = new Array(accounts.length);
   await mapLimit(accounts, 3, async (a, idx) => {

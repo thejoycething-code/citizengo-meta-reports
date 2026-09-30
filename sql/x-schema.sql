@@ -43,7 +43,11 @@ create table if not exists public.x_accounts (
   authorized_by    text,                       -- who minted the invite (operator), never the holder's email
   first_seen_at    timestamptz not null default now(),
   last_seen_at     timestamptz not null default now(),
-  constraint x_accounts_kind check (kind in ('organisation', 'spokesperson'))
+  constraint x_accounts_kind check (kind in ('organisation', 'spokesperson')),
+  -- Added 30 Sep 2026 (migration x_accounts_history_complete). False until the
+  -- account's full history, to X's 3,200-post limit, has been backfilled; the
+  -- collector keeps resuming the backfill each night until it is true.
+  history_complete boolean not null default false
 );
 
 -- ---------------------------------------------------------------------------

@@ -107,7 +107,8 @@ const hdrs = (key) => ({ apikey: key, Authorization: 'Bearer ' + key });
 // holds EXPECTED to schema.sql.
 const PENDING = {
   x_accounts: ['account_id', 'username', 'name', 'kind', 'country', 'label', 'is_active',
-    'followers_count', 'authorized_at', 'authorized_by', 'first_seen_at', 'last_seen_at'],
+    'followers_count', 'authorized_at', 'authorized_by', 'first_seen_at', 'last_seen_at',
+    'history_complete'],
   x_oauth_tokens: ['account_id', 'sealed_refresh', 'scopes', 'authorized_at', 'last_refreshed_at',
     'last_error', 'revoked_at'],
   x_posts: ['post_id', 'account_id', 'created_at', 'text', 'lang', 'conversation_id',
