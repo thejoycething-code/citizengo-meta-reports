@@ -405,7 +405,7 @@ against the live API — `npm run probe:x` is that check and must run first.
 
 | Piece | File | Dormant because |
 | --- | --- | --- |
-| Schema (5 tables, 3 views) | `sql/x-schema.sql` | not applied; preflight treats it as PENDING |
+| Schema (6 tables, 3 views) | `sql/x-schema.sql` | applied 30 Sep 2026 (migration `x_source_tables`), empty |
 | API client with billing tally and one-shot 429 wait | `lib/xapi.js` | nothing calls it |
 | OAuth, PKCE, sealed box, invites | `lib/xauth.js`, `lib/xflow.js` | no keys configured |
 | Enrolment pages | `api/x/authorize.js`, `api/x/callback.js` | answer 503 until `X_*` env exists |
@@ -480,7 +480,7 @@ mcp/           tools.js (10 tools), x-tools.js (6, flag-gated), server.js (stdio
 api/           mcp.js (HTTP transport), oauth/*, x/authorize.js + x/callback.js (X account enrolment)
 digest/        build.js — the weekly summary
 scripts/       preflight, watchdog, mocks, tests
-sql/           schema.sql, x-schema.sql (X, not yet applied), readonly-role.sql
+sql/           schema.sql, x-schema.sql (X source), readonly-role.sql
 probe/         metrics.js — the ledger of what Meta actually serves
 fixtures/      raw probe output, committed as evidence
 ```

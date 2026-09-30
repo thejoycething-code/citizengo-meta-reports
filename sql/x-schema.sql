@@ -1,6 +1,6 @@
--- X (Twitter) source. NOT YET APPLIED - groundwork for the X data source scoped
--- in Asana task 1218268802872745 (8 Sep 2026). Apply in Supabase (SQL Editor >
--- New query > paste > Run) only when the go-live checklist in README.md says so.
+-- X (Twitter) source. APPLIED to production on 30 Sep 2026 as migration
+-- x_source_tables (Asana task 1218268802872745; scoped 8 Sep 2026). Re-running
+-- this file is safe: every statement is idempotent.
 --
 -- Kept in its own file rather than appended to schema.sql so that
 -- scripts/check-supabase.js keeps passing against production until these
@@ -9,8 +9,9 @@
 -- both files, so drift between this DDL and the preflight is still caught.
 --
 -- Column set is derived from X's documented v2 field groups (docs.x.com,
--- read 8 Sep 2026), NOT from a live probe yet. scripts/probe-x.js is the probe;
--- run it before applying this and reconcile - the Meta schema was built from
+-- read 8 Sep 2026). The live probe (scripts/probe-x.js) had not yet run when
+-- the tables were created, so reconcile against fixtures/x-*.json after the
+-- first run and add columns by migration - the Meta schema was built from
 -- fixtures for exactly this reason, and the two Meta columns that were wrong
 -- were the two taken from documentation.
 --
