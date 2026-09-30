@@ -43,6 +43,7 @@
     "test:x": "node scripts/test-x.js",
     "check:x": "node scripts/check-x-health.js",
     "x:invite": "node scripts/x-invite.js",
-    "x:keygen": "node scripts/x-keygen.js"
+    "x:keygen": "node scripts/x-keygen.js",
+    "x:set-client": "node scripts/x-set-client.js"
   }
 }
