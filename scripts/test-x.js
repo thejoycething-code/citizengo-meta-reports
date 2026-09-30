@@ -274,6 +274,7 @@ mock.listen(0, '127.0.0.1', async () => {
     ok('promoted_metrics on an unboosted post is expected', xapi.expectedRefusal(promo));
     ok('private metrics on a retweet are expected', xapi.expectedRefusal(rtRefusal));
     ok('the age refusal is expected (public metrics still arrive)', xapi.expectedRefusal({ title: 'Disallowed Resource', detail: "The 'organic_metrics.impression_count' field cannot be queried for Tweets older than 30 days." }));
+    ok('a field X could not resolve on the other side of a reply is expected', xapi.expectedRefusal({ title: 'Not Found Error', detail: "The 'in_reply_to_user_id' field could not be fully resolved for this request and may be missing or incomplete." }));
     ok('anything else is NOT expected', !xapi.expectedRefusal(real) && !xapi.expectedRefusal({ title: 'Field Authorization Error', detail: 'x' }));
     const filtered = toRows(TWEETS[0], { account: { account_id: '42' }, username: 'u', includes: INCLUDES, errors: [promo, real], privateWindow: true, now: NOW });
     eq('expected refusals are dropped, unexpected ones kept', filtered.metric.errors.map((e) => e.detail), [real.detail]);
