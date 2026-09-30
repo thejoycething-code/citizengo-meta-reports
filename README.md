@@ -374,11 +374,26 @@ worked through, and each step is independently reversible.
 Verified against X's own documentation on 8 Sep 2026 (`docs.x.com`), not yet
 against the live API — `npm run probe:x` is that check and must run first.
 
-- **Private metrics have a 30-day window.** `non_public_metrics` (link clicks,
-  profile clicks), `organic_metrics` and `promoted_metrics` are served only for
-  the account's OWN posts and only while the post is under 30 days old. There
-  is no backfill. `public_metrics` (impressions, likes, reposts, replies,
-  quotes, bookmarks) have no window and cover the 3,200 most recent posts.
+- **Private metrics have a window, and it is not the documented one.**
+  `non_public_metrics` (link clicks, profile clicks), `organic_metrics` and
+  `promoted_metrics` are served only for the account's OWN posts. X documents
+  30 days, and its refusal message says "older than 30 days". Probed live on
+  30 Sep 2026 (`fixtures/x-2026-09-30-05-*`, `-06-*`), @CitizenGO originals were
+  served private metrics at 27-76 days and refused from 90 days. The schedule
+  stays on the documented 30 so an unannounced tightening loses nothing; the
+  slack was used once, for the initial backfill. `public_metrics`
+  (impressions, likes, reposts, replies, quotes, bookmarks) have no window and
+  cover the 3,200 most recent posts.
+- **Retweets are not collected** (`--include-retweets` to override). A retweet
+  reports its own impressions beside the original's repost count (109 against
+  1,176 in the probe) and serves no private metrics. Replies and quote posts
+  are ours and are kept.
+- **Refusals are sorted, not stored.** X refuses per field, so an unboosted
+  post brings five promoted-metrics refusals every read (251 for 37 posts in
+  the probe). Expected refusals are dropped (`expectedRefusal` in
+  `lib/xapi.js`); anything else lands in `x_post_metrics.errors`.
+- **X 5xx is retried twice** (2s, 6s). A pass that still fails marks the run
+  `failed` or `partial`, never `ok` with zero posts.
 - **Billing is per resource RETURNED**, prepaid: $0.001 per own post, $0.005
   per anyone else's, $0.010 per user lookup; repeats within a UTC day charged
   once. So the collection schedule is the cost. `lib/xschedule.js`: every post

@@ -19,9 +19,9 @@ on:
   workflow_dispatch:
     inputs:
       lookback_days:
-        description: 'Daily window in days (7 nightly). Must stay <= 29 for private metrics.'
+        description: 'Daily window in days. Blank = 7, widened to 29 for an account collected for the first time.'
         required: false
-        default: '7'
+        default: ''
       backfill_days:
         description: 'One-off backfill this many days back, PUBLIC metrics only (0 = none). Billed per post.'
         required: false
@@ -59,7 +59,7 @@ jobs:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL || vars.SUPABASE_URL }}
       SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
       X_MONTHLY_BUDGET_USD: ${{ vars.X_MONTHLY_BUDGET_USD || '100' }}
-      LOOKBACK_DAYS: ${{ github.event.inputs.lookback_days || '7' }}
+      LOOKBACK_DAYS: ${{ github.event.inputs.lookback_days }}
       BACKFILL_DAYS: ${{ github.event.inputs.backfill_days || '0' }}
       ACCOUNTS: ${{ github.event.inputs.accounts }}
       ALERT_WEBHOOK_URL: ${{ secrets.ALERT_WEBHOOK_URL }}
@@ -98,7 +98,11 @@ jobs:
           if [ -n "$ACCOUNTS" ]; then ACC="--accounts $ACCOUNTS"; fi
           BF=""
           if [ "$BACKFILL_DAYS" != "0" ]; then BF="--backfill-days $BACKFILL_DAYS"; fi
-          node collector/x.js --lookback-days "$LOOKBACK_DAYS" $BF $FLAG $ACC
+          # Passed only when chosen: an explicit window disables the first-run
+          # widening that stops a new account missing posts aged 8-29 days.
+          LB=""
+          if [ -n "$LOOKBACK_DAYS" ]; then LB="--lookback-days $LOOKBACK_DAYS"; fi
+          node collector/x.js $LB $BF $FLAG $ACC
 
       - name: Upload output and logs
         if: always()

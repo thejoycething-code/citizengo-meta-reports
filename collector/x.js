@@ -16,8 +16,10 @@
 //   4. FINAL pass - posts aged 26-29 days whose last snapshot predates the
 //      band, fetched by id, all metric groups. The last value X will ever
 //      serve for the private groups.
-//   5. Optional BACKFILL (--backfill-days N) - older posts, PUBLIC metrics only.
-//      One-off; X refuses the private groups past 30 days and nothing here asks.
+//   5. Optional BACKFILL (--backfill-days N) - older posts, all metric groups.
+//      X serves private groups past its documented 30 days (to ~76-89 days on
+//      30 Sep 2026) and refuses older ones with a partial error; public
+//      metrics always arrive.
 //   6. A run row with reads and estimated cost. Refuses to START when the
 //      month's estimated spend has reached X_MONTHLY_BUDGET_USD.
 //
@@ -26,7 +28,7 @@
 //
 // Usage:
 //   node collector/x.js [--dry-run] [--lookback-days 7] [--backfill-days 90]
-//                       [--no-final] [--accounts <id> <id>] [--budget-usd 100]
+//                       [--no-final] [--include-retweets] [--accounts <id> <id>] [--budget-usd 100]
 //
 // Dry runs without a database can still exercise the API using
 // X_ACCESS_TOKENS="label:access_token,..." - that is how the one-account spike
@@ -51,7 +53,14 @@ const flag = (name, fallback) => {
 };
 const DRY_RUN = args.includes('--dry-run');
 const NO_FINAL = args.includes('--no-final');
+// Retweets are excluded unless asked for. The first live probe showed why: a
+// retweet reports its OWN impressions (tens) beside the ORIGINAL's repost count
+// (thousands), serves no private metrics, and was a sixth of every read. Our
+// replies and quote posts are our content and are kept.
+const INCLUDE_RETWEETS = args.includes('--include-retweets');
 const LOOKBACK_DAYS = Number(flag('lookback-days', process.env.X_LOOKBACK_DAYS || sched.DAILY_DAYS));
+// Set when the caller chose the window, which then wins over the first-run widening.
+const LOOKBACK_EXPLICIT = args.includes('--lookback-days');
 const BACKFILL_DAYS = Number(flag('backfill-days', 0));
 const MAX_POSTS = Number(flag('max-posts', process.env.X_MAX_POSTS || 1000));
 const BUDGET_USD = Number(flag('budget-usd', process.env.X_MONTHLY_BUDGET_USD || 100));
@@ -207,7 +216,7 @@ function toRows(post, { account, username, includes, errors, privateWindow, now 
   const np = post.non_public_metrics || {};
   const org = post.organic_metrics || {};
   const pro = post.promoted_metrics || {};
-  const mine = (errors || []).filter((e) => e && String(e.resource_id || e.value || '') === String(post.id));
+  const mine = (errors || []).filter((e) => e && String(e.resource_id || e.value || '') === String(post.id) && !xapi.expectedRefusal(e));
   return {
     post: {
       post_id: String(post.id), account_id: account.account_id, created_at: post.created_at,
@@ -223,7 +232,11 @@ function toRows(post, { account, username, includes, errors, privateWindow, now 
     metric: {
       post_id: String(post.id), account_id: account.account_id,
       collected_date: COLLECTED_DATE, collected_at: now.toISOString(),
-      post_age_days: sched.ageDays(post.created_at, now), private_window_open: Boolean(privateWindow),
+      // Whether private metrics actually CAME BACK, not whether they were asked
+      // for. X serves them past its documented 30 days (to ~76-89 on 30 Sep
+      // 2026), so "asked" and "got" are different facts and only one is useful.
+      post_age_days: sched.ageDays(post.created_at, now),
+      private_window_open: Boolean(privateWindow && (post.non_public_metrics || post.organic_metrics)),
       impressions: num(pub.impression_count), likes: num(pub.like_count), reposts: num(pub.retweet_count),
       replies: num(pub.reply_count), quotes: num(pub.quote_count), bookmarks: num(pub.bookmark_count),
       url_link_clicks: num(np.url_link_clicks), user_profile_clicks: num(np.user_profile_clicks),
@@ -290,6 +303,10 @@ async function collectAccount(account, out) {
 
   const posts = new Map();
   const metrics = [];
+  // Every pass that fails is recorded here. A failed daily pass returns zero
+  // posts, and "zero posts" must never be reported as "ok" - that is the
+  // silent-failure shape this project keeps meeting (see README, Failure modes).
+  const passFailures = [];
   const keep = (p) => account.kind !== 'spokesperson' || (p.citizengo_urls && p.citizengo_urls.length);
 
   function absorb(res, privateWindow, label) {
@@ -304,19 +321,29 @@ async function collectAccount(account, out) {
       metrics.push(rows.metric);
       kept++;
     }
-    if (errs.length) log(`   ${label}: ${errs.length} partial error(s) - ${String(errs[0].title || errs[0].detail || errs[0].message || '').slice(0, 80)}`);
+    const unexpected = errs.filter((e) => !xapi.expectedRefusal(e));
+    if (unexpected.length) log(`   ${label}: ${unexpected.length} unexpected partial error(s) - ${String(unexpected[0].detail || unexpected[0].title || unexpected[0].message || '').slice(0, 100)}`);
     return { returned: data.length, kept };
   }
 
-  // 3. Daily pass.
-  const win = sched.dailyWindow(now, LOOKBACK_DAYS);
-  const privateOk = LOOKBACK_DAYS <= sched.PRIVATE_WINDOW_DAYS;
+  // 3. Daily pass. An account we hold no posts for gets a first-run window of
+  // the full private cut-off, so nothing between day 8 and day 29 is skipped.
+  let dailyDays = LOOKBACK_DAYS;
+  if (SUPABASE && !account.inline && !LOOKBACK_EXPLICIT) {
+    const held = await pg('GET', `x_posts?select=post_id&account_id=eq.${encodeURIComponent(String(u.id))}&limit=1`);
+    const firstRun = held.ok && Array.isArray(held.body) && held.body.length === 0;
+    dailyDays = firstRun ? sched.firstRunDays(0) : LOOKBACK_DAYS;
+    if (firstRun) log(`   first collection for this account: daily window widened to ${dailyDays} days`);
+  }
+  const win = sched.dailyWindow(now, dailyDays);
+  const privateOk = dailyDays <= sched.PRIVATE_WINDOW_DAYS;
   let token = null; let pages = 0; let returned = 0; let kept = 0;
   do {
-    const res = await client.userPosts(u.id, { start_time: win.start_time, pagination_token: token, privateWindow: privateOk });
+    const res = await client.userPosts(u.id, { start_time: win.start_time, pagination_token: token, privateWindow: privateOk, excludeRetweets: !INCLUDE_RETWEETS });
     if (!res.ok) {
       const why = res.detail || res.title || (res.errors && res.errors[0] && (res.errors[0].detail || res.errors[0].message)) || `HTTP ${res.status}`;
       log(`   daily pass FAILED on page ${pages + 1}: ${why}`);
+      passFailures.push({ pass: 'daily', status: res.status, why: String(why) });
       break;
     }
     const a = absorb(res, privateOk, 'daily');
@@ -341,33 +368,54 @@ async function collectAccount(account, out) {
       finalDue = due.length;
       for (const batch of sched.chunk(due, 100)) {
         const res = await client.postsByIds(batch, { privateWindow: true });
-        if (!res.ok) { log(`   final pass FAILED: ${res.detail || res.title || `HTTP ${res.status}`}`); break; }
+        if (!res.ok) {
+          const why = res.detail || res.title || `HTTP ${res.status}`;
+          log(`   final pass FAILED: ${why}`);
+          passFailures.push({ pass: 'final', status: res.status, why: String(why) });
+          break;
+        }
         absorb(res, true, 'final');
       }
     }
     log(`   final reads: ${finalDue} post(s) due at day ${sched.FINAL_READ_FROM}-${sched.FINAL_READ_TO}`);
   }
 
-  // 5. Backfill - public metrics only, older than the private window.
-  if (BACKFILL_DAYS > sched.PRIVATE_WINDOW_DAYS) {
-    const start = new Date(now.getTime() - BACKFILL_DAYS * 86_400_000).toISOString();
-    const end = new Date(now.getTime() - (sched.PRIVATE_WINDOW_DAYS + 1) * 86_400_000).toISOString();
+  // 5. Backfill of posts older than the daily window's private cut-off. Private
+  // groups ARE requested: X documents 30 days but served them to ~76-89 days on
+  // 30 Sep 2026, refusing older posts with a partial error while still sending
+  // public metrics. So one request per page gets whatever X will give, and a
+  // tightening by X costs nothing but the private columns.
+  const bw = sched.backfillWindow(now, BACKFILL_DAYS, dailyDays);
+  if (bw) {
+    const start = bw.start_time;
+    const end = bw.end_time;
     let tok = null; let got = 0; let pg2 = 0;
     do {
-      const res = await client.userPosts(u.id, { start_time: start, end_time: end, pagination_token: tok, privateWindow: false });
-      if (!res.ok) { log(`   backfill FAILED: ${res.detail || res.title || `HTTP ${res.status}`}`); break; }
-      got += absorb(res, false, 'backfill').returned; pg2++;
+      const res = await client.userPosts(u.id, { start_time: start, end_time: end, pagination_token: tok, privateWindow: true, excludeRetweets: !INCLUDE_RETWEETS });
+      if (!res.ok) {
+        const why = res.detail || res.title || `HTTP ${res.status}`;
+        log(`   backfill FAILED: ${why}`);
+        passFailures.push({ pass: 'backfill', status: res.status, why: String(why) });
+        break;
+      }
+      got += absorb(res, true, 'backfill').returned; pg2++;
       tok = res.body && res.body.meta && res.body.meta.next_token;
     } while (tok && got < MAX_POSTS * 4);
-    log(`   backfill ${BACKFILL_DAYS}d (public metrics only): ${got} post(s), ${pg2} page(s)`);
+    log(`   backfill ${BACKFILL_DAYS}d: ${got} post(s), ${pg2} page(s) (private metrics wherever X still serves them)`);
   }
 
   if (posts.size) await sink.upsert('x_posts', [...posts.values()]);
   if (metrics.length) await sink.upsert('x_post_metrics', metrics);
 
   const cost = sched.estimateCost({ postReads: client.tally.postReads, userReads: client.tally.userReads, owned: true });
-  const withPrivate = metrics.filter((m) => m.url_link_clicks !== null).length;
-  const status = metrics.length || returned === 0 ? 'ok' : 'partial';
+  // Counted on private_window_open, NOT on url_link_clicks: X returns link
+  // clicks only for posts that contain a link, so counting those reported 24 of
+  // 190 when all 169 in-window posts had private metrics (30 Sep 2026).
+  const withPrivate = metrics.filter((m) => m.private_window_open).length;
+  // failed: the daily pass failed and nothing was collected.
+  // partial: something failed but some data landed.
+  // ok: every pass that ran succeeded (zero posts is fine on a quiet week).
+  const status = passFailures.length ? (metrics.length ? 'partial' : 'failed') : 'ok';
   log(`   wrote ${posts.size} post(s), ${metrics.length} metric row(s) · ${withPrivate} with private metrics · `
     + `${client.tally.calls} calls · ${client.tally.postReads} post reads, ${client.tally.userReads} user read(s) · est $${cost.toFixed(4)}`);
   if (privateOk && metrics.length && !withPrivate) {
@@ -378,7 +426,10 @@ async function collectAccount(account, out) {
   await sink.upsert('x_collection_runs', [runRow(status, {
     posts_seen: posts.size, metrics_written: metrics.length, api_calls: client.tally.calls,
     post_reads: client.tally.postReads, user_reads: client.tally.userReads, est_cost_usd: cost,
-    error_message: privateOk && metrics.length && !withPrivate ? 'no private metrics on any in-window post' : null,
+    error_code: passFailures.length ? (passFailures[0].status || null) : null,
+    error_message: passFailures.length
+      ? passFailures.map((f) => `${f.pass}: ${f.why}`).join('; ').slice(0, 500)
+      : (privateOk && metrics.length && !withPrivate ? 'no private metrics on any in-window post' : null),
   })]);
   return { status, posts: posts.size, metrics: metrics.length, cost, label: `@${u.username}` };
 }
@@ -455,4 +506,6 @@ if (require.main === module) {
 }
 
 // Exported for scripts/test-x.js, which pins the X-object-to-row mapping.
-module.exports = { toRows, mediaFor };
+// accessTokenFor/loadAccounts are exported for scripts/probe-x.js --stored, so
+// the probe refreshes through the same path that persists the rotated token.
+module.exports = { toRows, mediaFor, accessTokenFor, loadAccounts };

@@ -53,6 +53,12 @@ ok('private window open at 29 days', sched.privateWindowOpen(daysAgo(29), NOW));
 ok('private window closed at 30 days', !sched.privateWindowOpen(daysAgo(30), NOW));
 eq('chunk splits ids at 100', sched.chunk(Array.from({ length: 250 }, (_, i) => i)).map((c) => c.length), [100, 100, 50]);
 
+const bw = sched.backfillWindow(NOW, 100, 7);
+eq('backfill ends exactly where the daily window starts (no 8-29 day hole)', [bw.start_time, bw.end_time], [daysAgo(100), daysAgo(7)]);
+eq('backfill ends at the widened first-run window too', sched.backfillWindow(NOW, 100, 29).end_time, daysAgo(29));
+eq('no backfill when it would not reach past the daily window', sched.backfillWindow(NOW, 7, 7), null);
+eq('first run for an account reaches the whole private window', [sched.firstRunDays(0), sched.firstRunDays(12)], [29, 7]);
+
 console.log('\nCost (the figures in the scoping brief)\n');
 eq('owned read is $0.001, user read $0.010', sched.estimateCost({ postReads: 1000, userReads: 10 }), 1.1);
 eq('outsider rate is $0.005', sched.estimateCost({ postReads: 1000, userReads: 0, owned: false }), 5);
@@ -130,6 +136,7 @@ const TWEETS = [
 ];
 const INCLUDES = { media: [{ media_key: '13_1', type: 'video', public_metrics: { view_count: 1234 }, non_public_metrics: { playback_100_count: 200 } }] };
 let timelineCalls = 0;
+let flaky = 0;
 const mock = http.createServer((req, res) => {
   const u = new URL(req.url, 'http://x');
   const rate = (rem) => ({ 'x-rate-limit-limit': '900', 'x-rate-limit-remaining': String(rem), 'x-rate-limit-reset': String(Math.ceil(Date.now() / 1000) + 1) });
@@ -142,6 +149,8 @@ const mock = http.createServer((req, res) => {
     return json(200, { data: TWEETS, includes: INCLUDES, errors: [{ resource_id: '1002', title: 'Field Authorization Error', detail: 'non_public_metrics not available for retweets' }], meta: { result_count: 2 } }, rate(898));
   }
   if (u.pathname === '/2/tweets') return json(200, { data: [TWEETS[0]], includes: INCLUDES }, rate(299));
+  if (u.pathname === '/2/users/503once/tweets') { flaky++; return flaky === 1 ? json(503, { title: 'Service Unavailable' }) : json(200, { data: [], meta: { result_count: 0 } }); }
+  if (u.pathname === '/2/users/503always/tweets') return json(503, { title: 'Service Unavailable' });
   if (u.pathname === '/2/oauth2/token' && req.method === 'POST') {
     let bodyStr = ''; req.on('data', (c) => bodyStr += c); req.on('end', () => {
       const p = new URLSearchParams(bodyStr);
@@ -175,6 +184,10 @@ mock.listen(0, '127.0.0.1', async () => {
     const byIds = await client.postsByIds(['1001'], { privateWindow: true });
     eq('by-id read billed', [byIds.ok, client.tally.postReads], [true, 5]);
     eq('calls tallied (incl. the 429)', client.tally.calls, 5);
+    ok('media expansion is attachments.media_keys (media_ids returns no media)', /expansions=attachments\.media_keys/.test(tl.request) && !/media_ids/.test(tl.request));
+    const noRt = await client.userPosts('42', { start_time: daysAgo(7), excludeRetweets: true });
+    ok('excludeRetweets sends exclude=retweets', /exclude=retweets/.test(noRt.request));
+    ok('retweets are included when not excluded', !/exclude=/.test(tl.request));
     ok('redact strips bearer tokens', !/user-ctx-token/.test(xapi.redact('Authorization: Bearer user-ctx-token')));
     eq('countResources counts data + includes.tweets, users separately', xapi.countResources({ data: [1, 2], includes: { tweets: [1], users: [1, 1] } }), { posts: 3, users: 2 });
 
@@ -193,6 +206,26 @@ mock.listen(0, '127.0.0.1', async () => {
       delete process.env.X_TOKEN_URL;
     }
 
+    console.log('\nX server errors (a 503 hit the second live probe)\n');
+    const c2 = xapi.makeClient({ token: 't', host });
+    const once = await c2.userPosts('503once', {}, { _backoffMs: 10 });
+    eq('one 503 is retried and succeeds', [once.ok, c2.tally.retries], [true, 1]);
+    const always = await c2.userPosts('503always', {}, { _backoffMs: 10 });
+    eq('a persistent 503 gives up after two retries and returns the failure', [always.ok, always.status, c2.tally.retries], [false, 503, 3]);
+    const four = await c2.get('/nope', {}, { _backoffMs: 10 });
+    eq('a 4xx is never retried', [four.status, c2.tally.retries], [404, 3]);
+
+    console.log('\nExpected refusals (seen on the first live probe, 30 Sep 2026)\n');
+    const promo = { title: 'Disallowed Resource', detail: "The 'promoted_metrics.impression_count' field cannot be queried for this resource.", resource_id: '1001' };
+    const rtRefusal = { title: 'Disallowed Resource', detail: "The 'non_public_metrics.url_link_clicks' field cannot be queried for Retweets.", resource_id: '1002' };
+    const real = { title: 'Field Authorization Error', detail: "Sorry, you are not authorized to see the 'non_public_metrics' field.", resource_id: '1001' };
+    ok('promoted_metrics on an unboosted post is expected', xapi.expectedRefusal(promo));
+    ok('private metrics on a retweet are expected', xapi.expectedRefusal(rtRefusal));
+    ok('the age refusal is expected (public metrics still arrive)', xapi.expectedRefusal({ title: 'Disallowed Resource', detail: "The 'organic_metrics.impression_count' field cannot be queried for Tweets older than 30 days." }));
+    ok('anything else is NOT expected', !xapi.expectedRefusal(real) && !xapi.expectedRefusal({ title: 'Field Authorization Error', detail: 'x' }));
+    const filtered = toRows(TWEETS[0], { account: { account_id: '42' }, username: 'u', includes: INCLUDES, errors: [promo, real], privateWindow: true, now: NOW });
+    eq('expected refusals are dropped, unexpected ones kept', filtered.metric.errors.map((e) => e.detail), [real.detail]);
+
     console.log('\nRow mapping (collector/x.js toRows)\n');
     const rows = toRows(TWEETS[0], { account: { account_id: '42' }, username: 'citizengo_uk', includes: INCLUDES, errors: tl.errors, privateWindow: true, now: NOW });
     eq('permalink built from handle', rows.post.permalink_url, 'https://x.com/citizengo_uk/status/1001');
@@ -202,6 +235,8 @@ mock.listen(0, '127.0.0.1', async () => {
     eq('public metrics mapped', [rows.metric.impressions, rows.metric.likes, rows.metric.reposts, rows.metric.bookmarks], [5000, 40, 12, 7]);
     eq('private metrics mapped', [rows.metric.url_link_clicks, rows.metric.organic_impressions, rows.metric.promoted_impressions], [88, 4800, 200]);
     eq('age and window recorded', [rows.metric.post_age_days, rows.metric.private_window_open], [2, true]);
+    const asked = toRows({ ...TWEETS[0], non_public_metrics: undefined, organic_metrics: undefined }, { account: { account_id: '42' }, username: 'u', includes: INCLUDES, errors: [], privateWindow: true, now: NOW });
+    eq('private_window_open means private metrics CAME BACK, not that they were asked for', asked.metric.private_window_open, false);
     eq('errors for OTHER posts are not attached to this one', rows.metric.errors, null);
     const rt = toRows(TWEETS[1], { account: { account_id: '42' }, username: 'citizengo_uk', includes: INCLUDES, errors: tl.errors, privateWindow: true, now: NOW });
     eq('retweet keeps its reference', [rt.post.referenced_type, rt.post.referenced_post_id], ['retweeted', '999']);

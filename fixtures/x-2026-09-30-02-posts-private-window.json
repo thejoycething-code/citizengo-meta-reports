@@ -1,0 +1,19 @@
+{
+  "ok": false,
+  "status": 503,
+  "request": "https://api.x.com/2/users/1264712994/tweets?max_results=40&start_time=2026-09-01T11%3A33%3A21.139Z&tweet.fields=id%2Ctext%2Ccreated_at%2Clang%2Cconversation_id%2Cin_reply_to_user_id%2Creferenced_tweets%2Centities%2Cattachments%2Csource%2Cpublic_metrics%2Cnon_public_metrics%2Corganic_metrics%2Cpromoted_metrics&expansions=attachments.media_keys&media.fields=media_key%2Ctype%2Cpublic_metrics%2Cnon_public_metrics%2Corganic_metrics",
+  "elapsed_ms": 5123,
+  "rate": {
+    "limit": 40000,
+    "remaining": 39998,
+    "reset": 1790768782
+  },
+  "errors": null,
+  "title": "Service Unavailable",
+  "detail": "Service Unavailable",
+  "body": null,
+  "resources": {
+    "posts": 0,
+    "users": 0
+  }
+}

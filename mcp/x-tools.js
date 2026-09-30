@@ -36,9 +36,16 @@ function truncate(s, len) {
 }
 const spokesNote = (rows) => (rows.some((r) => r.kind === 'spokesperson')
   ? '\n\n_Spokesperson accounts are collected only for posts that carry a CitizenGO link. Their figures describe those posts, not the whole account._' : '');
+// Two different reasons a click column is empty, and they must not be
+// confused: X had stopped serving private metrics when the post was collected,
+// or the post simply had no link (X then returns no link-click field at all).
 const privateNote = (rows) => {
-  const closed = rows.filter((r) => r.url_link_clicks === null).length;
-  return closed ? `\n\n_${closed} of ${rows.length} posts show "—" for clicks: X serves link and profile clicks only inside a post's first 30 days, and these were not collected in that window._` : '';
+  const closed = rows.filter((r) => !r.private_window_open).length;
+  const noLink = rows.filter((r) => r.private_window_open && r.url_link_clicks === null).length;
+  const parts = [];
+  if (closed) parts.push(`${closed} of ${rows.length} posts have no link or profile clicks because X no longer served private metrics when they were collected (X keeps them for roughly the first 30 to 90 days).`);
+  if (noLink) parts.push(`${noLink} show "—" for link clicks because the post contained no link.`);
+  return parts.length ? `\n\n_${parts.join(' ')}_` : '';
 };
 
 async function listAccounts(store) {
@@ -139,7 +146,7 @@ async function dataHealth(store) {
   if (spend) {
     lines.push(`- Estimated X spend this month: **$${Number(spend.est_cost_usd || 0).toFixed(2)}** of $${spend.budget} budget (${n(spend.post_reads)} post reads, ${n(spend.user_reads)} user reads)`);
   }
-  lines.push('', '_Private metrics (link clicks, profile clicks, organic/promoted split) exist only for posts collected inside their first 30 days. Public metrics (impressions, likes, reposts, replies, bookmarks) have no window. Spend is our estimate from resources returned; the X developer console is the invoice._');
+  lines.push('', '_Private metrics (link clicks, profile clicks, organic/promoted split) exist only for posts collected while X still served them: documented as 30 days, observed to about 89. Link clicks appear only on posts that contain a link. Public metrics (impressions, likes, reposts, replies, bookmarks) have no window. Retweets are not collected. Spend is our estimate from resources returned; the X developer console is the invoice._');
   return { text: lines.join('\n') };
 }
 

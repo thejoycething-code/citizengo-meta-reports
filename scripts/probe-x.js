@@ -34,8 +34,13 @@ const args = process.argv.slice(2);
 const opt = (n, d) => { const i = args.indexOf('--' + n); return i !== -1 && args[i + 1] ? Number(args[i + 1]) : d; };
 const DAYS = opt('days', 40);
 const MAX = opt('max', 50);
-const token = process.env.X_PROBE_TOKEN;
-if (!token) { console.error('X_PROBE_TOKEN is not set.'); process.exit(2); }
+// --stored: use an enrolled account's sealed credential instead of a pasted
+// token. Refreshing ROTATES the refresh token, so this goes through the
+// collector's own accessTokenFor, which saves the new one before returning.
+const STORED = args.includes('--stored');
+const ACCOUNT = (() => { const i = args.indexOf('--account'); return i !== -1 ? args[i + 1] : null; })();
+let token = process.env.X_PROBE_TOKEN;
+if (!token && !STORED) { console.error('Set X_PROBE_TOKEN, or pass --stored to use an enrolled account.'); process.exit(2); }
 
 const stamp = new Date().toISOString().slice(0, 10);
 const outDir = path.join(__dirname, '..', 'fixtures');
@@ -47,6 +52,16 @@ const save = (name, obj) => {
 const has = (o, k) => o && o[k] && typeof o[k] === 'object' && Object.keys(o[k]).length > 0;
 
 async function main() {
+  if (!token) {
+    const { loadAccounts, accessTokenFor } = require('../collector/x');
+    const all = (await loadAccounts()).filter((a) => !a.inline);
+    const acc = ACCOUNT ? all.find((a) => [a.account_id, a.username, a.label].includes(ACCOUNT)) : all[0];
+    if (!acc) { console.error('No enrolled account found' + (ACCOUNT ? ` matching ${ACCOUNT}` : '') + '.'); process.exit(2); }
+    const cred = await accessTokenFor(acc, (m) => console.log(m));
+    if (cred.error) { console.error(`Could not get an access token for @${acc.username}: ${cred.error}`); process.exit(1); }
+    token = cred.token;
+    console.log(`Using the stored credential for @${acc.username} (refresh token rotated and saved).`);
+  }
   const client = xapi.makeClient({ token });
   console.log(`X probe · ${DAYS} days back · up to ${MAX} posts\n`);
 
@@ -66,7 +81,11 @@ async function main() {
   const a = await client.userPosts(u.id, { start_time: inWin, max_results: Math.min(MAX, 100), privateWindow: true });
   save('02-posts-private-window', a);
   console.log(`Pass A  posts since ${inWin.slice(0, 10)} with public+non_public+organic+promoted: HTTP ${a.status}${a.ok ? '' : ` ${a.title || ''} ${a.detail || ''}`}`);
-  if (a.errors && a.errors.length) console.log(`  ${a.errors.length} partial error(s): ${JSON.stringify(a.errors[0]).slice(0, 200)}`);
+  if (a.errors && a.errors.length) {
+    const unexpected = a.errors.filter((e) => !xapi.expectedRefusal(e));
+    console.log(`  ${a.errors.length} partial error(s), ${a.errors.length - unexpected.length} expected (promoted on unboosted posts, private on retweets)`
+      + `${unexpected.length ? `; UNEXPECTED: ${JSON.stringify(unexpected[0]).slice(0, 200)}` : ''}`);
+  }
 
   // Pass B: older than the window, PUBLIC only - what a backfill would see.
   let b = null;
@@ -80,15 +99,20 @@ async function main() {
     // Pass C: the documented refusal - private groups on an old post. We WANT
     // to see how X refuses (whole request vs partial error), because the
     // collector's design depends on it.
-    const old = b.ok && b.body && b.body.data && b.body.data[0];
+    // An ORIGINAL post, not whatever came first. The first live run picked a
+    // retweet, and what it measured was the retweet refusal, not the age one.
+    const old = b.ok && b.body && b.body.data
+      && b.body.data.find((t) => !(t.referenced_tweets && t.referenced_tweets.length));
     if (old) {
       const c = await client.postsByIds([old.id], { privateWindow: true });
       save('04-old-post-private-requested', c);
-      console.log(`Pass C  private groups requested on a ${sched.ageDays(old.created_at)}-day-old post: HTTP ${c.status}`
+      console.log(`Pass C  private groups requested on a ${sched.ageDays(old.created_at)}-day-old ORIGINAL post: HTTP ${c.status}`
         + `${c.ok ? (c.errors ? ` with ${c.errors.length} partial error(s)` : ' and no error at all') : ` ${c.title || ''} ${c.detail || ''}`}`);
       if (c.ok && c.body && c.body.data && c.body.data[0]) {
         const t = c.body.data[0];
         console.log(`        groups present: public=${has(t, 'public_metrics')} non_public=${has(t, 'non_public_metrics')} organic=${has(t, 'organic_metrics')} promoted=${has(t, 'promoted_metrics')}`);
+        const why = [...new Set((c.errors || []).map((e) => e.detail))].slice(0, 3);
+        if (why.length) console.log(`        X said: ${why.join(' | ').slice(0, 300)}`);
       }
     }
   }
@@ -96,6 +120,8 @@ async function main() {
   // Availability matrix.
   const posts = (a.ok && a.body && a.body.data) || [];
   console.log(`\nMetric groups returned (pass A, ${posts.length} posts):`);
+  const mediaCount = (a.body && a.body.includes && a.body.includes.media || []).length;
+  console.log(`  includes.media: ${mediaCount} item(s)${mediaCount ? '' : ' - if posts have media, the expansion name is wrong'}`);
   console.log('  age  public  non_public  organic  promoted  media  links(ours)  text');
   for (const t of posts.slice(0, 25)) {
     const links = sched.extractUrls(t.entities);
