@@ -96,6 +96,7 @@ jobs:
         if: always() && github.event.inputs.test_alert != 'true'
         env:
           X_MONTHLY_BUDGET_USD: ${{ vars.X_MONTHLY_BUDGET_USD || '100' }}
+          X_APP_OWNER_ID: ${{ vars.X_APP_OWNER_ID }}
         run: node scripts/check-x-health.js
 
       - name: Summary

@@ -91,9 +91,22 @@ async function main() {
     console.log(`\n  spend this month   $${spent.toFixed(2)} of $${spend.budget}  (${pct}%) · ${Number(spend.post_reads || 0).toLocaleString('en-GB')} post reads, ${Number(spend.user_reads || 0).toLocaleString('en-GB')} user reads`);
     if (pct >= 100) problems.push(`X budget spent: est. $${spent.toFixed(2)} of $${spend.budget}. The collector refuses to run until X_MONTHLY_BUDGET_USD is raised or the month rolls over.`);
     else if (pct >= WARN_AT) warnings.push(`X spend is at ${pct}% of the $${spend.budget} monthly budget.`);
-    const projected = sched.projectMonthly({ accounts: accounts.length, postsPerDay: 5 });
-    console.log(`  for reference      ~$${projected.toFixed(2)}/month at steady state, 5 posts/day/account, `
-      + `${sched.READS_PER_POST} reads per post (days 0-7, ${sched.CHECKPOINTS.join(', ')})`);
+    // Projected from each account's REAL posting rate over the last 30 days,
+    // with only the app owner at the owned rate. The earlier flat figure (5
+    // posts a day, everyone at $0.001) was wrong on both counts.
+    const owner = String(process.env.X_APP_OWNER_ID || '').trim();
+    const since30 = new Date(Date.now() - 30 * 86_400_000).toISOString();
+    const base2 = String(url).trim().replace(/\/rest\/v1\/?$/, '').replace(/\/+$/, '');
+    const per = [];
+    for (const a of accounts) {
+      const r = await fetch(`${base2}/rest/v1/x_posts?select=post_id&account_id=eq.${a.account_id}&created_at=gte.${encodeURIComponent(since30)}&limit=1`,
+        { headers: { apikey: key, Authorization: `Bearer ${key}`, Prefer: 'count=exact' } });
+      const n = Number((r.headers.get('content-range') || '/0').split('/')[1]) || 0;
+      per.push({ owned: owner && String(a.account_id) === owner, postsPerDay: n / 30 });
+    }
+    const projected = sched.projectMonthlyMixed(per);
+    console.log(`  for reference      ~$${projected.toFixed(2)}/month at steady state for these ${accounts.length} accounts at their last-30-day posting rate, `
+      + `${sched.READS_PER_POST} reads per post${owner ? '' : ' (X_APP_OWNER_ID unset: all priced at the ordinary rate)'}`);
   }
 
   if (problems.length) {

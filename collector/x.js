@@ -80,6 +80,10 @@ const ONLY = (() => {
 })();
 
 const CLIENT_ID = process.env.X_CLIENT_ID || '';
+// The X account that owns the developer app - the only one billed at the
+// owned-read rate. Unset means every account is priced at the ordinary rate,
+// which over- rather than under-estimates: the safe direction for a budget.
+const APP_OWNER_ID = String(process.env.X_APP_OWNER_ID || '').trim();
 const CLIENT_SECRET = process.env.X_CLIENT_SECRET || '';
 // PEM in an env var arrives with literal "\n" more often than not.
 const PRIVATE_KEY = String(process.env.X_TOKEN_PRIVATE_KEY || '').replace(/\\n/g, '\n');
@@ -438,7 +442,14 @@ async function collectAccount(account, out) {
   const metrics = [...metricsById.values()];
   if (metrics.length) await sink.upsert('x_post_metrics', metrics);
 
-  const cost = sched.estimateCost({ postReads: client.tally.postReads, userReads: client.tally.userReads, owned: true });
+  // X bills $0.001 only when the account read IS the account that owns the
+  // developer app; every other account is $0.005 ("not a discount for client
+  // or managed accounts" - docs.x.com pricing). Pricing every account as owned
+  // under-counted spend five-fold: the ledger said $2.39 on 30 Sep 2026 when
+  // the X console said $10.40, so the budget guard would have let spend run
+  // well past the cap. X_APP_OWNER_ID names the owning account.
+  const owned = Boolean(APP_OWNER_ID) && String(u.id) === APP_OWNER_ID;
+  const cost = sched.estimateCost({ postReads: client.tally.postReads, userReads: client.tally.userReads, owned });
   // Counted on private_window_open, NOT on url_link_clicks: X returns link
   // clicks only for posts that contain a link, so counting those reported 24 of
   // 190 when all 169 in-window posts had private metrics (30 Sep 2026).

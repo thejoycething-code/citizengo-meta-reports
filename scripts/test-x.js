@@ -116,6 +116,10 @@ eq('18 accounts x 5/day on 0-7/14/28/60/85 = $37.80/month', sched.projectMonthly
 eq('same at the ordinary read rate = $167.40/month', sched.projectMonthly({ accounts: 18, postsPerDay: 5, owned: false }), 167.4);
 eq('one account at 2.4/day (@CitizenGO today) = $1.16/month', sched.projectMonthly({ accounts: 1, postsPerDay: 2.4 }), 1.164);
 
+// 30 Sep 2026: the console said $10.40 for a day our all-owned ledger priced at $2.39.
+eq('mixed projection: owner at $0.001, everyone else at $0.005',
+  sched.projectMonthlyMixed([{ owned: true, postsPerDay: 2 }, { owned: false, postsPerDay: 2 }]), 1.02 + 3.9);
+
 console.log('\nLink attribution\n');
 const ent = { urls: [
   { url: 'https://t.co/abc', expanded_url: 'https://cgo.ac/scTOT5M4', display_url: 'cgo.ac/scTOT5M4' },
