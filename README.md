@@ -361,13 +361,14 @@ production, or every request is blocked before reaching the auth in `api/mcp.js`
 
 ---
 
-## X (Twitter) source — groundwork, not live
+## X (Twitter) source — LIVE for @CitizenGO
 
 Scoped 8 Sep 2026 (Asana task 1218268802872745; brief in Drive, "X data via MCP –
-scoping brief"). Everything below is committed and tested but **dormant**: no
-schema applied, no workflow enabled, no tool visible, no endpoint configured.
-Nothing about the Meta pipeline changes until the checklist at the end is
-worked through, and each step is independently reversible.
+scoping brief"). **Live since 30 Sep 2026 for the Global account @CitizenGO
+only.** Nightly collection at 05:15 UTC, six tools on the connector, 242 posts
+backfilled to 100 days on the first run for an estimated $0.25. X developer app:
+"CitizenGO Reporting". Adding another account is step 5 of the checklist below;
+switching off is the paragraph after it.
 
 ### What X gives us, and what it does not
 
@@ -418,23 +419,26 @@ against the live API — `npm run probe:x` is that check and must run first.
 
 ### Pieces
 
-| Piece | File | Dormant because |
+| Piece | File | State (30 Sep 2026) |
 | --- | --- | --- |
-| Schema (6 tables, 3 views) | `sql/x-schema.sql` | applied 30 Sep 2026 (migration `x_source_tables`), empty |
-| API client with billing tally and one-shot 429 wait | `lib/xapi.js` | nothing calls it |
-| OAuth, PKCE, sealed box, invites | `lib/xauth.js`, `lib/xflow.js` | no keys configured |
-| Enrolment pages | `api/x/authorize.js`, `api/x/callback.js` | answer 503 until `X_*` env exists |
-| Collector (daily + final + optional public backfill) | `collector/x.js` | exits 0 with "no accounts" |
-| Nightly workflow | `.github/workflows/x-collect.yml` | job skipped unless repo var `X_COLLECT_ENABLED=true` |
-| Health check (freshness, re-auth, budget) | `scripts/check-x-health.js` | prints one line and exits 0 with no accounts |
-| Six connector tools | `mcp/x-tools.js` | listed only when `X_TOOLS_ENABLED=true` on Vercel |
-| One-account spike | `scripts/probe-x.js` | needs `X_PROBE_TOKEN` |
+| Schema (6 tables, 3 views) | `sql/x-schema.sql` | live: migration `x_source_tables`, 30 Sep 2026 |
+| API client with billing tally, 429 wait, 5xx retry | `lib/xapi.js` | live |
+| OAuth, PKCE, sealed box, invites | `lib/xauth.js`, `lib/xflow.js` | live; keys in GitHub, Vercel, local .env |
+| Enrolment pages | `api/x/authorize.js`, `api/x/callback.js` | live; invite-gated |
+| Collector (daily + final + optional backfill) | `collector/x.js` | live |
+| Nightly workflow | `.github/workflows/x-collect.yml` | on: repo var `X_COLLECT_ENABLED=true` |
+| Health check (freshness, re-auth, budget) | `scripts/check-x-health.js` | in the daily watchdog |
+| Six connector tools | `mcp/x-tools.js` | on: `X_TOOLS_ENABLED=true` on Vercel |
+| Probe | `scripts/probe-x.js` | `--stored` uses an enrolled account |
 | Tests (no network) | `npm run test:x` | — |
 
 ### Go-live checklist
 
-Each step is reversible on its own. Do them in order; stop at 3 if the probe
-contradicts the documentation.
+Steps 1-7 were completed on 30 Sep 2026 for @CitizenGO. Kept as the record of
+how, and because step 5 onward is how any further account is added. The keys
+step used `npm run x:set-client` (echo off, writes .env, GitHub and Vercel),
+and the probe step used `npm run probe:x -- --stored` against the enrolled
+account instead of a pasted token.
 
 1. **X developer account and app.** Check with Ignacio whether one exists (he
    uses the X API). Create an OAuth 2.0 app: type Web App, read-only, callback
