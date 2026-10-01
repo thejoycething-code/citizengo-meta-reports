@@ -1,0 +1,19 @@
+{
+  "ok": false,
+  "status": 403,
+  "request": "https://api.x.com/2/tweets/analytics?ids=2089947642717478984%2C2089953818679112154%2C2090024726806618249%2C2090112309741994354%2C2090128652167954529%2C2090230798062621166%2C2090230800759329051%2C2090246339963535676%2C2090275254522229084%2C2090309743617196255%2C2090834246067712290%2C2090933181708894351%2C2091034826170069213%2C2091039037146505657%2C2091267973939954092%2C2091271808515182871%2C2092020310123884608%2C2092020313122824228%2C2092138688234885460%2C2092272192260059592%2C2092319449701580811%2C2092630299515437172%2C2092630839976735219%2C2092823026987356487%2C2092833042490372252%2C2092838478698447178%2C2093230404375294301%2C2094113411399287159%2C2094424874492084519&start_time=2026-08-01T00%3A00%3A00Z&end_time=2026-09-01T00%3A00%3A00Z&granularity=daily&analytics.fields=impressions%2Cengagements%2Clikes%2Cretweets%2Cquote_tweets%2Creplies%2Cbookmarks%2Cshares%2Curl_clicks%2Cuser_profile_clicks%2Cdetail_expands%2Ctimestamped_metrics",
+  "elapsed_ms": 192,
+  "rate": {
+    "limit": 40000,
+    "remaining": 39997,
+    "reset": 1790875737
+  },
+  "errors": null,
+  "title": "Client Forbidden",
+  "detail": "When authenticating requests to the X API v2 endpoints, you must use keys and tokens from a developer App that is attached to a Project. You can create a project via the developer portal.",
+  "body": null,
+  "resources": {
+    "posts": 0,
+    "users": 0
+  }
+}
