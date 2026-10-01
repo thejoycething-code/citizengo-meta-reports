@@ -564,6 +564,10 @@ async function main() {
   RUN_SPEND.remaining = BUDGET_USD - spent;
 
   let accounts = await loadAccounts();
+  // The nightly reserve covers EVERY collected account, not just the ones this
+  // run is limited to: a backfill of two accounts must not spend what the other
+  // thirteen need tonight (30 Sep 2026: a 2-account run reserved $8, not $60).
+  const allAccounts = accounts.length;
   if (ONLY.length) accounts = accounts.filter((a) => ONLY.includes(a.account_id) || ONLY.includes(a.label) || ONLY.includes(a.username));
   if (!accounts.length) {
     console.log('No X accounts to collect. Nothing has authorised yet (or X_ACCESS_TOKENS is unset for a dry run).');
@@ -571,7 +575,7 @@ async function main() {
     process.exit(0);
   }
   console.log(`${accounts.length} account(s)`);
-  RUN_SPEND.nightlyReserve = nightlyReserveFor(accounts.length);
+  RUN_SPEND.nightlyReserve = nightlyReserveFor(allAccounts);
   if (Number.isFinite(RUN_SPEND.remaining)) console.log(`  backfill may spend up to $${Math.max(0, RUN_SPEND.remaining - RUN_SPEND.nightlyReserve).toFixed(2)} (keeping $${RUN_SPEND.nightlyReserve.toFixed(2)} for the rest of the month's nightly runs)`);
 
   const summary = new Array(accounts.length);
