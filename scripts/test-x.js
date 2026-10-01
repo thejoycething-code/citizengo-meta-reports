@@ -143,6 +143,16 @@ console.log('\nConnector tools: account lookup, periods, truncation (mcp/x-tools
   eq('days 0 means everything held', xt.windowFor({ days: 0 }, 30).since, undefined);
 }
 
+console.log('\nPeriod summary: engagements mean what X Analytics means\n');
+{
+  // X Analytics' Engagements = likes + reposts + quotes + replies + bookmarks.
+  // The API's non_public engagements adds clicks and ran ~50% high (1 Oct 2026).
+  const fn = fs.readFileSync(path.join(__dirname, '..', 'sql', 'x-schema.sql'), 'utf8').split('function public.x_period_summary')[1] || '';
+  ok('engagements are summed from interactions', /sum\(p\.interactions\) as engagements/.test(fn));
+  ok('the rate divides interactions by impressions', /sum\(p\.interactions\) \/ nullif\(sum\(p\.impressions\), 0\)/.test(fn));
+  ok('the API figure is kept, under its own name', /sum\(p\.engagements\) as all_engagements/.test(fn));
+}
+
 console.log('\nConnector tools: paging past 200 (every post we hold)\n');
 {
   const xt = require('../mcp/x-tools');

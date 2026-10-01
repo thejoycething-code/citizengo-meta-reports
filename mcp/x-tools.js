@@ -265,12 +265,12 @@ async function periodSummary(store, { month, from, to, account_id } = {}) {
   const top = (r) => (r.top_post_url
     ? `[${truncate(r.top_post_text, 40).replace(/\|/g, '\\|').replace(/\]/g, ')')}](${r.top_post_url}) (${n(r.top_post_impressions)})` : '—');
   const body = table(
-    ['Account', 'Posts', 'Impressions', 'Engagements', 'Eng. rate', 'Link clicks', 'Followers', 'Top post'],
-    rows.map((r) => [r.label || `@${r.username}`, n(r.posts), n(r.impressions), n(r.engagements), rate(r), n(r.link_clicks), follow(r), top(r)]),
+    ['Account', 'Posts', 'Impressions', 'Engagements', 'Eng. rate', 'Link clicks', 'Profile clicks', 'Followers', 'Top post'],
+    rows.map((r) => [r.label || `@${r.username}`, n(r.posts), n(r.impressions), n(r.engagements), rate(r), n(r.link_clicks), n(r.profile_clicks), follow(r), top(r)]),
   );
   const notes = [
     `Totals cover every post published in ${per.label} (UTC), with each post's figures to date. That is a different basis from X Analytics, which counts activity that happened during the period on any post, so the two differ most when a post keeps growing after the period ends.`,
-    "Engagement rate is X's own engagements divided by impressions, as in X Analytics. Retweets are not collected.",
+    "Engagements are likes, reposts, quotes, replies and bookmarks, the same definition as X Analytics, and engagement rate is engagements divided by impressions. X Analytics also counts Shares, which X does not make available to collect, so ours can run slightly lower. Link and profile clicks are reported separately and are not part of engagements. Retweets are not collected.",
     'Follower change is only available from 30 September 2026, when daily follower snapshots began. A dash means no snapshots in the period.',
   ];
   const idle = rows.filter((r) => !Number(r.posts)).map((r) => r.label || r.username);

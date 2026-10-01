@@ -290,13 +290,22 @@ create or replace view public.x_post_last_collected with (security_invoker = tru
 -- tools cap at 200 rows, and adding up a capped list understated @CitizenGO's
 -- August by a quarter. security invoker, so it reads as the caller; execute
 -- is revoked from the public keys (granted below).
-create or replace function public.x_period_summary(p_from timestamptz, p_to timestamptz, p_account text default null)
+--
+-- "Engagements" is X Analytics' figure: likes + reposts + quotes + replies +
+-- bookmarks (the interactions column of x_post_latest). The API's own
+-- non_public_metrics.engagements also counts link clicks, profile clicks and
+-- taps to open the post, and ran ~50% higher: @CitizenGO's August was 3,310
+-- (5.6%) against X Analytics' 2.3K (3.6%); on this definition 2,184 (3.7%).
+-- The API figure is kept as all_engagements, never under the plain name.
+-- X Analytics' "Shares" is not in the API, so we always run a little short.
+drop function if exists public.x_period_summary(timestamptz, timestamptz, text);
+create function public.x_period_summary(p_from timestamptz, p_to timestamptz, p_account text default null)
 returns table (
   account_id text, username text, label text, kind text,
   posts bigint, originals bigint, replies_posted bigint, quotes_posted bigint,
   impressions bigint, engagements bigint, engagement_rate_pct numeric,
-  likes bigint, reposts bigint, replies bigint, bookmarks bigint,
-  link_clicks bigint, posts_with_private bigint,
+  likes bigint, reposts bigint, quotes bigint, replies bigint, bookmarks bigint,
+  link_clicks bigint, profile_clicks bigint, all_engagements bigint, posts_with_private bigint,
   followers_first bigint, followers_last bigint, followers_first_date date, followers_last_date date,
   top_post_id text, top_post_url text, top_post_text text, top_post_impressions bigint,
   newest_snapshot date
@@ -314,10 +323,12 @@ as $$
            count(*) filter (where p.referenced_type = 'replied_to') as replies_posted,
            count(*) filter (where p.referenced_type = 'quoted') as quotes_posted,
            sum(p.impressions) as impressions,
-           sum(p.engagements) as engagements,
-           round(100.0 * sum(p.engagements) / nullif(sum(p.impressions) filter (where p.engagements is not null), 0), 2) as engagement_rate_pct,
-           sum(p.likes) as likes, sum(p.reposts) as reposts, sum(p.replies) as replies, sum(p.bookmarks) as bookmarks,
-           sum(p.url_link_clicks) as link_clicks,
+           sum(p.interactions) as engagements,
+           round(100.0 * sum(p.interactions) / nullif(sum(p.impressions), 0), 2) as engagement_rate_pct,
+           sum(p.likes) as likes, sum(p.reposts) as reposts, sum(p.quotes) as quotes,
+           sum(p.replies) as replies, sum(p.bookmarks) as bookmarks,
+           sum(p.url_link_clicks) as link_clicks, sum(p.user_profile_clicks) as profile_clicks,
+           sum(p.engagements) as all_engagements,
            count(*) filter (where p.private_window_open) as posts_with_private,
            max(p.collected_date) as newest_snapshot
       from p group by p.account_id
@@ -337,8 +348,8 @@ as $$
   select a.account_id, a.username, a.label, a.kind,
          coalesce(agg.posts, 0), coalesce(agg.originals, 0), coalesce(agg.replies_posted, 0), coalesce(agg.quotes_posted, 0),
          agg.impressions, agg.engagements, agg.engagement_rate_pct,
-         agg.likes, agg.reposts, agg.replies, agg.bookmarks,
-         agg.link_clicks, coalesce(agg.posts_with_private, 0),
+         agg.likes, agg.reposts, agg.quotes, agg.replies, agg.bookmarks,
+         agg.link_clicks, agg.profile_clicks, agg.all_engagements, coalesce(agg.posts_with_private, 0),
          f.followers_first, f.followers_last, f.first_date, f.last_date,
          top.post_id, top.permalink_url, top.text, top.impressions,
          agg.newest_snapshot
