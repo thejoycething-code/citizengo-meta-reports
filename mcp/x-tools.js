@@ -78,12 +78,6 @@ const withAccount = (fn) => async (store, args = {}) => {
   return fn(store, { ...rest, account_id: r.id });
 };
 
-// Said whenever a ranked list is cut short, so nobody adds up a top-N list and
-// takes it for a total (the 1 Oct 2026 failure: 39 of 76 posts summed as August).
-const cutNote = (shown, total) => (total !== null && total !== undefined && total > shown
-  ? `\n\n_Showing ${shown} of ${n(total)} posts in this window. This is a ranked list, not a total: for monthly or period totals use x_period_summary._`
-  : '');
-
 const ACCOUNT_PROP = { type: 'string', description: 'One account, by handle (e.g. "@CitizenGO" or "CitizenGO_GB"), name (e.g. "CitizenGO UK") or id. Omit for every account.' };
 
 async function listAccounts(store) {
@@ -102,33 +96,69 @@ async function listAccounts(store) {
 const SORTS = { impressions: 'impressions', engagement: 'interactions', rate: 'engagement_rate_pct',
   clicks: 'url_link_clicks', reposts: 'reposts', bookmarks: 'bookmarks', recent: 'created_at' };
 
-async function topPosts(store, { account_id, days = 30, sort = 'impressions', limit = 10 } = {}) {
-  const d = clampDays(days, 30);
+// The window a list covers: a month or a from/to range when given (the same
+// parsing as x_period_summary), otherwise the last N days.
+function windowFor({ month, from, to, days }, dfltDays) {
+  if (month || from || to) {
+    const per = periodFor({ month, from, to });
+    if (per.error) return { error: per.error };
+    return { since: per.from, until: per.to, label: per.label };
+  }
+  const d = clampDays(days, dfltDays);
+  return { since: sinceFor(d), until: undefined, label: d ? `last ${d} days` : 'all collected' };
+}
+
+// Paging. Every list can walk through all the posts we hold: page size up to
+// 200 (what fits in one response), offset for the next page. The note tells the
+// reader exactly which slice this is and how to get the next one, so a page is
+// never mistaken for the whole (1 Oct 2026: 39 of 76 posts summed as August).
+const PAGE_MAX = 200;
+function pageNote(offset, shown, total) {
+  if (total === null || total === undefined) return '';
+  const first = total ? offset + 1 : 0; const last = offset + shown;
+  if (last < total) {
+    return `\n\n_Posts ${n(first)}-${n(last)} of ${n(total)}. For the next page, call again with offset ${last}. For totals over all ${n(total)}, use x_period_summary rather than adding up pages._`;
+  }
+  return offset > 0 ? `\n\n_Posts ${n(first)}-${n(last)} of ${n(total)}: this is the last page._` : '';
+}
+const offsetOf = (v) => Math.max(0, Math.floor(Number(v) || 0));
+
+async function topPosts(store, { account_id, days, month, from, to, sort = 'impressions', limit = 10, offset = 0 } = {}) {
+  const w = windowFor({ month, from, to, days }, 30);
+  if (w.error) return { text: w.error };
   const order = SORTS[sort] || 'impressions';
-  const rows = await store.xPosts({ account_id, since: sinceFor(d), order, limit: clampRows(limit, 10) });
-  if (!rows.length) return { text: `No X posts collected${d ? ` in the last ${d} days` : ''}.` };
-  const total = await store.xPostCount({ account_id, since: sinceFor(d) });
+  const off = offsetOf(offset);
+  const total = await store.xPostCount({ account_id, since: w.since, until: w.until });
+  const rows = await store.xPosts({ account_id, since: w.since, until: w.until, order, limit: clampRows(limit, 10, PAGE_MAX), offset: off });
+  if (!rows.length) return { text: total && off >= total ? `There are only ${n(total)} posts in this window; offset ${off} is past the end.` : `No X posts collected (${w.label}).` };
+  // Long pages get shorter post text so a full page of 200 stays inside the
+  // connector's response limit.
+  const width = rows.length > 100 ? 45 : 70;
   return {
-    text: `**Top X posts by ${sort}${d ? `, last ${d} days` : ''}**\n\n` + table(
-      ['Account', 'Post', 'Date', 'Impressions', 'Likes', 'Reposts', 'Replies', 'Bookmarks', 'Link clicks', 'Eng. rate'],
-      rows.map((r) => [`@${r.username}`, link(r, truncate(r.text, 70)), String(r.created_at).slice(0, 10),
+    text: `**X posts by ${sort}, ${w.label}**\n\n` + table(
+      ['#', 'Account', 'Post', 'Date', 'Impressions', 'Likes', 'Reposts', 'Replies', 'Bookmarks', 'Link clicks', 'Eng. rate'],
+      rows.map((r, i) => [String(off + i + 1), `@${r.username}`, link(r, truncate(r.text, width)), String(r.created_at).slice(0, 10),
         n(r.impressions), n(r.likes), n(r.reposts), n(r.replies), n(r.bookmarks), n(r.url_link_clicks), p(r.engagement_rate_pct)]),
-    ) + cutNote(rows.length, total) + privateNote(rows) + spokesNote(rows),
-    rows,
+    ) + pageNote(off, rows.length, total) + privateNote(rows) + spokesNote(rows),
+    rows, total, offset: off,
   };
 }
 
-async function searchPosts(store, { query, account_id, days = 0, limit = 15 } = {}) {
-  const rows = await store.xPosts({ q: query, account_id, since: sinceFor(clampDays(days, 0)), order: 'impressions', limit: clampRows(limit, 15) });
-  if (!rows.length) return { text: `No X posts matching "${query}".` };
-  const total = await store.xPostCount({ q: query, account_id, since: sinceFor(clampDays(days, 0)) });
+async function searchPosts(store, { query, account_id, days, month, from, to, limit = 15, offset = 0 } = {}) {
+  const w = windowFor({ month, from, to, days }, 0);
+  if (w.error) return { text: w.error };
+  const off = offsetOf(offset);
+  const total = await store.xPostCount({ q: query, account_id, since: w.since, until: w.until });
+  const rows = await store.xPosts({ q: query, account_id, since: w.since, until: w.until, order: 'impressions', limit: clampRows(limit, 15, PAGE_MAX), offset: off });
+  if (!rows.length) return { text: total && off >= total ? `Only ${n(total)} posts match; offset ${off} is past the end.` : `No X posts matching "${query}" (${w.label}).` };
+  const width = rows.length > 100 ? 50 : 80;
   return {
-    text: `**X posts matching "${query}"** (${rows.length})\n\n` + table(
-      ['Account', 'Post', 'Date', 'Impressions', 'Interactions', 'Link clicks'],
-      rows.map((r) => [`@${r.username}`, link(r, truncate(r.text, 80)), String(r.created_at).slice(0, 10),
+    text: `**X posts matching "${query}", ${w.label}** (${n(total)} in all)\n\n` + table(
+      ['#', 'Account', 'Post', 'Date', 'Impressions', 'Interactions', 'Link clicks'],
+      rows.map((r, i) => [String(off + i + 1), `@${r.username}`, link(r, truncate(r.text, width)), String(r.created_at).slice(0, 10),
         n(r.impressions), n(r.interactions), n(r.url_link_clicks)]),
-    ) + cutNote(rows.length, total) + privateNote(rows) + spokesNote(rows),
-    rows,
+    ) + pageNote(off, rows.length, total) + privateNote(rows) + spokesNote(rows),
+    rows, total, offset: off,
   };
 }
 
@@ -155,24 +185,26 @@ async function accountGrowth(store, { account_id, days = 30 } = {}) {
 // The attribution tool: every post that carried one of our links, which link,
 // its UTM tags, and the clicks X recorded. This is the answer to "which tracking
 // link did <spokesperson> use and did anyone click it".
-async function linkPosts(store, { account_id, days = 90, limit = 50 } = {}) {
-  const d = clampDays(days, 90);
-  const rows = await store.xPosts({ account_id, since: sinceFor(d), order: 'created_at', limit: clampRows(limit, 50), linkOnly: true });
-  if (!rows.length) return { text: `No X posts carrying a CitizenGO link${d ? ` in the last ${d} days` : ''}.` };
-  const total = await store.xPostCount({ account_id, since: sinceFor(d), linkOnly: true });
+async function linkPosts(store, { account_id, days, month, from, to, limit = 50, offset = 0 } = {}) {
+  const w = windowFor({ month, from, to, days }, 90);
+  if (w.error) return { text: w.error };
+  const off = offsetOf(offset);
+  const total = await store.xPostCount({ account_id, since: w.since, until: w.until, linkOnly: true });
+  const rows = await store.xPosts({ account_id, since: w.since, until: w.until, order: 'created_at', limit: clampRows(limit, 50, PAGE_MAX), offset: off, linkOnly: true });
+  if (!rows.length) return { text: total && off >= total ? `Only ${n(total)} posts carry a link here; offset ${off} is past the end.` : `No X posts carrying a CitizenGO link (${w.label}).` };
   const lines = [];
   for (const r of rows) {
     for (const url of (r.citizengo_urls || [])) {
       const utm = sched.utmOf(url) || {};
-      lines.push([`@${r.username}`, link(r, String(r.created_at).slice(0, 10)), truncate(url.replace(/^https?:\/\//, ''), 60),
-        utm.utm_campaign || utm.campaign || '—', utm.utm_source || '—', n(r.url_link_clicks), n(r.impressions)]);
+      lines.push([`@${r.username}`, link(r, String(r.created_at).slice(0, 10)), truncate(url.replace(/^https?:\/\//, ''), rows.length > 100 ? 40 : 60),
+        truncate(utm.utm_campaign || utm.campaign || '—', rows.length > 100 ? 40 : 90), utm.utm_source || '—', n(r.url_link_clicks), n(r.impressions)]);
     }
   }
   return {
-    text: `**X posts carrying CitizenGO links${d ? `, last ${d} days` : ''}** (${rows.length} posts, ${lines.length} links)\n\n` + table(
+    text: `**X posts carrying CitizenGO links, ${w.label}** (${n(total)} posts in all)\n\n` + table(
       ['Account', 'Posted', 'Link', 'utm_campaign', 'utm_source', 'Link clicks', 'Impressions'], lines,
-    ) + cutNote(rows.length, total) + privateNote(rows) + '\n\n_Clicks are X\'s count of taps on the link. Signatures and donations from those clicks are in the Bluebook under the UTM shown, not here._',
-    rows,
+    ) + pageNote(off, rows.length, total) + privateNote(rows) + '\n\n_Clicks are X\'s count of taps on the link. Signatures and donations from those clicks are in the Bluebook under the UTM shown, not here._',
+    rows, total, offset: off,
   };
 }
 
@@ -274,15 +306,19 @@ const X_TOOLS = [
   },
   {
     name: 'x_top_posts',
-    description: 'Rank X posts by impressions, engagement, engagement rate, link clicks, reposts or bookmarks. Use for "which of our X posts did best". Link clicks exist only for posts collected within 30 days of posting.',
+    description: 'List X posts ranked by impressions, engagement, engagement rate, link clicks, reposts or bookmarks, or newest first. Covers every post we hold: pages of up to 200, with offset for the next page, so an account\'s whole month can be listed (pass account and month). For totals use x_period_summary instead of adding up pages. Link clicks exist only for posts collected while X served them, about the first 89 days.',
     inputSchema: {
       type: 'object',
       properties: {
         account: ACCOUNT_PROP,
         account_id: { type: 'string', description: 'Same as account; kept for older prompts.' },
         days: { type: 'number', description: 'Look back this many days (default 30). 0 for all collected data.' },
-        sort: { type: 'string', enum: Object.keys(SORTS), description: 'Ranking metric (default impressions).' },
-        limit: { type: 'number', description: 'How many posts (default 10, max 200).' },
+        month: { type: 'string', description: 'A month, e.g. "2026-08" or "August 2026", instead of days.' },
+        from: { type: 'string', description: 'Start date (YYYY-MM-DD), instead of days.' },
+        to: { type: 'string', description: 'End date inclusive (YYYY-MM-DD).' },
+        offset: { type: 'number', description: 'Where the page starts, for paging through every post (0 = first). Each answer gives the offset of the next page.' },
+        sort: { type: 'string', enum: Object.keys(SORTS), description: 'Ranking metric (default impressions; "recent" for newest first).' },
+        limit: { type: 'number', description: 'Posts per page (default 10, max 200).' },
       },
       additionalProperties: false,
     },
@@ -290,7 +326,7 @@ const X_TOOLS = [
   },
   {
     name: 'x_search_posts',
-    description: 'Search the text of collected X posts across every account, ranked by impressions. Use for questions about a topic, campaign or specific post on X.',
+    description: 'Search the text of every X post we hold, across all accounts or one, ranked by impressions, in pages of up to 200 with offset for the next. Use for questions about a topic, campaign or specific post on X.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -298,7 +334,11 @@ const X_TOOLS = [
         account: ACCOUNT_PROP,
         account_id: { type: 'string', description: 'Same as account; kept for older prompts.' },
         days: { type: 'number', description: 'Only posts from the last N days. Omit or 0 for all.' },
-        limit: { type: 'number', description: 'Maximum posts (default 15, max 200).' },
+        month: { type: 'string', description: 'A month, e.g. "2026-08" or "August 2026", instead of days.' },
+        from: { type: 'string', description: 'Start date (YYYY-MM-DD), instead of days.' },
+        to: { type: 'string', description: 'End date inclusive (YYYY-MM-DD).' },
+        offset: { type: 'number', description: 'Where the page starts, for paging through every post (0 = first). Each answer gives the offset of the next page.' },
+        limit: { type: 'number', description: 'Posts per page (default 15, max 200).' },
       },
       required: ['query'],
       additionalProperties: false,
@@ -328,7 +368,11 @@ const X_TOOLS = [
         account: ACCOUNT_PROP,
         account_id: { type: 'string', description: 'Same as account; kept for older prompts.' },
         days: { type: 'number', description: 'Look back this many days (default 90, 0 for all).' },
-        limit: { type: 'number', description: 'Maximum posts (default 50, max 200).' },
+        month: { type: 'string', description: 'A month, e.g. "2026-08" or "August 2026", instead of days.' },
+        from: { type: 'string', description: 'Start date (YYYY-MM-DD), instead of days.' },
+        to: { type: 'string', description: 'End date inclusive (YYYY-MM-DD).' },
+        offset: { type: 'number', description: 'Where the page starts, for paging through every post (0 = first). Each answer gives the offset of the next page.' },
+        limit: { type: 'number', description: 'Posts per page (default 50, max 200).' },
       },
       additionalProperties: false,
     },
@@ -357,4 +401,4 @@ const X_TOOLS = [
   },
 ];
 
-module.exports = { X_TOOLS, enabled, resolveAccount, periodFor, cutNote };
+module.exports = { X_TOOLS, enabled, resolveAccount, periodFor, pageNote, windowFor, PAGE_MAX };

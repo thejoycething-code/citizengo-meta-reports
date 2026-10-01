@@ -134,8 +134,65 @@ console.log('\nConnector tools: account lookup, periods, truncation (mcp/x-tools
   eq('January rolls back a year by default', xt.periodFor({}, new Date('2027-01-05T00:00:00Z')).label, 'December 2026');
   eq('from/to: "to" is inclusive', xt.periodFor({ from: '2026-08-01', to: '2026-08-31' }, at).to, '2026-09-01T00:00:00.000Z');
   ok('bad month is refused', !!xt.periodFor({ month: 'Smarch' }, at).error);
-  ok('truncation note when the list is cut', /Showing 10 of 76 posts/.test(xt.cutNote(10, 76)));
-  eq('no note when everything is shown', xt.cutNote(76, 76), '');
+  ok('page note says which slice and where the next page starts', /Posts 1-10 of 76\. For the next page, call again with offset 10/.test(xt.pageNote(0, 10, 76)));
+  ok('page note sends totals to x_period_summary', /x_period_summary/.test(xt.pageNote(0, 10, 76)));
+  eq('no note when one page holds everything', xt.pageNote(0, 76, 76), '');
+  ok('last page is marked as the last', /Posts 201-250 of 250: this is the last page/.test(xt.pageNote(200, 50, 250)));
+  const w = xt.windowFor({ month: '2026-08' }, 30);
+  eq('a month bounds both ends', [w.since, w.until], ['2026-08-01T00:00:00.000Z', '2026-09-01T00:00:00.000Z']);
+  eq('days 0 means everything held', xt.windowFor({ days: 0 }, 30).since, undefined);
+}
+
+console.log('\nConnector tools: paging past 200 (every post we hold)\n');
+{
+  const xt = require('../mcp/x-tools');
+  // 450 August posts for one account, with long text and the widest numbers,
+  // so a full page is measured at its worst against the response limit.
+  const posts = Array.from({ length: 450 }, (_, i) => ({
+    post_id: '1' + String(i).padStart(18, '0'), account_id: '1264712994', username: 'CitizenGO',
+    text: 'Ñ'.repeat(280), created_at: `2026-08-${String(1 + (i % 31)).padStart(2, '0')}T12:00:00Z`,
+    impressions: 1e9 - (i % 7), likes: 1e7, reposts: 1e7, replies: 1e7, bookmarks: 1e7,
+    url_link_clicks: 1e7, interactions: 1e8, engagement_rate_pct: 12.3456, private_window_open: true,
+    citizengo_urls: ['https://citizengo.org/en/' + 'x'.repeat(120) + '?utm_campaign=' + 'c'.repeat(80) + '&utm_source=x'],
+    has_citizengo_link: true,
+  }));
+  const seen = [];
+  const store = {
+    async xAccounts() { return [{ account_id: '1264712994', username: 'CitizenGO', label: 'CitizenGO' }]; },
+    async xPostCount({ account_id, since, until }) {
+      return posts.filter((r) => (!account_id || r.account_id === account_id) && (!since || r.created_at >= since) && (!until || r.created_at < until)).length;
+    },
+    async xPosts(args) {
+      seen.push(args);
+      // Same ordering the store promises: metric desc, then post_id as the tiebreak.
+      const sorted = [...posts].sort((a, b) => (b.impressions - a.impressions) || (a.post_id < b.post_id ? -1 : 1));
+      return sorted.slice(args.offset || 0, (args.offset || 0) + Math.min(args.limit, 200));
+    },
+  };
+  const tool = (name) => xt.X_TOOLS.find((t) => t.name === name).handler;
+  (async () => {
+    const ids = new Set(); let offset = 0; let pages = 0; let biggest = 0; let last;
+    while (pages < 10) {
+      last = await tool('x_top_posts')(store, { account: '@CitizenGO', month: 'August 2026', limit: 1e6, offset });
+      pages++; biggest = Math.max(biggest, last.text.length);
+      for (const r of last.rows) ids.add(r.post_id);
+      const m = /call again with offset (\d+)/.exec(last.text);
+      if (!m) break;
+      offset = Number(m[1]);
+    }
+    eq('450 posts come back in three pages of up to 200', pages, 3);
+    eq('every post exactly once across the pages', ids.size, 450);
+    ok('the third page says it is the last', /Posts 401-450 of 450: this is the last page/.test(last.text));
+    eq('the month reached the store as a window', [seen[0].since, seen[0].until], ['2026-08-01T00:00:00.000Z', '2026-09-01T00:00:00.000Z']);
+    eq('the account reached the store by id', seen[0].account_id, '1264712994');
+    ok(`a full 200-row page fits the 60,000-char response limit (${biggest})`, biggest < 60000);
+    const s = await tool('x_search_posts')(store, { query: 'Ñ', limit: 200 });
+    ok(`a full search page fits too (${s.text.length})`, s.text.length < 60000 && s.rows.length === 200);
+    const l = await tool('x_link_posts')(store, { days: 0, limit: 200, offset: 200 });
+    ok(`a full link page fits too (${l.text.length})`, l.text.length < 60000 && /Posts 201-400 of 450/.test(l.text));
+    ok('rows are numbered from the offset, not from 1', /\| 201 \|/.test((await tool('x_top_posts')(store, { days: 0, limit: 5, offset: 200 })).text));
+    ok('an offset past the end says so', /past the end/.test((await tool('x_top_posts')(store, { days: 0, offset: 9999 })).text));
+  })();
 }
 
 console.log('\nCost (the figures in the scoping brief)\n');
