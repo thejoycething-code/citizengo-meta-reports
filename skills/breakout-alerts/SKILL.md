@@ -1,9 +1,12 @@
 ---
 name: meta-breakout-alerts
-description: Each morning, announce any CitizenGO post that has passed 100,000 views to #comm-social-networks, deduplicated so translated copies are not announced twice
+description: Each morning, announce any CitizenGO Facebook post past 100,000 views, and any X post past 10,000 organic impressions or 250 interactions, to #comm-social-networks, deduplicated so translated copies are not announced twice
 ---
 
-Announce any CitizenGO Facebook post that has passed **100,000 views** to the Slack channel **#comm-social-networks** (channel id `C7YFZ17MH`), so other pages can consider reworking it for their own audience.
+Announce breakout CitizenGO posts to the Slack channel **#comm-social-networks** (channel id `C7YFZ17MH`), so other pages can consider reworking them for their own audience. Two platforms, two rules:
+
+- **Facebook:** the post has passed **100,000 views**.
+- **X:** the post has passed **10,000 organic impressions** or **250 interactions** (likes, reposts, quotes, replies and bookmarks).
 
 Which posts qualify, which are duplicates, and the wording of the alert are all decided by a script. Your job is to run it, **fact-check each post**, post the script's message with the fact check added, and record what you posted. **Do not rewrite the script's message and do not recalculate any figure.** The only text you write is the fact-check block described in Step 2.
 
@@ -17,11 +20,12 @@ npm run -s alerts:breakout -- --json
 
 This prints JSON on stdout. Diagnostics go to stderr, so ignore those. The shape is:
 
-- `announce` — an array of posts to announce. Each has `post_id`, `page`, `views`, `media_type`, `permalink`, **`message`** (the post's full caption, which is what you fact-check) and **`slack_text`**, the ready-made alert.
-- `suppressed` — posts over 100,000 views that were deliberately NOT announced, with the reason. These are copies of a story already announced. **Never post these.**
+- `announce` — an array of posts to announce, Facebook and X together. Each has `platform` (`facebook` or `x`), `post_id`, `page`, `views` (organic impressions on X, plus an `interactions` figure), `media_type`, `permalink`, **`message`** (the post's full text, which is what you fact-check) and **`slack_text`**, the ready-made alert.
+- `suppressed` — posts over the line that were deliberately NOT announced, with the reason. These are copies of a story already announced. **Never post these.**
 - `channel` — the channel id to post to.
+- `x_error` — null normally. If it holds a message, the X half failed while Facebook still ran: carry on with whatever is in `announce`, and report the error to Chris in Step 5.
 
-**If `announce` is empty, stop.** Say briefly that there was nothing over 100,000 views to announce today and finish. That is the normal outcome most days — roughly one alert every two or three days. Do not post anything, and do not report the suppressed items to the channel.
+**If `announce` is empty, stop.** Say briefly that nothing crossed the line today and finish (mention `x_error` if it is set). That is a normal outcome: expect roughly one Facebook alert every two or three days and about two X alerts a week. Do not post anything, and do not report the suppressed items to the channel.
 
 **Step 2 — fact-check each post.**
 
@@ -57,7 +61,7 @@ If **any** claim is Wrong, Unverified or Outdated, the reader must see it before
 
 Special cases:
 - **No checkable claims** (for example a caption that is only a slogan or a prayer): add `**Fact check:** no factual claims in the caption to check.` at the end.
-- **A video or image post** (`media_type` is not text): add the line `_The caption was checked; the video or image itself was not._` after the fact-check block. Only the caption is available to you.
+- **A video or image post** (`media_type` is not `text` or `text post`): add the line `_The caption was checked; the video or image itself was not._` after the fact-check block. Only the caption is available to you.
 - **You cannot run the check** (search is unavailable or keeps failing): post anyway, with `**⚠️ Fact check could not be run today. Verify before reusing.**` directly under the first line. Never let a failed check stop the alert or make it look checked.
 
 Keep the block short: one line per claim and no essays. The alert has to stay readable in a Slack channel.
@@ -78,11 +82,12 @@ npm run -s alerts:breakout -- --record <post_id> <post_id>
 
 This matters: recording happens **only** after Slack has accepted the message. If a post failed to send, leave it out — it will be offered again tomorrow rather than being silently lost.
 
-**Step 5 — tell Chris what happened**, in the terminal only: which posts were announced, the fact-check verdict for each (and any warning it carried), and which were suppressed and why. Keep it to a few lines.
+**Step 5 — tell Chris what happened**, in the terminal only: which posts were announced, the fact-check verdict for each (and any warning it carried), and which were suppressed and why, and `x_error` if it was set. Keep it to a few lines.
 
 Notes:
 - Node is at `~/.local/node/bin` and is not on the default PATH, hence the export.
 - HazteOir is excluded by design — its median post is around 25,000 views, so 100,000 is routine rather than news there.
-- The dedup rule: a post is announced when it passes 100,000 views. A later copy of the same story in the same format is not, unless it appears 35 days or more after the story's first post, in which case it is announced as a revival. A *different format* on the same story — a video where a photo was already announced — is always announced, because it is a different piece of work.
+- The dedup rule: a post is announced when it crosses its platform's line. A later copy of the same story in the same format is not, unless it appears 35 days or more after the story's first post, in which case it is announced as a revival. A *different format* on the same story — a video where a photo was already announced — is always announced, because it is a different piece of work. Dedup runs within each platform: an X post on a story already announced from Facebook is announced too.
+- X counts organic reach only, because total impressions include paid boosts. When X's total is far above organic, the script adds a line saying so. Leave it in.
 - If the script errors, report the error to Chris and post nothing. Do not attempt to work around it by writing your own message.
 - The fact check covers facts only. Never add a comment on whether the post's position is right, and never soften or drop an alert because you disagree with its framing.
