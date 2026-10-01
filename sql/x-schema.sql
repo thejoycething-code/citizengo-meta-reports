@@ -285,6 +285,73 @@ create or replace view public.x_post_last_collected with (security_invoker = tru
     left join public.x_post_metrics m on m.post_id = p.post_id
    group by p.post_id, p.account_id, p.created_at;
 
+-- Period totals per account, for monthly X reports (migration x_period_summary,
+-- 1 Oct 2026). Counts EVERY post published in [p_from, p_to): the ranked
+-- tools cap at 200 rows, and adding up a capped list understated @CitizenGO's
+-- August by a quarter. security invoker, so it reads as the caller; execute
+-- is revoked from the public keys (granted below).
+create or replace function public.x_period_summary(p_from timestamptz, p_to timestamptz, p_account text default null)
+returns table (
+  account_id text, username text, label text, kind text,
+  posts bigint, originals bigint, replies_posted bigint, quotes_posted bigint,
+  impressions bigint, engagements bigint, engagement_rate_pct numeric,
+  likes bigint, reposts bigint, replies bigint, bookmarks bigint,
+  link_clicks bigint, posts_with_private bigint,
+  followers_first bigint, followers_last bigint, followers_first_date date, followers_last_date date,
+  top_post_id text, top_post_url text, top_post_text text, top_post_impressions bigint,
+  newest_snapshot date
+)
+language sql stable security invoker set search_path = public
+as $$
+  with p as (
+    select l.* from public.x_post_latest l
+     where l.created_at >= p_from and l.created_at < p_to
+       and (p_account is null or l.account_id = p_account)
+  ), agg as (
+    select p.account_id,
+           count(*) as posts,
+           count(*) filter (where p.referenced_type is null) as originals,
+           count(*) filter (where p.referenced_type = 'replied_to') as replies_posted,
+           count(*) filter (where p.referenced_type = 'quoted') as quotes_posted,
+           sum(p.impressions) as impressions,
+           sum(p.engagements) as engagements,
+           round(100.0 * sum(p.engagements) / nullif(sum(p.impressions) filter (where p.engagements is not null), 0), 2) as engagement_rate_pct,
+           sum(p.likes) as likes, sum(p.reposts) as reposts, sum(p.replies) as replies, sum(p.bookmarks) as bookmarks,
+           sum(p.url_link_clicks) as link_clicks,
+           count(*) filter (where p.private_window_open) as posts_with_private,
+           max(p.collected_date) as newest_snapshot
+      from p group by p.account_id
+  ), top as (
+    select distinct on (p.account_id) p.account_id, p.post_id, p.permalink_url, p.text, p.impressions
+      from p order by p.account_id, p.impressions desc nulls last
+  ), f as (
+    select m.account_id,
+           (array_agg(m.followers_count order by m.metric_date asc))[1]  as followers_first,
+           (array_agg(m.followers_count order by m.metric_date desc))[1] as followers_last,
+           min(m.metric_date) as first_date, max(m.metric_date) as last_date
+      from public.x_account_metrics m
+     where m.metric_date >= p_from::date and m.metric_date < p_to::date
+       and (p_account is null or m.account_id = p_account)
+     group by m.account_id
+  )
+  select a.account_id, a.username, a.label, a.kind,
+         coalesce(agg.posts, 0), coalesce(agg.originals, 0), coalesce(agg.replies_posted, 0), coalesce(agg.quotes_posted, 0),
+         agg.impressions, agg.engagements, agg.engagement_rate_pct,
+         agg.likes, agg.reposts, agg.replies, agg.bookmarks,
+         agg.link_clicks, coalesce(agg.posts_with_private, 0),
+         f.followers_first, f.followers_last, f.first_date, f.last_date,
+         top.post_id, top.permalink_url, top.text, top.impressions,
+         agg.newest_snapshot
+    from public.x_accounts a
+    left join agg on agg.account_id = a.account_id
+    left join top on top.account_id = a.account_id
+    left join f   on f.account_id   = a.account_id
+   where a.is_active and (p_account is null or a.account_id = p_account)
+   order by agg.impressions desc nulls last, a.label;
+$$;
+revoke all on function public.x_period_summary(timestamptz, timestamptz, text) from public, anon, authenticated;
+grant execute on function public.x_period_summary(timestamptz, timestamptz, text) to meta_readonly, service_role;
+
 -- ---------------------------------------------------------------------------
 -- PUBLIC-KEY LOCKDOWN, same discipline as the 29 Sept 2026 block in schema.sql:
 -- Supabase grants anon/authenticated on every new object in public, so every

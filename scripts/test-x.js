@@ -108,6 +108,36 @@ console.log('\nEnrolment guard (lib/xflow.js)\n');
   eq('a retired (inactive) row does not block re-use', enrolmentConflict({ accountId: '9', username: 'x', invite: uk, existing: { ...globalRow, is_active: false }, holders: [] }), null);
 }
 
+console.log('\nConnector tools: account lookup, periods, truncation (mcp/x-tools.js)\n');
+{
+  const xt = require('../mcp/x-tools');
+  const fake = { async xAccounts() { return [
+    { account_id: '1264712994', username: 'CitizenGO', label: 'CitizenGO' },
+    { account_id: '1829227508950040576', username: 'CitizenGO_GB', label: 'CitizenGO UK' },
+    { account_id: '1877704733701341184', username: 'CitizenGO_USA', label: 'CitizenGO USA' },
+    { account_id: '1947525585280110592', username: 'Citizengo_USAes', label: 'CitizenGO USA (Spanish)' },
+  ]; } };
+  const rid = async (v) => (await xt.resolveAccount(fake, v));
+  (async () => {
+    eq('@CitizenGO resolves to Global, not to every CitizenGO_* account', (await rid('@CitizenGO')).id, '1264712994');
+    eq('handle without @, any case', (await rid('citizengo_gb')).id, '1829227508950040576');
+    eq('label', (await rid('CitizenGO UK')).id, '1829227508950040576');
+    eq('numeric id passes through', (await rid('1264712994')).id, '1264712994');
+    eq('blank means every account', (await rid('')).id, undefined);
+    ok('ambiguous partial is refused, naming the candidates', /more than one/.test((await rid('USA')).error || ''));
+    ok('unknown is refused, listing what is connected', /No connected X account/.test((await rid('@nobody')).error || ''));
+  })();
+  const at = new Date('2026-10-01T12:00:00Z');
+  eq('default period is last calendar month', xt.periodFor({}, at), { from: '2026-09-01T00:00:00.000Z', to: '2026-10-01T00:00:00.000Z', label: 'September 2026' });
+  eq('"2026-08"', xt.periodFor({ month: '2026-08' }, at).label, 'August 2026');
+  eq('"August 2026"', xt.periodFor({ month: 'August 2026' }, at).from, '2026-08-01T00:00:00.000Z');
+  eq('January rolls back a year by default', xt.periodFor({}, new Date('2027-01-05T00:00:00Z')).label, 'December 2026');
+  eq('from/to: "to" is inclusive', xt.periodFor({ from: '2026-08-01', to: '2026-08-31' }, at).to, '2026-09-01T00:00:00.000Z');
+  ok('bad month is refused', !!xt.periodFor({ month: 'Smarch' }, at).error);
+  ok('truncation note when the list is cut', /Showing 10 of 76 posts/.test(xt.cutNote(10, 76)));
+  eq('no note when everything is shown', xt.cutNote(76, 76), '');
+}
+
 console.log('\nCost (the figures in the scoping brief)\n');
 eq('owned read is $0.001, user read $0.010', sched.estimateCost({ postReads: 1000, userReads: 10 }), 1.1);
 eq('outsider rate is $0.005', sched.estimateCost({ postReads: 1000, userReads: 0, owned: false }), 5);
