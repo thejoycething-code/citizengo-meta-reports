@@ -159,21 +159,25 @@ async function topPosts(store, { account_id, days, month, from, to, sort = 'impr
   };
 }
 
-async function searchPosts(store, { query, account_id, days, month, from, to, type = 'all', limit = 15, offset = 0 } = {}) {
+async function searchPosts(store, { query, hashtag, topic, account_id, days, month, from, to, type = 'all', limit = 15, offset = 0 } = {}) {
+  if (!query && !hashtag && !topic) return { text: 'Give a query (words in the post), a hashtag or a topic.' };
   const w = windowFor({ month, from, to, days }, 0);
   if (w.error) return { text: w.error };
   const roles = TYPES[type] || null;
   const off = offsetOf(offset);
-  const total = await store.xPostCount({ q: query, account_id, since: w.since, until: w.until, roles });
-  const rows = await store.xPosts({ q: query, account_id, since: w.since, until: w.until, order: 'impressions', roles, limit: clampRows(limit, 15, PAGE_MAX), offset: off });
-  if (!rows.length) return { text: total && off >= total ? `Only ${n(total)} posts match; offset ${off} is past the end.` : `No X posts matching "${query}" (${w.label}).` };
+  const f = { q: query, hashtag, topic, account_id, since: w.since, until: w.until, roles };
+  const what = [query && `"${query}"`, hashtag && `#${String(hashtag).replace(/^#/, '')}`, topic && `topic "${topic}"`].filter(Boolean).join(' + ');
+  const total = await store.xPostCount(f);
+  const rows = await store.xPosts({ ...f, order: 'impressions', limit: clampRows(limit, 15, PAGE_MAX), offset: off });
+  const cover = (hashtag || topic) ? await coverageNote(store, { account_id, since: w.since, until: w.until }) : '';
+  if (!rows.length) return { text: (total && off >= total ? `Only ${n(total)} posts match; offset ${off} is past the end.` : `No X posts matching ${what} (${w.label}).`) + cover };
   const width = rows.length > 100 ? 50 : 80;
   return {
-    text: `**X posts matching "${query}", ${w.label}** (${n(total)} in all)\n\n` + table(
+    text: `**X posts matching ${what}, ${w.label}** (${n(total)} in all)\n\n` + table(
       ['#', 'Account', 'Post', 'Date', 'Type', 'Impressions', 'Interactions', 'Link clicks'],
       rows.map((r, i) => [String(off + i + 1), `@${r.username}`, link(r, truncate(r.text, width)), String(r.created_at).slice(0, 10), role(r),
         n(r.impressions), n(r.interactions), n(r.url_link_clicks)]),
-    ) + pageNote(off, rows.length, total) + privateNote(rows) + spokesNote(rows),
+    ) + pageNote(off, rows.length, total) + cover + privateNote(rows) + spokesNote(rows),
     rows, total, offset: off,
   };
 }
@@ -195,6 +199,66 @@ async function accountGrowth(store, { account_id, days = 30 } = {}) {
       out.map((a) => [`@${a.username}`, n(a.last.followers_count), (a.change >= 0 ? '+' : '') + n(a.change), String(a.days), n(a.last.post_count)]),
     ) + '\n\n_Change is the sum of day-to-day differences in the follower count over the days collected. X serves no per-post follower attribution._',
     rows,
+  };
+}
+
+// Topics and hashtags were first collected on 2 Oct 2026, so only posts read
+// since then carry them. Said whenever they are used, so a thin result is not
+// read as "we never post about this".
+async function coverageNote(store, { account_id, since, until }) {
+  const [all, read] = await Promise.all([
+    store.xPostCount({ account_id, since, until }), store.xPostCount({ account_id, since, until, refreshed: true })]);
+  if (!all || read === null || read === undefined || read >= all) return '';
+  return `\n\n_Hashtags and X topic labels exist on ${n(read)} of the ${n(all)} posts in this window: those read since 2 October 2026, when collection of them began. Posts read later fill in as they come up for their scheduled reads._`;
+}
+
+// Which hashtags or X topic labels go with posts that do well. min_posts keeps
+// one viral post from topping the list on its own.
+async function topTags(store, { kind = 'topic', account_id, days, month, from, to, min_posts = 3, limit = 25 } = {}) {
+  const k = kind === 'hashtag' ? 'hashtag' : 'topic';
+  const w = windowFor({ month, from, to, days }, 90);
+  if (w.error) return { text: w.error };
+  const since = w.since || '2000-01-01T00:00:00.000Z'; const until = w.until || new Date(Date.now() + 864e5).toISOString();
+  const all = await store.xTagSummary({ kind: k, from: since, to: until, account_id, limit: 200 });
+  const min = Math.max(1, Math.floor(Number(min_posts) || 1));
+  const rows = all.filter((r) => Number(r.posts) >= min).slice(0, clampRows(limit, 25, PAGE_MAX));
+  const cover = await coverageNote(store, { account_id, since: w.since, until: w.until });
+  if (!rows.length) return { text: `No ${k}s on at least ${min} posts (${w.label}).${cover}` };
+  return {
+    text: `**X ${k === 'topic' ? 'topics (X\'s own labels)' : 'hashtags'} by impressions, ${w.label}**${min > 1 ? ` · on at least ${min} posts` : ''}\n\n` + table(
+      ['#', k === 'topic' ? 'Topic' : 'Hashtag', ...(k === 'topic' ? ['Kind'] : []), 'Posts', 'Accounts', 'Impressions', 'Median per post', 'Engagements', 'Eng. rate'],
+      rows.map((r, i) => [String(i + 1), String(r.tag).replace(/\|/g, '/'), ...(k === 'topic' ? [r.domains || '—'] : []),
+        n(r.posts), n(r.accounts), n(r.impressions), n(Math.round(Number(r.median_impressions))), n(r.engagements), p(r.engagement_rate_pct)]),
+    ) + `\n\n_${k === 'topic' ? 'Topics are labels X attaches to posts itself (people, organisations, interests). ' : ''}A post with several ${k}s counts under each. Median per post is the fairer comparison: one viral post can carry a total. To see the posts, use x_search_posts with ${k} set._` + cover,
+    rows,
+  };
+}
+
+// Video drop-off: of the people who started a video, how many reached a
+// quarter, half, three quarters and the end. Quartiles are private metrics, so
+// they exist only while X serves them (about 89 days) and from 2 Oct 2026.
+async function videoPosts(store, { account_id, days, month, from, to, sort = 'views', limit = 20, offset = 0 } = {}) {
+  const w = windowFor({ month, from, to, days }, 90);
+  if (w.error) return { text: w.error };
+  const order = { views: 'video_views', impressions: 'impressions', recent: 'created_at' }[sort] || 'video_views';
+  const off = offsetOf(offset);
+  const f = { account_id, since: w.since, until: w.until, video: true };
+  const total = await store.xPostCount(f);
+  const rows = await store.xPosts({ ...f, order, limit: clampRows(limit, 20, PAGE_MAX), offset: off });
+  if (!rows.length) return { text: total && off >= total ? `Only ${n(total)} video posts here; offset ${off} is past the end.` : `No X video posts (${w.label}).` };
+  const pct = (r, q) => (Number(r.video_playback_0) > 0 && r[`video_playback_${q}`] !== null && r[`video_playback_${q}`] !== undefined
+    ? `${Math.round(100 * Number(r[`video_playback_${q}`]) / Number(r.video_playback_0))}%` : '—');
+  const len = (ms) => (ms === null || ms === undefined ? '—' : `${Math.floor(ms / 60000)}:${String(Math.round((ms % 60000) / 1000)).padStart(2, '0')}`);
+  const width = rows.length > 100 ? 40 : 60;
+  const withQ = rows.filter((r) => Number(r.video_playback_0) > 0).length;
+  return {
+    text: `**X video posts by ${sort}, ${w.label}** (${n(total)} in all)\n\n` + table(
+      ['#', 'Account', 'Post', 'Date', 'Length', 'Views', 'Started', '25%', '50%', '75%', 'Watched to end'],
+      rows.map((r, i) => [String(off + i + 1), `@${r.username}`, link(r, truncate(r.text, width)), String(r.created_at).slice(0, 10),
+        len(r.video_duration_ms), n(r.video_views), n(r.video_playback_0), pct(r, 25), pct(r, 50), pct(r, 75), pct(r, 100)]),
+    ) + pageNote(off, rows.length, total)
+      + `\n\n_Percentages are of the people who started the video. Drop-off is a private metric: X gives it only for about 89 days after posting, and we collect it from 2 October 2026, so ${n(rows.length - withQ)} of these ${n(rows.length)} have none yet. Views are X's video view count._`,
+    rows, total, offset: off,
   };
 }
 
@@ -336,7 +400,27 @@ async function dataHealth(store) {
   if (spend) {
     lines.push(`- Estimated X spend this month: **$${Number(spend.est_cost_usd || 0).toFixed(2)}** of $${spend.budget} budget (${n(spend.post_reads)} post reads, ${n(spend.user_reads)} user reads)`);
   }
-  lines.push('', '_Private metrics (link clicks, profile clicks, organic/promoted split) exist only for posts collected while X still served them: documented as 30 days, observed to about 89. Link clicks appear only on posts that contain a link. Public metrics (impressions, likes, reposts, replies, bookmarks) have no window. Retweets are not collected. Spend is our estimate from resources returned; the X developer console is the invoice._');
+  // Broken links and withheld posts: things someone should act on.
+  const [broken, withheld] = await Promise.all([
+    store.xLinkProblems({ minStatus: 400, oursOnly: true }).catch(() => []),
+    store.xWithheld().catch(() => []),
+  ]);
+  const cutoff = new Date(Date.now() - 90 * 864e5).toISOString();
+  const recent = broken.filter((b) => String(b.created_at) >= cutoff);
+  if (recent.length) {
+    lines.push(`- **Broken CitizenGO links in posts from the last 90 days: ${recent.length}** (X could not load the page)`);
+    for (const b of recent.slice(0, 10)) lines.push(`  - @${b.username} ${String(b.created_at).slice(0, 10)}: ${b.url} → HTTP ${b.status} · [post](${b.permalink_url})`);
+  } else {
+    lines.push('- Broken CitizenGO links in posts from the last 90 days: none');
+  }
+  if (broken.length > recent.length) lines.push(`  - ${broken.length - recent.length} more in older posts, most likely campaign pages that have since closed`);
+  if (withheld.length) {
+    lines.push(`- **Posts X withholds in a country: ${withheld.length}**`);
+    for (const w of withheld.slice(0, 10)) lines.push(`  - @${w.username} ${String(w.created_at).slice(0, 10)}, withheld in ${(w.withheld_in || []).join(', ')} · [post](${w.permalink_url})`);
+  } else {
+    lines.push('- Posts X withholds in a country: none');
+  }
+  lines.push('', '_Link status is the HTTP status X recorded when it fetched the page, on posts read since 2 October 2026; a site that blocks bots can show 403 while working for people. Private metrics (link clicks, profile clicks, organic/promoted split) exist only for posts collected while X still served them: documented as 30 days, observed to about 89. Link clicks appear only on posts that contain a link. Public metrics (impressions, likes, reposts, replies, bookmarks) have no window. Retweets are not collected. Spend is our estimate from resources returned; the X developer console is the invoice._');
   return { text: lines.join('\n') };
 }
 
@@ -370,11 +454,13 @@ const X_TOOLS = [
   },
   {
     name: 'x_search_posts',
-    description: 'Search the text of every X post we hold, across all accounts or one, ranked by impressions, in pages of up to 200 with offset for the next. Use for questions about a topic, campaign or specific post on X.',
+    description: 'Search every X post we hold by words in the text, by hashtag, or by X\'s own topic label, across all accounts or one, ranked by impressions, in pages of up to 200 with offset for the next. Use for questions about a topic, campaign or specific post on X. Give at least one of query, hashtag, topic.',
     inputSchema: {
       type: 'object',
       properties: {
-        query: { type: 'string', description: 'Word or phrase in the post text. Case-insensitive.' },
+        query: { type: 'string', description: 'Word or phrase in the post text (the full text, long posts included). Case-insensitive.' },
+        hashtag: { type: 'string', description: 'A hashtag the post carries, with or without #. Whole tag, any case.' },
+        topic: { type: 'string', description: 'An X topic label, or part of one (e.g. "Gavin Newsom", "abortion"). See x_topics for the labels in use.' },
         account: ACCOUNT_PROP,
         account_id: { type: 'string', description: 'Same as account; kept for older prompts.' },
         days: { type: 'number', description: 'Only posts from the last N days. Omit or 0 for all.' },
@@ -385,7 +471,7 @@ const X_TOOLS = [
         type: TYPE_PROP,
         limit: { type: 'number', description: 'Posts per page (default 15, max 200).' },
       },
-      required: ['query'],
+
       additionalProperties: false,
     },
     handler: withAccount(searchPosts),
@@ -403,6 +489,46 @@ const X_TOOLS = [
       additionalProperties: false,
     },
     handler: withAccount(accountGrowth),
+  },
+  {
+    name: 'x_topics',
+    description: 'Rank the topics (X\'s own labels: people, organisations, issues) or hashtags on our X posts by impressions, with posts, accounts, median impressions per post and engagement rate. Use for "which topics or hashtags do best on X". Default: topics, last 90 days, on at least 3 posts.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        kind: { type: 'string', enum: ['topic', 'hashtag'], description: 'topic (default) or hashtag.' },
+        account: ACCOUNT_PROP,
+        account_id: { type: 'string', description: 'X account id. Prefer "account".' },
+        days: { type: 'number', description: 'Posts from the last N days (default 90, 0 for all).' },
+        month: { type: 'string', description: 'A month, e.g. "2026-08", instead of days.' },
+        from: { type: 'string', description: 'Start date (YYYY-MM-DD), instead of days.' },
+        to: { type: 'string', description: 'End date inclusive (YYYY-MM-DD).' },
+        min_posts: { type: 'number', description: 'Only tags on at least this many posts (default 3; 1 for all).' },
+        limit: { type: 'number', description: 'How many (default 25, max 200).' },
+      },
+      additionalProperties: false,
+    },
+    handler: withAccount(topTags),
+  },
+  {
+    name: 'x_video_posts',
+    description: 'List X posts with video: length, views, and how many viewers reached 25%, 50%, 75% and the end (as a share of those who started). Use for "how long do people watch our videos" or which videos hold attention. Pages of up to 200 with offset.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        account: ACCOUNT_PROP,
+        account_id: { type: 'string', description: 'X account id. Prefer "account".' },
+        days: { type: 'number', description: 'Posts from the last N days (default 90, 0 for all).' },
+        month: { type: 'string', description: 'A month, e.g. "2026-08", instead of days.' },
+        from: { type: 'string', description: 'Start date (YYYY-MM-DD), instead of days.' },
+        to: { type: 'string', description: 'End date inclusive (YYYY-MM-DD).' },
+        sort: { type: 'string', enum: ['views', 'impressions', 'recent'], description: 'Ranking (default views).' },
+        limit: { type: 'number', description: 'Posts per page (default 20, max 200).' },
+        offset: { type: 'number', description: 'Where the page starts (0 = first).' },
+      },
+      additionalProperties: false,
+    },
+    handler: withAccount(videoPosts),
   },
   {
     name: 'x_threads',
@@ -460,7 +586,7 @@ const X_TOOLS = [
   },
   {
     name: 'x_data_health',
-    description: 'Coverage, freshness, credentials needing re-authorisation and estimated month-to-date X API spend against budget. Call before presenting X numbers as complete.',
+    description: 'Coverage, freshness, credentials needing re-authorisation, estimated month-to-date X API spend against budget, broken CitizenGO links in recent posts, and posts X withholds in a country. Call before presenting X numbers as complete.',
     inputSchema: { type: 'object', properties: {}, additionalProperties: false },
     handler: (store) => dataHealth(store),
   },

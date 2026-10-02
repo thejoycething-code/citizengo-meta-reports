@@ -439,6 +439,15 @@ against the live API — `npm run probe:x` is that check and must run first.
   or `quote` from X's `conversation_id` and `in_reply_to_user_id`, and
   `x_thread_summary` / `x_threads` give one row per thread. Never infer
   threads from posting gaps: Ireland's gaps have no natural break.
+- **Using the free fields** (2 Oct 2026): `x_topics` ranks X's topic labels or
+  hashtags (function `x_tag_summary`; default at least 3 posts, so one viral
+  post cannot top it, with median per post beside the total);
+  `x_search_posts` takes `hashtag` and `topic`; `x_video_posts` shows video
+  length and the share of starters who reached 25/50/75/100%; and
+  `x_data_health` lists broken CitizenGO links in posts from the last 90 days
+  (view `x_post_link_status`) and posts X withholds in a country. Topics and
+  hashtags exist only on posts read since 2 Oct 2026, and every answer that
+  uses them says how many.
 
 ### Pieces
 

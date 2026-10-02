@@ -183,6 +183,58 @@ console.log('\nConnector tools: exact post types and threads\n');
   })();
 }
 
+console.log('\nConnector tools: hashtags, topics, video drop-off, link health\n');
+{
+  const xt = require('../mcp/x-tools');
+  const { postFilter } = require('../lib/store');
+  const q = (f) => decodeURIComponent(postFilter(f).join('&'));
+  eq('a hashtag matches a whole tag, any case, # optional', q({ hashtag: '#ProLife' }), 'tags_text=ilike.*"prolife"*');
+  eq('a topic matches part of a label', q({ topic: 'Newsom' }), 'topics_text=ilike.*newsom*');
+  ok('quotes and wildcards cannot break out of the pattern', !/""|\*\*/.test(q({ hashtag: '"a*b"' })));
+  eq('video and refreshed filters', q({ video: true, refreshed: true }), 'video_duration_ms=not.is.null&is_long_post=not.is.null');
+
+  const asked = [];
+  const store = {
+    async xAccounts() { return [{ account_id: '1', username: 'CitizenGO', label: 'CitizenGO' }]; },
+    async xPostCount(f) { asked.push(f); return f.refreshed ? 40 : 100; },
+    async xPosts(f) { asked.push(f); return f.video
+      ? [{ post_id: '9', username: 'CitizenGO', text: 'Video', created_at: '2026-09-30T00:00:00Z', video_duration_ms: 95000,
+          video_views: 392, video_playback_0: 619, video_playback_25: 415, video_playback_50: 288, video_playback_75: 248, video_playback_100: 191 },
+         { post_id: '8', username: 'CitizenGO', text: 'Old video', created_at: '2026-06-01T00:00:00Z', video_duration_ms: 9000, video_views: 50 }]
+      : [{ post_id: '7', username: 'CitizenGO', text: 'Tagged', created_at: '2026-09-30T00:00:00Z', impressions: 10, thread_role: 'original' }]; },
+    async xTagSummary() { return [
+      { tag: 'Colombia', domains: 'Unified Twitter Taxonomy', posts: 1, accounts: 1, impressions: 1530428, median_impressions: 1530428, engagements: 1, engagement_rate_pct: 0.1 },
+      { tag: 'Politics', domains: 'Unified Twitter Taxonomy', posts: 523, accounts: 15, impressions: 2082100, median_impressions: 410.5, engagements: 9, engagement_rate_pct: 0.74 }]; },
+    async xFreshness() { return { latest: '2026-10-02', recentFailures: 0, posts: 1, withPrivate: 1 }; },
+    async xSpend() { return null; },
+    async xLinkProblems() { return [
+      { username: 'CitizenGOBrasil', created_at: new Date(Date.now() - 10 * 864e5).toISOString(), url: 'https://api-prod.citizengo.org//x', status: 404, permalink_url: 'https://x.com/b/status/1' },
+      { username: 'CitizenGO', created_at: '2025-12-06T00:00:00Z', url: 'https://go.citizengo.org/old.html', status: 404, permalink_url: 'https://x.com/c/status/2' }]; },
+    async xWithheld() { return [{ username: 'CitizenGO_DE', created_at: '2026-09-01T00:00:00Z', withheld_in: ['DE'], permalink_url: 'https://x.com/d/status/3' }]; },
+  };
+  const tool = (name) => xt.X_TOOLS.find((t) => t.name === name).handler;
+  (async () => {
+    const tags = await tool('x_topics')(store, { days: 0 });
+    ok('one viral post does not top the topics (min 3 posts by default)', !/Colombia/.test(tags.text) && /Politics/.test(tags.text));
+    ok('median per post is shown', /\| 411 \|/.test(tags.text));
+    ok('coverage is stated when topics are thin (40 of 100 posts)', /exist on 40 of the 100 posts/.test(tags.text));
+    const all = await tool('x_topics')(store, { days: 0, min_posts: 1 });
+    ok('min_posts 1 shows everything', /Colombia/.test(all.text));
+    const s = await tool('x_search_posts')(store, { hashtag: 'ProLife' });
+    eq('hashtag search reaches the store', asked.find((f) => f.hashtag).hashtag, 'ProLife');
+    ok('heading names the hashtag', /matching #ProLife/.test(s.text));
+    ok('search needs at least one of query, hashtag, topic', /Give a query/.test((await tool('x_search_posts')(store, {})).text));
+    const v = await tool('x_video_posts')(store, { days: 0 });
+    ok('drop-off as a share of starters: 25% 67, 50% 47, 75% 40, end 31', /\| 67% \| 47% \| 40% \| 31% \|/.test(v.text));
+    ok('length shown as m:ss', /\| 1:35 \|/.test(v.text));
+    ok('a video without quartiles shows dashes and is counted in the note', /1 of these 2 have none yet/.test(v.text));
+    const h = await tool('x_data_health')(store, {});
+    ok('a broken link in a recent post is listed with its status', /Broken CitizenGO links in posts from the last 90 days: 1\*\*/.test(h.text) && /HTTP 404/.test(h.text));
+    ok('old broken links are counted, not listed', /1 more in older posts/.test(h.text) && !/old\.html/.test(h.text));
+    ok('withheld posts are listed with the country', /withheld in DE/.test(h.text));
+  })();
+}
+
 console.log('\nConnector tools: paging past 200 (every post we hold)\n');
 {
   const xt = require('../mcp/x-tools');

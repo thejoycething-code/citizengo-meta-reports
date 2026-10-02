@@ -301,7 +301,12 @@ create or replace view public.x_post_latest with (security_invoker = true) as
            else 'original'
          end as thread_role,
          p.is_long_post, p.hashtags, p.mentions, p.topics, p.edit_count, p.reply_settings,
-         m.video_playback_0, m.video_playback_25, m.video_playback_50, m.video_playback_75, m.video_playback_100
+         m.video_playback_0, m.video_playback_25, m.video_playback_50, m.video_playback_75, m.video_playback_100,
+         -- Appended 2 Oct 2026 (second batch). tags_text / topics_text are the
+         -- lower-cased JSON, so a tool can match a hashtag or topic with ilike.
+         p.withheld_in, p.article_title,
+         lower(p.hashtags::text) as tags_text, lower(p.topics::text) as topics_text,
+         (select max((md->>'duration_ms')::bigint) from jsonb_array_elements(coalesce(p.media, '[]'::jsonb)) md) as video_duration_ms
     from public.x_posts p
     join public.x_accounts a on a.account_id = p.account_id
     join public.x_post_metrics m on m.post_id = p.post_id
@@ -326,6 +331,62 @@ create or replace view public.x_thread_summary with (security_invoker = true) as
    where l.thread_role in ('thread_start', 'thread')
    group by l.account_id, l.conversation_id
   having bool_or(l.post_id = l.conversation_id) and count(*) > 1;
+
+-- Every link in every post with the HTTP status X recorded for it, so a
+-- broken petition link in a live post can be found. Status comes from X's own
+-- fetch of the page and only exists on posts read since 2 Oct 2026.
+create or replace view public.x_post_link_status with (security_invoker = true) as
+  select p.post_id, p.account_id, a.username, p.created_at, p.permalink_url,
+         u->>'expanded_url' as url, (u->>'status')::int as status,
+         (u->>'expanded_url') = any (select jsonb_array_elements_text(coalesce(p.citizengo_urls, '[]'::jsonb))) as is_ours
+    from public.x_posts p
+    join public.x_accounts a on a.account_id = p.account_id
+    cross join lateral jsonb_array_elements(coalesce(p.urls, '[]'::jsonb)) u
+   where u ? 'status' and jsonb_typeof(u->'status') = 'number';
+
+-- Hashtags or X topic labels, ranked: how many posts carried each and how they
+-- did. Counts every post published in the window, like x_period_summary.
+create or replace function public.x_tag_summary(p_kind text, p_from timestamptz, p_to timestamptz,
+                                                p_account text default null, p_limit int default 50)
+returns table (tag text, domains text, posts bigint, accounts bigint, impressions bigint,
+               engagements bigint, engagement_rate_pct numeric, median_impressions numeric)
+language sql stable security invoker set search_path = public
+as $$
+  with p as (
+    select l.* from public.x_post_latest l
+     where l.created_at >= p_from and l.created_at < p_to
+       and (p_account is null or l.account_id = p_account)
+       -- only posts that carry a tag at all: most never do
+       and l.post_id in (select x.post_id from public.x_posts x
+                          where (p_kind = 'topic' and x.topics is not null)
+                             or (p_kind = 'hashtag' and x.hashtags is not null))
+  ), t as (
+    select p.post_id, p.account_id, p.impressions, p.interactions, '#' || h as tag, null::text as domain
+      from p cross join lateral jsonb_array_elements_text(coalesce(p.hashtags, '[]'::jsonb)) h
+     where p_kind = 'hashtag'
+    union all
+    select p.post_id, p.account_id, p.impressions, p.interactions, tp->>'entity', tp->>'domain'
+      from p cross join lateral jsonb_array_elements(coalesce(p.topics, '[]'::jsonb)) tp
+     where p_kind = 'topic'
+  ), d as (
+    -- one row per post per tag, whatever the case or domain count
+    select lower(tag) as k, min(tag) as tag,
+           post_id, max(account_id) as account_id, max(impressions) as impressions, max(interactions) as interactions
+      from t group by lower(tag), post_id
+  ), dom as (
+    select lower(tag) as k, string_agg(distinct domain, ', ') as domains from t group by lower(tag)
+  )
+  select min(d.tag), min(dom.domains),
+         count(*), count(distinct d.account_id),
+         sum(d.impressions), sum(d.interactions),
+         round(100.0 * sum(d.interactions) / nullif(sum(d.impressions), 0), 2),
+         percentile_cont(0.5) within group (order by d.impressions)::numeric
+    from d join dom on dom.k = d.k group by d.k
+   order by sum(d.impressions) desc nulls last
+   limit least(greatest(coalesce(p_limit, 50), 1), 200);
+$$;
+revoke all on function public.x_tag_summary(text, timestamptz, timestamptz, text, int) from public, anon, authenticated;
+grant execute on function public.x_tag_summary(text, timestamptz, timestamptz, text, int) to meta_readonly, service_role;
 
 -- Follower movement per account per day, derived from consecutive snapshots.
 create or replace view public.x_account_growth with (security_invoker = true) as
@@ -457,13 +518,13 @@ alter table public.x_collection_runs enable row level security;
 revoke all on public.x_accounts, public.x_oauth_tokens, public.x_posts, public.x_post_metrics,
   public.x_account_metrics, public.x_collection_runs,
   public.x_post_latest, public.x_account_growth, public.x_spend_month_to_date,
-  public.x_post_last_collected, public.x_thread_summary
+  public.x_post_last_collected, public.x_thread_summary, public.x_post_link_status
   from anon, authenticated;
 
 grant select on public.x_accounts, public.x_posts, public.x_post_metrics,
   public.x_account_metrics, public.x_collection_runs,
   public.x_post_latest, public.x_account_growth, public.x_spend_month_to_date,
-  public.x_post_last_collected, public.x_thread_summary
+  public.x_post_last_collected, public.x_thread_summary, public.x_post_link_status
   to meta_readonly;
 
 drop policy if exists meta_readonly_select_x_accounts on public.x_accounts;
@@ -488,3 +549,4 @@ alter view public.x_account_growth      set (security_invoker = true);
 alter view public.x_spend_month_to_date set (security_invoker = true);
 alter view public.x_post_last_collected set (security_invoker = true);
 alter view public.x_thread_summary      set (security_invoker = true);
+alter view public.x_post_link_status    set (security_invoker = true);
