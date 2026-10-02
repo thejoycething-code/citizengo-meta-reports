@@ -451,6 +451,16 @@ mock.listen(0, '127.0.0.1', async () => {
     eq('edit count = history length - 1', lp.post.edit_count, 1);
     eq('video quartiles kept, not just the end', [lp.metric.video_playback_0, lp.metric.video_playback_50, lp.metric.video_playback_100], [619, 288, 191]);
     eq('video length kept on the media row', lp.post.media[0].duration_ms, 9509);
+    const vp = toRows({ ...longPost, withheld: { country_codes: ['DE'] }, article: { title: 'A long read' } },
+      { account: { account_id: '42' }, username: 'u', errors: [], privateWindow: false, now: NOW,
+        includes: { media: [{ media_key: '7_1', type: 'video', variants: [
+          { content_type: 'video/mp4', bit_rate: 632000, url: 'https://video.twimg.com/low.mp4' },
+          { content_type: 'video/mp4', bit_rate: 2176000, url: 'https://video.twimg.com/high.mp4' },
+          { content_type: 'application/x-mpegURL', url: 'https://video.twimg.com/pl.m3u8' }] }] } });
+    eq('the video file kept is the best mp4', vp.post.media[0].video_url, 'https://video.twimg.com/high.mp4');
+    eq('withholding countries kept', vp.post.withheld_in, ['DE']);
+    eq('X Article title kept', vp.post.article_title, 'A long read');
+    eq('link status kept (a 404 is a broken petition link)', sched.extractUrls({ urls: [{ url: 'https://t.co/a', expanded_url: 'https://citizengo.org/x', status: 404 }] }).urls[0].status, 404);
     const plain = toRows(TWEETS[0], { account: { account_id: '42' }, username: 'u', includes: INCLUDES, errors: [], privateWindow: true, now: NOW });
     eq('a short post is not long, and keeps its own text', [plain.post.is_long_post, plain.post.text], [false, TWEETS[0].text]);
     eq('every post row has the same columns (the sink refuses mixed batches)', Object.keys(plain.post).sort(), Object.keys(lp.post).sort());

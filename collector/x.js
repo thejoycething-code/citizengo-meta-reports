@@ -248,12 +248,20 @@ function mediaFor(post, includes) {
       view_count: m.public_metrics ? num(m.public_metrics.view_count) : null,
       duration_ms: num(m.duration_ms), alt_text: m.alt_text || null,
       width: num(m.width), height: num(m.height),
-      image_url: m.url || m.preview_image_url || null })),
+      image_url: m.url || m.preview_image_url || null, video_url: bestMp4(m) })),
     video_views: views,
   };
   for (const q of QUARTILES) out[`video_playback_${q}`] = play[q];
   return out;
 }
+// The highest-bitrate mp4 of a video or GIF: the file itself, for
+// transcription or archiving later. null for images.
+function bestMp4(m) {
+  const mp4 = (m.variants || []).filter((v) => v && v.content_type === 'video/mp4' && v.url);
+  if (!mp4.length) return null;
+  return mp4.sort((a, b) => (Number(b.bit_rate) || 0) - (Number(a.bit_rate) || 0))[0].url;
+}
+
 // X's own topic labels (context_annotations): a domain such as "Politician"
 // and an entity such as "Gavin Newsom". X repeats an entity under several
 // domains, so they are kept as pairs, de-duplicated.
@@ -301,6 +309,11 @@ function toRows(post, { account, username, includes, errors, privateWindow, now 
       edit_count: Array.isArray(post.edit_history_tweet_ids) ? Math.max(post.edit_history_tweet_ids.length - 1, 0) : null,
       reply_settings: post.reply_settings || null,
       possibly_sensitive: typeof post.possibly_sensitive === 'boolean' ? post.possibly_sensitive : null,
+      // Countries where X withholds the post (a legal demand), e.g. ["DE"].
+      withheld_in: post.withheld && Array.isArray(post.withheld.country_codes) && post.withheld.country_codes.length
+        ? post.withheld.country_codes : null,
+      article_title: (post.article && post.article.title) || null,
+      place_id: (post.geo && post.geo.place_id) || null,
     },
     metric: {
       post_id: String(post.id), account_id: account.account_id,

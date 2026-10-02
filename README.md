@@ -427,7 +427,11 @@ against the live API — `npm run probe:x` is that check and must run first.
   the full text of long posts (`note_tweet`; `text` alone stops at 280
   characters, which cut 6 of @CitizenGO's last 17 posts), X's topic labels,
   hashtags, mentions, edit count, reply settings, video length, alt text and
-  how far viewers got through each video, plus profile fields. Expansions are
+  how far viewers got through each video, the video file itself, countries
+  that withhold a post, X Article titles, the HTTP status of each link, plus
+  profile fields. `scripts/x-refresh-posts.js` re-reads old posts to fill
+  these in (2 Oct 2026: 4,339 posts, $19.38, 2,404 long posts repaired); it
+  writes x_posts only, never a metric snapshot. Expansions are
   NOT free (they return extra billed posts and users), so only media is
   expanded.
 - **Threads are exact.** `x_post_latest.thread_role` labels each post

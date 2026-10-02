@@ -239,6 +239,9 @@ alter table public.x_posts add column if not exists topics jsonb;
 alter table public.x_posts add column if not exists edit_count integer;
 alter table public.x_posts add column if not exists reply_settings text;
 alter table public.x_posts add column if not exists possibly_sensitive boolean;
+alter table public.x_posts add column if not exists withheld_in jsonb;    -- country codes X withholds it in
+alter table public.x_posts add column if not exists article_title text;   -- X Articles (long-form)
+alter table public.x_posts add column if not exists place_id text;
 alter table public.x_post_metrics add column if not exists video_playback_0 bigint;
 alter table public.x_post_metrics add column if not exists video_playback_25 bigint;
 alter table public.x_post_metrics add column if not exists video_playback_50 bigint;
