@@ -422,6 +422,19 @@ against the live API — `npm run probe:x` is that check and must run first.
   which link, its UTM tags and X's click count. Signatures from those clicks
   are in the Bluebook under the same UTM; our UTM scheme has no
   per-spokesperson slot and adding one is a URL-shortener change, not ours.
+- **Every field X gives for free is kept** (2 Oct 2026). X bills per post or
+  user returned, not per field, so the requests ask for everything useful:
+  the full text of long posts (`note_tweet`; `text` alone stops at 280
+  characters, which cut 6 of @CitizenGO's last 17 posts), X's topic labels,
+  hashtags, mentions, edit count, reply settings, video length, alt text and
+  how far viewers got through each video, plus profile fields. Expansions are
+  NOT free (they return extra billed posts and users), so only media is
+  expanded.
+- **Threads are exact.** `x_post_latest.thread_role` labels each post
+  `original`, `thread_start`, `thread` (a reply to our own account), `reply`
+  or `quote` from X's `conversation_id` and `in_reply_to_user_id`, and
+  `x_thread_summary` / `x_threads` give one row per thread. Never infer
+  threads from posting gaps: Ireland's gaps have no natural break.
 
 ### Pieces
 

@@ -96,6 +96,20 @@ async function listAccounts(store) {
 const SORTS = { impressions: 'impressions', engagement: 'interactions', rate: 'engagement_rate_pct',
   clicks: 'url_link_clicks', reposts: 'reposts', bookmarks: 'bookmarks', recent: 'created_at' };
 
+// What kind of post each one is, exactly, from X's conversation_id and
+// in_reply_to_user_id (view x_post_latest.thread_role), never from timing.
+const ROLE_LABEL = { original: 'Post', thread_start: 'Thread start', thread: 'Thread', reply: 'Reply', quote: 'Quote' };
+const role = (r) => ROLE_LABEL[r.thread_role] || '—';
+const TYPES = {
+  all: null,
+  posts: ['original', 'thread_start', 'quote'],   // what appears on the profile's Posts tab
+  threads: ['thread_start', 'thread'],
+  replies: ['reply'],
+  quotes: ['quote'],
+};
+const TYPE_PROP = { type: 'string', enum: Object.keys(TYPES),
+  description: 'Which posts: all (default); posts = top-level posts only (no replies or later thread posts); threads = every post of our own threads; replies = replies to other accounts; quotes = quote posts.' };
+
 // The window a list covers: a month or a from/to range when given (the same
 // parsing as x_period_summary), otherwise the last N days.
 function windowFor({ month, from, to, days }, dfltDays) {
@@ -113,49 +127,51 @@ function windowFor({ month, from, to, days }, dfltDays) {
 // reader exactly which slice this is and how to get the next one, so a page is
 // never mistaken for the whole (1 Oct 2026: 39 of 76 posts summed as August).
 const PAGE_MAX = 200;
-function pageNote(offset, shown, total) {
+function pageNote(offset, shown, total, noun = 'Posts') {
   if (total === null || total === undefined) return '';
   const first = total ? offset + 1 : 0; const last = offset + shown;
   if (last < total) {
-    return `\n\n_Posts ${n(first)}-${n(last)} of ${n(total)}. For the next page, call again with offset ${last}. For totals over all ${n(total)}, use x_period_summary rather than adding up pages._`;
+    return `\n\n_${noun} ${n(first)}-${n(last)} of ${n(total)}. For the next page, call again with offset ${last}. For totals over all ${n(total)}, use x_period_summary rather than adding up pages._`;
   }
-  return offset > 0 ? `\n\n_Posts ${n(first)}-${n(last)} of ${n(total)}: this is the last page._` : '';
+  return offset > 0 ? `\n\n_${noun} ${n(first)}-${n(last)} of ${n(total)}: this is the last page._` : '';
 }
 const offsetOf = (v) => Math.max(0, Math.floor(Number(v) || 0));
 
-async function topPosts(store, { account_id, days, month, from, to, sort = 'impressions', limit = 10, offset = 0 } = {}) {
+async function topPosts(store, { account_id, days, month, from, to, sort = 'impressions', type = 'all', limit = 10, offset = 0 } = {}) {
   const w = windowFor({ month, from, to, days }, 30);
   if (w.error) return { text: w.error };
   const order = SORTS[sort] || 'impressions';
+  const roles = TYPES[type] || null;
   const off = offsetOf(offset);
-  const total = await store.xPostCount({ account_id, since: w.since, until: w.until });
-  const rows = await store.xPosts({ account_id, since: w.since, until: w.until, order, limit: clampRows(limit, 10, PAGE_MAX), offset: off });
+  const total = await store.xPostCount({ account_id, since: w.since, until: w.until, roles });
+  const rows = await store.xPosts({ account_id, since: w.since, until: w.until, order, roles, limit: clampRows(limit, 10, PAGE_MAX), offset: off });
   if (!rows.length) return { text: total && off >= total ? `There are only ${n(total)} posts in this window; offset ${off} is past the end.` : `No X posts collected (${w.label}).` };
   // Long pages get shorter post text so a full page of 200 stays inside the
   // connector's response limit.
   const width = rows.length > 100 ? 45 : 70;
   return {
-    text: `**X posts by ${sort}, ${w.label}**\n\n` + table(
-      ['#', 'Account', 'Post', 'Date', 'Impressions', 'Likes', 'Reposts', 'Replies', 'Bookmarks', 'Link clicks', 'Eng. rate'],
-      rows.map((r, i) => [String(off + i + 1), `@${r.username}`, link(r, truncate(r.text, width)), String(r.created_at).slice(0, 10),
+    text: `**X ${type === 'all' || !TYPES[type] ? 'posts' : type} by ${sort}, ${w.label}**\n\n` + table(
+      ['#', 'Account', 'Post', 'Date', 'Type', 'Impressions', 'Likes', 'Reposts', 'Replies', 'Bookmarks', 'Link clicks', 'Eng. rate'],
+      rows.map((r, i) => [String(off + i + 1), `@${r.username}`, link(r, truncate(r.text, width)), String(r.created_at).slice(0, 10), role(r),
         n(r.impressions), n(r.likes), n(r.reposts), n(r.replies), n(r.bookmarks), n(r.url_link_clicks), p(r.engagement_rate_pct)]),
     ) + pageNote(off, rows.length, total) + privateNote(rows) + spokesNote(rows),
     rows, total, offset: off,
   };
 }
 
-async function searchPosts(store, { query, account_id, days, month, from, to, limit = 15, offset = 0 } = {}) {
+async function searchPosts(store, { query, account_id, days, month, from, to, type = 'all', limit = 15, offset = 0 } = {}) {
   const w = windowFor({ month, from, to, days }, 0);
   if (w.error) return { text: w.error };
+  const roles = TYPES[type] || null;
   const off = offsetOf(offset);
-  const total = await store.xPostCount({ q: query, account_id, since: w.since, until: w.until });
-  const rows = await store.xPosts({ q: query, account_id, since: w.since, until: w.until, order: 'impressions', limit: clampRows(limit, 15, PAGE_MAX), offset: off });
+  const total = await store.xPostCount({ q: query, account_id, since: w.since, until: w.until, roles });
+  const rows = await store.xPosts({ q: query, account_id, since: w.since, until: w.until, order: 'impressions', roles, limit: clampRows(limit, 15, PAGE_MAX), offset: off });
   if (!rows.length) return { text: total && off >= total ? `Only ${n(total)} posts match; offset ${off} is past the end.` : `No X posts matching "${query}" (${w.label}).` };
   const width = rows.length > 100 ? 50 : 80;
   return {
     text: `**X posts matching "${query}", ${w.label}** (${n(total)} in all)\n\n` + table(
-      ['#', 'Account', 'Post', 'Date', 'Impressions', 'Interactions', 'Link clicks'],
-      rows.map((r, i) => [String(off + i + 1), `@${r.username}`, link(r, truncate(r.text, width)), String(r.created_at).slice(0, 10),
+      ['#', 'Account', 'Post', 'Date', 'Type', 'Impressions', 'Interactions', 'Link clicks'],
+      rows.map((r, i) => [String(off + i + 1), `@${r.username}`, link(r, truncate(r.text, width)), String(r.created_at).slice(0, 10), role(r),
         n(r.impressions), n(r.interactions), n(r.url_link_clicks)]),
     ) + pageNote(off, rows.length, total) + privateNote(rows) + spokesNote(rows),
     rows, total, offset: off,
@@ -179,6 +195,33 @@ async function accountGrowth(store, { account_id, days = 30 } = {}) {
       out.map((a) => [`@${a.username}`, n(a.last.followers_count), (a.change >= 0 ? '+' : '') + n(a.change), String(a.days), n(a.last.post_count)]),
     ) + '\n\n_Change is the sum of day-to-day differences in the follower count over the days collected. X serves no per-post follower attribution._',
     rows,
+  };
+}
+
+// Threads, found exactly: a conversation (X's conversation_id) that one of our
+// posts started and the same account's own replies continued. No timing
+// heuristic, so it holds for accounts whose posting gaps have no natural break.
+const THREAD_SORTS = { impressions: 'impressions', engagement: 'engagements', rate: 'engagement_rate_pct',
+  posts: 'posts', clicks: 'link_clicks', recent: 'started_at' };
+async function listThreads(store, { account_id, days, month, from, to, sort = 'impressions', limit = 20, offset = 0 } = {}) {
+  const w = windowFor({ month, from, to, days }, 90);
+  if (w.error) return { text: w.error };
+  const off = offsetOf(offset);
+  const total = await store.xThreadCount({ account_id, since: w.since, until: w.until });
+  const rows = await store.xThreads({ account_id, since: w.since, until: w.until, order: THREAD_SORTS[sort] || 'impressions',
+    limit: clampRows(limit, 20, PAGE_MAX), offset: off });
+  if (!rows.length) return { text: total && off >= total ? `Only ${n(total)} threads here; offset ${off} is past the end.` : `No X threads (${w.label}).` };
+  const width = rows.length > 100 ? 45 : 70;
+  const share = (r) => (Number(r.impressions) > 0 && r.first_post_impressions !== null && r.first_post_impressions !== undefined
+    ? `${Math.round(100 * Number(r.first_post_impressions) / Number(r.impressions))}%` : '—');
+  return {
+    text: `**X threads by ${sort}, ${w.label}** (${n(total)} threads in all)\n\n` + table(
+      ['#', 'Account', 'First post', 'Started', 'Posts', 'Impressions', 'On first post', 'Engagements', 'Eng. rate', 'Link clicks'],
+      rows.map((r, i) => [String(off + i + 1), `@${r.username}`, link(r, truncate(r.first_post_text, width)), String(r.started_at).slice(0, 10),
+        n(r.posts), n(r.impressions), share(r), n(r.engagements), p(r.engagement_rate_pct), n(r.link_clicks)]),
+    ) + pageNote(off, rows.length, total, 'Threads')
+      + '\n\n_A thread is a post continued by the same account\'s own replies, identified by X\'s conversation id. Impressions and engagements are summed over every post in the thread; "On first post" is the first post\'s share of them. Engagements are likes, reposts, quotes, replies and bookmarks._',
+    rows, total, offset: off,
   };
 }
 
@@ -318,6 +361,7 @@ const X_TOOLS = [
         to: { type: 'string', description: 'End date inclusive (YYYY-MM-DD).' },
         offset: { type: 'number', description: 'Where the page starts, for paging through every post (0 = first). Each answer gives the offset of the next page.' },
         sort: { type: 'string', enum: Object.keys(SORTS), description: 'Ranking metric (default impressions; "recent" for newest first).' },
+        type: TYPE_PROP,
         limit: { type: 'number', description: 'Posts per page (default 10, max 200).' },
       },
       additionalProperties: false,
@@ -338,6 +382,7 @@ const X_TOOLS = [
         from: { type: 'string', description: 'Start date (YYYY-MM-DD), instead of days.' },
         to: { type: 'string', description: 'End date inclusive (YYYY-MM-DD).' },
         offset: { type: 'number', description: 'Where the page starts, for paging through every post (0 = first). Each answer gives the offset of the next page.' },
+        type: TYPE_PROP,
         limit: { type: 'number', description: 'Posts per page (default 15, max 200).' },
       },
       required: ['query'],
@@ -358,6 +403,26 @@ const X_TOOLS = [
       additionalProperties: false,
     },
     handler: withAccount(accountGrowth),
+  },
+  {
+    name: 'x_threads',
+    description: 'List X threads: posts continued by the same account\'s own replies, found exactly from X\'s conversation id (no timing guesswork). Each row is one thread with its post count and impressions, engagements and link clicks summed over every post, and how much of that the first post drew. Ranked by impressions, engagement, rate, posts, clicks or newest; pages of up to 200 with offset; takes an account, days, month or from/to.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        account: ACCOUNT_PROP,
+        account_id: { type: 'string', description: 'X account id (see x_list_accounts). Prefer "account".' },
+        days: { type: 'number', description: 'Threads started in the last N days (default 90, 0 for all).' },
+        month: { type: 'string', description: 'A month, e.g. "2026-08" or "August 2026", instead of days.' },
+        from: { type: 'string', description: 'Start date (YYYY-MM-DD), instead of days.' },
+        to: { type: 'string', description: 'End date inclusive (YYYY-MM-DD).' },
+        sort: { type: 'string', enum: Object.keys(THREAD_SORTS), description: 'Ranking (default impressions).' },
+        limit: { type: 'number', description: 'Threads per page (default 20, max 200).' },
+        offset: { type: 'number', description: 'Where the page starts (0 = first). Each answer gives the offset of the next page.' },
+      },
+      additionalProperties: false,
+    },
+    handler: withAccount(listThreads),
   },
   {
     name: 'x_link_posts',

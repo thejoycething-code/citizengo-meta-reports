@@ -1,0 +1,3564 @@
+{
+  "posts": {
+    "ok": true,
+    "status": 200,
+    "request": "https://api.x.com/2/users/1264712994/tweets?max_results=20&exclude=retweets&tweet.fields=id%2Ctext%2Ccreated_at%2Clang%2Cconversation_id%2Cin_reply_to_user_id%2Creferenced_tweets%2Centities%2Cattachments%2Csource%2Cpublic_metrics%2Cnon_public_metrics%2Corganic_metrics%2Cpromoted_metrics%2Cnote_tweet%2Ccontext_annotations%2Cedit_history_tweet_ids%2Cedit_controls%2Cpossibly_sensitive%2Creply_settings%2Cdisplay_text_range%2Carticle%2Ccommunity_id%2Ccard_uri&expansions=attachments.media_keys&media.fields=media_key%2Ctype%2Cpublic_metrics%2Cnon_public_metrics%2Corganic_metrics%2Cduration_ms%2Calt_text%2Cpreview_image_url%2Curl%2Cwidth%2Cheight%2Cvariants",
+    "elapsed_ms": 568,
+    "rate": {
+      "limit": 900,
+      "remaining": 899,
+      "reset": 1790901583
+    },
+    "errors": [
+      {
+        "detail": "The 'promoted_metrics.impression_count' field cannot be queried for Posts that have not been promoted.",
+        "resource_id": "2105722250355724555",
+        "resource_type": "tweet",
+        "section": "data",
+        "title": "Disallowed Resource",
+        "type": "https://api.x.com/2/problems/disallowed-resource"
+      },
+      {
+        "detail": "The 'promoted_metrics.like_count' field cannot be queried for Posts that have not been promoted.",
+        "resource_id": "2105722250355724555",
+        "resource_type": "tweet",
+        "section": "data",
+        "title": "Disallowed Resource",
+        "type": "https://api.x.com/2/problems/disallowed-resource"
+      },
+      {
+        "detail": "The 'promoted_metrics.reply_count' field cannot be queried for Posts that have not been promoted.",
+        "resource_id": "2105722250355724555",
+        "resource_type": "tweet",
+        "section": "data",
+        "title": "Disallowed Resource",
+        "type": "https://api.x.com/2/problems/disallowed-resource"
+      },
+      {
+        "detail": "The 'promoted_metrics.retweet_count' field cannot be queried for Posts that have not been promoted.",
+        "resource_id": "2105722250355724555",
+        "resource_type": "tweet",
+        "section": "data",
+        "title": "Disallowed Resource",
+        "type": "https://api.x.com/2/problems/disallowed-resource"
+      },
+      {
+        "detail": "The 'promoted_metrics.user_profile_clicks' field cannot be queried for Posts that have not been promoted.",
+        "resource_id": "2105722250355724555",
+        "resource_type": "tweet",
+        "section": "data",
+        "title": "Disallowed Resource",
+        "type": "https://api.x.com/2/problems/disallowed-resource"
+      },
+      {
+        "detail": "The 'promoted_metrics.impression_count' field cannot be queried for Posts that have not been promoted.",
+        "resource_id": "2105683476800266493",
+        "resource_type": "tweet",
+        "section": "data",
+        "title": "Disallowed Resource",
+        "type": "https://api.x.com/2/problems/disallowed-resource"
+      },
+      {
+        "detail": "The 'promoted_metrics.like_count' field cannot be queried for Posts that have not been promoted.",
+        "resource_id": "2105683476800266493",
+        "resource_type": "tweet",
+        "section": "data",
+        "title": "Disallowed Resource",
+        "type": "https://api.x.com/2/problems/disallowed-resource"
+      },
+      {
+        "detail": "The 'promoted_metrics.reply_count' field cannot be queried for Posts that have not been promoted.",
+        "resource_id": "2105683476800266493",
+        "resource_type": "tweet",
+        "section": "data",
+        "title": "Disallowed Resource",
+        "type": "https://api.x.com/2/problems/disallowed-resource"
+      },
+      {
+        "detail": "The 'promoted_metrics.retweet_count' field cannot be queried for Posts that have not been promoted.",
+        "resource_id": "2105683476800266493",
+        "resource_type": "tweet",
+        "section": "data",
+        "title": "Disallowed Resource",
+        "type": "https://api.x.com/2/problems/disallowed-resource"
+      },
+      {
+        "detail": "The 'promoted_metrics.user_profile_clicks' field cannot be queried for Posts that have not been promoted.",
+        "resource_id": "2105683476800266493",
+        "resource_type": "tweet",
+        "section": "data",
+        "title": "Disallowed Resource",
+        "type": "https://api.x.com/2/problems/disallowed-resource"
+      },
+      {
+        "detail": "The 'promoted_metrics.impression_count' field cannot be queried for Posts that have not been promoted.",
+        "resource_id": "2105533084321849507",
+        "resource_type": "tweet",
+        "section": "data",
+        "title": "Disallowed Resource",
+        "type": "https://api.x.com/2/problems/disallowed-resource"
+      },
+      {
+        "detail": "The 'promoted_metrics.like_count' field cannot be queried for Posts that have not been promoted.",
+        "resource_id": "2105533084321849507",
+        "resource_type": "tweet",
+        "section": "data",
+        "title": "Disallowed Resource",
+        "type": "https://api.x.com/2/problems/disallowed-resource"
+      },
+      {
+        "detail": "The 'promoted_metrics.reply_count' field cannot be queried for Posts that have not been promoted.",
+        "resource_id": "2105533084321849507",
+        "resource_type": "tweet",
+        "section": "data",
+        "title": "Disallowed Resource",
+        "type": "https://api.x.com/2/problems/disallowed-resource"
+      },
+      {
+        "detail": "The 'promoted_metrics.retweet_count' field cannot be queried for Posts that have not been promoted.",
+        "resource_id": "2105533084321849507",
+        "resource_type": "tweet",
+        "section": "data",
+        "title": "Disallowed Resource",
+        "type": "https://api.x.com/2/problems/disallowed-resource"
+      },
+      {
+        "detail": "The 'promoted_metrics.user_profile_clicks' field cannot be queried for Posts that have not been promoted.",
+        "resource_id": "2105533084321849507",
+        "resource_type": "tweet",
+        "section": "data",
+        "title": "Disallowed Resource",
+        "type": "https://api.x.com/2/problems/disallowed-resource"
+      },
+      {
+        "detail": "The 'promoted_metrics.impression_count' field cannot be queried for Posts that have not been promoted.",
+        "resource_id": "2105418632549572979",
+        "resource_type": "tweet",
+        "section": "data",
+        "title": "Disallowed Resource",
+        "type": "https://api.x.com/2/problems/disallowed-resource"
+      },
+      {
+        "detail": "The 'promoted_metrics.like_count' field cannot be queried for Posts that have not been promoted.",
+        "resource_id": "2105418632549572979",
+        "resource_type": "tweet",
+        "section": "data",
+        "title": "Disallowed Resource",
+        "type": "https://api.x.com/2/problems/disallowed-resource"
+      },
+      {
+        "detail": "The 'promoted_metrics.reply_count' field cannot be queried for Posts that have not been promoted.",
+        "resource_id": "2105418632549572979",
+        "resource_type": "tweet",
+        "section": "data",
+        "title": "Disallowed Resource",
+        "type": "https://api.x.com/2/problems/disallowed-resource"
+      },
+      {
+        "detail": "The 'promoted_metrics.retweet_count' field cannot be queried for Posts that have not been promoted.",
+        "resource_id": "2105418632549572979",
+        "resource_type": "tweet",
+        "section": "data",
+        "title": "Disallowed Resource",
+        "type": "https://api.x.com/2/problems/disallowed-resource"
+      },
+      {
+        "detail": "The 'promoted_metrics.user_profile_clicks' field cannot be queried for Posts that have not been promoted.",
+        "resource_id": "2105418632549572979",
+        "resource_type": "tweet",
+        "section": "data",
+        "title": "Disallowed Resource",
+        "type": "https://api.x.com/2/problems/disallowed-resource"
+      },
+      {
+        "detail": "The 'promoted_metrics.impression_count' field cannot be queried for Posts that have not been promoted.",
+        "resource_id": "2105395264752345190",
+        "resource_type": "tweet",
+        "section": "data",
+        "title": "Disallowed Resource",
+        "type": "https://api.x.com/2/problems/disallowed-resource"
+      },
+      {
+        "detail": "The 'promoted_metrics.like_count' field cannot be queried for Posts that have not been promoted.",
+        "resource_id": "2105395264752345190",
+        "resource_type": "tweet",
+        "section": "data",
+        "title": "Disallowed Resource",
+        "type": "https://api.x.com/2/problems/disallowed-resource"
+      },
+      {
+        "detail": "The 'promoted_metrics.reply_count' field cannot be queried for Posts that have not been promoted.",
+        "resource_id": "2105395264752345190",
+        "resource_type": "tweet",
+        "section": "data",
+        "title": "Disallowed Resource",
+        "type": "https://api.x.com/2/problems/disallowed-resource"
+      },
+      {
+        "detail": "The 'promoted_metrics.retweet_count' field cannot be queried for Posts that have not been promoted.",
+        "resource_id": "2105395264752345190",
+        "resource_type": "tweet",
+        "section": "data",
+        "title": "Disallowed Resource",
+        "type": "https://api.x.com/2/problems/disallowed-resource"
+      },
+      {
+        "detail": "The 'promoted_metrics.user_profile_clicks' field cannot be queried for Posts that have not been promoted.",
+        "resource_id": "2105395264752345190",
+        "resource_type": "tweet",
+        "section": "data",
+        "title": "Disallowed Resource",
+        "type": "https://api.x.com/2/problems/disallowed-resource"
+      },
+      {
+        "detail": "The 'promoted_metrics.impression_count' field cannot be queried for Posts that have not been promoted.",
+        "resource_id": "2105302128139100645",
+        "resource_type": "tweet",
+        "section": "data",
+        "title": "Disallowed Resource",
+        "type": "https://api.x.com/2/problems/disallowed-resource"
+      },
+      {
+        "detail": "The 'promoted_metrics.like_count' field cannot be queried for Posts that have not been promoted.",
+        "resource_id": "2105302128139100645",
+        "resource_type": "tweet",
+        "section": "data",
+        "title": "Disallowed Resource",
+        "type": "https://api.x.com/2/problems/disallowed-resource"
+      },
+      {
+        "detail": "The 'promoted_metrics.reply_count' field cannot be queried for Posts that have not been promoted.",
+        "resource_id": "2105302128139100645",
+        "resource_type": "tweet",
+        "section": "data",
+        "title": "Disallowed Resource",
+        "type": "https://api.x.com/2/problems/disallowed-resource"
+      },
+      {
+        "detail": "The 'promoted_metrics.retweet_count' field cannot be queried for Posts that have not been promoted.",
+        "resource_id": "2105302128139100645",
+        "resource_type": "tweet",
+        "section": "data",
+        "title": "Disallowed Resource",
+        "type": "https://api.x.com/2/problems/disallowed-resource"
+      },
+      {
+        "detail": "The 'promoted_metrics.user_profile_clicks' field cannot be queried for Posts that have not been promoted.",
+        "resource_id": "2105302128139100645",
+        "resource_type": "tweet",
+        "section": "data",
+        "title": "Disallowed Resource",
+        "type": "https://api.x.com/2/problems/disallowed-resource"
+      },
+      {
+        "detail": "The 'promoted_metrics.impression_count' field cannot be queried for Posts that have not been promoted.",
+        "resource_id": "2105278380233126127",
+        "resource_type": "tweet",
+        "section": "data",
+        "title": "Disallowed Resource",
+        "type": "https://api.x.com/2/problems/disallowed-resource"
+      },
+      {
+        "detail": "The 'promoted_metrics.like_count' field cannot be queried for Posts that have not been promoted.",
+        "resource_id": "2105278380233126127",
+        "resource_type": "tweet",
+        "section": "data",
+        "title": "Disallowed Resource",
+        "type": "https://api.x.com/2/problems/disallowed-resource"
+      },
+      {
+        "detail": "The 'promoted_metrics.reply_count' field cannot be queried for Posts that have not been promoted.",
+        "resource_id": "2105278380233126127",
+        "resource_type": "tweet",
+        "section": "data",
+        "title": "Disallowed Resource",
+        "type": "https://api.x.com/2/problems/disallowed-resource"
+      },
+      {
+        "detail": "The 'promoted_metrics.retweet_count' field cannot be queried for Posts that have not been promoted.",
+        "resource_id": "2105278380233126127",
+        "resource_type": "tweet",
+        "section": "data",
+        "title": "Disallowed Resource",
+        "type": "https://api.x.com/2/problems/disallowed-resource"
+      },
+      {
+        "detail": "The 'promoted_metrics.user_profile_clicks' field cannot be queried for Posts that have not been promoted.",
+        "resource_id": "2105278380233126127",
+        "resource_type": "tweet",
+        "section": "data",
+        "title": "Disallowed Resource",
+        "type": "https://api.x.com/2/problems/disallowed-resource"
+      },
+      {
+        "detail": "The 'promoted_metrics.impression_count' field cannot be queried for Posts that have not been promoted.",
+        "resource_id": "2104962784714752251",
+        "resource_type": "tweet",
+        "section": "data",
+        "title": "Disallowed Resource",
+        "type": "https://api.x.com/2/problems/disallowed-resource"
+      },
+      {
+        "detail": "The 'promoted_metrics.like_count' field cannot be queried for Posts that have not been promoted.",
+        "resource_id": "2104962784714752251",
+        "resource_type": "tweet",
+        "section": "data",
+        "title": "Disallowed Resource",
+        "type": "https://api.x.com/2/problems/disallowed-resource"
+      },
+      {
+        "detail": "The 'promoted_metrics.reply_count' field cannot be queried for Posts that have not been promoted.",
+        "resource_id": "2104962784714752251",
+        "resource_type": "tweet",
+        "section": "data",
+        "title": "Disallowed Resource",
+        "type": "https://api.x.com/2/problems/disallowed-resource"
+      },
+      {
+        "detail": "The 'promoted_metrics.retweet_count' field cannot be queried for Posts that have not been promoted.",
+        "resource_id": "2104962784714752251",
+        "resource_type": "tweet",
+        "section": "data",
+        "title": "Disallowed Resource",
+        "type": "https://api.x.com/2/problems/disallowed-resource"
+      },
+      {
+        "detail": "The 'promoted_metrics.user_profile_clicks' field cannot be queried for Posts that have not been promoted.",
+        "resource_id": "2104962784714752251",
+        "resource_type": "tweet",
+        "section": "data",
+        "title": "Disallowed Resource",
+        "type": "https://api.x.com/2/problems/disallowed-resource"
+      },
+      {
+        "detail": "The 'promoted_metrics.impression_count' field cannot be queried for Posts that have not been promoted.",
+        "resource_id": "2104958200525234228",
+        "resource_type": "tweet",
+        "section": "data",
+        "title": "Disallowed Resource",
+        "type": "https://api.x.com/2/problems/disallowed-resource"
+      },
+      {
+        "detail": "The 'promoted_metrics.like_count' field cannot be queried for Posts that have not been promoted.",
+        "resource_id": "2104958200525234228",
+        "resource_type": "tweet",
+        "section": "data",
+        "title": "Disallowed Resource",
+        "type": "https://api.x.com/2/problems/disallowed-resource"
+      },
+      {
+        "detail": "The 'promoted_metrics.reply_count' field cannot be queried for Posts that have not been promoted.",
+        "resource_id": "2104958200525234228",
+        "resource_type": "tweet",
+        "section": "data",
+        "title": "Disallowed Resource",
+        "type": "https://api.x.com/2/problems/disallowed-resource"
+      },
+      {
+        "detail": "The 'promoted_metrics.retweet_count' field cannot be queried for Posts that have not been promoted.",
+        "resource_id": "2104958200525234228",
+        "resource_type": "tweet",
+        "section": "data",
+        "title": "Disallowed Resource",
+        "type": "https://api.x.com/2/problems/disallowed-resource"
+      },
+      {
+        "detail": "The 'promoted_metrics.user_profile_clicks' field cannot be queried for Posts that have not been promoted.",
+        "resource_id": "2104958200525234228",
+        "resource_type": "tweet",
+        "section": "data",
+        "title": "Disallowed Resource",
+        "type": "https://api.x.com/2/problems/disallowed-resource"
+      },
+      {
+        "detail": "The 'promoted_metrics.impression_count' field cannot be queried for Posts that have not been promoted.",
+        "resource_id": "2104611593028059188",
+        "resource_type": "tweet",
+        "section": "data",
+        "title": "Disallowed Resource",
+        "type": "https://api.x.com/2/problems/disallowed-resource"
+      },
+      {
+        "detail": "The 'promoted_metrics.like_count' field cannot be queried for Posts that have not been promoted.",
+        "resource_id": "2104611593028059188",
+        "resource_type": "tweet",
+        "section": "data",
+        "title": "Disallowed Resource",
+        "type": "https://api.x.com/2/problems/disallowed-resource"
+      },
+      {
+        "detail": "The 'promoted_metrics.reply_count' field cannot be queried for Posts that have not been promoted.",
+        "resource_id": "2104611593028059188",
+        "resource_type": "tweet",
+        "section": "data",
+        "title": "Disallowed Resource",
+        "type": "https://api.x.com/2/problems/disallowed-resource"
+      },
+      {
+        "detail": "The 'promoted_metrics.retweet_count' field cannot be queried for Posts that have not been promoted.",
+        "resource_id": "2104611593028059188",
+        "resource_type": "tweet",
+        "section": "data",
+        "title": "Disallowed Resource",
+        "type": "https://api.x.com/2/problems/disallowed-resource"
+      },
+      {
+        "detail": "The 'promoted_metrics.user_profile_clicks' field cannot be queried for Posts that have not been promoted.",
+        "resource_id": "2104611593028059188",
+        "resource_type": "tweet",
+        "section": "data",
+        "title": "Disallowed Resource",
+        "type": "https://api.x.com/2/problems/disallowed-resource"
+      },
+      {
+        "detail": "The 'promoted_metrics.impression_count' field cannot be queried for Posts that have not been promoted.",
+        "resource_id": "2104588440444751984",
+        "resource_type": "tweet",
+        "section": "data",
+        "title": "Disallowed Resource",
+        "type": "https://api.x.com/2/problems/disallowed-resource"
+      },
+      {
+        "detail": "The 'promoted_metrics.like_count' field cannot be queried for Posts that have not been promoted.",
+        "resource_id": "2104588440444751984",
+        "resource_type": "tweet",
+        "section": "data",
+        "title": "Disallowed Resource",
+        "type": "https://api.x.com/2/problems/disallowed-resource"
+      },
+      {
+        "detail": "The 'promoted_metrics.reply_count' field cannot be queried for Posts that have not been promoted.",
+        "resource_id": "2104588440444751984",
+        "resource_type": "tweet",
+        "section": "data",
+        "title": "Disallowed Resource",
+        "type": "https://api.x.com/2/problems/disallowed-resource"
+      },
+      {
+        "detail": "The 'promoted_metrics.retweet_count' field cannot be queried for Posts that have not been promoted.",
+        "resource_id": "2104588440444751984",
+        "resource_type": "tweet",
+        "section": "data",
+        "title": "Disallowed Resource",
+        "type": "https://api.x.com/2/problems/disallowed-resource"
+      },
+      {
+        "detail": "The 'promoted_metrics.user_profile_clicks' field cannot be queried for Posts that have not been promoted.",
+        "resource_id": "2104588440444751984",
+        "resource_type": "tweet",
+        "section": "data",
+        "title": "Disallowed Resource",
+        "type": "https://api.x.com/2/problems/disallowed-resource"
+      },
+      {
+        "detail": "The 'promoted_metrics.impression_count' field cannot be queried for Posts that have not been promoted.",
+        "resource_id": "2103896937217064967",
+        "resource_type": "tweet",
+        "section": "data",
+        "title": "Disallowed Resource",
+        "type": "https://api.x.com/2/problems/disallowed-resource"
+      },
+      {
+        "detail": "The 'promoted_metrics.like_count' field cannot be queried for Posts that have not been promoted.",
+        "resource_id": "2103896937217064967",
+        "resource_type": "tweet",
+        "section": "data",
+        "title": "Disallowed Resource",
+        "type": "https://api.x.com/2/problems/disallowed-resource"
+      },
+      {
+        "detail": "The 'promoted_metrics.reply_count' field cannot be queried for Posts that have not been promoted.",
+        "resource_id": "2103896937217064967",
+        "resource_type": "tweet",
+        "section": "data",
+        "title": "Disallowed Resource",
+        "type": "https://api.x.com/2/problems/disallowed-resource"
+      },
+      {
+        "detail": "The 'promoted_metrics.retweet_count' field cannot be queried for Posts that have not been promoted.",
+        "resource_id": "2103896937217064967",
+        "resource_type": "tweet",
+        "section": "data",
+        "title": "Disallowed Resource",
+        "type": "https://api.x.com/2/problems/disallowed-resource"
+      },
+      {
+        "detail": "The 'promoted_metrics.user_profile_clicks' field cannot be queried for Posts that have not been promoted.",
+        "resource_id": "2103896937217064967",
+        "resource_type": "tweet",
+        "section": "data",
+        "title": "Disallowed Resource",
+        "type": "https://api.x.com/2/problems/disallowed-resource"
+      },
+      {
+        "detail": "The 'promoted_metrics.impression_count' field cannot be queried for Posts that have not been promoted.",
+        "resource_id": "2103896881935826947",
+        "resource_type": "tweet",
+        "section": "data",
+        "title": "Disallowed Resource",
+        "type": "https://api.x.com/2/problems/disallowed-resource"
+      },
+      {
+        "detail": "The 'promoted_metrics.like_count' field cannot be queried for Posts that have not been promoted.",
+        "resource_id": "2103896881935826947",
+        "resource_type": "tweet",
+        "section": "data",
+        "title": "Disallowed Resource",
+        "type": "https://api.x.com/2/problems/disallowed-resource"
+      },
+      {
+        "detail": "The 'promoted_metrics.reply_count' field cannot be queried for Posts that have not been promoted.",
+        "resource_id": "2103896881935826947",
+        "resource_type": "tweet",
+        "section": "data",
+        "title": "Disallowed Resource",
+        "type": "https://api.x.com/2/problems/disallowed-resource"
+      },
+      {
+        "detail": "The 'promoted_metrics.retweet_count' field cannot be queried for Posts that have not been promoted.",
+        "resource_id": "2103896881935826947",
+        "resource_type": "tweet",
+        "section": "data",
+        "title": "Disallowed Resource",
+        "type": "https://api.x.com/2/problems/disallowed-resource"
+      },
+      {
+        "detail": "The 'promoted_metrics.user_profile_clicks' field cannot be queried for Posts that have not been promoted.",
+        "resource_id": "2103896881935826947",
+        "resource_type": "tweet",
+        "section": "data",
+        "title": "Disallowed Resource",
+        "type": "https://api.x.com/2/problems/disallowed-resource"
+      },
+      {
+        "detail": "The 'promoted_metrics.impression_count' field cannot be queried for Posts that have not been promoted.",
+        "resource_id": "2103881281285272030",
+        "resource_type": "tweet",
+        "section": "data",
+        "title": "Disallowed Resource",
+        "type": "https://api.x.com/2/problems/disallowed-resource"
+      },
+      {
+        "detail": "The 'promoted_metrics.like_count' field cannot be queried for Posts that have not been promoted.",
+        "resource_id": "2103881281285272030",
+        "resource_type": "tweet",
+        "section": "data",
+        "title": "Disallowed Resource",
+        "type": "https://api.x.com/2/problems/disallowed-resource"
+      },
+      {
+        "detail": "The 'promoted_metrics.reply_count' field cannot be queried for Posts that have not been promoted.",
+        "resource_id": "2103881281285272030",
+        "resource_type": "tweet",
+        "section": "data",
+        "title": "Disallowed Resource",
+        "type": "https://api.x.com/2/problems/disallowed-resource"
+      },
+      {
+        "detail": "The 'promoted_metrics.retweet_count' field cannot be queried for Posts that have not been promoted.",
+        "resource_id": "2103881281285272030",
+        "resource_type": "tweet",
+        "section": "data",
+        "title": "Disallowed Resource",
+        "type": "https://api.x.com/2/problems/disallowed-resource"
+      },
+      {
+        "detail": "The 'promoted_metrics.user_profile_clicks' field cannot be queried for Posts that have not been promoted.",
+        "resource_id": "2103881281285272030",
+        "resource_type": "tweet",
+        "section": "data",
+        "title": "Disallowed Resource",
+        "type": "https://api.x.com/2/problems/disallowed-resource"
+      },
+      {
+        "detail": "The 'promoted_metrics.impression_count' field cannot be queried for Posts that have not been promoted.",
+        "resource_id": "2103159774783430707",
+        "resource_type": "tweet",
+        "section": "data",
+        "title": "Disallowed Resource",
+        "type": "https://api.x.com/2/problems/disallowed-resource"
+      },
+      {
+        "detail": "The 'promoted_metrics.like_count' field cannot be queried for Posts that have not been promoted.",
+        "resource_id": "2103159774783430707",
+        "resource_type": "tweet",
+        "section": "data",
+        "title": "Disallowed Resource",
+        "type": "https://api.x.com/2/problems/disallowed-resource"
+      },
+      {
+        "detail": "The 'promoted_metrics.reply_count' field cannot be queried for Posts that have not been promoted.",
+        "resource_id": "2103159774783430707",
+        "resource_type": "tweet",
+        "section": "data",
+        "title": "Disallowed Resource",
+        "type": "https://api.x.com/2/problems/disallowed-resource"
+      },
+      {
+        "detail": "The 'promoted_metrics.retweet_count' field cannot be queried for Posts that have not been promoted.",
+        "resource_id": "2103159774783430707",
+        "resource_type": "tweet",
+        "section": "data",
+        "title": "Disallowed Resource",
+        "type": "https://api.x.com/2/problems/disallowed-resource"
+      },
+      {
+        "detail": "The 'promoted_metrics.user_profile_clicks' field cannot be queried for Posts that have not been promoted.",
+        "resource_id": "2103159774783430707",
+        "resource_type": "tweet",
+        "section": "data",
+        "title": "Disallowed Resource",
+        "type": "https://api.x.com/2/problems/disallowed-resource"
+      },
+      {
+        "detail": "The 'promoted_metrics.impression_count' field cannot be queried for Posts that have not been promoted.",
+        "resource_id": "2103155584287588701",
+        "resource_type": "tweet",
+        "section": "data",
+        "title": "Disallowed Resource",
+        "type": "https://api.x.com/2/problems/disallowed-resource"
+      },
+      {
+        "detail": "The 'promoted_metrics.like_count' field cannot be queried for Posts that have not been promoted.",
+        "resource_id": "2103155584287588701",
+        "resource_type": "tweet",
+        "section": "data",
+        "title": "Disallowed Resource",
+        "type": "https://api.x.com/2/problems/disallowed-resource"
+      },
+      {
+        "detail": "The 'promoted_metrics.reply_count' field cannot be queried for Posts that have not been promoted.",
+        "resource_id": "2103155584287588701",
+        "resource_type": "tweet",
+        "section": "data",
+        "title": "Disallowed Resource",
+        "type": "https://api.x.com/2/problems/disallowed-resource"
+      },
+      {
+        "detail": "The 'promoted_metrics.retweet_count' field cannot be queried for Posts that have not been promoted.",
+        "resource_id": "2103155584287588701",
+        "resource_type": "tweet",
+        "section": "data",
+        "title": "Disallowed Resource",
+        "type": "https://api.x.com/2/problems/disallowed-resource"
+      },
+      {
+        "detail": "The 'promoted_metrics.user_profile_clicks' field cannot be queried for Posts that have not been promoted.",
+        "resource_id": "2103155584287588701",
+        "resource_type": "tweet",
+        "section": "data",
+        "title": "Disallowed Resource",
+        "type": "https://api.x.com/2/problems/disallowed-resource"
+      },
+      {
+        "detail": "The 'promoted_metrics.impression_count' field cannot be queried for Posts that have not been promoted.",
+        "resource_id": "unknown",
+        "resource_type": "tweet",
+        "section": "data",
+        "title": "Disallowed Resource",
+        "type": "https://api.x.com/2/problems/disallowed-resource"
+      },
+      {
+        "detail": "The 'promoted_metrics.like_count' field cannot be queried for Posts that have not been promoted.",
+        "resource_id": "unknown",
+        "resource_type": "tweet",
+        "section": "data",
+        "title": "Disallowed Resource",
+        "type": "https://api.x.com/2/problems/disallowed-resource"
+      },
+      {
+        "detail": "The 'promoted_metrics.reply_count' field cannot be queried for Posts that have not been promoted.",
+        "resource_id": "unknown",
+        "resource_type": "tweet",
+        "section": "data",
+        "title": "Disallowed Resource",
+        "type": "https://api.x.com/2/problems/disallowed-resource"
+      },
+      {
+        "detail": "The 'promoted_metrics.retweet_count' field cannot be queried for Posts that have not been promoted.",
+        "resource_id": "unknown",
+        "resource_type": "tweet",
+        "section": "data",
+        "title": "Disallowed Resource",
+        "type": "https://api.x.com/2/problems/disallowed-resource"
+      },
+      {
+        "detail": "The 'promoted_metrics.user_profile_clicks' field cannot be queried for Posts that have not been promoted.",
+        "resource_id": "unknown",
+        "resource_type": "tweet",
+        "section": "data",
+        "title": "Disallowed Resource",
+        "type": "https://api.x.com/2/problems/disallowed-resource"
+      }
+    ],
+    "title": null,
+    "detail": null,
+    "body": {
+      "data": [
+        {
+          "attachments": {
+            "media_keys": [
+              "3_2105722106948251648"
+            ]
+          },
+          "conversation_id": "2105722250355724555",
+          "created_at": "2026-10-01T18:11:21.000Z",
+          "display_text_range": [
+            0,
+            279
+          ],
+          "edit_controls": {
+            "editable_until": "2026-10-01T19:11:21.000Z",
+            "edits_remaining": 5,
+            "is_edit_eligible": true
+          },
+          "edit_history_tweet_ids": [
+            "2105722250355724555"
+          ],
+          "entities": {
+            "urls": [
+              {
+                "display_url": "pic.x.com/wNTy08x2w1",
+                "end": 303,
+                "expanded_url": "https://x.com/CitizenGO/status/2105722250355724555/photo/1",
+                "media_key": "3_2105722106948251648",
+                "start": 280,
+                "url": "https://t.co/wNTy08x2w1"
+              }
+            ]
+          },
+          "id": "2105722250355724555",
+          "lang": "en",
+          "non_public_metrics": {
+            "engagements": 68,
+            "impression_count": 762,
+            "user_profile_clicks": 2
+          },
+          "note_tweet": {
+            "text": "🚨 Disgraceful | The Virgin Mary was ripped from her pedestal in Corsica.\n\nA video shows a man climbing onto the statue, violently shaking it and making obscene gestures while another person films.\n\nThis wasn’t harmless fun, It was the desecration of a Christian symbol revered by an entire community.\n\nAnd yet, people still naively believe Christians don’t face persecution and hostility."
+          },
+          "organic_metrics": {
+            "impression_count": 762,
+            "like_count": 33,
+            "reply_count": 0,
+            "retweet_count": 13,
+            "user_profile_clicks": 2
+          },
+          "possibly_sensitive": false,
+          "public_metrics": {
+            "bookmark_count": 0,
+            "impression_count": 762,
+            "like_count": 33,
+            "quote_count": 0,
+            "reply_count": 0,
+            "retweet_count": 13
+          },
+          "reply_settings": "everyone",
+          "text": "🚨 Disgraceful | The Virgin Mary was ripped from her pedestal in Corsica.\n\nA video shows a man climbing onto the statue, violently shaking it and making obscene gestures while another person films.\n\nThis wasn’t harmless fun, It was the desecration of a Christian symbol revered by https://t.co/wNTy08x2w1"
+        },
+        {
+          "context_annotations": [
+            {
+              "domain": {
+                "description": "Named people in the world like Nelson Mandela",
+                "id": "10",
+                "name": "Person"
+              },
+              "entity": {
+                "description": "Candidate for Governor of California Gavin Newsom",
+                "id": "999344319885524992",
+                "name": "Gavin Newsom"
+              }
+            },
+            {
+              "domain": {
+                "description": "Politicians in the world, like Joe Biden",
+                "id": "35",
+                "name": "Politician"
+              },
+              "entity": {
+                "description": "Candidate for Governor of California Gavin Newsom",
+                "id": "999344319885524992",
+                "name": "Gavin Newsom"
+              }
+            },
+            {
+              "domain": {
+                "description": "Top level interests and hobbies groupings, like Food or Travel",
+                "id": "65",
+                "name": "Interests and Hobbies Vertical"
+              },
+              "entity": {
+                "description": "Family and Life Stages",
+                "id": "864925500627484672",
+                "name": "Family and life stages"
+              }
+            },
+            {
+              "domain": {
+                "description": "A grouping of interests and hobbies entities, like Novelty Food or Destinations",
+                "id": "66",
+                "name": "Interests and Hobbies Category"
+              },
+              "entity": {
+                "description": "Moms",
+                "id": "847545709800767488",
+                "name": "Motherhood"
+              }
+            },
+            {
+              "domain": {
+                "description": "A taxonomy of user interests. ",
+                "id": "131",
+                "name": "Unified Twitter Taxonomy"
+              },
+              "entity": {
+                "description": "Moms",
+                "id": "847545709800767488",
+                "name": "Motherhood"
+              }
+            },
+            {
+              "domain": {
+                "description": "A taxonomy of user interests. ",
+                "id": "131",
+                "name": "Unified Twitter Taxonomy"
+              },
+              "entity": {
+                "description": "Politics",
+                "id": "847878884917886977",
+                "name": "Politics"
+              }
+            },
+            {
+              "domain": {
+                "description": "A taxonomy of user interests. ",
+                "id": "131",
+                "name": "Unified Twitter Taxonomy"
+              },
+              "entity": {
+                "description": "Political issues",
+                "id": "900740740468191232",
+                "name": "Political issues"
+              }
+            },
+            {
+              "domain": {
+                "description": "A taxonomy of user interests. ",
+                "id": "131",
+                "name": "Unified Twitter Taxonomy"
+              },
+              "entity": {
+                "description": "Candidate for Governor of California Gavin Newsom",
+                "id": "999344319885524992",
+                "name": "Gavin Newsom"
+              }
+            },
+            {
+              "domain": {
+                "description": "A taxonomy of user interests. ",
+                "id": "131",
+                "name": "Unified Twitter Taxonomy"
+              },
+              "entity": {
+                "description": "Politician",
+                "id": "1070032753834438656",
+                "name": "Political figures"
+              }
+            },
+            {
+              "domain": {
+                "description": "A taxonomy of user interests. ",
+                "id": "131",
+                "name": "Unified Twitter Taxonomy"
+              },
+              "entity": {
+                "id": "1493177750324056064",
+                "name": "Babies"
+              }
+            },
+            {
+              "domain": {
+                "description": "States, provinces, or prefectures, like California or Fukushima Prefecture",
+                "id": "159",
+                "name": "States"
+              },
+              "entity": {
+                "description": "California",
+                "id": "856860158428798977",
+                "name": "California"
+              }
+            }
+          ],
+          "conversation_id": "2105683476800266493",
+          "created_at": "2026-10-01T15:37:17.000Z",
+          "display_text_range": [
+            0,
+            235
+          ],
+          "edit_controls": {
+            "editable_until": "2026-10-01T16:37:17.000Z",
+            "edits_remaining": 5,
+            "is_edit_eligible": true
+          },
+          "edit_history_tweet_ids": [
+            "2105683476800266493"
+          ],
+          "entities": {
+            "urls": [
+              {
+                "display_url": "x.com/LifeNewsHQ/sta…",
+                "end": 259,
+                "expanded_url": "https://twitter.com/LifeNewsHQ/status/2105678713996341604",
+                "start": 236,
+                "url": "https://t.co/pGTwp7jxs9"
+              }
+            ]
+          },
+          "id": "2105683476800266493",
+          "lang": "en",
+          "non_public_metrics": {
+            "engagements": 8,
+            "impression_count": 383,
+            "user_profile_clicks": 1
+          },
+          "organic_metrics": {
+            "impression_count": 383,
+            "like_count": 3,
+            "reply_count": 0,
+            "retweet_count": 3,
+            "user_profile_clicks": 1
+          },
+          "possibly_sensitive": false,
+          "public_metrics": {
+            "bookmark_count": 0,
+            "impression_count": 383,
+            "like_count": 3,
+            "quote_count": 0,
+            "reply_count": 0,
+            "retweet_count": 3
+          },
+          "referenced_tweets": [
+            {
+              "id": "2105678713996341604",
+              "type": "quoted"
+            }
+          ],
+          "reply_settings": "everyone",
+          "text": "Young women facing an unexpected pregnancy deserve to know that motherhood and their education can coexist.\n\nInstead, California’s government is expanding access to abortion medication directly through college health services.\n\nMadness https://t.co/pGTwp7jxs9"
+        },
+        {
+          "attachments": {
+            "media_keys": [
+              "3_2105533064382132224",
+              "3_2105533064356990976"
+            ]
+          },
+          "conversation_id": "2105533084321849507",
+          "created_at": "2026-10-01T05:39:40.000Z",
+          "display_text_range": [
+            0,
+            134
+          ],
+          "edit_controls": {
+            "editable_until": "2026-10-01T06:39:40.000Z",
+            "edits_remaining": 5,
+            "is_edit_eligible": true
+          },
+          "edit_history_tweet_ids": [
+            "2105533084321849507"
+          ],
+          "entities": {
+            "urls": [
+              {
+                "display_url": "pic.x.com/AMqaavb229",
+                "end": 158,
+                "expanded_url": "https://x.com/CitizenGO/status/2105533084321849507/photo/1",
+                "media_key": "3_2105533064382132224",
+                "start": 135,
+                "url": "https://t.co/AMqaavb229"
+              },
+              {
+                "display_url": "pic.x.com/AMqaavb229",
+                "end": 158,
+                "expanded_url": "https://x.com/CitizenGO/status/2105533084321849507/photo/1",
+                "media_key": "3_2105533064356990976",
+                "start": 135,
+                "url": "https://t.co/AMqaavb229"
+              }
+            ]
+          },
+          "id": "2105533084321849507",
+          "lang": "en",
+          "non_public_metrics": {
+            "engagements": 19,
+            "impression_count": 414,
+            "user_profile_clicks": 3
+          },
+          "organic_metrics": {
+            "impression_count": 414,
+            "like_count": 9,
+            "reply_count": 1,
+            "retweet_count": 0,
+            "user_profile_clicks": 3
+          },
+          "possibly_sensitive": false,
+          "public_metrics": {
+            "bookmark_count": 0,
+            "impression_count": 414,
+            "like_count": 9,
+            "quote_count": 0,
+            "reply_count": 1,
+            "retweet_count": 0
+          },
+          "reply_settings": "everyone",
+          "text": "🇸🇰We took to the streets of Bratislava alongside hundreds of people to raise our voices for the right to be born.\n\nEvery life matters💙 https://t.co/AMqaavb229"
+        },
+        {
+          "attachments": {
+            "media_keys": [
+              "13_2105418109800599552"
+            ]
+          },
+          "context_annotations": [
+            {
+              "domain": {
+                "description": "Categories within Brand Verticals that narrow down the scope of Brands",
+                "id": "46",
+                "name": "Business Taxonomy"
+              },
+              "entity": {
+                "description": "Brands, companies, advertisers and every non-person handle with the profit intent related to apparel and accessories ",
+                "id": "1557697378571808768",
+                "name": "Textile, Apparel & Luxury Good Business"
+              }
+            },
+            {
+              "domain": {
+                "description": "A grouping of interests and hobbies entities, like Novelty Food or Destinations",
+                "id": "66",
+                "name": "Interests and Hobbies Category"
+              },
+              "entity": {
+                "description": "Fashion Events",
+                "id": "845345515667566592",
+                "name": "Fashion events"
+              }
+            },
+            {
+              "domain": {
+                "description": "A taxonomy of user interests. ",
+                "id": "131",
+                "name": "Unified Twitter Taxonomy"
+              },
+              "entity": {
+                "id": "839543390668673024",
+                "name": "Fashion"
+              }
+            },
+            {
+              "domain": {
+                "description": "A taxonomy of user interests. ",
+                "id": "131",
+                "name": "Unified Twitter Taxonomy"
+              },
+              "entity": {
+                "description": "Fashion Events",
+                "id": "845345515667566592",
+                "name": "Fashion events"
+              }
+            },
+            {
+              "domain": {
+                "description": "A taxonomy of user interests. ",
+                "id": "131",
+                "name": "Unified Twitter Taxonomy"
+              },
+              "entity": {
+                "id": "1399745789065261057",
+                "name": "Paris Fashion Week"
+              }
+            },
+            {
+              "domain": {
+                "description": "A taxonomy of user interests. ",
+                "id": "131",
+                "name": "Unified Twitter Taxonomy"
+              },
+              "entity": {
+                "id": "1436053202835689485",
+                "name": "Events"
+              }
+            },
+            {
+              "domain": {
+                "description": "Real world events. ",
+                "id": "29",
+                "name": "Events [Entity Service]"
+              },
+              "entity": {
+                "description": "Fashion Week",
+                "id": "845350255436546048",
+                "name": "Fashion Week"
+              }
+            },
+            {
+              "domain": {
+                "description": "A grouping of interests and hobbies entities, like Novelty Food or Destinations",
+                "id": "66",
+                "name": "Interests and Hobbies Category"
+              },
+              "entity": {
+                "description": "Fashion Events",
+                "id": "845345515667566592",
+                "name": "Fashion events"
+              }
+            },
+            {
+              "domain": {
+                "description": "Entity Service top level domain, every item that is in Entity Service should be in this domain",
+                "id": "30",
+                "name": "Entities [Entity Service]"
+              },
+              "entity": {
+                "description": "Fashion Week",
+                "id": "845350255436546048",
+                "name": "Fashion Week"
+              }
+            },
+            {
+              "domain": {
+                "description": "Real world events. ",
+                "id": "29",
+                "name": "Events [Entity Service]"
+              },
+              "entity": {
+                "id": "1620199337190891521",
+                "name": "New York Fashion Week 2023"
+              }
+            },
+            {
+              "domain": {
+                "description": "Real world events. ",
+                "id": "29",
+                "name": "Events [Entity Service]"
+              },
+              "entity": {
+                "description": "Your front row seat to all things #PFW - 25th of September to 3d of October 2023",
+                "id": "1705365801321033728",
+                "name": "Paris Fashion Week 2023"
+              }
+            },
+            {
+              "domain": {
+                "description": "Real world events. ",
+                "id": "29",
+                "name": "Events [Entity Service]"
+              },
+              "entity": {
+                "description": "Your front row seat to all things #PFW- Sept 24th - October 1st, 2024\n@KonbiniFr 📷",
+                "id": "1831369168467185664",
+                "name": "Paris Fashion Week 2024 Womenswear SS25"
+              }
+            },
+            {
+              "domain": {
+                "description": "Real world events. ",
+                "id": "29",
+                "name": "Events [Entity Service]"
+              },
+              "entity": {
+                "description": "New York Womenswear Fashion Week 10-15 September 2026\nLondon Womenswear Fashion Week 17-21 September 2026\nMilan Womenswear Fashion Week 22-28 September 2026\nParis Womenswear Fashion Week 28-6 October 2026",
+                "id": "2090752060832571392",
+                "name": "Fashion Weeks (Womenswear SS27) "
+              }
+            }
+          ],
+          "conversation_id": "2105418632549572979",
+          "created_at": "2026-09-30T22:04:53.000Z",
+          "display_text_range": [
+            0,
+            118
+          ],
+          "edit_controls": {
+            "editable_until": "2026-09-30T23:04:53.000Z",
+            "edits_remaining": 5,
+            "is_edit_eligible": true
+          },
+          "edit_history_tweet_ids": [
+            "2105418632549572979"
+          ],
+          "entities": {
+            "urls": [
+              {
+                "display_url": "pic.x.com/WDXS3iAaBG",
+                "end": 142,
+                "expanded_url": "https://x.com/CitizenGO/status/2105418632549572979/video/1",
+                "media_key": "13_2105418109800599552",
+                "start": 119,
+                "url": "https://t.co/WDXS3iAaBG"
+              }
+            ]
+          },
+          "id": "2105418632549572979",
+          "lang": "en",
+          "non_public_metrics": {
+            "engagements": 26,
+            "impression_count": 833,
+            "user_profile_clicks": 0
+          },
+          "organic_metrics": {
+            "impression_count": 833,
+            "like_count": 17,
+            "reply_count": 1,
+            "retweet_count": 5,
+            "user_profile_clicks": 0
+          },
+          "possibly_sensitive": false,
+          "public_metrics": {
+            "bookmark_count": 1,
+            "impression_count": 833,
+            "like_count": 17,
+            "quote_count": 0,
+            "reply_count": 1,
+            "retweet_count": 5
+          },
+          "reply_settings": "everyone",
+          "text": "This is what Paris Fashion Week looks like now.\n\nAnother example of how woke culture turns ugly everything it touches. https://t.co/WDXS3iAaBG"
+        },
+        {
+          "attachments": {
+            "media_keys": [
+              "3_2105394638467067905",
+              "3_2105394669844602881"
+            ]
+          },
+          "conversation_id": "2105395264752345190",
+          "created_at": "2026-09-30T20:32:02.000Z",
+          "display_text_range": [
+            0,
+            276
+          ],
+          "edit_controls": {
+            "editable_until": "2026-09-30T21:32:02.000Z",
+            "edits_remaining": 5,
+            "is_edit_eligible": true
+          },
+          "edit_history_tweet_ids": [
+            "2105395264752345190"
+          ],
+          "entities": {
+            "urls": [
+              {
+                "display_url": "pic.x.com/OrQgo0tuMZ",
+                "end": 300,
+                "expanded_url": "https://x.com/CitizenGO/status/2105395264752345190/photo/1",
+                "media_key": "3_2105394638467067905",
+                "start": 277,
+                "url": "https://t.co/OrQgo0tuMZ"
+              },
+              {
+                "display_url": "pic.x.com/OrQgo0tuMZ",
+                "end": 300,
+                "expanded_url": "https://x.com/CitizenGO/status/2105395264752345190/photo/1",
+                "media_key": "3_2105394669844602881",
+                "start": 277,
+                "url": "https://t.co/OrQgo0tuMZ"
+              }
+            ]
+          },
+          "id": "2105395264752345190",
+          "lang": "en",
+          "non_public_metrics": {
+            "engagements": 86,
+            "impression_count": 1003,
+            "user_profile_clicks": 1
+          },
+          "note_tweet": {
+            "text": "🚨 WE STOPPED CHAT CONTROL,FOR NOW.\n\nParliament negotiators rejected a proposed deal that could have enabled sweeping scans of private chats and files without limiting them to individual suspects.\n\nThis is an important breakthrough, but the fight is far from over. Negotiations continue, and EU governments are still pushing on private communications.\n\nWe will keep showing up. Your private messages should stay PRIVATE."
+          },
+          "organic_metrics": {
+            "impression_count": 1003,
+            "like_count": 48,
+            "reply_count": 0,
+            "retweet_count": 15,
+            "user_profile_clicks": 1
+          },
+          "possibly_sensitive": false,
+          "public_metrics": {
+            "bookmark_count": 5,
+            "impression_count": 1003,
+            "like_count": 48,
+            "quote_count": 3,
+            "reply_count": 0,
+            "retweet_count": 15
+          },
+          "reply_settings": "everyone",
+          "text": "🚨 WE STOPPED CHAT CONTROL,FOR NOW.\n\nParliament negotiators rejected a proposed deal that could have enabled sweeping scans of private chats and files without limiting them to individual suspects.\n\nThis is an important breakthrough, but the fight is far from over. Negotiations https://t.co/OrQgo0tuMZ"
+        },
+        {
+          "attachments": {
+            "media_keys": [
+              "3_2105302121394397184"
+            ]
+          },
+          "context_annotations": [
+            {
+              "domain": {
+                "description": "Named people in the world like Nelson Mandela",
+                "id": "10",
+                "name": "Person"
+              },
+              "entity": {
+                "description": "President of European Commission",
+                "id": "1151432219002454016",
+                "name": "Ursula von der Leyen"
+              }
+            },
+            {
+              "domain": {
+                "description": "Politicians in the world, like Joe Biden",
+                "id": "35",
+                "name": "Politician"
+              },
+              "entity": {
+                "description": "President of European Commission",
+                "id": "1151432219002454016",
+                "name": "Ursula von der Leyen"
+              }
+            },
+            {
+              "domain": {
+                "description": "Categories within Brand Verticals that narrow down the scope of Brands",
+                "id": "46",
+                "name": "Business Taxonomy"
+              },
+              "entity": {
+                "description": "Brands, companies, advertisers and every non-person handle with the profit intent related to offline and online games such as gaming consoles, tabletop games, video game publishers",
+                "id": "1557696940178935808",
+                "name": "Gaming Business"
+              }
+            },
+            {
+              "domain": {
+                "description": "A taxonomy of user interests. ",
+                "id": "131",
+                "name": "Unified Twitter Taxonomy"
+              },
+              "entity": {
+                "description": "Politics",
+                "id": "847878884917886977",
+                "name": "Politics"
+              }
+            },
+            {
+              "domain": {
+                "description": "A taxonomy of user interests. ",
+                "id": "131",
+                "name": "Unified Twitter Taxonomy"
+              },
+              "entity": {
+                "description": "Politician",
+                "id": "1070032753834438656",
+                "name": "Political figures"
+              }
+            },
+            {
+              "domain": {
+                "description": "A taxonomy of user interests. ",
+                "id": "131",
+                "name": "Unified Twitter Taxonomy"
+              },
+              "entity": {
+                "description": "President of European Commission",
+                "id": "1151432219002454016",
+                "name": "Ursula von der Leyen"
+              }
+            }
+          ],
+          "conversation_id": "2105302128139100645",
+          "created_at": "2026-09-30T14:21:56.000Z",
+          "display_text_range": [
+            0,
+            171
+          ],
+          "edit_controls": {
+            "editable_until": "2026-09-30T15:21:56.000Z",
+            "edits_remaining": 5,
+            "is_edit_eligible": true
+          },
+          "edit_history_tweet_ids": [
+            "2105302128139100645"
+          ],
+          "entities": {
+            "mentions": [
+              {
+                "end": 17,
+                "id": "1146329871418843136",
+                "start": 5,
+                "username": "vonderleyen"
+              }
+            ],
+            "urls": [
+              {
+                "display_url": "pic.x.com/ckG9LKz7SN",
+                "end": 195,
+                "expanded_url": "https://x.com/CitizenGO/status/2105302128139100645/photo/1",
+                "media_key": "3_2105302121394397184",
+                "start": 172,
+                "url": "https://t.co/ckG9LKz7SN"
+              }
+            ]
+          },
+          "id": "2105302128139100645",
+          "lang": "en",
+          "non_public_metrics": {
+            "engagements": 71,
+            "impression_count": 924,
+            "user_profile_clicks": 8
+          },
+          "organic_metrics": {
+            "impression_count": 924,
+            "like_count": 32,
+            "reply_count": 0,
+            "retweet_count": 11,
+            "user_profile_clicks": 8
+          },
+          "possibly_sensitive": false,
+          "public_metrics": {
+            "bookmark_count": 4,
+            "impression_count": 924,
+            "like_count": 32,
+            "quote_count": 2,
+            "reply_count": 0,
+            "retweet_count": 11
+          },
+          "reply_settings": "everyone",
+          "text": "🔴No, @vonderleyen . Absolutely not. \n\nOur private messages are private and we will NOT allow you to read, access, or monitor them. \n\nStay out of our private conversations! https://t.co/ckG9LKz7SN"
+        },
+        {
+          "conversation_id": "2105278380233126127",
+          "created_at": "2026-09-30T12:47:34.000Z",
+          "display_text_range": [
+            0,
+            226
+          ],
+          "edit_controls": {
+            "editable_until": "2026-09-30T13:47:34.000Z",
+            "edits_remaining": 5,
+            "is_edit_eligible": true
+          },
+          "edit_history_tweet_ids": [
+            "2105278380233126127"
+          ],
+          "entities": {
+            "urls": [
+              {
+                "display_url": "cgo.ac/scgukLQK4",
+                "end": 226,
+                "expanded_url": "https://cgo.ac/scgukLQK4",
+                "start": 203,
+                "status": 200,
+                "unwound_url": "https://citizengo.org/en-row/fr/18646/?campaign=EN_ROW-2026_09_28-No_To_Chat_Control-ATE-AA_NA-GL-FR-18646-TW1&utm_source=tw&utm_medium=social&utm_campaign=EN_ROW-2026_09_28-No_To_Chat_Control-ATE-AA_NA-GL-FR-18646-TW1&utm_content=link_1",
+                "url": "https://t.co/7THMEUMsGP"
+              },
+              {
+                "display_url": "x.com/lukomski_sebit…",
+                "end": 250,
+                "expanded_url": "https://twitter.com/lukomski_sebito/status/2105272933853638831",
+                "start": 227,
+                "url": "https://t.co/6xoCAySQPM"
+              }
+            ]
+          },
+          "id": "2105278380233126127",
+          "lang": "en",
+          "non_public_metrics": {
+            "engagements": 48,
+            "impression_count": 731,
+            "url_link_clicks": 4,
+            "user_profile_clicks": 3
+          },
+          "organic_metrics": {
+            "impression_count": 731,
+            "like_count": 22,
+            "reply_count": 0,
+            "retweet_count": 8,
+            "url_link_clicks": 4,
+            "user_profile_clicks": 3
+          },
+          "possibly_sensitive": false,
+          "public_metrics": {
+            "bookmark_count": 2,
+            "impression_count": 731,
+            "like_count": 22,
+            "quote_count": 0,
+            "reply_count": 0,
+            "retweet_count": 8
+          },
+          "referenced_tweets": [
+            {
+              "id": "2105272933853638831",
+              "type": "quoted"
+            }
+          ],
+          "reply_settings": "everyone",
+          "text": "👁️🤳 Let’s be clear: this was NEVER about protecting children and identifying their predators.\n\nIt was always about surveillance, control and your privacy.\n\n❌ Say no to Chat Control before it’s too late.\nhttps://t.co/7THMEUMsGP https://t.co/6xoCAySQPM"
+        },
+        {
+          "conversation_id": "2104611593028059188",
+          "created_at": "2026-09-29T15:53:30.000Z",
+          "display_text_range": [
+            13,
+            110
+          ],
+          "edit_controls": {
+            "editable_until": "2026-09-29T16:53:30.000Z",
+            "edits_remaining": 5,
+            "is_edit_eligible": false
+          },
+          "edit_history_tweet_ids": [
+            "2104962784714752251"
+          ],
+          "entities": {
+            "mentions": [
+              {
+                "end": 12,
+                "id": "1414852911176331271",
+                "start": 0,
+                "username": "dejardinant"
+              }
+            ]
+          },
+          "id": "2104962784714752251",
+          "in_reply_to_user_id": "1414852911176331271",
+          "lang": "en",
+          "non_public_metrics": {
+            "engagements": 1,
+            "impression_count": 15,
+            "user_profile_clicks": 0
+          },
+          "organic_metrics": {
+            "impression_count": 15,
+            "like_count": 0,
+            "reply_count": 1,
+            "retweet_count": 0,
+            "user_profile_clicks": 0
+          },
+          "possibly_sensitive": false,
+          "public_metrics": {
+            "bookmark_count": 0,
+            "impression_count": 15,
+            "like_count": 0,
+            "quote_count": 0,
+            "reply_count": 1,
+            "retweet_count": 0
+          },
+          "referenced_tweets": [
+            {
+              "id": "2104960330010857651",
+              "type": "replied_to"
+            }
+          ],
+          "reply_settings": "everyone",
+          "text": "@dejardinant I don’t understand what isn’t clear. Do you really not think that killing a human being is wrong?"
+        },
+        {
+          "conversation_id": "2104611593028059188",
+          "created_at": "2026-09-29T15:35:17.000Z",
+          "display_text_range": [
+            13,
+            45
+          ],
+          "edit_controls": {
+            "editable_until": "2026-09-29T16:35:17.000Z",
+            "edits_remaining": 5,
+            "is_edit_eligible": false
+          },
+          "edit_history_tweet_ids": [
+            "2104958200525234228"
+          ],
+          "entities": {
+            "mentions": [
+              {
+                "end": 12,
+                "id": "1414852911176331271",
+                "start": 0,
+                "username": "dejardinant"
+              }
+            ]
+          },
+          "id": "2104958200525234228",
+          "in_reply_to_user_id": "1414852911176331271",
+          "lang": "en",
+          "non_public_metrics": {
+            "engagements": 1,
+            "impression_count": 18,
+            "user_profile_clicks": 0
+          },
+          "organic_metrics": {
+            "impression_count": 18,
+            "like_count": 0,
+            "reply_count": 1,
+            "retweet_count": 0,
+            "user_profile_clicks": 0
+          },
+          "possibly_sensitive": false,
+          "public_metrics": {
+            "bookmark_count": 0,
+            "impression_count": 18,
+            "like_count": 0,
+            "quote_count": 0,
+            "reply_count": 1,
+            "retweet_count": 0
+          },
+          "referenced_tweets": [
+            {
+              "id": "2104919043744342103",
+              "type": "replied_to"
+            }
+          ],
+          "reply_settings": "everyone",
+          "text": "@dejardinant Easy, because it’s a human being"
+        },
+        {
+          "attachments": {
+            "media_keys": [
+              "3_2100519685619912704"
+            ]
+          },
+          "conversation_id": "2104611593028059188",
+          "created_at": "2026-09-28T16:38:00.000Z",
+          "display_text_range": [
+            0,
+            39
+          ],
+          "edit_controls": {
+            "editable_until": "2026-09-28T17:38:00.000Z",
+            "edits_remaining": 5,
+            "is_edit_eligible": true
+          },
+          "edit_history_tweet_ids": [
+            "2104611593028059188"
+          ],
+          "entities": {
+            "urls": [
+              {
+                "display_url": "pic.x.com/3lUSFQKGta",
+                "end": 63,
+                "expanded_url": "https://x.com/CitizenGO/status/2104611593028059188/photo/1",
+                "media_key": "3_2100519685619912704",
+                "start": 40,
+                "url": "https://t.co/3lUSFQKGta"
+              }
+            ]
+          },
+          "id": "2104611593028059188",
+          "lang": "en",
+          "non_public_metrics": {
+            "engagements": 36,
+            "impression_count": 573,
+            "user_profile_clicks": 0
+          },
+          "organic_metrics": {
+            "impression_count": 573,
+            "like_count": 25,
+            "reply_count": 1,
+            "retweet_count": 6,
+            "user_profile_clicks": 0
+          },
+          "possibly_sensitive": false,
+          "public_metrics": {
+            "bookmark_count": 0,
+            "impression_count": 572,
+            "like_count": 25,
+            "quote_count": 0,
+            "reply_count": 1,
+            "retweet_count": 6
+          },
+          "reply_settings": "everyone",
+          "text": "There is NOTHING “safe” about abortion. https://t.co/3lUSFQKGta"
+        },
+        {
+          "attachments": {
+            "media_keys": [
+              "3_2099877327639339008"
+            ]
+          },
+          "conversation_id": "2104588440444751984",
+          "created_at": "2026-09-28T15:06:00.000Z",
+          "display_text_range": [
+            0,
+            202
+          ],
+          "edit_controls": {
+            "editable_until": "2026-09-28T16:06:00.000Z",
+            "edits_remaining": 5,
+            "is_edit_eligible": true
+          },
+          "edit_history_tweet_ids": [
+            "2104588440444751984"
+          ],
+          "entities": {
+            "urls": [
+              {
+                "display_url": "cgo.ac/scqtp56h",
+                "end": 202,
+                "expanded_url": "https://cgo.ac/scqtp56h",
+                "start": 179,
+                "status": 200,
+                "unwound_url": "https://api-prod.citizengo.org//scqtp56h",
+                "url": "https://t.co/zdTyhAwBu2"
+              },
+              {
+                "display_url": "pic.x.com/q1jOlssCHK",
+                "end": 226,
+                "expanded_url": "https://x.com/CitizenGO/status/2104588440444751984/photo/1",
+                "media_key": "3_2099877327639339008",
+                "start": 203,
+                "url": "https://t.co/q1jOlssCHK"
+              }
+            ]
+          },
+          "id": "2104588440444751984",
+          "lang": "en",
+          "non_public_metrics": {
+            "engagements": 22,
+            "impression_count": 377,
+            "url_link_clicks": 4,
+            "user_profile_clicks": 1
+          },
+          "organic_metrics": {
+            "impression_count": 377,
+            "like_count": 7,
+            "reply_count": 1,
+            "retweet_count": 5,
+            "url_link_clicks": 4,
+            "user_profile_clicks": 1
+          },
+          "possibly_sensitive": false,
+          "public_metrics": {
+            "bookmark_count": 0,
+            "impression_count": 377,
+            "like_count": 7,
+            "quote_count": 0,
+            "reply_count": 1,
+            "retweet_count": 5
+          },
+          "reply_settings": "everyone",
+          "text": "🚨The digital euro is not “innovation.”\n\nIt’s a system that could track, limit, or condition every payment you make.\n\nEurope needs freedom, not programmable money. Join the fight  https://t.co/zdTyhAwBu2 https://t.co/q1jOlssCHK"
+        },
+        {
+          "context_annotations": [
+            {
+              "domain": {
+                "description": "Top level entities that describe a Brands industry",
+                "id": "45",
+                "name": "Brand Vertical"
+              },
+              "entity": {
+                "id": "781974596157251587",
+                "name": "Government/Education"
+              }
+            },
+            {
+              "domain": {
+                "description": "Entity Service top level domain, every item that is in Entity Service should be in this domain",
+                "id": "30",
+                "name": "Entities [Entity Service]"
+              },
+              "entity": {
+                "id": "781974597226729473",
+                "name": "Non-profit - Government/Education"
+              }
+            },
+            {
+              "domain": {
+                "description": "Brands and Companies",
+                "id": "47",
+                "name": "Brand"
+              },
+              "entity": {
+                "description": "Global conversation about the United Nations and all related efforts.",
+                "id": "10044311823",
+                "name": "United Nations"
+              }
+            },
+            {
+              "domain": {
+                "description": "A section of a government, like The Supreme Court",
+                "id": "88",
+                "name": "Political Body"
+              },
+              "entity": {
+                "description": "Global conversation about the United Nations and all related efforts.",
+                "id": "10044311823",
+                "name": "United Nations"
+              }
+            },
+            {
+              "domain": {
+                "description": "A taxonomy of user interests. ",
+                "id": "131",
+                "name": "Unified Twitter Taxonomy"
+              },
+              "entity": {
+                "description": "Global conversation about the United Nations and all related efforts.",
+                "id": "10044311823",
+                "name": "United Nations"
+              }
+            },
+            {
+              "domain": {
+                "description": "A taxonomy of user interests. ",
+                "id": "131",
+                "name": "Unified Twitter Taxonomy"
+              },
+              "entity": {
+                "description": "Politics",
+                "id": "847878884917886977",
+                "name": "Politics"
+              }
+            },
+            {
+              "domain": {
+                "description": "A taxonomy of user interests. ",
+                "id": "131",
+                "name": "Unified Twitter Taxonomy"
+              },
+              "entity": {
+                "description": "Political Body",
+                "id": "1068583660914266113",
+                "name": "Government institutions"
+              }
+            }
+          ],
+          "conversation_id": "2103896881935826947",
+          "created_at": "2026-09-26T17:18:13.000Z",
+          "display_text_range": [
+            0,
+            218
+          ],
+          "edit_controls": {
+            "editable_until": "2026-09-26T18:18:13.000Z",
+            "edits_remaining": 5,
+            "is_edit_eligible": false
+          },
+          "edit_history_tweet_ids": [
+            "2103896937217064967"
+          ],
+          "entities": {
+            "urls": [
+              {
+                "display_url": "cgo.ac/scEzeKk0W",
+                "end": 218,
+                "expanded_url": "https://cgo.ac/scEzeKk0W",
+                "start": 195,
+                "status": 200,
+                "unwound_url": "https://citizengo.org/en-row/lf/19315/?campaign=EN_ROW-2026_09_26-Stop_The_UN_From_Smuggling_Gender_Ideolo-ATE-AA_NA-GL-LF-19315-TW1&utm_source=tw&utm_medium=social&utm_campaign=EN_ROW-2026_09_26-Stop_The_UN_From_Smuggling_Gender_Ideolo-ATE-AA_NA-GL-LF-19315-TW1&utm_content=link_1",
+                "url": "https://t.co/ArdcQSjKNk"
+              }
+            ]
+          },
+          "id": "2103896937217064967",
+          "in_reply_to_user_id": "1264712994",
+          "lang": "en",
+          "non_public_metrics": {
+            "engagements": 18,
+            "impression_count": 113,
+            "url_link_clicks": 10,
+            "user_profile_clicks": 0
+          },
+          "organic_metrics": {
+            "impression_count": 113,
+            "like_count": 4,
+            "reply_count": 0,
+            "retweet_count": 1,
+            "url_link_clicks": 10,
+            "user_profile_clicks": 0
+          },
+          "possibly_sensitive": false,
+          "public_metrics": {
+            "bookmark_count": 0,
+            "impression_count": 113,
+            "like_count": 4,
+            "quote_count": 0,
+            "reply_count": 0,
+            "retweet_count": 1
+          },
+          "referenced_tweets": [
+            {
+              "id": "2103896881935826947",
+              "type": "replied_to"
+            }
+          ],
+          "reply_settings": "everyone",
+          "text": "Stand up to the UN and hold your delegation to account. ✊\n\n✍️ Sign the petition and tell your government to oppose the inclusion of undefined terms before the Sixth Committee meets in October.\n\n👉https://t.co/ArdcQSjKNk"
+        },
+        {
+          "attachments": {
+            "media_keys": [
+              "3_2103896163426406400"
+            ]
+          },
+          "context_annotations": [
+            {
+              "domain": {
+                "description": "Top level entities that describe a Brands industry",
+                "id": "45",
+                "name": "Brand Vertical"
+              },
+              "entity": {
+                "id": "781974596157251587",
+                "name": "Government/Education"
+              }
+            },
+            {
+              "domain": {
+                "description": "Entity Service top level domain, every item that is in Entity Service should be in this domain",
+                "id": "30",
+                "name": "Entities [Entity Service]"
+              },
+              "entity": {
+                "id": "781974597226729473",
+                "name": "Non-profit - Government/Education"
+              }
+            },
+            {
+              "domain": {
+                "description": "Brands and Companies",
+                "id": "47",
+                "name": "Brand"
+              },
+              "entity": {
+                "description": "Global conversation about the United Nations and all related efforts.",
+                "id": "10044311823",
+                "name": "United Nations"
+              }
+            },
+            {
+              "domain": {
+                "description": "A section of a government, like The Supreme Court",
+                "id": "88",
+                "name": "Political Body"
+              },
+              "entity": {
+                "description": "Global conversation about the United Nations and all related efforts.",
+                "id": "10044311823",
+                "name": "United Nations"
+              }
+            },
+            {
+              "domain": {
+                "description": "A taxonomy of user interests. ",
+                "id": "131",
+                "name": "Unified Twitter Taxonomy"
+              },
+              "entity": {
+                "description": "Global conversation about the United Nations and all related efforts.",
+                "id": "10044311823",
+                "name": "United Nations"
+              }
+            },
+            {
+              "domain": {
+                "description": "A taxonomy of user interests. ",
+                "id": "131",
+                "name": "Unified Twitter Taxonomy"
+              },
+              "entity": {
+                "description": "Politics",
+                "id": "847878884917886977",
+                "name": "Politics"
+              }
+            },
+            {
+              "domain": {
+                "description": "A taxonomy of user interests. ",
+                "id": "131",
+                "name": "Unified Twitter Taxonomy"
+              },
+              "entity": {
+                "description": "Political Body",
+                "id": "1068583660914266113",
+                "name": "Government institutions"
+              }
+            }
+          ],
+          "conversation_id": "2103896881935826947",
+          "created_at": "2026-09-26T17:17:59.000Z",
+          "display_text_range": [
+            0,
+            274
+          ],
+          "edit_controls": {
+            "editable_until": "2026-09-26T18:17:59.000Z",
+            "edits_remaining": 5,
+            "is_edit_eligible": false
+          },
+          "edit_history_tweet_ids": [
+            "2103896881935826947"
+          ],
+          "entities": {
+            "urls": [
+              {
+                "display_url": "pic.x.com/4pQcGAyIpy",
+                "end": 298,
+                "expanded_url": "https://x.com/CitizenGO/status/2103896881935826947/photo/1",
+                "media_key": "3_2103896163426406400",
+                "start": 275,
+                "url": "https://t.co/4pQcGAyIpy"
+              }
+            ]
+          },
+          "id": "2103896881935826947",
+          "lang": "en",
+          "non_public_metrics": {
+            "engagements": 43,
+            "impression_count": 854,
+            "user_profile_clicks": 1
+          },
+          "note_tweet": {
+            "text": "The UN's hypocrisy is astounding. 🏛️🇺🇳\n\n73 million unborn children a year, missing from our world. Christians slaughtered for their faith.\n\nFaithful teachers and doctors dragged through the courts for saying what everyone knew ten years ago.\n\nAnd the UN's priority? A Crimes Against Humanity treaty whose new, undefined words threaten anyone who holds to biological sex, the holiness of marriage and the dignity of life."
+          },
+          "organic_metrics": {
+            "impression_count": 854,
+            "like_count": 15,
+            "reply_count": 1,
+            "retweet_count": 10,
+            "user_profile_clicks": 1
+          },
+          "possibly_sensitive": false,
+          "public_metrics": {
+            "bookmark_count": 1,
+            "impression_count": 854,
+            "like_count": 15,
+            "quote_count": 0,
+            "reply_count": 1,
+            "retweet_count": 10
+          },
+          "reply_settings": "everyone",
+          "text": "The UN's hypocrisy is astounding. 🏛️🇺🇳\n\n73 million unborn children a year, missing from our world. Christians slaughtered for their faith.\n\nFaithful teachers and doctors dragged through the courts for saying what everyone knew ten years ago.\n\nAnd the UN's priority? A Crimes https://t.co/4pQcGAyIpy"
+        },
+        {
+          "attachments": {
+            "media_keys": [
+              "3_2100514323181273088"
+            ]
+          },
+          "conversation_id": "2103881281285272030",
+          "created_at": "2026-09-26T16:16:00.000Z",
+          "display_text_range": [
+            0,
+            272
+          ],
+          "edit_controls": {
+            "editable_until": "2026-09-26T17:16:00.000Z",
+            "edits_remaining": 5,
+            "is_edit_eligible": true
+          },
+          "edit_history_tweet_ids": [
+            "2103881281285272030"
+          ],
+          "entities": {
+            "urls": [
+              {
+                "display_url": "pic.x.com/iwVlzCyhqw",
+                "end": 296,
+                "expanded_url": "https://x.com/CitizenGO/status/2103881281285272030/photo/1",
+                "media_key": "3_2100514323181273088",
+                "start": 273,
+                "url": "https://t.co/iwVlzCyhqw"
+              }
+            ]
+          },
+          "id": "2103881281285272030",
+          "lang": "en",
+          "non_public_metrics": {
+            "engagements": 29,
+            "impression_count": 929,
+            "user_profile_clicks": 6
+          },
+          "note_tweet": {
+            "text": "🚨 We are now 20 MILLION citizens strong and growing.\n\n20 million people standing together to change the world and make their voices impossible to ignore.\nTo every single member of our community: thank you. You are the foundation of CitizenGO.\n\nTogether, we mobilize, apply pressure, and win battles for life, family, and religious freedom.\n20 MILLION voices. One powerful movement. And we’re just getting started."
+          },
+          "organic_metrics": {
+            "impression_count": 929,
+            "like_count": 14,
+            "reply_count": 1,
+            "retweet_count": 4,
+            "user_profile_clicks": 6
+          },
+          "possibly_sensitive": false,
+          "public_metrics": {
+            "bookmark_count": 0,
+            "impression_count": 929,
+            "like_count": 14,
+            "quote_count": 0,
+            "reply_count": 1,
+            "retweet_count": 4
+          },
+          "reply_settings": "everyone",
+          "text": "🚨 We are now 20 MILLION citizens strong and growing.\n\n20 million people standing together to change the world and make their voices impossible to ignore.\nTo every single member of our community: thank you. You are the foundation of CitizenGO.\n\nTogether, we mobilize, apply https://t.co/iwVlzCyhqw"
+        },
+        {
+          "context_annotations": [
+            {
+              "domain": {
+                "description": "Categories within Brand Verticals that narrow down the scope of Brands",
+                "id": "46",
+                "name": "Business Taxonomy"
+              },
+              "entity": {
+                "description": "Brands, companies, advertisers and every non-person handle with the profit intent related to movies, music, television, franchises, venues, theme parks, toys, tourism, hotels",
+                "id": "1557696802391859201",
+                "name": "Entertainment & Leisure Business"
+              }
+            },
+            {
+              "domain": {
+                "description": "A movie genre like Action",
+                "id": "87",
+                "name": "Movie Genre"
+              },
+              "entity": {
+                "description": "Documentary",
+                "id": "856976742166048769",
+                "name": "Documentary films"
+              }
+            },
+            {
+              "domain": {
+                "description": "A taxonomy of user interests. ",
+                "id": "131",
+                "name": "Unified Twitter Taxonomy"
+              },
+              "entity": {
+                "id": "839544274442051584",
+                "name": "Entertainment"
+              }
+            },
+            {
+              "domain": {
+                "description": "A taxonomy of user interests. ",
+                "id": "131",
+                "name": "Unified Twitter Taxonomy"
+              },
+              "entity": {
+                "description": "Documentary",
+                "id": "856976742166048769",
+                "name": "Documentary films"
+              }
+            },
+            {
+              "domain": {
+                "description": "A taxonomy of user interests. ",
+                "id": "131",
+                "name": "Unified Twitter Taxonomy"
+              },
+              "entity": {
+                "description": "Movies",
+                "id": "1072936713134071808",
+                "name": "Movies"
+              }
+            },
+            {
+              "domain": {
+                "description": "A taxonomy of user interests. ",
+                "id": "131",
+                "name": "Unified Twitter Taxonomy"
+              },
+              "entity": {
+                "id": "1276514328007467008",
+                "name": "Movies & TV"
+              }
+            }
+          ],
+          "conversation_id": "2103159774783430707",
+          "created_at": "2026-09-24T16:28:59.000Z",
+          "display_text_range": [
+            0,
+            205
+          ],
+          "edit_controls": {
+            "editable_until": "2026-09-24T17:28:59.000Z",
+            "edits_remaining": 5,
+            "is_edit_eligible": true
+          },
+          "edit_history_tweet_ids": [
+            "2103159774783430707"
+          ],
+          "entities": {
+            "urls": [
+              {
+                "display_url": "x.com/citizengo/stat…",
+                "end": 229,
+                "expanded_url": "https://twitter.com/citizengo/status/2099436522688725129",
+                "start": 206,
+                "url": "https://t.co/zvRtlY8yaG"
+              }
+            ]
+          },
+          "id": "2103159774783430707",
+          "lang": "en",
+          "non_public_metrics": {
+            "engagements": 21,
+            "impression_count": 707,
+            "user_profile_clicks": 0
+          },
+          "organic_metrics": {
+            "impression_count": 707,
+            "like_count": 18,
+            "reply_count": 0,
+            "retweet_count": 2,
+            "user_profile_clicks": 0
+          },
+          "possibly_sensitive": false,
+          "public_metrics": {
+            "bookmark_count": 0,
+            "impression_count": 707,
+            "like_count": 18,
+            "quote_count": 0,
+            "reply_count": 0,
+            "retweet_count": 2
+          },
+          "referenced_tweets": [
+            {
+              "id": "2099436522688725129",
+              "type": "quoted"
+            }
+          ],
+          "reply_settings": "everyone",
+          "text": "Samuel Adrián is FREE!\n\nAfter spending 10 days in prison over a documentary exposing the disturbing reality of the “trans children” industry in Colombia, Mexican activist Samuel Adrián has been released 👏🏼 https://t.co/zvRtlY8yaG"
+        },
+        {
+          "attachments": {
+            "media_keys": [
+              "13_2103139669705621505"
+            ]
+          },
+          "conversation_id": "2103155584287588701",
+          "created_at": "2026-09-24T16:12:20.000Z",
+          "display_text_range": [
+            0,
+            269
+          ],
+          "edit_controls": {
+            "editable_until": "2026-09-24T17:07:23.000Z",
+            "edits_remaining": 2,
+            "is_edit_eligible": true
+          },
+          "edit_history_tweet_ids": [
+            "2103154337560371676",
+            "2103154523631931562",
+            "2103154699339743504",
+            "2103155584287588701"
+          ],
+          "entities": {
+            "urls": [
+              {
+                "display_url": "pic.x.com/TazyGtKRfM",
+                "end": 293,
+                "expanded_url": "https://x.com/CitizenGO/status/2103155584287588701/video/1",
+                "media_key": "13_2103139669705621505",
+                "start": 270,
+                "url": "https://t.co/TazyGtKRfM"
+              }
+            ]
+          },
+          "id": "2103155584287588701",
+          "lang": "en",
+          "non_public_metrics": {
+            "engagements": 53,
+            "impression_count": 648,
+            "user_profile_clicks": 6
+          },
+          "note_tweet": {
+            "entities": {
+              "mentions": [
+                {
+                  "end": 284,
+                  "id": "1447482722675462149",
+                  "start": 270,
+                  "username": "AxiomaHungary"
+                },
+                {
+                  "end": 301,
+                  "id": "1928297244349841408",
+                  "start": 288,
+                  "username": "CitizenGO_HU"
+                }
+              ],
+              "urls": [
+                {
+                  "display_url": "cgo.ac/scWe3IwmE",
+                  "end": 326,
+                  "expanded_url": "https://cgo.ac/scWe3IwmE",
+                  "start": 303,
+                  "url": "https://t.co/5BPWXFzqGF"
+                }
+              ]
+            },
+            "text": "🇭🇺 March for Life in Budapest was an incredible witness for unborn life.\n\nIn the face of new pressures to introduce the abortion pill to Hungary, families and friends united to show the government that we will defend life from conception to natural end.\n\n✍️ Petition by @AxiomaHungary on @CitizenGO_HU:\nhttps://t.co/5BPWXFzqGF"
+          },
+          "organic_metrics": {
+            "impression_count": 648,
+            "like_count": 29,
+            "reply_count": 1,
+            "retweet_count": 9,
+            "user_profile_clicks": 6
+          },
+          "possibly_sensitive": false,
+          "public_metrics": {
+            "bookmark_count": 0,
+            "impression_count": 648,
+            "like_count": 29,
+            "quote_count": 0,
+            "reply_count": 1,
+            "retweet_count": 9
+          },
+          "reply_settings": "everyone",
+          "text": "🇭🇺 March for Life in Budapest was an incredible witness for unborn life.\n\nIn the face of new pressures to introduce the abortion pill to Hungary, families and friends united to show the government that we will defend life from conception to natural end.\n\n✍️ Petition by https://t.co/TazyGtKRfM"
+        },
+        {
+          "attachments": {
+            "media_keys": [
+              "13_2102389982987997184"
+            ]
+          },
+          "context_annotations": [
+            {
+              "domain": {
+                "description": "Named people in the world like Nelson Mandela",
+                "id": "10",
+                "name": "Person"
+              },
+              "entity": {
+                "id": "1275804600105197568",
+                "name": "Michelle Bachelet"
+              }
+            },
+            {
+              "domain": {
+                "description": "Real world events. ",
+                "id": "29",
+                "name": "Events [Entity Service]"
+              },
+              "entity": {
+                "description": "2024 US Presidential Election",
+                "id": "1665772587467653121",
+                "name": "2024 US Presidential Election"
+              }
+            },
+            {
+              "domain": {
+                "description": "Politicians in the world, like Joe Biden",
+                "id": "35",
+                "name": "Politician"
+              },
+              "entity": {
+                "id": "1275804600105197568",
+                "name": "Michelle Bachelet"
+              }
+            },
+            {
+              "domain": {
+                "description": "A taxonomy of user interests. ",
+                "id": "131",
+                "name": "Unified Twitter Taxonomy"
+              },
+              "entity": {
+                "description": "Politics",
+                "id": "847878884917886977",
+                "name": "Politics"
+              }
+            },
+            {
+              "domain": {
+                "description": "A taxonomy of user interests. ",
+                "id": "131",
+                "name": "Unified Twitter Taxonomy"
+              },
+              "entity": {
+                "id": "1291447199595782144",
+                "name": "United States politics"
+              }
+            },
+            {
+              "domain": {
+                "description": "A taxonomy of user interests. ",
+                "id": "131",
+                "name": "Unified Twitter Taxonomy"
+              },
+              "entity": {
+                "description": "2024 US Presidential Election",
+                "id": "1665772587467653121",
+                "name": "2024 US Presidential Election"
+              }
+            },
+            {
+              "domain": {
+                "description": "Named people in the world like Nelson Mandela",
+                "id": "10",
+                "name": "Person"
+              },
+              "entity": {
+                "description": "President of Chile Michelle Bachelet",
+                "id": "895656597250228224",
+                "name": "Michelle Bachelet"
+              }
+            },
+            {
+              "domain": {
+                "description": "Politicians in the world, like Joe Biden",
+                "id": "35",
+                "name": "Politician"
+              },
+              "entity": {
+                "description": "President of Chile Michelle Bachelet",
+                "id": "895656597250228224",
+                "name": "Michelle Bachelet"
+              }
+            },
+            {
+              "domain": {
+                "description": "Top level entities that describe a Brands industry",
+                "id": "45",
+                "name": "Brand Vertical"
+              },
+              "entity": {
+                "id": "781974596157251587",
+                "name": "Government/Education"
+              }
+            },
+            {
+              "domain": {
+                "description": "Entity Service top level domain, every item that is in Entity Service should be in this domain",
+                "id": "30",
+                "name": "Entities [Entity Service]"
+              },
+              "entity": {
+                "id": "781974597226729473",
+                "name": "Non-profit - Government/Education"
+              }
+            },
+            {
+              "domain": {
+                "description": "Brands and Companies",
+                "id": "47",
+                "name": "Brand"
+              },
+              "entity": {
+                "description": "Global conversation about the United Nations and all related efforts.",
+                "id": "10044311823",
+                "name": "United Nations"
+              }
+            },
+            {
+              "domain": {
+                "description": "A section of a government, like The Supreme Court",
+                "id": "88",
+                "name": "Political Body"
+              },
+              "entity": {
+                "description": "Global conversation about the United Nations and all related efforts.",
+                "id": "10044311823",
+                "name": "United Nations"
+              }
+            },
+            {
+              "domain": {
+                "description": "A taxonomy of user interests. ",
+                "id": "131",
+                "name": "Unified Twitter Taxonomy"
+              },
+              "entity": {
+                "description": "Global conversation about the United Nations and all related efforts.",
+                "id": "10044311823",
+                "name": "United Nations"
+              }
+            },
+            {
+              "domain": {
+                "description": "A taxonomy of user interests. ",
+                "id": "131",
+                "name": "Unified Twitter Taxonomy"
+              },
+              "entity": {
+                "description": "Politics",
+                "id": "847878884917886977",
+                "name": "Politics"
+              }
+            },
+            {
+              "domain": {
+                "description": "A taxonomy of user interests. ",
+                "id": "131",
+                "name": "Unified Twitter Taxonomy"
+              },
+              "entity": {
+                "description": "President of Chile Michelle Bachelet",
+                "id": "895656597250228224",
+                "name": "Michelle Bachelet"
+              }
+            },
+            {
+              "domain": {
+                "description": "A taxonomy of user interests. ",
+                "id": "131",
+                "name": "Unified Twitter Taxonomy"
+              },
+              "entity": {
+                "description": "Political Body",
+                "id": "1068583660914266113",
+                "name": "Government institutions"
+              }
+            },
+            {
+              "domain": {
+                "description": "A taxonomy of user interests. ",
+                "id": "131",
+                "name": "Unified Twitter Taxonomy"
+              },
+              "entity": {
+                "description": "Politician",
+                "id": "1070032753834438656",
+                "name": "Political figures"
+              }
+            }
+          ],
+          "conversation_id": "2102391050727797039",
+          "created_at": "2026-09-22T13:34:21.000Z",
+          "display_text_range": [
+            0,
+            274
+          ],
+          "edit_controls": {
+            "editable_until": "2026-09-22T14:34:21.000Z",
+            "edits_remaining": 5,
+            "is_edit_eligible": true
+          },
+          "edit_history_tweet_ids": [
+            "2102391050727797039"
+          ],
+          "entities": {
+            "urls": [
+              {
+                "display_url": "pic.x.com/d3Jmv6yQHs",
+                "end": 298,
+                "expanded_url": "https://x.com/CitizenGO/status/2102391050727797039/video/1",
+                "media_key": "13_2102389982987997184",
+                "start": 275,
+                "url": "https://t.co/d3Jmv6yQHs"
+              }
+            ]
+          },
+          "id": "2102391050727797039",
+          "lang": "en",
+          "non_public_metrics": {
+            "engagements": 45,
+            "impression_count": 1312,
+            "user_profile_clicks": 5
+          },
+          "note_tweet": {
+            "text": "🔥🚨 LET’S GO! Michelle Bachelet, the President who legalized abortion in Chile and introduced gender to pre-schools is OUT of the race to lead the UN. 🇺🇳\n\nThis is a HUGE. THANK YOU to everyone who signed, shared and stood for life, family and sovereignty! All 300,000 of you. Your action CHANGES the world! 🌎🩵"
+          },
+          "organic_metrics": {
+            "impression_count": 1312,
+            "like_count": 24,
+            "reply_count": 0,
+            "retweet_count": 4,
+            "user_profile_clicks": 5
+          },
+          "possibly_sensitive": false,
+          "promoted_metrics": {
+            "impression_count": null,
+            "like_count": null,
+            "reply_count": null,
+            "retweet_count": null,
+            "user_profile_clicks": null
+          },
+          "public_metrics": {
+            "bookmark_count": 0,
+            "impression_count": 1312,
+            "like_count": 24,
+            "quote_count": 5,
+            "reply_count": 0,
+            "retweet_count": 4
+          },
+          "reply_settings": "everyone",
+          "text": "🔥🚨 LET’S GO! Michelle Bachelet, the President who legalized abortion in Chile and introduced gender to pre-schools is OUT of the race to lead the UN. 🇺🇳\n\nThis is a HUGE. THANK YOU to everyone who signed, shared and stood for life, family and sovereignty! All 300,000 of you. https://t.co/d3Jmv6yQHs"
+        }
+      ],
+      "errors": [
+        {
+          "detail": "The 'promoted_metrics.impression_count' field cannot be queried for Posts that have not been promoted.",
+          "resource_id": "2105722250355724555",
+          "resource_type": "tweet",
+          "section": "data",
+          "title": "Disallowed Resource",
+          "type": "https://api.x.com/2/problems/disallowed-resource"
+        },
+        {
+          "detail": "The 'promoted_metrics.like_count' field cannot be queried for Posts that have not been promoted.",
+          "resource_id": "2105722250355724555",
+          "resource_type": "tweet",
+          "section": "data",
+          "title": "Disallowed Resource",
+          "type": "https://api.x.com/2/problems/disallowed-resource"
+        },
+        {
+          "detail": "The 'promoted_metrics.reply_count' field cannot be queried for Posts that have not been promoted.",
+          "resource_id": "2105722250355724555",
+          "resource_type": "tweet",
+          "section": "data",
+          "title": "Disallowed Resource",
+          "type": "https://api.x.com/2/problems/disallowed-resource"
+        },
+        {
+          "detail": "The 'promoted_metrics.retweet_count' field cannot be queried for Posts that have not been promoted.",
+          "resource_id": "2105722250355724555",
+          "resource_type": "tweet",
+          "section": "data",
+          "title": "Disallowed Resource",
+          "type": "https://api.x.com/2/problems/disallowed-resource"
+        },
+        {
+          "detail": "The 'promoted_metrics.user_profile_clicks' field cannot be queried for Posts that have not been promoted.",
+          "resource_id": "2105722250355724555",
+          "resource_type": "tweet",
+          "section": "data",
+          "title": "Disallowed Resource",
+          "type": "https://api.x.com/2/problems/disallowed-resource"
+        },
+        {
+          "detail": "The 'promoted_metrics.impression_count' field cannot be queried for Posts that have not been promoted.",
+          "resource_id": "2105683476800266493",
+          "resource_type": "tweet",
+          "section": "data",
+          "title": "Disallowed Resource",
+          "type": "https://api.x.com/2/problems/disallowed-resource"
+        },
+        {
+          "detail": "The 'promoted_metrics.like_count' field cannot be queried for Posts that have not been promoted.",
+          "resource_id": "2105683476800266493",
+          "resource_type": "tweet",
+          "section": "data",
+          "title": "Disallowed Resource",
+          "type": "https://api.x.com/2/problems/disallowed-resource"
+        },
+        {
+          "detail": "The 'promoted_metrics.reply_count' field cannot be queried for Posts that have not been promoted.",
+          "resource_id": "2105683476800266493",
+          "resource_type": "tweet",
+          "section": "data",
+          "title": "Disallowed Resource",
+          "type": "https://api.x.com/2/problems/disallowed-resource"
+        },
+        {
+          "detail": "The 'promoted_metrics.retweet_count' field cannot be queried for Posts that have not been promoted.",
+          "resource_id": "2105683476800266493",
+          "resource_type": "tweet",
+          "section": "data",
+          "title": "Disallowed Resource",
+          "type": "https://api.x.com/2/problems/disallowed-resource"
+        },
+        {
+          "detail": "The 'promoted_metrics.user_profile_clicks' field cannot be queried for Posts that have not been promoted.",
+          "resource_id": "2105683476800266493",
+          "resource_type": "tweet",
+          "section": "data",
+          "title": "Disallowed Resource",
+          "type": "https://api.x.com/2/problems/disallowed-resource"
+        },
+        {
+          "detail": "The 'promoted_metrics.impression_count' field cannot be queried for Posts that have not been promoted.",
+          "resource_id": "2105533084321849507",
+          "resource_type": "tweet",
+          "section": "data",
+          "title": "Disallowed Resource",
+          "type": "https://api.x.com/2/problems/disallowed-resource"
+        },
+        {
+          "detail": "The 'promoted_metrics.like_count' field cannot be queried for Posts that have not been promoted.",
+          "resource_id": "2105533084321849507",
+          "resource_type": "tweet",
+          "section": "data",
+          "title": "Disallowed Resource",
+          "type": "https://api.x.com/2/problems/disallowed-resource"
+        },
+        {
+          "detail": "The 'promoted_metrics.reply_count' field cannot be queried for Posts that have not been promoted.",
+          "resource_id": "2105533084321849507",
+          "resource_type": "tweet",
+          "section": "data",
+          "title": "Disallowed Resource",
+          "type": "https://api.x.com/2/problems/disallowed-resource"
+        },
+        {
+          "detail": "The 'promoted_metrics.retweet_count' field cannot be queried for Posts that have not been promoted.",
+          "resource_id": "2105533084321849507",
+          "resource_type": "tweet",
+          "section": "data",
+          "title": "Disallowed Resource",
+          "type": "https://api.x.com/2/problems/disallowed-resource"
+        },
+        {
+          "detail": "The 'promoted_metrics.user_profile_clicks' field cannot be queried for Posts that have not been promoted.",
+          "resource_id": "2105533084321849507",
+          "resource_type": "tweet",
+          "section": "data",
+          "title": "Disallowed Resource",
+          "type": "https://api.x.com/2/problems/disallowed-resource"
+        },
+        {
+          "detail": "The 'promoted_metrics.impression_count' field cannot be queried for Posts that have not been promoted.",
+          "resource_id": "2105418632549572979",
+          "resource_type": "tweet",
+          "section": "data",
+          "title": "Disallowed Resource",
+          "type": "https://api.x.com/2/problems/disallowed-resource"
+        },
+        {
+          "detail": "The 'promoted_metrics.like_count' field cannot be queried for Posts that have not been promoted.",
+          "resource_id": "2105418632549572979",
+          "resource_type": "tweet",
+          "section": "data",
+          "title": "Disallowed Resource",
+          "type": "https://api.x.com/2/problems/disallowed-resource"
+        },
+        {
+          "detail": "The 'promoted_metrics.reply_count' field cannot be queried for Posts that have not been promoted.",
+          "resource_id": "2105418632549572979",
+          "resource_type": "tweet",
+          "section": "data",
+          "title": "Disallowed Resource",
+          "type": "https://api.x.com/2/problems/disallowed-resource"
+        },
+        {
+          "detail": "The 'promoted_metrics.retweet_count' field cannot be queried for Posts that have not been promoted.",
+          "resource_id": "2105418632549572979",
+          "resource_type": "tweet",
+          "section": "data",
+          "title": "Disallowed Resource",
+          "type": "https://api.x.com/2/problems/disallowed-resource"
+        },
+        {
+          "detail": "The 'promoted_metrics.user_profile_clicks' field cannot be queried for Posts that have not been promoted.",
+          "resource_id": "2105418632549572979",
+          "resource_type": "tweet",
+          "section": "data",
+          "title": "Disallowed Resource",
+          "type": "https://api.x.com/2/problems/disallowed-resource"
+        },
+        {
+          "detail": "The 'promoted_metrics.impression_count' field cannot be queried for Posts that have not been promoted.",
+          "resource_id": "2105395264752345190",
+          "resource_type": "tweet",
+          "section": "data",
+          "title": "Disallowed Resource",
+          "type": "https://api.x.com/2/problems/disallowed-resource"
+        },
+        {
+          "detail": "The 'promoted_metrics.like_count' field cannot be queried for Posts that have not been promoted.",
+          "resource_id": "2105395264752345190",
+          "resource_type": "tweet",
+          "section": "data",
+          "title": "Disallowed Resource",
+          "type": "https://api.x.com/2/problems/disallowed-resource"
+        },
+        {
+          "detail": "The 'promoted_metrics.reply_count' field cannot be queried for Posts that have not been promoted.",
+          "resource_id": "2105395264752345190",
+          "resource_type": "tweet",
+          "section": "data",
+          "title": "Disallowed Resource",
+          "type": "https://api.x.com/2/problems/disallowed-resource"
+        },
+        {
+          "detail": "The 'promoted_metrics.retweet_count' field cannot be queried for Posts that have not been promoted.",
+          "resource_id": "2105395264752345190",
+          "resource_type": "tweet",
+          "section": "data",
+          "title": "Disallowed Resource",
+          "type": "https://api.x.com/2/problems/disallowed-resource"
+        },
+        {
+          "detail": "The 'promoted_metrics.user_profile_clicks' field cannot be queried for Posts that have not been promoted.",
+          "resource_id": "2105395264752345190",
+          "resource_type": "tweet",
+          "section": "data",
+          "title": "Disallowed Resource",
+          "type": "https://api.x.com/2/problems/disallowed-resource"
+        },
+        {
+          "detail": "The 'promoted_metrics.impression_count' field cannot be queried for Posts that have not been promoted.",
+          "resource_id": "2105302128139100645",
+          "resource_type": "tweet",
+          "section": "data",
+          "title": "Disallowed Resource",
+          "type": "https://api.x.com/2/problems/disallowed-resource"
+        },
+        {
+          "detail": "The 'promoted_metrics.like_count' field cannot be queried for Posts that have not been promoted.",
+          "resource_id": "2105302128139100645",
+          "resource_type": "tweet",
+          "section": "data",
+          "title": "Disallowed Resource",
+          "type": "https://api.x.com/2/problems/disallowed-resource"
+        },
+        {
+          "detail": "The 'promoted_metrics.reply_count' field cannot be queried for Posts that have not been promoted.",
+          "resource_id": "2105302128139100645",
+          "resource_type": "tweet",
+          "section": "data",
+          "title": "Disallowed Resource",
+          "type": "https://api.x.com/2/problems/disallowed-resource"
+        },
+        {
+          "detail": "The 'promoted_metrics.retweet_count' field cannot be queried for Posts that have not been promoted.",
+          "resource_id": "2105302128139100645",
+          "resource_type": "tweet",
+          "section": "data",
+          "title": "Disallowed Resource",
+          "type": "https://api.x.com/2/problems/disallowed-resource"
+        },
+        {
+          "detail": "The 'promoted_metrics.user_profile_clicks' field cannot be queried for Posts that have not been promoted.",
+          "resource_id": "2105302128139100645",
+          "resource_type": "tweet",
+          "section": "data",
+          "title": "Disallowed Resource",
+          "type": "https://api.x.com/2/problems/disallowed-resource"
+        },
+        {
+          "detail": "The 'promoted_metrics.impression_count' field cannot be queried for Posts that have not been promoted.",
+          "resource_id": "2105278380233126127",
+          "resource_type": "tweet",
+          "section": "data",
+          "title": "Disallowed Resource",
+          "type": "https://api.x.com/2/problems/disallowed-resource"
+        },
+        {
+          "detail": "The 'promoted_metrics.like_count' field cannot be queried for Posts that have not been promoted.",
+          "resource_id": "2105278380233126127",
+          "resource_type": "tweet",
+          "section": "data",
+          "title": "Disallowed Resource",
+          "type": "https://api.x.com/2/problems/disallowed-resource"
+        },
+        {
+          "detail": "The 'promoted_metrics.reply_count' field cannot be queried for Posts that have not been promoted.",
+          "resource_id": "2105278380233126127",
+          "resource_type": "tweet",
+          "section": "data",
+          "title": "Disallowed Resource",
+          "type": "https://api.x.com/2/problems/disallowed-resource"
+        },
+        {
+          "detail": "The 'promoted_metrics.retweet_count' field cannot be queried for Posts that have not been promoted.",
+          "resource_id": "2105278380233126127",
+          "resource_type": "tweet",
+          "section": "data",
+          "title": "Disallowed Resource",
+          "type": "https://api.x.com/2/problems/disallowed-resource"
+        },
+        {
+          "detail": "The 'promoted_metrics.user_profile_clicks' field cannot be queried for Posts that have not been promoted.",
+          "resource_id": "2105278380233126127",
+          "resource_type": "tweet",
+          "section": "data",
+          "title": "Disallowed Resource",
+          "type": "https://api.x.com/2/problems/disallowed-resource"
+        },
+        {
+          "detail": "The 'promoted_metrics.impression_count' field cannot be queried for Posts that have not been promoted.",
+          "resource_id": "2104962784714752251",
+          "resource_type": "tweet",
+          "section": "data",
+          "title": "Disallowed Resource",
+          "type": "https://api.x.com/2/problems/disallowed-resource"
+        },
+        {
+          "detail": "The 'promoted_metrics.like_count' field cannot be queried for Posts that have not been promoted.",
+          "resource_id": "2104962784714752251",
+          "resource_type": "tweet",
+          "section": "data",
+          "title": "Disallowed Resource",
+          "type": "https://api.x.com/2/problems/disallowed-resource"
+        },
+        {
+          "detail": "The 'promoted_metrics.reply_count' field cannot be queried for Posts that have not been promoted.",
+          "resource_id": "2104962784714752251",
+          "resource_type": "tweet",
+          "section": "data",
+          "title": "Disallowed Resource",
+          "type": "https://api.x.com/2/problems/disallowed-resource"
+        },
+        {
+          "detail": "The 'promoted_metrics.retweet_count' field cannot be queried for Posts that have not been promoted.",
+          "resource_id": "2104962784714752251",
+          "resource_type": "tweet",
+          "section": "data",
+          "title": "Disallowed Resource",
+          "type": "https://api.x.com/2/problems/disallowed-resource"
+        },
+        {
+          "detail": "The 'promoted_metrics.user_profile_clicks' field cannot be queried for Posts that have not been promoted.",
+          "resource_id": "2104962784714752251",
+          "resource_type": "tweet",
+          "section": "data",
+          "title": "Disallowed Resource",
+          "type": "https://api.x.com/2/problems/disallowed-resource"
+        },
+        {
+          "detail": "The 'promoted_metrics.impression_count' field cannot be queried for Posts that have not been promoted.",
+          "resource_id": "2104958200525234228",
+          "resource_type": "tweet",
+          "section": "data",
+          "title": "Disallowed Resource",
+          "type": "https://api.x.com/2/problems/disallowed-resource"
+        },
+        {
+          "detail": "The 'promoted_metrics.like_count' field cannot be queried for Posts that have not been promoted.",
+          "resource_id": "2104958200525234228",
+          "resource_type": "tweet",
+          "section": "data",
+          "title": "Disallowed Resource",
+          "type": "https://api.x.com/2/problems/disallowed-resource"
+        },
+        {
+          "detail": "The 'promoted_metrics.reply_count' field cannot be queried for Posts that have not been promoted.",
+          "resource_id": "2104958200525234228",
+          "resource_type": "tweet",
+          "section": "data",
+          "title": "Disallowed Resource",
+          "type": "https://api.x.com/2/problems/disallowed-resource"
+        },
+        {
+          "detail": "The 'promoted_metrics.retweet_count' field cannot be queried for Posts that have not been promoted.",
+          "resource_id": "2104958200525234228",
+          "resource_type": "tweet",
+          "section": "data",
+          "title": "Disallowed Resource",
+          "type": "https://api.x.com/2/problems/disallowed-resource"
+        },
+        {
+          "detail": "The 'promoted_metrics.user_profile_clicks' field cannot be queried for Posts that have not been promoted.",
+          "resource_id": "2104958200525234228",
+          "resource_type": "tweet",
+          "section": "data",
+          "title": "Disallowed Resource",
+          "type": "https://api.x.com/2/problems/disallowed-resource"
+        },
+        {
+          "detail": "The 'promoted_metrics.impression_count' field cannot be queried for Posts that have not been promoted.",
+          "resource_id": "2104611593028059188",
+          "resource_type": "tweet",
+          "section": "data",
+          "title": "Disallowed Resource",
+          "type": "https://api.x.com/2/problems/disallowed-resource"
+        },
+        {
+          "detail": "The 'promoted_metrics.like_count' field cannot be queried for Posts that have not been promoted.",
+          "resource_id": "2104611593028059188",
+          "resource_type": "tweet",
+          "section": "data",
+          "title": "Disallowed Resource",
+          "type": "https://api.x.com/2/problems/disallowed-resource"
+        },
+        {
+          "detail": "The 'promoted_metrics.reply_count' field cannot be queried for Posts that have not been promoted.",
+          "resource_id": "2104611593028059188",
+          "resource_type": "tweet",
+          "section": "data",
+          "title": "Disallowed Resource",
+          "type": "https://api.x.com/2/problems/disallowed-resource"
+        },
+        {
+          "detail": "The 'promoted_metrics.retweet_count' field cannot be queried for Posts that have not been promoted.",
+          "resource_id": "2104611593028059188",
+          "resource_type": "tweet",
+          "section": "data",
+          "title": "Disallowed Resource",
+          "type": "https://api.x.com/2/problems/disallowed-resource"
+        },
+        {
+          "detail": "The 'promoted_metrics.user_profile_clicks' field cannot be queried for Posts that have not been promoted.",
+          "resource_id": "2104611593028059188",
+          "resource_type": "tweet",
+          "section": "data",
+          "title": "Disallowed Resource",
+          "type": "https://api.x.com/2/problems/disallowed-resource"
+        },
+        {
+          "detail": "The 'promoted_metrics.impression_count' field cannot be queried for Posts that have not been promoted.",
+          "resource_id": "2104588440444751984",
+          "resource_type": "tweet",
+          "section": "data",
+          "title": "Disallowed Resource",
+          "type": "https://api.x.com/2/problems/disallowed-resource"
+        },
+        {
+          "detail": "The 'promoted_metrics.like_count' field cannot be queried for Posts that have not been promoted.",
+          "resource_id": "2104588440444751984",
+          "resource_type": "tweet",
+          "section": "data",
+          "title": "Disallowed Resource",
+          "type": "https://api.x.com/2/problems/disallowed-resource"
+        },
+        {
+          "detail": "The 'promoted_metrics.reply_count' field cannot be queried for Posts that have not been promoted.",
+          "resource_id": "2104588440444751984",
+          "resource_type": "tweet",
+          "section": "data",
+          "title": "Disallowed Resource",
+          "type": "https://api.x.com/2/problems/disallowed-resource"
+        },
+        {
+          "detail": "The 'promoted_metrics.retweet_count' field cannot be queried for Posts that have not been promoted.",
+          "resource_id": "2104588440444751984",
+          "resource_type": "tweet",
+          "section": "data",
+          "title": "Disallowed Resource",
+          "type": "https://api.x.com/2/problems/disallowed-resource"
+        },
+        {
+          "detail": "The 'promoted_metrics.user_profile_clicks' field cannot be queried for Posts that have not been promoted.",
+          "resource_id": "2104588440444751984",
+          "resource_type": "tweet",
+          "section": "data",
+          "title": "Disallowed Resource",
+          "type": "https://api.x.com/2/problems/disallowed-resource"
+        },
+        {
+          "detail": "The 'promoted_metrics.impression_count' field cannot be queried for Posts that have not been promoted.",
+          "resource_id": "2103896937217064967",
+          "resource_type": "tweet",
+          "section": "data",
+          "title": "Disallowed Resource",
+          "type": "https://api.x.com/2/problems/disallowed-resource"
+        },
+        {
+          "detail": "The 'promoted_metrics.like_count' field cannot be queried for Posts that have not been promoted.",
+          "resource_id": "2103896937217064967",
+          "resource_type": "tweet",
+          "section": "data",
+          "title": "Disallowed Resource",
+          "type": "https://api.x.com/2/problems/disallowed-resource"
+        },
+        {
+          "detail": "The 'promoted_metrics.reply_count' field cannot be queried for Posts that have not been promoted.",
+          "resource_id": "2103896937217064967",
+          "resource_type": "tweet",
+          "section": "data",
+          "title": "Disallowed Resource",
+          "type": "https://api.x.com/2/problems/disallowed-resource"
+        },
+        {
+          "detail": "The 'promoted_metrics.retweet_count' field cannot be queried for Posts that have not been promoted.",
+          "resource_id": "2103896937217064967",
+          "resource_type": "tweet",
+          "section": "data",
+          "title": "Disallowed Resource",
+          "type": "https://api.x.com/2/problems/disallowed-resource"
+        },
+        {
+          "detail": "The 'promoted_metrics.user_profile_clicks' field cannot be queried for Posts that have not been promoted.",
+          "resource_id": "2103896937217064967",
+          "resource_type": "tweet",
+          "section": "data",
+          "title": "Disallowed Resource",
+          "type": "https://api.x.com/2/problems/disallowed-resource"
+        },
+        {
+          "detail": "The 'promoted_metrics.impression_count' field cannot be queried for Posts that have not been promoted.",
+          "resource_id": "2103896881935826947",
+          "resource_type": "tweet",
+          "section": "data",
+          "title": "Disallowed Resource",
+          "type": "https://api.x.com/2/problems/disallowed-resource"
+        },
+        {
+          "detail": "The 'promoted_metrics.like_count' field cannot be queried for Posts that have not been promoted.",
+          "resource_id": "2103896881935826947",
+          "resource_type": "tweet",
+          "section": "data",
+          "title": "Disallowed Resource",
+          "type": "https://api.x.com/2/problems/disallowed-resource"
+        },
+        {
+          "detail": "The 'promoted_metrics.reply_count' field cannot be queried for Posts that have not been promoted.",
+          "resource_id": "2103896881935826947",
+          "resource_type": "tweet",
+          "section": "data",
+          "title": "Disallowed Resource",
+          "type": "https://api.x.com/2/problems/disallowed-resource"
+        },
+        {
+          "detail": "The 'promoted_metrics.retweet_count' field cannot be queried for Posts that have not been promoted.",
+          "resource_id": "2103896881935826947",
+          "resource_type": "tweet",
+          "section": "data",
+          "title": "Disallowed Resource",
+          "type": "https://api.x.com/2/problems/disallowed-resource"
+        },
+        {
+          "detail": "The 'promoted_metrics.user_profile_clicks' field cannot be queried for Posts that have not been promoted.",
+          "resource_id": "2103896881935826947",
+          "resource_type": "tweet",
+          "section": "data",
+          "title": "Disallowed Resource",
+          "type": "https://api.x.com/2/problems/disallowed-resource"
+        },
+        {
+          "detail": "The 'promoted_metrics.impression_count' field cannot be queried for Posts that have not been promoted.",
+          "resource_id": "2103881281285272030",
+          "resource_type": "tweet",
+          "section": "data",
+          "title": "Disallowed Resource",
+          "type": "https://api.x.com/2/problems/disallowed-resource"
+        },
+        {
+          "detail": "The 'promoted_metrics.like_count' field cannot be queried for Posts that have not been promoted.",
+          "resource_id": "2103881281285272030",
+          "resource_type": "tweet",
+          "section": "data",
+          "title": "Disallowed Resource",
+          "type": "https://api.x.com/2/problems/disallowed-resource"
+        },
+        {
+          "detail": "The 'promoted_metrics.reply_count' field cannot be queried for Posts that have not been promoted.",
+          "resource_id": "2103881281285272030",
+          "resource_type": "tweet",
+          "section": "data",
+          "title": "Disallowed Resource",
+          "type": "https://api.x.com/2/problems/disallowed-resource"
+        },
+        {
+          "detail": "The 'promoted_metrics.retweet_count' field cannot be queried for Posts that have not been promoted.",
+          "resource_id": "2103881281285272030",
+          "resource_type": "tweet",
+          "section": "data",
+          "title": "Disallowed Resource",
+          "type": "https://api.x.com/2/problems/disallowed-resource"
+        },
+        {
+          "detail": "The 'promoted_metrics.user_profile_clicks' field cannot be queried for Posts that have not been promoted.",
+          "resource_id": "2103881281285272030",
+          "resource_type": "tweet",
+          "section": "data",
+          "title": "Disallowed Resource",
+          "type": "https://api.x.com/2/problems/disallowed-resource"
+        },
+        {
+          "detail": "The 'promoted_metrics.impression_count' field cannot be queried for Posts that have not been promoted.",
+          "resource_id": "2103159774783430707",
+          "resource_type": "tweet",
+          "section": "data",
+          "title": "Disallowed Resource",
+          "type": "https://api.x.com/2/problems/disallowed-resource"
+        },
+        {
+          "detail": "The 'promoted_metrics.like_count' field cannot be queried for Posts that have not been promoted.",
+          "resource_id": "2103159774783430707",
+          "resource_type": "tweet",
+          "section": "data",
+          "title": "Disallowed Resource",
+          "type": "https://api.x.com/2/problems/disallowed-resource"
+        },
+        {
+          "detail": "The 'promoted_metrics.reply_count' field cannot be queried for Posts that have not been promoted.",
+          "resource_id": "2103159774783430707",
+          "resource_type": "tweet",
+          "section": "data",
+          "title": "Disallowed Resource",
+          "type": "https://api.x.com/2/problems/disallowed-resource"
+        },
+        {
+          "detail": "The 'promoted_metrics.retweet_count' field cannot be queried for Posts that have not been promoted.",
+          "resource_id": "2103159774783430707",
+          "resource_type": "tweet",
+          "section": "data",
+          "title": "Disallowed Resource",
+          "type": "https://api.x.com/2/problems/disallowed-resource"
+        },
+        {
+          "detail": "The 'promoted_metrics.user_profile_clicks' field cannot be queried for Posts that have not been promoted.",
+          "resource_id": "2103159774783430707",
+          "resource_type": "tweet",
+          "section": "data",
+          "title": "Disallowed Resource",
+          "type": "https://api.x.com/2/problems/disallowed-resource"
+        },
+        {
+          "detail": "The 'promoted_metrics.impression_count' field cannot be queried for Posts that have not been promoted.",
+          "resource_id": "2103155584287588701",
+          "resource_type": "tweet",
+          "section": "data",
+          "title": "Disallowed Resource",
+          "type": "https://api.x.com/2/problems/disallowed-resource"
+        },
+        {
+          "detail": "The 'promoted_metrics.like_count' field cannot be queried for Posts that have not been promoted.",
+          "resource_id": "2103155584287588701",
+          "resource_type": "tweet",
+          "section": "data",
+          "title": "Disallowed Resource",
+          "type": "https://api.x.com/2/problems/disallowed-resource"
+        },
+        {
+          "detail": "The 'promoted_metrics.reply_count' field cannot be queried for Posts that have not been promoted.",
+          "resource_id": "2103155584287588701",
+          "resource_type": "tweet",
+          "section": "data",
+          "title": "Disallowed Resource",
+          "type": "https://api.x.com/2/problems/disallowed-resource"
+        },
+        {
+          "detail": "The 'promoted_metrics.retweet_count' field cannot be queried for Posts that have not been promoted.",
+          "resource_id": "2103155584287588701",
+          "resource_type": "tweet",
+          "section": "data",
+          "title": "Disallowed Resource",
+          "type": "https://api.x.com/2/problems/disallowed-resource"
+        },
+        {
+          "detail": "The 'promoted_metrics.user_profile_clicks' field cannot be queried for Posts that have not been promoted.",
+          "resource_id": "2103155584287588701",
+          "resource_type": "tweet",
+          "section": "data",
+          "title": "Disallowed Resource",
+          "type": "https://api.x.com/2/problems/disallowed-resource"
+        },
+        {
+          "detail": "The 'promoted_metrics.impression_count' field cannot be queried for Posts that have not been promoted.",
+          "resource_id": "unknown",
+          "resource_type": "tweet",
+          "section": "data",
+          "title": "Disallowed Resource",
+          "type": "https://api.x.com/2/problems/disallowed-resource"
+        },
+        {
+          "detail": "The 'promoted_metrics.like_count' field cannot be queried for Posts that have not been promoted.",
+          "resource_id": "unknown",
+          "resource_type": "tweet",
+          "section": "data",
+          "title": "Disallowed Resource",
+          "type": "https://api.x.com/2/problems/disallowed-resource"
+        },
+        {
+          "detail": "The 'promoted_metrics.reply_count' field cannot be queried for Posts that have not been promoted.",
+          "resource_id": "unknown",
+          "resource_type": "tweet",
+          "section": "data",
+          "title": "Disallowed Resource",
+          "type": "https://api.x.com/2/problems/disallowed-resource"
+        },
+        {
+          "detail": "The 'promoted_metrics.retweet_count' field cannot be queried for Posts that have not been promoted.",
+          "resource_id": "unknown",
+          "resource_type": "tweet",
+          "section": "data",
+          "title": "Disallowed Resource",
+          "type": "https://api.x.com/2/problems/disallowed-resource"
+        },
+        {
+          "detail": "The 'promoted_metrics.user_profile_clicks' field cannot be queried for Posts that have not been promoted.",
+          "resource_id": "unknown",
+          "resource_type": "tweet",
+          "section": "data",
+          "title": "Disallowed Resource",
+          "type": "https://api.x.com/2/problems/disallowed-resource"
+        }
+      ],
+      "includes": {
+        "media": [
+          {
+            "height": 1004,
+            "media_key": "3_2105722106948251648",
+            "type": "photo",
+            "url": "https://pbs.twimg.com/media/HTkHGYRWcAAwygC.jpg",
+            "width": 760
+          },
+          {
+            "height": 3076,
+            "media_key": "3_2105533064382132224",
+            "type": "photo",
+            "url": "https://pbs.twimg.com/media/HThbKp1WMAAO0pQ.jpg",
+            "width": 4096
+          },
+          {
+            "height": 3076,
+            "media_key": "3_2105533064356990976",
+            "type": "photo",
+            "url": "https://pbs.twimg.com/media/HThbKpvWkAA6los.jpg",
+            "width": 4096
+          },
+          {
+            "duration_ms": 9509,
+            "height": 1280,
+            "media_key": "13_2105418109800599552",
+            "non_public_metrics": {
+              "playback_0_count": 619,
+              "playback_100_count": 191,
+              "playback_25_count": 415,
+              "playback_50_count": 288,
+              "playback_75_count": 248
+            },
+            "organic_metrics": {
+              "playback_0_count": 619,
+              "playback_100_count": 191,
+              "playback_25_count": 415,
+              "playback_50_count": 288,
+              "playback_75_count": 248,
+              "view_count": 392
+            },
+            "preview_image_url": "https://pbs.twimg.com/amplify_video_thumb/2105418109800599552/img/GE-ap9Y1SlyH92cu.jpg",
+            "public_metrics": {
+              "view_count": 392
+            },
+            "type": "video",
+            "variants": [
+              {
+                "bit_rate": 632000,
+                "content_type": "video/mp4",
+                "url": "https://video.twimg.com/amplify_video/2105418109800599552/vid/avc1/320x568/auYdZpqI6BvnBFZZ.mp4"
+              },
+              {
+                "bit_rate": 950000,
+                "content_type": "video/mp4",
+                "url": "https://video.twimg.com/amplify_video/2105418109800599552/vid/avc1/480x852/7FvcBT8QHIQw_7U8.mp4"
+              },
+              {
+                "bit_rate": 2176000,
+                "content_type": "video/mp4",
+                "url": "https://video.twimg.com/amplify_video/2105418109800599552/vid/avc1/720x1280/aqLuVnztT8dfmCHS.mp4"
+              },
+              {
+                "content_type": "application/x-mpegURL",
+                "url": "https://video.twimg.com/amplify_video/2105418109800599552/pl/FiQFc3oNEXJiqeHe.m3u8"
+              }
+            ],
+            "width": 720
+          },
+          {
+            "height": 2731,
+            "media_key": "3_2105394638467067905",
+            "type": "photo",
+            "url": "https://pbs.twimg.com/media/HTfdRNHXcAEzZ8d.jpg",
+            "width": 4096
+          },
+          {
+            "height": 2731,
+            "media_key": "3_2105394669844602881",
+            "type": "photo",
+            "url": "https://pbs.twimg.com/media/HTfdTCAWoAEHUm8.jpg",
+            "width": 4096
+          },
+          {
+            "height": 1366,
+            "media_key": "3_2105302121394397184",
+            "type": "photo",
+            "url": "https://pbs.twimg.com/media/HTeJIAKW4AAHzSX.jpg",
+            "width": 2048
+          },
+          {
+            "height": 1080,
+            "media_key": "3_2100519685619912704",
+            "type": "photo",
+            "url": "https://pbs.twimg.com/media/HSaLhmkXEAAxLRw.jpg",
+            "width": 1080
+          },
+          {
+            "height": 1350,
+            "media_key": "3_2099877327639339008",
+            "type": "photo",
+            "url": "https://pbs.twimg.com/media/HSRDTcnW4AAJboE.jpg",
+            "width": 1080
+          },
+          {
+            "height": 485,
+            "media_key": "3_2103896163426406400",
+            "type": "photo",
+            "url": "https://pbs.twimg.com/media/HTKKaelWkAAvar6.png",
+            "width": 750
+          },
+          {
+            "height": 900,
+            "media_key": "3_2100514323181273088",
+            "type": "photo",
+            "url": "https://pbs.twimg.com/media/HSaGpd7XAAAncpp.jpg",
+            "width": 1600
+          },
+          {
+            "duration_ms": 53661,
+            "height": 720,
+            "media_key": "13_2103139669705621505",
+            "non_public_metrics": {
+              "playback_0_count": 428,
+              "playback_100_count": 6,
+              "playback_25_count": 49,
+              "playback_50_count": 19,
+              "playback_75_count": 9
+            },
+            "organic_metrics": {
+              "playback_0_count": 428,
+              "playback_100_count": 6,
+              "playback_25_count": 49,
+              "playback_50_count": 19,
+              "playback_75_count": 9,
+              "view_count": 228
+            },
+            "preview_image_url": "https://pbs.twimg.com/amplify_video_thumb/2103139669705621505/img/9XeaJLDsAZ8r-Loj.jpg",
+            "public_metrics": {
+              "view_count": 228
+            },
+            "type": "video",
+            "variants": [
+              {
+                "bit_rate": 256000,
+                "content_type": "video/mp4",
+                "url": "https://video.twimg.com/amplify_video/2103139669705621505/vid/avc1/480x270/U2imXdI43jxYRXef.mp4"
+              },
+              {
+                "bit_rate": 832000,
+                "content_type": "video/mp4",
+                "url": "https://video.twimg.com/amplify_video/2103139669705621505/vid/avc1/640x360/fsdnr1_Nr9XzaVSV.mp4"
+              },
+              {
+                "bit_rate": 2176000,
+                "content_type": "video/mp4",
+                "url": "https://video.twimg.com/amplify_video/2103139669705621505/vid/avc1/1280x720/D6dji--L3p-Skc35.mp4"
+              },
+              {
+                "content_type": "application/x-mpegURL",
+                "url": "https://video.twimg.com/amplify_video/2103139669705621505/pl/sJ357ywtgnU3la2E.m3u8"
+              }
+            ],
+            "width": 1280
+          },
+          {
+            "duration_ms": 49351,
+            "height": 1920,
+            "media_key": "13_2102389982987997184",
+            "non_public_metrics": {
+              "playback_0_count": 827,
+              "playback_100_count": 13,
+              "playback_25_count": 154,
+              "playback_50_count": 51,
+              "playback_75_count": 30
+            },
+            "organic_metrics": {
+              "playback_0_count": 827,
+              "playback_100_count": 13,
+              "playback_25_count": 154,
+              "playback_50_count": 51,
+              "playback_75_count": 30,
+              "view_count": 480
+            },
+            "preview_image_url": "https://pbs.twimg.com/amplify_video_thumb/2102389982987997184/img/JJexhR9ApYEP1vJw.jpg",
+            "public_metrics": {
+              "view_count": 480
+            },
+            "type": "video",
+            "variants": [
+              {
+                "bit_rate": 10368000,
+                "content_type": "video/mp4",
+                "url": "https://video.twimg.com/amplify_video/2102389982987997184/vid/avc1/1080x1920/1jdswuCqudroW4tb.mp4"
+              },
+              {
+                "bit_rate": 2176000,
+                "content_type": "video/mp4",
+                "url": "https://video.twimg.com/amplify_video/2102389982987997184/vid/avc1/720x1280/BaCxP9LUAUpUCsRR.mp4"
+              },
+              {
+                "content_type": "application/x-mpegURL",
+                "url": "https://video.twimg.com/amplify_video/2102389982987997184/pl/PAbms14YW6fnIdV3.m3u8?v=3a1"
+              },
+              {
+                "bit_rate": 632000,
+                "content_type": "video/mp4",
+                "url": "https://video.twimg.com/amplify_video/2102389982987997184/vid/avc1/320x568/guh75nALhEEV5wmX.mp4"
+              },
+              {
+                "bit_rate": 950000,
+                "content_type": "video/mp4",
+                "url": "https://video.twimg.com/amplify_video/2102389982987997184/vid/avc1/480x852/E9csFYnbVA6O-pHz.mp4"
+              }
+            ],
+            "width": 1080
+          }
+        ]
+      },
+      "meta": {
+        "newest_id": "2105722250355724555",
+        "next_token": "7140dibdnow9c7btwp0frw3u2jou3erpn0yfsjrjh6vqx",
+        "oldest_id": "2102391050727797039",
+        "result_count": 17
+      }
+    },
+    "resources": {
+      "posts": 17,
+      "users": 0
+    }
+  },
+  "user": {
+    "ok": true,
+    "status": 200,
+    "request": "https://api.x.com/2/users/me?user.fields=id%2Cusername%2Cname%2Cpublic_metrics%2Ccreated_at%2Cverified_type%2Cdescription%2Clocation%2Curl%2Cpinned_tweet_id%2Cprofile_image_url%2Csubscription_type%2Cmost_recent_tweet_id%2Cverified%2Centities%2Caffiliation%2Cprotected",
+    "elapsed_ms": 228,
+    "rate": {
+      "limit": 75,
+      "remaining": 74,
+      "reset": 1790901583
+    },
+    "errors": null,
+    "title": null,
+    "detail": null,
+    "body": {
+      "data": {
+        "created_at": "2013-03-13T15:22:53.000Z",
+        "description": "🌍 Global citizen platform defending life, family, and freedom | Active in 50+ countries and 12 languages. \n\nJoin our campaigns and make your voice heard!",
+        "entities": {
+          "url": {
+            "urls": [
+              {
+                "display_url": "citizengo.org",
+                "end": 23,
+                "expanded_url": "http://citizengo.org",
+                "start": 0,
+                "url": "https://t.co/nZOnpeQ55z"
+              }
+            ]
+          }
+        },
+        "id": "1264712994",
+        "location": "50 different countries",
+        "most_recent_tweet_id": "2105722250355724555",
+        "name": "CitizenGO",
+        "pinned_tweet_id": "2101631337840939226",
+        "profile_image_url": "https://pbs.twimg.com/profile_images/1569334175722864644/hCaW25P0_normal.jpg",
+        "protected": false,
+        "public_metrics": {
+          "followers_count": 40219,
+          "following_count": 1303,
+          "like_count": 19402,
+          "listed_count": 248,
+          "media_count": 9880,
+          "tweet_count": 23865
+        },
+        "subscription_type": "PremiumPlus",
+        "url": "https://t.co/nZOnpeQ55z",
+        "username": "CitizenGO",
+        "verified": true,
+        "verified_type": "business"
+      }
+    },
+    "resources": {
+      "posts": 1,
+      "users": 0
+    }
+  }
+}

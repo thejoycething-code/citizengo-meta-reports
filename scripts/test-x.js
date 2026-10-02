@@ -153,6 +153,36 @@ console.log('\nPeriod summary: engagements mean what X Analytics means\n');
   ok('the API figure is kept, under its own name', /sum\(p\.engagements\) as all_engagements/.test(fn));
 }
 
+console.log('\nConnector tools: exact post types and threads\n');
+{
+  const xt = require('../mcp/x-tools');
+  const asked = [];
+  const store = {
+    async xAccounts() { return [{ account_id: '9', username: 'CitizenGO_IE', label: 'CitizenGO Ireland' }]; },
+    async xPostCount(a) { asked.push(a); return 2; },
+    async xPosts(a) { asked.push(a); return [
+      { post_id: '1', username: 'CitizenGO_IE', text: 'Start', created_at: '2026-09-01T10:00:00Z', thread_role: 'thread_start', impressions: 100, permalink_url: 'https://x.com/a/status/1' },
+      { post_id: '2', username: 'CitizenGO_IE', text: 'Then', created_at: '2026-09-01T10:05:00Z', thread_role: 'thread', impressions: 40, permalink_url: 'https://x.com/a/status/2' },
+    ]; },
+    async xThreadCount() { return 1; },
+    async xThreads() { return [{ username: 'CitizenGO_IE', conversation_id: '1', started_at: '2026-09-01T10:00:00Z', posts: 2,
+      impressions: 140, first_post_impressions: 100, engagements: 7, engagement_rate_pct: 5, link_clicks: 1,
+      first_post_text: 'Start', permalink_url: 'https://x.com/a/status/1' }]; },
+  };
+  const tool = (name) => xt.X_TOOLS.find((t) => t.name === name).handler;
+  (async () => {
+    const top = await tool('x_top_posts')(store, { account: 'CitizenGO Ireland', type: 'threads', days: 0 });
+    eq('type=threads reaches the store as exact roles', asked[0].roles, ['thread_start', 'thread']);
+    ok('each post is labelled with its type', /\| Thread start \|/.test(top.text) && /\| Thread \|/.test(top.text));
+    const all = await tool('x_top_posts')(store, { days: 0 });
+    eq('type=all applies no filter', asked[asked.length - 1].roles, null);
+    ok('the heading says which kind was asked for', /\*\*X threads by impressions/.test(top.text) && /\*\*X posts by impressions/.test(all.text));
+    const th = await tool('x_threads')(store, { account: '@CitizenGO_IE', days: 0 });
+    ok('a thread row: 2 posts, 140 impressions, 71% on the first post', /\| 2 \| 140 \| 71% \|/.test(th.text));
+    ok('threads tool explains it uses the conversation id, not timing', /conversation id/.test(th.text));
+  })();
+}
+
 console.log('\nConnector tools: paging past 200 (every post we hold)\n');
 {
   const xt = require('../mcp/x-tools');
@@ -393,6 +423,41 @@ mock.listen(0, '127.0.0.1', async () => {
     eq('the retweet\'s partial error is attached to it', rt.metric.errors && rt.metric.errors.length, 1);
     eq('missing private group -> null, never zero', rt.metric.url_link_clicks, null);
     eq('no entities -> citizengo_urls is [] (not null) so the view can count it', rt.post.citizengo_urls, []);
+
+    console.log('\nFree fields (2 Oct 2026): long posts, topics, tags, video quartiles\n');
+    const longPost = {
+      id: '555', created_at: '2026-09-30T10:00:00.000Z', text: 'First 280 characters only…',
+      conversation_id: '555', public_metrics: { impression_count: 10 }, edit_history_tweet_ids: ['550', '555'],
+      reply_settings: 'everyone', possibly_sensitive: false,
+      note_tweet: { text: 'First 280 characters only, and the rest of the post with a link https://t.co/x #Life',
+        entities: { urls: [{ url: 'https://t.co/x', expanded_url: 'https://citizengo.org/en/sign?utm_campaign=c' }],
+          hashtags: [{ tag: 'Life' }, { tag: 'Life' }], mentions: [{ username: 'someone' }] } },
+      context_annotations: [
+        { domain: { name: 'Person' }, entity: { name: 'Gavin Newsom' } },
+        { domain: { name: 'Politician' }, entity: { name: 'Gavin Newsom' } },
+        { domain: { name: 'Person' }, entity: { name: 'Gavin Newsom' } },
+      ],
+      attachments: { media_keys: ['7_1'] },
+    };
+    const vidIncludes = { media: [{ media_key: '7_1', type: 'video', duration_ms: 9509, public_metrics: { view_count: 392 },
+      non_public_metrics: { playback_0_count: 619, playback_25_count: 415, playback_50_count: 288, playback_75_count: 248, playback_100_count: 191 } }] };
+    const lp = toRows(longPost, { account: { account_id: '42' }, username: 'u', includes: vidIncludes, errors: [], privateWindow: true, now: NOW });
+    eq('a long post stores its FULL text, not the 280-character cut', lp.post.text, longPost.note_tweet.text);
+    eq('and says it is long', lp.post.is_long_post, true);
+    eq('links past the cut are found (from note_tweet entities)', lp.post.citizengo_urls.length, 1);
+    eq('hashtags de-duplicated', lp.post.hashtags, ['Life']);
+    eq('mentions', lp.post.mentions, ['someone']);
+    eq('topics are domain/entity pairs, de-duplicated', lp.post.topics, [{ domain: 'Person', entity: 'Gavin Newsom' }, { domain: 'Politician', entity: 'Gavin Newsom' }]);
+    eq('edit count = history length - 1', lp.post.edit_count, 1);
+    eq('video quartiles kept, not just the end', [lp.metric.video_playback_0, lp.metric.video_playback_50, lp.metric.video_playback_100], [619, 288, 191]);
+    eq('video length kept on the media row', lp.post.media[0].duration_ms, 9509);
+    const plain = toRows(TWEETS[0], { account: { account_id: '42' }, username: 'u', includes: INCLUDES, errors: [], privateWindow: true, now: NOW });
+    eq('a short post is not long, and keeps its own text', [plain.post.is_long_post, plain.post.text], [false, TWEETS[0].text]);
+    eq('every post row has the same columns (the sink refuses mixed batches)', Object.keys(plain.post).sort(), Object.keys(lp.post).sort());
+    eq('every metric row has the same columns', Object.keys(plain.metric).sort(), Object.keys(lp.metric).sort());
+    eq('the new fields are requested (they cost nothing: X bills per post, not per field)',
+      ['note_tweet', 'context_annotations', 'edit_history_tweet_ids'].every((f) => xapi.PUBLIC_TWEET_FIELDS.includes(f)), true);
+    ok('no billed expansion was added (referenced posts and users would be charged)', !/referenced_tweets|mentions|in_reply_to_user_id/.test(xapi.MEDIA_EXPANSION));
 
     console.log('\nSink idempotency for x_* tables\n');
     const dir = path.join(__dirname, '..', 'data', 'test-x-sink');

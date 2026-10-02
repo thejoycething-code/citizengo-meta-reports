@@ -222,6 +222,40 @@ create index if not exists x_collection_runs_started_idx
   on public.x_collection_runs (started_at desc);
 
 -- ---------------------------------------------------------------------------
+-- Added 2 Oct 2026 (migration x_free_fields): fields X returns at no extra
+-- cost, since it bills per post or user returned, not per field. Probed live
+-- first (fixtures/x-2026-10-02-fields-probe.json).
+--   * is_long_post: the post came with note_tweet, and text is now its FULL
+--     text. Before this, long posts were stored cut at 280 characters (6 of
+--     @CitizenGO's last 17 posts). Posts re-read from now on are repaired;
+--     posts past their last checkpoint (85 days) keep the cut text.
+--   * topics: X's context_annotations, [{domain, entity}].
+--   * video_playback_0..75: how far viewers got (100 was already kept).
+-- ---------------------------------------------------------------------------
+alter table public.x_posts add column if not exists is_long_post boolean;
+alter table public.x_posts add column if not exists hashtags jsonb;
+alter table public.x_posts add column if not exists mentions jsonb;
+alter table public.x_posts add column if not exists topics jsonb;
+alter table public.x_posts add column if not exists edit_count integer;
+alter table public.x_posts add column if not exists reply_settings text;
+alter table public.x_posts add column if not exists possibly_sensitive boolean;
+alter table public.x_post_metrics add column if not exists video_playback_0 bigint;
+alter table public.x_post_metrics add column if not exists video_playback_25 bigint;
+alter table public.x_post_metrics add column if not exists video_playback_50 bigint;
+alter table public.x_post_metrics add column if not exists video_playback_75 bigint;
+alter table public.x_accounts add column if not exists description text;
+alter table public.x_accounts add column if not exists location text;
+alter table public.x_accounts add column if not exists website_url text;
+alter table public.x_accounts add column if not exists pinned_post_id text;
+alter table public.x_accounts add column if not exists profile_image_url text;
+alter table public.x_accounts add column if not exists verified_type text;
+alter table public.x_accounts add column if not exists subscription_type text;
+alter table public.x_account_metrics add column if not exists like_count bigint;
+alter table public.x_account_metrics add column if not exists media_count bigint;
+-- Threads are found by conversation_id, so it needs an index.
+create index if not exists x_posts_conversation_idx on public.x_posts (conversation_id, account_id);
+
+-- ---------------------------------------------------------------------------
 -- Latest snapshot per post, joined to its account. The one view every tool
 -- reads. Derived rates guard against a zero denominator the same way
 -- meta_ig_latest does.
@@ -245,13 +279,50 @@ create or replace view public.x_post_latest with (security_invoker = true) as
          end as engagement_rate_pct,
          case when coalesce(m.impressions, 0) > 0 and m.url_link_clicks is not null
               then round(m.url_link_clicks::numeric / m.impressions::numeric * 100, 2)
-         end as click_rate_pct
+         end as click_rate_pct,
+         -- Appended 2 Oct 2026 (a view can only grow at the end).
+         -- thread_role is exact, from X's own fields, not from timing:
+         --   thread       a reply to our own account, i.e. a later post of a thread
+         --   reply        a reply to someone else
+         --   thread_start our post that our own replies continue
+         --   quote        a quote post
+         --   original     anything else
+         p.conversation_id, p.in_reply_to_user_id, p.referenced_post_id,
+         case
+           when p.in_reply_to_user_id = p.account_id then 'thread'
+           when p.in_reply_to_user_id is not null then 'reply'
+           when exists (select 1 from public.x_posts c
+                         where c.conversation_id = p.post_id and c.account_id = p.account_id
+                           and c.post_id <> p.post_id and c.in_reply_to_user_id = p.account_id) then 'thread_start'
+           when p.referenced_type = 'quoted' then 'quote'
+           else 'original'
+         end as thread_role,
+         p.is_long_post, p.hashtags, p.mentions, p.topics, p.edit_count, p.reply_settings,
+         m.video_playback_0, m.video_playback_25, m.video_playback_50, m.video_playback_75, m.video_playback_100
     from public.x_posts p
     join public.x_accounts a on a.account_id = p.account_id
     join public.x_post_metrics m on m.post_id = p.post_id
    where m.collected_date = (select max(y.collected_date)
                                from public.x_post_metrics y
                               where y.post_id = p.post_id);
+
+-- One row per thread: a conversation started by one of our posts and
+-- continued by that account's own replies. Exact, from conversation_id.
+create or replace view public.x_thread_summary with (security_invoker = true) as
+  select l.account_id, max(l.username) as username, l.conversation_id,
+         min(l.created_at) as started_at, max(l.created_at) as last_post_at,
+         count(*) as posts,
+         sum(l.impressions) as impressions,
+         sum(l.interactions) as engagements,
+         round(100.0 * sum(l.interactions) / nullif(sum(l.impressions), 0), 2) as engagement_rate_pct,
+         sum(l.url_link_clicks) as link_clicks,
+         max(l.impressions) filter (where l.post_id = l.conversation_id) as first_post_impressions,
+         max(l.text) filter (where l.post_id = l.conversation_id) as first_post_text,
+         max(l.permalink_url) filter (where l.post_id = l.conversation_id) as permalink_url
+    from public.x_post_latest l
+   where l.thread_role in ('thread_start', 'thread')
+   group by l.account_id, l.conversation_id
+  having bool_or(l.post_id = l.conversation_id) and count(*) > 1;
 
 -- Follower movement per account per day, derived from consecutive snapshots.
 create or replace view public.x_account_growth with (security_invoker = true) as
@@ -383,13 +454,13 @@ alter table public.x_collection_runs enable row level security;
 revoke all on public.x_accounts, public.x_oauth_tokens, public.x_posts, public.x_post_metrics,
   public.x_account_metrics, public.x_collection_runs,
   public.x_post_latest, public.x_account_growth, public.x_spend_month_to_date,
-  public.x_post_last_collected
+  public.x_post_last_collected, public.x_thread_summary
   from anon, authenticated;
 
 grant select on public.x_accounts, public.x_posts, public.x_post_metrics,
   public.x_account_metrics, public.x_collection_runs,
   public.x_post_latest, public.x_account_growth, public.x_spend_month_to_date,
-  public.x_post_last_collected
+  public.x_post_last_collected, public.x_thread_summary
   to meta_readonly;
 
 drop policy if exists meta_readonly_select_x_accounts on public.x_accounts;
@@ -413,3 +484,4 @@ alter view public.x_post_latest         set (security_invoker = true);
 alter view public.x_account_growth      set (security_invoker = true);
 alter view public.x_spend_month_to_date set (security_invoker = true);
 alter view public.x_post_last_collected set (security_invoker = true);
+alter view public.x_thread_summary      set (security_invoker = true);

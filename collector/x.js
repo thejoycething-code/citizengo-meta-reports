@@ -221,29 +221,63 @@ async function accessTokenFor(account, log) {
 // ---------------------------------------------------------------------------
 const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
 
+const QUARTILES = [0, 25, 50, 75, 100];
+
 function mediaFor(post, includes) {
   const keys = post.attachments && Array.isArray(post.attachments.media_keys) ? post.attachments.media_keys : [];
-  if (!keys.length) return { has_media: false, media: null, video_views: null, video_playback_100: null };
+  const none = { has_media: false, media: null, video_views: null };
+  for (const q of QUARTILES) none[`video_playback_${q}`] = null;
+  if (!keys.length) return none;
   const all = includes && Array.isArray(includes.media) ? includes.media : [];
   const mine = all.filter((m) => keys.includes(m.media_key));
-  let views = null; let p100 = null;
+  let views = null;
+  // How far viewers got through the video: started (0), a quarter, half,
+  // three quarters, the end. Summed over a post's videos, like view_count.
+  const play = Object.fromEntries(QUARTILES.map((q) => [q, null]));
   for (const m of mine) {
     const v = m.public_metrics && num(m.public_metrics.view_count);
     if (v !== null) views = (views || 0) + v;
-    const c = m.non_public_metrics && num(m.non_public_metrics.playback_100_count);
-    if (c !== null) p100 = (p100 || 0) + c;
+    for (const q of QUARTILES) {
+      const c = m.non_public_metrics && num(m.non_public_metrics[`playback_${q}_count`]);
+      if (c !== null) play[q] = (play[q] || 0) + c;
+    }
   }
-  return {
+  const out = {
     has_media: true,
     media: mine.map((m) => ({ media_key: m.media_key, type: m.type || null,
-      view_count: m.public_metrics ? num(m.public_metrics.view_count) : null })),
-    video_views: views, video_playback_100: p100,
+      view_count: m.public_metrics ? num(m.public_metrics.view_count) : null,
+      duration_ms: num(m.duration_ms), alt_text: m.alt_text || null,
+      width: num(m.width), height: num(m.height),
+      image_url: m.url || m.preview_image_url || null })),
+    video_views: views,
   };
+  for (const q of QUARTILES) out[`video_playback_${q}`] = play[q];
+  return out;
 }
+// X's own topic labels (context_annotations): a domain such as "Politician"
+// and an entity such as "Gavin Newsom". X repeats an entity under several
+// domains, so they are kept as pairs, de-duplicated.
+function topicsOf(post) {
+  const seen = new Set(); const out = [];
+  for (const a of post.context_annotations || []) {
+    const d = a && a.domain && a.domain.name; const e = a && a.entity && a.entity.name;
+    if (!d || !e || seen.has(d + '|' + e)) continue;
+    seen.add(d + '|' + e); out.push({ domain: d, entity: e });
+  }
+  return out.length ? out : null;
+}
+const listOf = (arr, key) => {
+  const v = [...new Set((arr || []).map((x) => x && x[key]).filter(Boolean))];
+  return v.length ? v : null;
+};
 
 function toRows(post, { account, username, includes, errors, privateWindow, now }) {
   const ref = Array.isArray(post.referenced_tweets) && post.referenced_tweets[0] ? post.referenced_tweets[0] : null;
-  const links = sched.extractUrls(post.entities);
+  // A long post's `text` stops at 280 characters; the whole post, and the
+  // links and tags past that point, are in note_tweet.
+  const note = post.note_tweet && post.note_tweet.text ? post.note_tweet : null;
+  const ents = (note && note.entities) || post.entities || {};
+  const links = sched.extractUrls(ents);
   const md = mediaFor(post, includes);
   const pub = post.public_metrics || {};
   const np = post.non_public_metrics || {};
@@ -253,7 +287,8 @@ function toRows(post, { account, username, includes, errors, privateWindow, now 
   return {
     post: {
       post_id: String(post.id), account_id: account.account_id, created_at: post.created_at,
-      text: post.text || null, lang: post.lang || null, conversation_id: post.conversation_id || null,
+      text: (note ? note.text : post.text) || null, is_long_post: Boolean(note),
+      lang: post.lang || null, conversation_id: post.conversation_id || null,
       in_reply_to_user_id: post.in_reply_to_user_id || null,
       referenced_type: ref ? ref.type : null, referenced_post_id: ref ? String(ref.id) : null,
       has_media: md.has_media, media: md.media,
@@ -261,6 +296,11 @@ function toRows(post, { account, username, includes, errors, privateWindow, now 
       citizengo_urls: links.citizengo_urls,
       source: post.source || null,
       permalink_url: username ? `https://x.com/${username}/status/${post.id}` : null,
+      hashtags: listOf(ents.hashtags, 'tag'), mentions: listOf(ents.mentions, 'username'),
+      topics: topicsOf(post),
+      edit_count: Array.isArray(post.edit_history_tweet_ids) ? Math.max(post.edit_history_tweet_ids.length - 1, 0) : null,
+      reply_settings: post.reply_settings || null,
+      possibly_sensitive: typeof post.possibly_sensitive === 'boolean' ? post.possibly_sensitive : null,
     },
     metric: {
       post_id: String(post.id), account_id: account.account_id,
@@ -280,7 +320,8 @@ function toRows(post, { account, username, includes, errors, privateWindow, now 
       promoted_impressions: num(pro.impression_count), promoted_likes: num(pro.like_count),
       promoted_reposts: num(pro.retweet_count), promoted_replies: num(pro.reply_count),
       promoted_url_clicks: num(pro.url_link_clicks),
-      video_views: md.video_views, video_playback_100: md.video_playback_100,
+      video_views: md.video_views, video_playback_0: md.video_playback_0, video_playback_25: md.video_playback_25,
+      video_playback_50: md.video_playback_50, video_playback_75: md.video_playback_75, video_playback_100: md.video_playback_100,
       errors: mine.length ? mine : null,
     },
   };
@@ -326,11 +367,15 @@ async function collectAccount(account, out) {
     kind: account.kind || 'organisation', country: account.country || null,
     label: account.label || u.username, is_active: true,
     followers_count: num(pm.followers_count), last_seen_at: started,
+    description: u.description || null, location: u.location || null, website_url: u.url || null,
+    pinned_post_id: u.pinned_tweet_id || null, profile_image_url: u.profile_image_url || null,
+    verified_type: u.verified_type || null, subscription_type: u.subscription_type || null,
   }]);
   await sink.upsert('x_account_metrics', [{
     account_id: String(u.id), metric_date: COLLECTED_DATE, collected_at: started,
     followers_count: num(pm.followers_count), following_count: num(pm.following_count),
-    post_count: num(pm.tweet_count), listed_count: num(pm.listed_count), errors: null,
+    post_count: num(pm.tweet_count), listed_count: num(pm.listed_count),
+    like_count: num(pm.like_count), media_count: num(pm.media_count), errors: null,
   }]);
   log(`   @${u.username} · ${num(pm.followers_count) === null ? '?' : pm.followers_count.toLocaleString('en-GB')} followers`);
 
