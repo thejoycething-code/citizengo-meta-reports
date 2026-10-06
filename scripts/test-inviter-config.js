@@ -151,6 +151,27 @@ async function main() {
   u = await callTool(store, 'update_inviter_config', { note: 'x', set: { maintainerEmail: 'not an email' } }, { who: 'chris' });
   check('a malformed maintainer email is refused', u.isError);
 
+  // Settings added with extension 2.11 and 2.12.
+  const base = (await store.inviterConfigs(1))[0].config;
+  const old = JSON.parse(JSON.stringify(base));
+  for (const k of ['subtitles', 'captchaPatterns', 'moreCommentsPatterns', 'captchaSelector', 'photoLinkPattern']) delete old[k];
+  delete old.routes.page_feed; delete old.routes.photos;
+  check('a config saved before 2.11 (none of the new settings) is still valid', problems(old).length === 0, problems(old).join(' '));
+  const n0 = store.inserts;
+  store.rows.push({ id: store.rows.length + 1, config: old, note: 'pre-2.11', updated_at: '2026-10-06T09:00:00Z' });
+  u = await callTool(store, 'update_inviter_config', { note: 'x', add: { subtitles: ['Hello'] } }, { who: 'chris' });
+  check('adding to a list the live config lacks is refused, so the built-in list is not wiped', u.isError && /set with the whole list/.test(u.text) && store.inserts === n0, u.text);
+  u = await callTool(store, 'update_inviter_config', { note: 'subtitles', set: { subtitles: ['Growing CitizenGO, one invite at a time', 'Turning likes into followers'] } }, { who: 'chris' });
+  check('the popup subtitles can be set', !u.isError && (await store.inviterConfigs(1))[0].config.subtitles.length === 2, u.text.split('\n')[0]);
+  u = await callTool(store, 'update_inviter_config', { note: 'more', add: { subtitles: ['Small invites, big movement'] } }, { who: 'chris' });
+  check('then added to', !u.isError && (await store.inviterConfigs(1))[0].config.subtitles.length === 3, u.text.split('\n')[0]);
+  u = await callTool(store, 'update_inviter_config', { note: 'x', set: { subtitles: ['x'.repeat(121)] } }, { who: 'chris' });
+  check('a subtitle longer than 120 characters is refused', u.isError);
+  u = await callTool(store, 'update_inviter_config', { note: 'x', add: { captchaPatterns: ['(unclosed'] } }, { who: 'chris' });
+  check('captcha wording must be a valid pattern (and the live config needs the list first)', u.isError);
+  u = await callTool(store, 'update_inviter_config', { note: 'x', set: { routes: { photos: { url: 'https://evil.example/{pageId}/photos', match: 'photos' } } } }, { who: 'chris' });
+  check('the photos route must stay on facebook.com', u.isError && /facebook\.com/.test(u.text));
+
   console.log('\n7. The extension\'s own token is limited to Page Inviter tools');
   const ext = { who: 'invite-to-like-extension' };
   const seen = visibleTools(ext.who).map((t) => t.name).sort();

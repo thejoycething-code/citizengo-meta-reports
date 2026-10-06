@@ -37,8 +37,14 @@ const toolAllowed = (who, name) => !isScoped(who) || name.startsWith('inviter_')
 
 const REACTION_KEYS = ['rLike', 'rLove', 'rCare', 'rWow', 'rSad', 'rHaha', 'rAngry'];
 const ROUTE_KEYS = ['feed_grid', 'prodash', 'notifications'];
+// Routes added with extension 2.8 and 2.11: checked only when present.
+const OPTIONAL_ROUTE_KEYS = ['page_feed', 'photos'];
 const LIST_KEYS = ['inviteWords', 'closeWords', 'supportedLangs', 'limitPatterns', 'pageLimitPatterns', 'reactSummaryPatterns'];
-const PATTERN_LISTS = ['limitPatterns', 'pageLimitPatterns', 'reactSummaryPatterns'];
+// Lists added with extension 2.11 and 2.12 (captcha wording, "View more comments" wording, the popup's
+// subtitles): checked only when present, so configs saved before them stay valid.
+const OPTIONAL_LIST_KEYS = ['captchaPatterns', 'moreCommentsPatterns', 'subtitles'];
+const EDITABLE_LISTS = [...LIST_KEYS, ...OPTIONAL_LIST_KEYS];
+const PATTERN_LISTS = ['limitPatterns', 'pageLimitPatterns', 'reactSummaryPatterns', 'captchaPatterns', 'moreCommentsPatterns'];
 const SELECTOR_KEYS = ['row', 'toolbar', 'tab', 'dialog', 'alerts', 'limitLink', 'reactionIcon', 'pageIdInHtml'];
 // Selector entries that are regular expressions with one capture group, not CSS.
 const SELECTOR_PATTERNS = ['reactionIcon', 'pageIdInHtml'];
@@ -46,7 +52,9 @@ const TOP_KEYS = ['configVersion', 'minExtensionVersion', 'killSwitch', 'notice'
   'postLinkPattern', 'reactions', 'selectors', 'newRowsMargin', 'routes',
   // Optional (added with extension 2.4.0): who campaigners send change requests
   // to, and the pattern that recognises Facebook's default profile picture.
-  'maintainerName', 'maintainerEmail', 'defaultAvatarPattern'];
+  'maintainerName', 'maintainerEmail', 'defaultAvatarPattern',
+  // Optional (added with extension 2.11 and 2.12).
+  ...OPTIONAL_LIST_KEYS, 'captchaSelector', 'photoLinkPattern'];
 
 // Who requests are routed to when someone without edit rights asks for a change.
 // The config's own maintainer wins; INVITER_CONFIG_CONTACT is the fallback.
@@ -86,6 +94,14 @@ function problems(cfg) {
     if (v.length > 300) out.push(`${k} has ${v.length} entries; the limit is 300.`);
     if (v.some((s) => typeof s !== 'string' || !s.trim() || s.length > 200)) out.push(`Every entry in ${k} must be non-empty text of at most 200 characters.`);
   }
+  for (const k of OPTIONAL_LIST_KEYS) {
+    if (!(k in cfg)) continue;
+    const v = cfg[k];
+    const max = k === 'subtitles' ? 120 : 200;
+    if (!Array.isArray(v) || !v.length) { out.push(`${k} must be a non-empty list.`); continue; }
+    if (v.length > 300) out.push(`${k} has ${v.length} entries; the limit is 300.`);
+    if (v.some((s) => typeof s !== 'string' || !s.trim() || s.length > max)) out.push(`Every entry in ${k} must be non-empty text of at most ${max} characters.`);
+  }
   for (const k of PATTERN_LISTS) {
     if (!Array.isArray(cfg[k])) continue;
     for (const s of cfg[k]) if (typeof s === 'string' && !compiles(s, 'i')) out.push(`${k}: "${s}" is not a valid pattern.`);
@@ -118,12 +134,14 @@ function problems(cfg) {
   // Optional keys: checked only when present, so configs saved before they existed stay valid.
   if ('maintainerName' in cfg && (typeof cfg.maintainerName !== 'string' || !cfg.maintainerName.trim() || cfg.maintainerName.length > 100)) out.push('maintainerName must be a name of at most 100 characters.');
   if ('maintainerEmail' in cfg && (typeof cfg.maintainerEmail !== 'string' || !/^[^\s@<>]+@[^\s@<>]+\.[a-z]{2,}$/i.test(cfg.maintainerEmail))) out.push('maintainerEmail must be an email address.');
+  if ('captchaSelector' in cfg && (typeof cfg.captchaSelector !== 'string' || !cfg.captchaSelector.trim() || cfg.captchaSelector.length > 300)) out.push('captchaSelector must be non-empty text of at most 300 characters.');
+  if ('photoLinkPattern' in cfg && (typeof cfg.photoLinkPattern !== 'string' || !cfg.photoLinkPattern || !compiles(cfg.photoLinkPattern))) out.push('photoLinkPattern must be a valid pattern.');
   if ('defaultAvatarPattern' in cfg && (typeof cfg.defaultAvatarPattern !== 'string' || !cfg.defaultAvatarPattern || !compiles(cfg.defaultAvatarPattern))) out.push('defaultAvatarPattern must be a valid pattern.');
 
   if (!isObj(cfg.routes)) out.push('routes must be an object.');
   else {
-    for (const k of Object.keys(cfg.routes)) if (!ROUTE_KEYS.includes(k)) out.push(`routes.${k} is not a route the extension has.`);
-    for (const k of ROUTE_KEYS) {
+    for (const k of Object.keys(cfg.routes)) if (!ROUTE_KEYS.includes(k) && !OPTIONAL_ROUTE_KEYS.includes(k)) out.push(`routes.${k} is not a route the extension has.`);
+    for (const k of [...ROUTE_KEYS, ...OPTIONAL_ROUTE_KEYS.filter((rk) => rk in cfg.routes)]) {
       const r = cfg.routes[k];
       if (!isObj(r)) { out.push(`routes.${k} must have a url and a match.`); continue; }
       // Facebook addresses only: the extension opens these in campaigners' browsers.
@@ -154,13 +172,16 @@ function applyChanges(base, { set = {}, add = {}, remove = {} }) {
   }
   for (const [k, v] of Object.entries(add || {})) {
     if (unknown(k)) continue;
-    if (!LIST_KEYS.includes(k) || !Array.isArray(v)) { errors.push(`add only works on lists (${LIST_KEYS.join(', ')}).`); continue; }
+    if (!EDITABLE_LISTS.includes(k) || !Array.isArray(v)) { errors.push(`add only works on lists (${EDITABLE_LISTS.join(', ')}).`); continue; }
+    // A list the live config doesn't have yet would replace the extension's whole built-in list.
+    if (!Array.isArray(cfg[k])) { errors.push(`${k} isn't in the live config yet, so adding to it would replace the extension's built-in list. Use set with the whole list first.`); continue; }
     const have = new Set((cfg[k] || []).map((s) => String(s).toLowerCase()));
     cfg[k] = [...(cfg[k] || []), ...v.filter((s) => !have.has(String(s).toLowerCase()))];
   }
   for (const [k, v] of Object.entries(remove || {})) {
     if (unknown(k)) continue;
-    if (!LIST_KEYS.includes(k) || !Array.isArray(v)) { errors.push(`remove only works on lists (${LIST_KEYS.join(', ')}).`); continue; }
+    if (!EDITABLE_LISTS.includes(k) || !Array.isArray(v)) { errors.push(`remove only works on lists (${EDITABLE_LISTS.join(', ')}).`); continue; }
+    if (!Array.isArray(cfg[k])) { errors.push(`${k} isn't in the live config yet, so there's nothing to remove from it.`); continue; }
     const drop = new Set(v.map((s) => String(s).toLowerCase()));
     cfg[k] = (cfg[k] || []).filter((s) => !drop.has(String(s).toLowerCase()));
   }
@@ -286,7 +307,7 @@ async function invitePosts(store, args) {
 
 const LIST_SCHEMA = (verb) => ({
   type: 'object',
-  description: `Lists to ${verb}, e.g. {"inviteWords": ["Zaproś do polubienia"]}. Works on: ${LIST_KEYS.join(', ')}.`,
+  description: `Lists to ${verb}, e.g. {"inviteWords": ["Zaproś do polubienia"]} or {"subtitles": ["Growing CitizenGO"]}. Works on: ${EDITABLE_LISTS.join(', ')}.`,
   additionalProperties: { type: 'array', items: { type: 'string' } },
 });
 
