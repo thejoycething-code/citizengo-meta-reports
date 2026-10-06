@@ -91,6 +91,8 @@ async function main() {
   process.env.INVITER_CONFIG_ADMINS = 'Chris, cjoyce@citizengo.net';
   u = await callTool(store, 'update_inviter_config', { note: 'x', set: { notice: 'hi' } }, { who: 'invite-to-like-extension' });
   check('the extension\'s own token cannot write', u.isError && store.inserts === 0);
+  check('a refused request is routed to the maintainer named in the config, or the fallback contact',
+    /Only .+ can change/.test(u.text) && /Send the request/.test(u.text), u.text.slice(0, 90));
   u = await callTool(store, 'update_inviter_config', { note: 'x', set: { notice: 'hi' } }, {});
   check('an unnamed caller cannot write', u.isError && store.inserts === 0);
 
@@ -127,6 +129,13 @@ async function main() {
   u = await callTool(store, 'update_inviter_config', { note: 'Undo', revert_to: 1 }, { who: 'chris' });
   const reverted = (await store.inviterConfigs(1))[0].config;
   check('revert_to brings back an earlier version as a new row', !u.isError && reverted.killSwitch === false && reverted.configVersion === seed.configVersion + 3 && store.inserts === 3);
+
+  u = await callTool(store, 'update_inviter_config', { note: 'Contact', set: { maintainerName: 'Christopher Joyce', maintainerEmail: 'cjoyce@citizengo.net' } }, { who: 'chris' });
+  check('the maintainer\'s name and email can be added to a config saved before they existed', !u.isError, u.text.split('\n')[0]);
+  u = await callTool(store, 'update_inviter_config', { note: 'x', set: { notice: 'hi' } }, { who: 'someone-else' });
+  check('after that, refusals name Christopher and his email', /Christopher Joyce \(cjoyce@citizengo\.net\)/.test(u.text));
+  u = await callTool(store, 'update_inviter_config', { note: 'x', set: { maintainerEmail: 'not an email' } }, { who: 'chris' });
+  check('a malformed maintainer email is refused', u.isError);
 
   console.log('\n6. The extension\'s origin');
   check('the Page Inviter extension is allowed', originAllowed('chrome-extension://gndfogfkkcpphoddibbooeoclgkgmcef', { headers: {} }));

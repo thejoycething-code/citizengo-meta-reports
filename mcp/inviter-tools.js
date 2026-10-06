@@ -26,7 +26,17 @@ const SELECTOR_KEYS = ['row', 'toolbar', 'tab', 'dialog', 'alerts', 'limitLink',
 // Selector entries that are regular expressions with one capture group, not CSS.
 const SELECTOR_PATTERNS = ['reactionIcon', 'pageIdInHtml'];
 const TOP_KEYS = ['configVersion', 'minExtensionVersion', 'killSwitch', 'notice', ...LIST_KEYS,
-  'postLinkPattern', 'reactions', 'selectors', 'newRowsMargin', 'routes'];
+  'postLinkPattern', 'reactions', 'selectors', 'newRowsMargin', 'routes',
+  // Optional (added with extension 2.4.0): who campaigners send change requests
+  // to, and the pattern that recognises Facebook's default profile picture.
+  'maintainerName', 'maintainerEmail', 'defaultAvatarPattern'];
+
+// Who requests are routed to when someone without edit rights asks for a change.
+// The config's own maintainer wins; INVITER_CONFIG_CONTACT is the fallback.
+function contactFrom(cfg) {
+  if (cfg && cfg.maintainerName && cfg.maintainerEmail) return `${cfg.maintainerName} (${cfg.maintainerEmail})`;
+  return String(process.env.INVITER_CONFIG_CONTACT || '').trim() || 'whoever maintains the extension';
+}
 
 // Names (token holders) and emails (Google sign-ins) allowed to edit. Read per
 // request so a change in Vercel needs no code change. Empty means nobody.
@@ -87,6 +97,11 @@ function problems(cfg) {
   }
 
   if (typeof cfg.newRowsMargin !== 'number' || cfg.newRowsMargin < 0 || cfg.newRowsMargin > 100) out.push('newRowsMargin must be a number from 0 to 100.');
+
+  // Optional keys: checked only when present, so configs saved before they existed stay valid.
+  if ('maintainerName' in cfg && (typeof cfg.maintainerName !== 'string' || !cfg.maintainerName.trim() || cfg.maintainerName.length > 100)) out.push('maintainerName must be a name of at most 100 characters.');
+  if ('maintainerEmail' in cfg && (typeof cfg.maintainerEmail !== 'string' || !/^[^\s@<>]+@[^\s@<>]+\.[a-z]{2,}$/i.test(cfg.maintainerEmail))) out.push('maintainerEmail must be an email address.');
+  if ('defaultAvatarPattern' in cfg && (typeof cfg.defaultAvatarPattern !== 'string' || !cfg.defaultAvatarPattern || !compiles(cfg.defaultAvatarPattern))) out.push('defaultAvatarPattern must be a valid pattern.');
 
   if (!isObj(cfg.routes)) out.push('routes must be an object.');
   else {
@@ -180,10 +195,13 @@ async function readConfig(store, args) {
 
 async function updateConfig(store, args, ctx = {}) {
   if (!isAdmin(ctx.who)) {
+    // Route the request rather than just refusing it.
+    let contact = contactFrom(null);
+    try { const [row] = await store.inviterConfigs(1); contact = contactFrom(row && row.config); } catch (e) { /* fallback contact */ }
     return {
       text: admins().length
-        ? `Only ${admins().length === 1 ? 'the maintainer' : 'maintainers'} of the Page Inviter can change its config, and ${ctx.who || 'this connection'} is not on that list.`
-        : 'Nobody can change the Page Inviter config yet: set INVITER_CONFIG_ADMINS in Vercel to the names (or Google emails) allowed to.',
+        ? `Only ${contact} can change the Page Inviter config. Send the request to them: what you want changed and why — for a Facebook change, which page it was on and a screenshot. Nothing was changed.`
+        : `Nobody can change the Page Inviter config yet: set INVITER_CONFIG_ADMINS in Vercel. Requests go to ${contact} in the meantime.`,
       raw: true,
       isError: true,
     };

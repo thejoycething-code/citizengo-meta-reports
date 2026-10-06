@@ -317,7 +317,7 @@ require a newer extension, or `revert_to` an earlier row, and checks the result
 against the shape the extension expects before saving — a config that would
 break the extension is refused, never stored. It is **the only write on the MCP
 request path**: one table, append-only, and only for the names or Google emails
-in `INVITER_CONFIG_ADMINS` (unset means nobody). The extension's own token,
+in `INVITER_CONFIG_ADMINS` (unset means nobody; currently Christopher Joyce only: `chris,cjoyce@citizengo.net`). Anyone else who asks is told to send the request to the maintainer named in the config (`maintainerName`/`maintainerEmail`), or to `INVITER_CONFIG_CONTACT`. The extension's own token,
 `invite-to-like-extension`, can read but not write. The extension calls from
 `chrome-extension://gndfogfkkcpphoddibbooeoclgkgmcef`, a fixed ID pinned by the
 `key` in its manifest and allowlisted in `lib/origin.js`. `npm run
