@@ -306,6 +306,23 @@ sent, so an announcement is recorded only after Slack accepts it. The webhook
 route (`--post`) was removed on 29 Sept 2026 so that no alert can skip the
 fact check. `npm run test:breakout` covers both halves.
 
+**Page Inviter config.** The CitizenGO Page Inviter Chrome extension (invites
+post reactors to like a Page) keeps the words, patterns and Facebook selectors
+it relies on in the `inviter_config` table (`sql/inviter-config.sql`; one row
+per version, newest live) and reads them with the `inviter_config` tool at
+start-up and hourly, so a Facebook change is one edit rather than a reinstall
+for every campaigner. `update_inviter_config` makes that edit: it adds, removes
+or sets entries, can show everyone a notice, pause all inviting (`killSwitch`),
+require a newer extension, or `revert_to` an earlier row, and checks the result
+against the shape the extension expects before saving — a config that would
+break the extension is refused, never stored. It is **the only write on the MCP
+request path**: one table, append-only, and only for the names or Google emails
+in `INVITER_CONFIG_ADMINS` (unset means nobody). The extension's own token,
+`invite-to-like-extension`, can read but not write. The extension calls from
+`chrome-extension://gndfogfkkcpphoddibbooeoclgkgmcef`, a fixed ID pinned by the
+`key` in its manifest and allowlisted in `lib/origin.js`. `npm run
+test:inviter` covers both tools and the origin.
+
 **Google sign-in — built, tested, not enabled.** (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`; optional
 `ALLOWED_GOOGLE_DOMAINS`, default `citizengo.net`; `MCP_REVOKED_EMAILS` for
 instant revocation). When configured, the consent page offers *Continue with

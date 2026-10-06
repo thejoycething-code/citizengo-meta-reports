@@ -1025,6 +1025,8 @@ async function adSpend(store, { page_id, days: d = 90, limit: l = 20 }) {
 // X (Twitter) tools ride behind X_TOOLS_ENABLED so the live connector is
 // unchanged until the source exists. See mcp/x-tools.js and README.md.
 const xtools = require('./x-tools');
+// Config for the CitizenGO Page Inviter Chrome extension. See mcp/inviter-tools.js.
+const { INVITER_TOOLS } = require('./inviter-tools');
 
 const TOOLS = [
   {
@@ -1171,6 +1173,7 @@ const TOOLS = [
     handler: (store) => dataHealth(store),
   },
   ...(xtools.enabled() ? xtools.X_TOOLS : []),
+  ...INVITER_TOOLS,
 ];
 
 // How old the data may be before a caller is warned. Collection runs nightly,
@@ -1199,14 +1202,21 @@ async function freshnessBanner(store) {
 // Single dispatch path for BOTH transports. Previously each server looked the
 // tool up itself, which is how a check added in one place would silently miss
 // the other.
-async function callTool(store, name, args) {
+//
+// ctx carries who is calling ({ who }), for the one tool that needs it
+// (update_inviter_config). Reporting tools ignore it.
+async function callTool(store, name, args, ctx = {}) {
   const tool = TOOLS.find((t) => t.name === name);
   if (!tool) {
     const e = new Error(`Unknown tool: ${name}`);
     e.code = 'UNKNOWN_TOOL';
     throw e;
   }
-  const out = await tool.handler(store, args || {});
+  const out = await tool.handler(store, args || {}, ctx);
+  // raw: the text is machine-read (the inviter config is parsed as JSON by the
+  // extension) or is not about reporting data, so the staleness banner would
+  // only corrupt it.
+  if (out.raw) return out;
   const banner = await freshnessBanner(store);
   // Prepended, not appended: a warning below the numbers is a warning nobody
   // reads until after they have quoted them.

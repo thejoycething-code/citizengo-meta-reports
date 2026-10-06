@@ -129,7 +129,7 @@ function getStore() {
 function rpcResult(id, result) { return { jsonrpc: '2.0', id, result }; }
 function rpcError(id, code, message) { return { jsonrpc: '2.0', id, error: { code, message } }; }
 
-async function handleRpc(msg, store) {
+async function handleRpc(msg, store, who) {
   const { id, method, params } = msg;
 
   switch (method) {
@@ -153,8 +153,12 @@ async function handleRpc(msg, store) {
     case 'tools/call': {
       const name = params && params.name;
       try {
-        const out = await callTool(store, name, (params && params.arguments) || {});
-        return rpcResult(id, { content: [{ type: 'text', text: out.text }] });
+        const out = await callTool(store, name, (params && params.arguments) || {}, { who });
+        return rpcResult(id, {
+          content: [{ type: 'text', text: out.text }],
+          ...(out.structured ? { structuredContent: out.structured } : {}),
+          ...(out.isError ? { isError: true } : {}),
+        });
       } catch (e) {
         if (e.code === 'UNKNOWN_TOOL') return rpcError(id, -32602, e.message);
         // Reported as a tool error, not a protocol error, so the model can
@@ -292,7 +296,7 @@ module.exports = async function handler(req, res) {
   for (const msg of messages) {
     // Notifications carry no id and MUST NOT be answered.
     if (msg && msg.id === undefined) continue;
-    replies.push(await handleRpc(msg, store));
+    replies.push(await handleRpc(msg, store, who));
   }
 
   if (!replies.length) { res.status(202).end(); return; }

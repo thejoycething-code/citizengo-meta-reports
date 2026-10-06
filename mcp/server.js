@@ -68,8 +68,14 @@ async function handle(msg) {
     case 'tools/call': {
       const name = params && params.name;
       try {
-        const out = await callTool(store, name, (params && params.arguments) || {});
-        return result(id, { content: [{ type: 'text', text: out.text }] });
+        // Local stdio: the operator's own name, for update_inviter_config's admin check.
+        const who = process.env.MCP_LOCAL_WHO || process.env.USER || 'local';
+        const out = await callTool(store, name, (params && params.arguments) || {}, { who });
+        return result(id, {
+          content: [{ type: 'text', text: out.text }],
+          ...(out.structured ? { structuredContent: out.structured } : {}),
+          ...(out.isError ? { isError: true } : {}),
+        });
       } catch (e) {
         if (e.code === 'UNKNOWN_TOOL') return failure(id, -32602, e.message);
         log('tool error', name, e.stack || e.message);
