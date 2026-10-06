@@ -1026,7 +1026,7 @@ async function adSpend(store, { page_id, days: d = 90, limit: l = 20 }) {
 // unchanged until the source exists. See mcp/x-tools.js and README.md.
 const xtools = require('./x-tools');
 // Config for the CitizenGO Page Inviter Chrome extension. See mcp/inviter-tools.js.
-const { INVITER_TOOLS } = require('./inviter-tools');
+const { INVITER_TOOLS, toolAllowed } = require('./inviter-tools');
 
 const TOOLS = [
   {
@@ -1212,6 +1212,12 @@ async function callTool(store, name, args, ctx = {}) {
     e.code = 'UNKNOWN_TOOL';
     throw e;
   }
+  // A scoped token (the Page Inviter extension's) reaches its own tools only.
+  if (!toolAllowed(ctx.who, name)) {
+    const e = new Error(`This token can only use the Page Inviter tools, not ${name}.`);
+    e.code = 'FORBIDDEN_TOOL';
+    throw e;
+  }
   const out = await tool.handler(store, args || {}, ctx);
   // raw: the text is machine-read (the inviter config is parsed as JSON by the
   // extension) or is not about reporting data, so the staleness banner would
@@ -1223,4 +1229,7 @@ async function callTool(store, name, args, ctx = {}) {
   return { ...out, text: banner + out.text };
 }
 
-module.exports = { TOOLS, callTool, freshnessBanner, STALE_AFTER_DAYS };
+// The tools a given caller may see: everything, except for scoped tokens.
+const visibleTools = (who) => TOOLS.filter((t) => toolAllowed(who, t.name));
+
+module.exports = { TOOLS, callTool, visibleTools, freshnessBanner, STALE_AFTER_DAYS };

@@ -19,7 +19,7 @@
 
 const { supabaseStore } = require('../lib/store');
 const { verify, originOf, claimsFor } = require('../lib/oauth');
-const { TOOLS, callTool } = require('../mcp/tools');
+const { TOOLS, callTool, visibleTools } = require('../mcp/tools');
 const guard = require('../lib/guard');
 const { corsFor } = require('../lib/origin');
 const { onVercelProduction } = require('../lib/env-guard');
@@ -145,7 +145,7 @@ async function handleRpc(msg, store, who) {
 
     case 'tools/list':
       return rpcResult(id, {
-        tools: TOOLS.map((t) => ({
+        tools: visibleTools(who).map((t) => ({
           name: t.name, description: t.description, inputSchema: t.inputSchema,
         })),
       });

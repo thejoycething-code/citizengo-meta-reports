@@ -9,7 +9,7 @@
 
 const path = require('path');
 const fs = require('fs');
-const { callTool, TOOLS } = require('../mcp/tools');
+const { callTool, TOOLS, visibleTools } = require('../mcp/tools');
 const { problems } = require('../mcp/inviter-tools');
 const { originAllowed } = require('../lib/origin');
 
@@ -57,6 +57,20 @@ function memoryStore(initial) {
     get inserts() { return inserts; },
     // Stale on purpose: proves the banner never reaches the extension's JSON.
     async freshness() { return { latest: '2026-09-01', recentFailures: 0 }; },
+    async loadAll() {
+      return {
+        pages: [{ page_id: '105872884133170', name: 'Citizen GO UK', platform: 'facebook', is_active: true },
+          { page_id: '434058216680321', name: 'CitizenGO', platform: 'facebook', is_active: true }],
+        posts: [
+          { post_id: '1_a', page_id: '105872884133170', created_time: new Date(Date.now() - 2 * 864e5).toISOString(), permalink_url: 'https://www.facebook.com/1/posts/a', message: 'secret copy' },
+          { post_id: '1_b', page_id: '105872884133170', created_time: new Date(Date.now() - 90 * 864e5).toISOString(), permalink_url: 'https://www.facebook.com/1/posts/b', message: 'old' },
+        ],
+        metrics: [
+          { post_id: '1_a', page_id: '105872884133170', collected_date: '2026-10-05', reactions_total: 70, views_total: 999 },
+          { post_id: '1_a', page_id: '105872884133170', collected_date: '2026-10-06', reactions_total: 74, views_total: 1200 },
+        ],
+      };
+    },
     async inviterConfigs(limit = 1) { return rows.slice().sort((a, b) => b.id - a.id).slice(0, limit); },
     async inviterConfigById(id) { return rows.find((r) => r.id === Number(id)) || null; },
     async insertInviterConfig({ config, note }) {
@@ -136,6 +150,24 @@ async function main() {
   check('after that, refusals name Christopher and his email', /Christopher Joyce \(cjoyce@citizengo\.net\)/.test(u.text));
   u = await callTool(store, 'update_inviter_config', { note: 'x', set: { maintainerEmail: 'not an email' } }, { who: 'chris' });
   check('a malformed maintainer email is refused', u.isError);
+
+  console.log('\n7. The extension\'s own token is limited to Page Inviter tools');
+  const ext = { who: 'invite-to-like-extension' };
+  const seen = visibleTools(ext.who).map((t) => t.name).sort();
+  check('it sees only the inviter tools', JSON.stringify(seen) === JSON.stringify(['inviter_config', 'inviter_pages', 'inviter_posts', 'update_inviter_config']), seen.join(', '));
+  check('everyone else still sees every tool', visibleTools('chris').length === TOOLS.length);
+  let refused = null;
+  try { await callTool(store, 'top_posts', {}, ext); } catch (e) { refused = e; }
+  check('calling a reporting tool with it is refused', refused && refused.code === 'FORBIDDEN_TOOL', refused && refused.message);
+  const pg = await callTool(store, 'inviter_pages', {}, ext);
+  const pgs = JSON.parse(pg.text).pages;
+  check('inviter_pages returns names and IDs only', pgs.length === 2 && pgs.every((p) => JSON.stringify(Object.keys(p)) === '["page_id","name"]') && pgs.some((p) => p.name === 'CitizenGO'));
+  const po = await callTool(store, 'inviter_posts', { page_id: '105872884133170', days: 60 }, ext);
+  const posts = JSON.parse(po.text).posts;
+  check('inviter_posts returns recent posts with their latest reaction total', posts.length === 1 && posts[0].reactions_total === 74 && posts[0].permalink_url.endsWith('/posts/a'));
+  check('and nothing else: no views, no post text', !/views|secret copy/.test(po.text), po.text);
+  const nope = await callTool(store, 'inviter_posts', { page_id: '999999999' }, ext);
+  check('a Page that is not collected says so rather than looking empty', JSON.parse(nope.text).collected === false);
 
   console.log('\n6. The extension\'s origin');
   check('the Page Inviter extension is allowed', originAllowed('chrome-extension://gndfogfkkcpphoddibbooeoclgkgmcef', { headers: {} }));

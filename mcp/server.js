@@ -19,7 +19,7 @@
 const path = require('path');
 const { loadEnv } = require('../lib/graph');
 const { fileStore, supabaseStore } = require('../lib/store');
-const { TOOLS, callTool } = require('./tools');
+const { TOOLS, callTool, visibleTools } = require('./tools');
 
 loadEnv();
 
@@ -39,6 +39,10 @@ function failure(id, code, message) { send({ jsonrpc: '2.0', id, error: { code, 
 
 async function handle(msg) {
   const { id, method, params } = msg;
+
+  // Local stdio: the operator's own name, for update_inviter_config's admin
+  // check and for which tools a scoped name may see.
+  const who = process.env.MCP_LOCAL_WHO || process.env.USER || 'local';
 
   // Notifications have no id and must never be answered.
   const isNotification = id === undefined || id === null;
@@ -62,14 +66,12 @@ async function handle(msg) {
 
     case 'tools/list':
       return result(id, {
-        tools: TOOLS.map((t) => ({ name: t.name, description: t.description, inputSchema: t.inputSchema })),
+        tools: visibleTools(who).map((t) => ({ name: t.name, description: t.description, inputSchema: t.inputSchema })),
       });
 
     case 'tools/call': {
       const name = params && params.name;
       try {
-        // Local stdio: the operator's own name, for update_inviter_config's admin check.
-        const who = process.env.MCP_LOCAL_WHO || process.env.USER || 'local';
         const out = await callTool(store, name, (params && params.arguments) || {}, { who });
         return result(id, {
           content: [{ type: 'text', text: out.text }],

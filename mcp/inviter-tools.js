@@ -10,6 +10,11 @@
 //
 //   inviter_config         read. Anyone with a token. The config is words and
 //                          CSS selectors - nothing about people or performance.
+//   inviter_pages          read. Page IDs and names, nothing else.
+//   inviter_posts          read. One Page's recent posts: link, date and reaction
+//                          total from the latest snapshot - what the extension
+//                          needs to visit only posts with new reactions, and no
+//                          more. Views, reach and spend stay behind top_posts.
 //   update_inviter_config  WRITE. The only write on the MCP request path, so it
 //                          is narrow on purpose: one table, append-only (a new
 //                          row per change, nothing updated or deleted), only for
@@ -17,6 +22,18 @@
 //                          validated against the shape the extension expects
 //                          before it is saved. A config the extension cannot use
 //                          is refused here rather than discovered by campaigners.
+
+const { shapeFeed } = require('../lib/shape');
+
+// Tokens limited to these tools (the extension's built-in token): if one leaks
+// from the extension, it shows post links and reaction counts, not reporting data.
+const SCOPED_TOKENS = ['invite-to-like-extension'];
+function scopedTokens() {
+  const extra = String(process.env.INVITER_SCOPED_TOKENS || '').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
+  return [...SCOPED_TOKENS, ...extra];
+}
+const isScoped = (who) => !!who && scopedTokens().includes(String(who).toLowerCase());
+const toolAllowed = (who, name) => !isScoped(who) || name.startsWith('inviter_') || name === 'update_inviter_config';
 
 const REACTION_KEYS = ['rLike', 'rLove', 'rCare', 'rWow', 'rSad', 'rHaha', 'rAngry'];
 const ROUTE_KEYS = ['feed_grid', 'prodash', 'notifications'];
@@ -243,6 +260,30 @@ async function updateConfig(store, args, ctx = {}) {
   };
 }
 
+async function invitePages(store) {
+  const { pages } = await store.loadAll();
+  const rows = pages.filter((p) => p.is_active !== false && (p.platform || 'facebook') === 'facebook')
+    .map((p) => ({ page_id: p.page_id, name: p.name }))
+    .sort((a, b) => String(a.name).localeCompare(String(b.name)));
+  return { text: JSON.stringify({ pages: rows }), raw: true, structured: { pages: rows } };
+}
+
+async function invitePosts(store, args) {
+  const pageId = String(args.page_id || '');
+  if (!/^\d{5,25}$/.test(pageId)) return { text: 'page_id must be a numeric Page ID (see inviter_pages).', raw: true, isError: true };
+  const days = Math.min(365, Math.max(1, Math.floor(Number(args.days)) || 60));
+  const data = await store.loadAll();
+  if (!data.pages.some((p) => p.page_id === pageId)) {
+    return { text: JSON.stringify({ page_id: pageId, collected: false, posts: [] }), raw: true, structured: { page_id: pageId, collected: false, posts: [] } };
+  }
+  const since = new Date(Date.now() - days * 86400000).toISOString();
+  const posts = shapeFeed(data, { page_id: pageId, since, sort: 'recent', with_metrics_only: false }).rows
+    .filter((r) => r.permalink_url)
+    .map((r) => ({ post_id: r.post_id, permalink_url: r.permalink_url, created_time: r.created_time, reactions_total: r.reactions_total, collected_date: r.collected_date }));
+  const out = { page_id: pageId, collected: true, days, posts };
+  return { text: JSON.stringify(out), raw: true, structured: out };
+}
+
 const LIST_SCHEMA = (verb) => ({
   type: 'object',
   description: `Lists to ${verb}, e.g. {"inviteWords": ["Zaproś do polubienia"]}. Works on: ${LIST_KEYS.join(', ')}.`,
@@ -250,6 +291,26 @@ const LIST_SCHEMA = (verb) => ({
 });
 
 const INVITER_TOOLS = [
+  {
+    name: 'inviter_pages',
+    description: 'For the CitizenGO Page Inviter extension: the Facebook Pages being collected, as JSON with page_id and name only. For performance data use list_pages.',
+    inputSchema: { type: 'object', properties: {}, additionalProperties: false },
+    handler: (store) => invitePages(store),
+  },
+  {
+    name: 'inviter_posts',
+    description: 'For the CitizenGO Page Inviter extension: one Page\'s posts from the last N days as JSON — link, date and latest reaction total only — so it can visit only posts with new reactions. For performance data use top_posts.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        page_id: { type: 'string', description: 'The Page (see inviter_pages).' },
+        days: { type: 'number', description: 'Posts from the last N days (default 60, max 365).' },
+      },
+      required: ['page_id'],
+      additionalProperties: false,
+    },
+    handler: (store, args) => invitePosts(store, args),
+  },
   {
     name: 'inviter_config',
     description: 'The live config of the CitizenGO Page Inviter Chrome extension: the words, patterns and Facebook page selectors it uses, plus its notice, kill switch and minimum version. Returns JSON. Set history: true to list earlier versions with who changed what.',
@@ -283,4 +344,4 @@ const INVITER_TOOLS = [
   },
 ];
 
-module.exports = { INVITER_TOOLS, problems, applyChanges, describeDiff, isAdmin };
+module.exports = { INVITER_TOOLS, problems, applyChanges, describeDiff, isAdmin, isScoped, toolAllowed };
