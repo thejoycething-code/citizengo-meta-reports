@@ -45,6 +45,9 @@
     "check:x": "node scripts/check-x-health.js",
     "x:invite": "node scripts/x-invite.js",
     "x:keygen": "node scripts/x-keygen.js",
-    "x:set-client": "node scripts/x-set-client.js"
+    "x:set-client": "node scripts/x-set-client.js",
+    "collect:peers": "node collector/peers-ig.js",
+    "collect:peers:dry": "node collector/peers-ig.js --dry-run",
+    "test:peers": "node scripts/test-peers-ig.js"
   }
 }

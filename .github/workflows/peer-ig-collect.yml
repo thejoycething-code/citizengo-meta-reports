@@ -1,0 +1,71 @@
+name: Peer watch (Instagram)
+
+# Reads peer organisations' public Instagram posts through business_discovery
+# (collector/peers-ig.js; list in config/peers-ig.json). Free: no paid API, no
+# scraping. DORMANT: the scheduled run does nothing until the repository
+# VARIABLE PEER_IG_ENABLED is set to 'true' (after sql/peer-schema.sql is
+# applied). workflow_dispatch always runs, so a dry run can be tried first.
+#
+# Mondays 06:10 UTC, clear of the nightly Meta run (04:30) and the X run (05:15).
+# Weekly is enough: peer posts feed the monthly playbook refresh and evergreen
+# ideas, not same-day news.
+
+on:
+  schedule:
+    - cron: '10 6 * * 1'
+  workflow_dispatch:
+    inputs:
+      only:
+        description: 'Comma-separated handles to restrict to (blank = all)'
+        required: false
+        default: ''
+      posts:
+        description: 'Latest posts to read per account (1-100)'
+        required: false
+        default: '50'
+      dry_run:
+        description: 'Print what would be stored; write nothing'
+        type: boolean
+        required: false
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: peer-ig-collect
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    if: github.event_name == 'workflow_dispatch' || vars.PEER_IG_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    # ~60 calls; anything near this limit means something is looping.
+    timeout-minutes: 15
+
+    env:
+      META_TOKENS: ${{ secrets.META_TOKENS }}
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL || vars.SUPABASE_URL }}
+      SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+      PEER_IG_VIA: ${{ vars.PEER_IG_VIA }}
+      ONLY: ${{ github.event.inputs.only }}
+      POSTS: ${{ github.event.inputs.posts || '50' }}
+      # Scheduled runs write; manual runs default to a dry run.
+      DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && (github.event.inputs.dry_run == true || github.event.inputs.dry_run == 'true') && 'true' || 'false' }}
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
+        with:
+          node-version: '24'
+
+      - name: Test
+        run: node scripts/test-peers-ig.js
+
+      - name: Collect
+        run: |
+          FLAG=""
+          if [ "$DRY_RUN" = "true" ]; then FLAG="--dry-run"; fi
+          ONLYARG=""
+          if [ -n "$ONLY" ]; then ONLYARG="--only $ONLY"; fi
+          node collector/peers-ig.js $FLAG $ONLYARG --posts "$POSTS"
