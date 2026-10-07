@@ -78,7 +78,7 @@ async function main() {
     params: { name: 'list_pages', arguments: {} },
   }, GOOD);
   const text = call1.body.result && call1.body.result.content[0].text;
-  check('list_pages returns page data', !!text && /Pages currently collected/.test(text),
+  check('list_pages returns page data', !!text && /pages collected: \d+ with posts, \d+ with none/.test(text),
     text ? text.split('\n')[0] : 'no text');
 
   console.log('\n4. Notifications and batches');

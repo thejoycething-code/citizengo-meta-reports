@@ -71,9 +71,13 @@ const trueMedian = allViews.length % 2
 
   // The cap has to declare itself, and name the way round it.
   const capped = await callTool(fakeStore, 'top_posts', { page_id: 'p1', days: 90, limit: 10 });
-  check('says how many posts the window holds', /Showing 10 of 101 posts/.test(capped.text));
-  check('says the rest cannot be reached by re-sorting', /cannot be reached by changing the sort/.test(capped.text));
-  check('names search_posts as the rank-independent route', /search_posts/.test(capped.text));
+  check('says how many posts the window holds', /Showing ranks 1–10 of 101 posts/.test(capped.text));
+  // It used to say the rest "cannot be reached", and a model believed it
+  // (Miguel's test, 7 Oct 2026). They can: the note must name the next offset.
+  check('names the offset that fetches the rest', /`offset: 10`/.test(capped.text));
+  check('never claims the rest are unreachable', !/cannot be reached/.test(capped.text));
+  const page2 = await callTool(fakeStore, 'top_posts', { page_id: 'p1', days: 90, limit: 100, offset: 100 });
+  check('the offset it names reaches the last-ranked post', /\| p1_2 \|/.test(page2.text) && !/more are in the window/.test(page2.text));
 
   // No note when nothing is hidden - a warning that fires always is ignored.
   const all = await callTool(fakeStore, 'top_posts', { page_id: 'p1', days: 90, limit: 100 });
@@ -82,8 +86,8 @@ const trueMedian = allViews.length % 2
     async loadAll() { return { pages: [PAGE], posts: posts.slice(0, 4), metrics: metrics.slice(0, 4) }; },
   };
   const nothingHidden = await callTool(smallStore, 'top_posts', { page_id: 'p1', days: 90, limit: 10 });
-  check('no cap note when every post is shown', !/cannot be reached/.test(nothingHidden.text));
-  check('but the note does appear at limit=100 with 101 posts', /Showing 100 of 101/.test(all.text));
+  check('no cap note when every post is shown', !/more are in the window/.test(nothingHidden.text));
+  check('but the note does appear at limit=100 with 101 posts', /Showing ranks 1–100 of 101/.test(all.text));
 
   // --- formats -----------------------------------------------------------
   // media_type alone calls every Facebook video "video": 924 of 926
@@ -187,6 +191,55 @@ const trueMedian = allViews.length % 2
   check('page_growth nets follows against unfollows over the window', /\| 15 \| 3 \| 12 \|/.test(week.text));
   await callTool(growthStore, 'page_growth', { page_id: 'p1', days: 7 });
   check('a rolling window still sends no until', asked && asked.until === undefined);
+
+  // --- calendar windows ---------------------------------------------------
+  // A Mon-Sun week must be exact: a rolling `days` made a model report a
+  // week's post count as "42 to 52".
+  const weekPosts = [
+    { post_id: 'w_before', page_id: 'p1', created_time: '2026-09-27T23:30:00Z', message: 'sunday before' },
+    { post_id: 'w_mon', page_id: 'p1', created_time: '2026-09-28T00:10:00Z', message: 'monday' },
+    { post_id: 'w_sun', page_id: 'p1', created_time: '2026-10-04T23:50:00Z', message: 'sunday' },
+    { post_id: 'w_after', page_id: 'p1', created_time: '2026-10-05T00:05:00Z', message: 'monday after' },
+  ];
+  const weekStore = {
+    ...fakeStore,
+    async loadAll() {
+      return { pages: [PAGE], posts: weekPosts,
+        metrics: weekPosts.map((p, i) => ({ post_id: p.post_id, collected_date: '2026-10-06', views_total: 100 * (i + 1) })) };
+    },
+  };
+  const wk = await callTool(weekStore, 'top_posts', { page_id: 'p1', since: '2026-09-28', until: '2026-10-04' });
+  check('since/until keeps exactly the posts published in the week',
+    /\| w_mon \|/.test(wk.text) && /\| w_sun \|/.test(wk.text) && !/w_before|w_after/.test(wk.text));
+  check('the header states the window and its post count', /28 Sep 2026 – 4 Oct 2026 · 2 posts published in the window/.test(wk.text));
+
+  // --- outliers: per-page baselines and a stated threshold -----------------
+  // Two pages, a big one and a small one. Pooled, the small page's posts all
+  // fall "below normal"; each must be judged against its own median.
+  const BIG = { page_id: 'big', name: 'Big', followers_count: 100000 };
+  const SMALL = { page_id: 'small', name: 'Small', followers_count: 1000 };
+  const recent = new Date(Date.now() - 5 * 86400000).toISOString();
+  const op = []; const om = [];
+  const add = (page, id, views) => {
+    op.push({ post_id: id, page_id: page, created_time: recent, message: id });
+    om.push({ post_id: id, collected_date: '2026-10-06', views_total: views, shares_total: 1 });
+  };
+  [10000, 10000, 10000, 10000, 25000].forEach((v, i) => add('big', `big_${i}`, v));
+  [100, 100, 100, 100, 250].forEach((v, i) => add('small', `small_${i}`, v));
+  const oStore = { ...fakeStore, async loadAll() { return { pages: [BIG, SMALL], posts: op, metrics: om }; } };
+  const o = await callTool(oStore, 'outliers', {});
+  check('outliers judges each page against its own median',
+    /\| small_4 \|/.test(o.text) && /\| big_4 \|/.test(o.text) && !/Well below normal[^\n]*— [1-9]/.test(o.text),
+    (o.text.match(/Beat normal[^\n]*/) || [''])[0]);
+  check('outliers states its rule', /2× or more/.test(o.text) && /0\.5× or less/.test(o.text));
+  const o3 = await callTool(oStore, 'outliers', { threshold: 3 });
+  check('a higher threshold is honoured', /Beat normal \(3×\+\)\*\* — 0 /.test(o3.text));
+
+  // --- compare_pages: one window for every column --------------------------
+  const cmp = await callTool(oStore, 'compare_pages', { days: 30 });
+  check('compare_pages carries same-window medians', /Median views\/post/.test(cmp.text) && /\| Big \|[^\n]*\| 10,000 \|/.test(cmp.text));
+  const one = await callTool(oStore, 'compare_pages', { days: 30, page_ids: ['small'] });
+  check('compare_pages can be narrowed to named pages', /\| Small \|/.test(one.text) && !/\| Big \|/.test(one.text));
 
   console.log(failed ? `\n${failed} failed` : '\nall passed');
   process.exit(failed ? 1 : 0);

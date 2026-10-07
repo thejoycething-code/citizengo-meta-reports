@@ -46,7 +46,24 @@ function windowFor({ since, until, days }) {
   return { from, to, label: `last ${days || 30} days`, explicit: false };
 }
 
-const PRETTY_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+// Posts PUBLISHED in a window, for the post-level tools. A rolling `days` is
+// "the last N x 24 hours from now", which never lines up with a Monday-to-Sunday
+// week: asked about 28 Sep - 4 Oct, a model had to pull ten days and trim, and
+// reported the week's post count as "42 to 52" (Miguel's test, 7 Oct 2026).
+function postWindow({ since, until, days }) {
+  if (since) {
+    const win = windowFor({ since, until, days });
+    return { ...win, since: `${win.from}T00:00:00.000Z`, keep: (r) => String(r.created_time).slice(0, 10) <= win.to };
+  }
+  return { label: days ? `last ${days} days` : 'all time', since: sinceFor(days), keep: () => true, explicit: false };
+}
+
+function inWindow(feed, win) {
+  const rows = feed.rows.filter(win.keep);
+  return { total: rows.length, rows };
+}
+
+const PRETTY_MONTHS =['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 function prettyDay(iso) {
   const d = new Date(iso);
   return `${d.getUTCDate()} ${PRETTY_MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
@@ -107,19 +124,22 @@ function snippet(text, query, width = 150) {
 // not place. On a page posting several a day, a mid-table post sits beyond the
 // hundred-row ceiling on every sort there is - the HazteOir Colombia earthquake
 // post ranked 420th by views, 428th by reach, 410th by reactions and 480th by
-// shares out of 681, so no combination of sort and limit would surface it and
-// its reactions were simply unobtainable by this route.
+// shares out of 681, so no combination of sort and limit would surface it.
+// offset and compact now reach it; the note has to say so.
 //
-// Saying which posts are missing is not possible; saying HOW MANY, and naming
-// the tool that does not rank, is. search_posts filters by text, so a post's
-// position on its own page is irrelevant there.
-function rankNote(feed, limit, sort) {
+// Saying HOW MANY are left out, and exactly how to fetch them, is. This note
+// used to say the rest "cannot be reached", which stopped being true when
+// offset arrived - and a model took it at its word, reporting ten HazteOir
+// posts in a week as unobtainable when one more call would have fetched them
+// (Miguel's test, 7 Oct 2026).
+function rankNote(feed, offset, sort) {
   const shown = feed.rows.length;
   const total = feed.total ?? null;   // post-filter, pre-limit count from shapeFeed
-  if (!total || total <= shown) return '';
-  return `\n\n_Showing ${shown} of ${n(total)} posts in this window, ranked by ${METRIC_LABELS[sort] || sort}. `
-    + `**The other ${n(total - shown)} cannot be reached by changing the sort** — a mid-table post places nowhere on any of them. `
-    + `To get engagement for a specific post regardless of where it ranks, use search_posts with a word from the post._`;
+  const next = offset + shown;
+  if (!total || next >= total) return '';
+  return `\n\n_Showing ranks ${offset + 1}–${next} of ${n(total)} posts in this window, ranked by ${METRIC_LABELS[sort] || sort}. `
+    + `**${n(total - next)} more are in the window.** Call again with \`offset: ${next}\` for the next ranks, or with \`compact: true\` to list every post in the window. `
+    + `Do not count or total the window from this page alone._`;
 }
 
 // What KIND of post it is, beyond "video or not".
@@ -177,19 +197,45 @@ function gapNote(rows) {
     + `They are shown as "—" and excluded from totals. This is a data gap, not zero performance._`;
 }
 
+// The two groups are counted and named HERE, not left to the reader. One list
+// of 36 made a model report "25 with posts / 11 without" beside lists of 26
+// and 10 names (Miguel's test, 7 Oct 2026).
 async function listPages(store) {
   const data = await store.loadAll();
   const pages = shapePages(data);
-  const rows = pages.map((g) => [
+  const active = pages.filter((g) => g.posts > 0);
+  const dormant = pages.filter((g) => g.posts === 0).sort((a, b) => (b.followers_count || 0) - (a.followers_count || 0));
+  const dates = data.posts.map((r) => String(r.created_time).slice(0, 10)).sort();
+  const span = dates.length ? `${prettyDay(dates[0])} – ${prettyDay(dates[dates.length - 1])}` : 'no posts held';
+  let runs = new Map();
+  if (dormant.length && typeof store.latestRuns === 'function') {
+    try { runs = new Map((await store.latestRuns(dormant.map((g) => g.page_id))).map((r) => [r.page_id, r])); } catch (e) { /* column shows "unknown" */ }
+  }
+  const lastRead = (g) => {
+    const r = runs.get(g.page_id);
+    if (!r) return 'unknown';
+    const day = String(r.started_at).slice(0, 10);
+    return r.status === 'ok' ? `read OK ${day}, 0 posts` : `**${r.status} ${day}**: ${truncate(r.error_message || '', 60)}`;
+  };
+  const anyFailed = [...runs.values()].some((r) => r.status !== 'ok');
+  const rows = active.map((g) => [
     g.name, g.page_id, n(g.followers_count), n(g.posts),
     g.posts_missing_metrics ? `${g.posts_missing_metrics} missing` : 'complete',
     n(g.views_total), p(g.median_engagement_rate), p(g.median_beyond_followers_pct),
   ]);
   return {
-    text: `**Pages currently collected** (${pages.length})\n\n`
+    text: `**${pages.length} pages collected: ${active.length} with posts, ${dormant.length} with none.**\n\n`
+      + `**${active.length} pages with posts** · all held history, ${span}\n\n`
       + table(['Page', 'ID', 'Followers', 'Posts', 'Data', 'Total views', 'Median eng. rate', 'Median beyond followers'], rows)
-      + `\n\n_Coverage note: only pages whose Business Portfolio has granted read access appear here. `
-      + `Pages missing from this list are an access gap, not inactive pages._`,
+      + `\n\n**${dormant.length} pages with no posts** — `
+      + (anyFailed
+        ? 'at least one of these FAILED its last read (see "Last read"), so its empty history may be a collection gap rather than a quiet page. Say so when reporting.'
+        : 'each was read cleanly on its last collection and Meta returned no published posts, so these pages have not published in the collected period. Not a collection gap.')
+      + '\n\n'
+      + table(['Page', 'ID', 'Followers', 'Last read'], dormant.map((g) => [g.name, g.page_id, n(g.followers_count), lastRead(g)]))
+      + `\n\n_Totals and medians here cover ALL held history (${span}), not a recent window. For a like-for-like comparison over one period use compare_pages; do not mix these figures with its window._`
+      + `\n\n_The ID is the page's classic Facebook ID, which every tool takes. Post links often show a different number (e.g. HazteOir posts link via 1510300191127109): that is the same page's newer profile ID, which Facebook uses in URLs. Both refer to the same page._`
+      + `\n\n_Only pages whose Business Portfolio has granted read access appear here. Pages missing from this list are an access gap, not inactive pages._`,
     data: pages,
   };
 }
@@ -197,9 +243,10 @@ async function listPages(store) {
 // limit is deliberately NOT defaulted in the destructure: the default differs
 // by mode, and `l = 10` made compact exports return ten rows a block because
 // "not supplied" and "supplied as 10" became indistinguishable.
-async function topPosts(store, { page_id, days: d = 30, sort = 'views', limit: l,
+async function topPosts(store, { page_id, days: d = 30, since, until, sort = 'views', limit: l,
   offset: off = 0, compact = false }) {
   const days = clampDays(d, 30);
+  const win = postWindow({ since, until, days });
   const offset = Math.max(0, Math.floor(Number(off)) || 0);
   // compact is the EXPORT path: a page posting several a day has more posts
   // than any league table can show, so this drops the wide columns and fills
@@ -223,9 +270,9 @@ async function topPosts(store, { page_id, days: d = 30, sort = 'views', limit: l
   // limit=5 when the real figure is 25,757. Every "vs median" multiple on the
   // page was measured against a bar roughly forty times too high, which is
   // the opposite of what this column exists to do.
-  const windowFeed = shapeFeed(data, {
-    page_id, since: sinceFor(days), sort, with_metrics_only: false,
-  });
+  const windowFeed = inWindow(shapeFeed(data, {
+    page_id, since: win.since, sort, with_metrics_only: false,
+  }), win);
   const feed = { total: windowFeed.total, rows: windowFeed.rows.slice(offset, offset + limit) };
   // Baseline from the whole window, so "vs median" compares like with like.
   const base = pageBaseline(windowFeed.rows);
@@ -289,7 +336,7 @@ async function topPosts(store, { page_id, days: d = 30, sort = 'views', limit: l
     text: (compact
       ? `**Export: posts ${offset + 1}–${nextOffset} of ${n(feed.total)}**`
       : `**Top ${kept.length} posts by ${label}**`)
-      + `${page_id ? '' : ' (all pages)'}${days ? ` · last ${days} days` : ' · all time'}`
+      + `${page_id ? '' : ' (all pages)'} · ${win.label} · ${n(feed.total)} posts published in the window`
       + `${offset && !compact ? ` · from rank ${offset + 1}` : ''}\n\n`
       + (compact
         ? table(['Date', 'Format', 'Post', 'Views', 'Reach', 'Reactions', 'Comments', 'Shares', 'Engagement', 'Eng. rate',
@@ -304,7 +351,7 @@ async function topPosts(store, { page_id, days: d = 30, sort = 'views', limit: l
       + (base.reliable
         ? `\n\n_"vs median" compares each post to this page's own median of ${n(base.median_views)} views over the same window. A raw view count says nothing on its own._`
         : `\n\n_Too few posts with metrics (${base.n}) to establish a baseline, so no comparison is shown._`)
-      + (compact ? '' : rankNote(feed, limit, sort))
+      + (compact ? '' : rankNote({ total: feed.total, rows: kept }, offset, sort))
       + `\n\n_${SOURCE_NOTE}_`
       + (anyWatch
         ? '\n\n_"Avg watch" is Meta\'s average time each view of a Facebook Reel lasted. Meta offers it on Reels only, so "—" on any other format means not offered, not zero._'
@@ -394,16 +441,23 @@ async function pageSummary(store, { page_id, days: d = 30, since, until }) {
   };
 }
 
-async function comparePages(store, { days: d = 30 }) {
+// Every column comes from the SAME window. The table had totals only, so a
+// model asked for medians took them from list_pages, which covers all held
+// history, and printed 30-day and 90-day figures side by side in one table
+// (Miguel's test, 7 Oct 2026).
+async function comparePages(store, { days: d = 30, since, until, page_ids }) {
   const days = clampDays(d, 30);
+  const win = postWindow({ since, until, days });
   const data = await store.loadAll();
-  const pages = shapePages(data);
+  const wanted = Array.isArray(page_ids) && page_ids.length ? new Set(page_ids.map(String)) : null;
+  const pages = shapePages(data).filter((g) => !wanted || wanted.has(g.page_id));
   let anyIncomplete = false;
   // Ordered by views. The rows arrived in whatever order the store returned them,
   // which for a COMPARISON table is a trap: the first row reads as the best one,
   // and it was arbitrary — 20.5m views sat above 4.8m sat above 3.0m.
+  const med = (rows, k) => median(rows.map((r) => r[k]).filter((v) => v !== null && v !== undefined));
   const rows = pages.map((g) => {
-    const feed = shapeFeed(data, { page_id: g.page_id, since: sinceFor(days) });
+    const feed = inWindow(shapeFeed(data, { page_id: g.page_id, since: win.since }), win);
     const scored = feed.rows.filter((r) => r.has_metrics);
     const missing = feed.rows.length - scored.length;
     if (missing) anyIncomplete = true;
@@ -419,26 +473,26 @@ async function comparePages(store, { days: d = 30 }) {
       // Views per follower: the fair cross-page comparison, since a 28-follower
       // page and a 117k-follower page are not comparable on raw totals.
       (views && g.followers_count) ? (views / g.followers_count).toFixed(1) + '×' : '—',
+      n(med(scored, 'views_total')),
+      p(med(scored, 'engagement_rate')),
+      p(med(scored, 'beyond_followers_pct')),
+      n(med(scored, 'shares_total')),
 
-      // Index 7: the unformatted figure the sort uses. Trimmed off before display.
-
+      // Last: the unformatted figure the sort uses. Trimmed off before display.
       views,
     ];
   });
   // Sort on the raw number, not the formatted string — "9,157" sorts above
-
   // "20,501,220" lexically. Pages with nothing measurable go last rather than
-
   // being ranked as the worst.
-
-  const sortedRows = [...rows].sort((x, y) => (y[7] || -1) - (x[7] || -1))
-
-    .map((r) => r.slice(0, 7));
-
+  const sortedRows = [...rows].sort((x, y) => (y[y.length - 1] || -1) - (x[x.length - 1] || -1))
+    .map((r) => r.slice(0, -1));
 
   return {
-    text: `**Page comparison · last ${days} days**\n\n`
-      + table(['Page', 'Followers', 'Posts', 'Views', 'Engagement', 'Eng. rate', 'Views per follower'], sortedRows)
+    text: `**Page comparison · posts published ${win.label}**\n\n`
+      + table(['Page', 'Followers', 'Posts', 'Views', 'Engagement', 'Eng. rate', 'Views per follower',
+        'Median views/post', 'Median eng. rate', 'Median beyond followers', 'Median shares/post'], sortedRows)
+      + `\n\n_Every column is computed over the same posts: those published ${win.label}. Views and engagement are organic post-level lifetime totals for those posts, not the page-level Business Suite figure (page_summary has that, ads included). Do not mix these medians with figures from list_pages, which cover all held history._`
       + `\n\n_"Views per follower" is the fairer cross-page comparison — raw totals just rank pages by audience size._`
       + (anyIncomplete
         ? `\n\n_**Compare with care:** pages marked "no data" have posts Meta refused to report on, so their totals are understated by an unknown amount. Do not rank pages against each other without saying so._`
@@ -585,23 +639,52 @@ const clampDays = (v, dflt) =>
 
 const OUTLIER_ROWS = 25;
 
-async function outliers(store, { page_id, days: d = 90, limit: l = OUTLIER_ROWS }) {
+// The threshold is a parameter and is printed in the heading. It was a fixed
+// 1.5x that the output never named, so "broke away from normal" covered 282 of
+// HazteOir's 716 posts (39%) and read as inconsistent beside a 2x rule the
+// model had chosen itself (Miguel's test, 7 Oct 2026). 2x is the default
+// because "twice the page's normal" is what people mean by beating it.
+const OUTLIER_X = 2;
+
+async function outliers(store, { page_id, days: d = 90, since, until, threshold: th = OUTLIER_X,
+  limit: l = OUTLIER_ROWS }) {
   const days = clampDays(d, 90); const limit = clampRows(l, OUTLIER_ROWS, 100);
+  const over_x = Math.min(Math.max(Number(th) || OUTLIER_X, 1.1), 50);
+  const under_x = Number((1 / over_x).toFixed(2));
   const data = await store.loadAll();
-  const feed = shapeFeed(data, { page_id, since: sinceFor(days), sort: 'views' });
-  const base = pageBaseline(feed.rows);
-  if (!base.reliable) {
+  // The baseline is ALWAYS the trailing `days`; since/until only choose which
+  // posts are judged against it, so "which posts last week beat normal" is
+  // last week's posts against a 90-day normal, not against each other.
+  const baseFeed = shapeFeed(data, { page_id, since: sinceFor(days), sort: 'views' });
+  const win = since ? postWindow({ since, until, days }) : null;
+  const judged = win
+    ? inWindow(shapeFeed(data, { page_id, since: win.since, sort: 'views' }), win).rows
+    : baseFeed.rows;
+
+  // One baseline PER PAGE. Without a page_id this used to pool every page into
+  // one median, so HazteOir's posts set the bar for a page a twentieth its size
+  // and every small page's posts landed in "well below normal".
+  const byPage = new Map();
+  for (const r of baseFeed.rows) {
+    if (!byPage.has(r.page_id)) byPage.set(r.page_id, []);
+    byPage.get(r.page_id).push(r);
+  }
+  const baselines = new Map([...byPage].map(([id, rows]) => [id, pageBaseline(rows)]));
+  const scored = judged.filter((r) => r.has_metrics && baselines.get(r.page_id)?.reliable)
+    .map((r) => withBenchmark(r, baselines.get(r.page_id)));
+  const base = page_id ? (baselines.get(page_id) || { n: 0, reliable: false }) : null;
+  if (page_id && !base.reliable) {
     return {
       text: `Only ${base.n} post(s) with metrics in the last ${days} days — not enough to say what "normal" looks like for this page, so nothing can be called an outlier yet. Collect more history first.`,
       data: null,
     };
   }
-  const scored = feed.rows.filter((r) => r.has_metrics).map((r) => withBenchmark(r, base));
+  const unjudged = judged.filter((r) => r.has_metrics && !baselines.get(r.page_id)?.reliable).length;
   // Most extreme first, so a cap keeps the interesting end rather than whichever
   // posts happened to sort first.
-  const over = scored.filter((r) => r.benchmark.views_x_median >= 1.5)
+  const over = scored.filter((r) => r.benchmark.views_x_median >= over_x)
     .sort((a, b) => b.benchmark.views_x_median - a.benchmark.views_x_median);
-  const under = scored.filter((r) => r.benchmark.views_x_median < 0.5)
+  const under = scored.filter((r) => r.benchmark.views_x_median <= under_x)
     .sort((a, b) => a.benchmark.views_x_median - b.benchmark.views_x_median);
 
   // Say what was left out. A silent cap reads as "this is all of them", which is
@@ -613,6 +696,7 @@ async function outliers(store, { page_id, days: d = 90, limit: l = OUTLIER_ROWS 
 
   const fmt = (r) => [
     r.created_time.slice(0, 10),
+    ...(page_id ? [] : [r.page_name || '—']),
     r.benchmark.views_x_median + '×',
     n(r.views_total),
     n(r.shares_total),
@@ -621,28 +705,48 @@ async function outliers(store, { page_id, days: d = 90, limit: l = OUTLIER_ROWS 
     postLink(r, truncate(r.message, 52)),
     r.post_id,
   ];
-  const head = ['Date', 'vs median', 'Views', 'Shares', 'Shares vs med', 'Eng. rate', 'Post', 'Post ID'];
+  const head = ['Date', ...(page_id ? [] : ['Page']), 'vs median', 'Views', 'Shares', 'Shares vs med', 'Eng. rate', 'Post', 'Post ID'];
+  const judgedLabel = win ? `posts published ${win.label}` : `posts published in the last ${days} days`;
+  const pct_ = (k) => (scored.length ? ` — ${Math.round((k / scored.length) * 100)}% of ${n(scored.length)} ${judgedLabel}` : '');
 
-  return {
-    text: [
-      `**What normal looks like** · last ${days} days · ${base.n} posts with metrics`,
+  const normal = page_id
+    ? [
+      `**What normal looks like** · this page's last ${days} days · ${base.n} posts with metrics`,
       '',
       `- Median views: **${n(base.median_views)}** · 90th percentile: **${n(base.p90_views)}**`,
       `- Median engagement rate: **${p(base.median_eng_rate)}**`,
       `- Median reach beyond followers: **${p(base.median_beyond_pct)}**`,
       `- Median shares: **${n(base.median_shares)}**`,
+    ]
+    : [
+      `**What normal looks like** · each page against ITS OWN median over its last ${days} days`,
       '',
-      `**Broke away from normal** (${over.length})`,
+      table(['Page', 'Posts', 'Median views', 'Median shares', 'Median eng. rate'],
+        [...baselines].filter(([, b]) => b.reliable)
+          .map(([id, b]) => [byPage.get(id)[0].page_name || id, b.n, b.median_views, b.median_shares, b.median_eng_rate])
+          .sort((a, b) => b[2] - a[2])
+          .map(([name, k, v, s, e]) => [name, n(k), n(v), n(s), p(e)])),
+    ];
+
+  return {
+    text: [
+      ...normal,
+      '',
+      `**Rule:** a post "beat normal" at **${over_x}× or more** its page's median views, and is "well below" at **${under_x}× or less**. `
+        + `Judged: ${judgedLabel}.`,
+      '',
+      `**Beat normal (${over_x}×+)** — ${over.length}${pct_(over.length)}`,
       '',
       over.length ? table(head, shown(over).map(fmt)) + omitted(over) : '_None._',
       '',
-      `**Well below normal** (${under.length})`,
+      `**Well below normal (${under_x}× or less)** — ${under.length}${pct_(under.length)}`,
       '',
       under.length ? table(head, shown(under).map(fmt)) + omitted(under) : '_None._',
       '',
+      ...(unjudged ? [`_${unjudged} post(s) are on pages with fewer than 3 posts in the baseline window, so they have no normal to be judged against and are left out._`, ''] : []),
       `_Shares are usually what separates the two: a post reaches beyond its followers when supporters carry it, not when the page posts it. ${SOURCE_NOTE}_`,
-    ].join('\n') + gapNote(feed.rows),
-    data: { baseline: base, over: over.length, under: under.length },
+    ].join('\n') + gapNote(judged),
+    data: { baselines: Object.fromEntries(baselines), threshold: over_x, judged: scored.length, over: over.length, under: under.length },
   };
 }
 
@@ -931,18 +1035,39 @@ async function igGrowthSection(store, { page_id, since, until }) {
 }
 
 
-async function instagramPosts(store, { page_id, days: d = 30, sort = 'reach', limit: l = 15 }) {
+async function instagramPosts(store, { page_id, days: d = 30, since, until, sort = 'reach', type,
+  limit: l = 15, offset: off = 0 }) {
   const days = clampDays(d, 30); const limit = clampRows(l, 15, 100);
-  const rows = await store.igMedia({ page_id, since: sinceFor(days), sort, limit });
+  const offset = Math.max(0, Math.floor(Number(off)) || 0);
+  const win = postWindow({ since, until, days });
+  const rows = await store.igMedia({
+    page_id, since: win.since, until: win.explicit ? `${shiftDay(win.to, 1)}T00:00:00.000Z` : undefined,
+    sort, type, limit, offset,
+  });
+  if ((!rows || !rows.length) && (type || offset || page_id || since)) {
+    return {
+      text: `No Instagram${type ? ' ' + type : ' posts'} in this window${offset ? ` past rank ${offset}` : ''}${page_id ? ' for that page' : ''}. Instagram is collected; nothing matched this filter.`,
+      data: null,
+    };
+  }
   if (!rows || !rows.length) {
     return {
       text: 'No Instagram data yet.\n\n_Instagram needs `instagram_basic` and `instagram_manage_insights` on the token, and the account must be a Business or Creator account linked to the Facebook Page. A personal Instagram account exposes no insights at all, whatever the token allows._',
       data: null,
     };
   }
-  const label = { reach: 'reach', saved: 'saves', views: 'views', interactions: 'interactions', recent: 'most recent' }[sort] || sort;
+  const label = { reach: 'reach', saved: 'saves', views: 'views', interactions: 'interactions', recent: 'most recent', watch: 'average watch time' }[sort] || sort;
+  const total = rows.matchedTotal ?? null;
+  const next = offset + rows.length;
+  const typeLabel = type ? ` ${type}` : ' posts';
+  // Same rule as top_posts: a capped list says how many it left out and how to
+  // get them, or a summary of "our Reels" quietly becomes a summary of the
+  // Reels that happened to rank.
+  const more = total !== null && next < total
+    ? `\n\n_Showing ranks ${offset + 1}–${next} of ${n(total)} Instagram${typeLabel} in this window. **${n(total - next)} more** — call again with \`offset: ${next}\`. Do not count, total or take medians over the window from this page alone._`
+    : (total !== null ? `\n\n_All ${n(total)} Instagram${typeLabel} in this window are listed${offset ? ' across the pages fetched' : ''}._` : '');
   return {
-    text: `**Top ${rows.length} Instagram posts by ${label}**${days ? ` · last ${days} days` : ''}\n\n`
+    text: `**Instagram${typeLabel} by ${label}**${offset ? ` · from rank ${offset + 1}` : ''} · ${win.label}\n\n`
       + table(
         ['Date', 'Account', 'Post', 'Type', 'Reach', 'Views', 'Saves', 'Saves/1k', 'Interactions', 'Rate', 'Follows', 'Avg watch'],
         rows.map((r) => [
@@ -968,7 +1093,8 @@ async function instagramPosts(store, { page_id, days: d = 30, sort = 'reach', li
       // the backfills re-read every Reel from July on: both are lifetime
       // figures, so any post inside a collection window gets them.
       + 'Both are lifetime figures re-read on every collection, so "—" on an older post means it has not been re-read since they were added, not zero. '
-      + SOURCE_NOTE + '_',
+      + SOURCE_NOTE + '_'
+      + more,
     data: rows,
   };
 }
@@ -1042,10 +1168,12 @@ const TOOLS = [
       type: 'object',
       properties: {
         page_id: { type: 'string', description: 'Restrict to one page. Omit for all pages. Get ids from list_pages.' },
-        days: { type: 'number', description: 'Look back this many days (default 30). Use 0 for all collected data.' },
+        days: { type: 'number', description: 'Look back this many days (default 30). Ignored when since is given.' },
+        since: { type: 'string', description: 'Only posts published from this date, YYYY-MM-DD. Use with until for an exact calendar week or month, e.g. Monday to Sunday.' },
+        until: { type: 'string', description: 'Window end INCLUSIVE, YYYY-MM-DD. Defaults to today.' },
         sort: { type: 'string', enum: ['views', 'reach', 'beyond', 'engagement', 'rate', 'shares', 'recent'], description: 'Ranking metric (default views).' },
         limit: { type: 'number', description: 'How many posts to return (default 10, max 100 — or up to 1000 with compact, subject to the response budget).' },
-        offset: { type: 'number', description: 'Skip this many ranked posts before returning. Use with compact to walk a whole page in blocks.' },
+        offset: { type: 'number', description: 'Skip this many ranked posts before returning. Every post in the window is reachable: page through with offset, or use compact.' },
         compact: { type: 'boolean', description: 'EXPORT MODE. Shortens post text to a linked snippet and drops the baseline comparison, keeps date, format, views, reach, reactions, comments, shares, engagement and Reel watch time, and returns as many rows as fit. Use this when someone wants every post for a page rather than a top ten — a high-volume page has hundreds, and the ranked view can only ever show the first hundred. The output names the offset to ask for next until the export is complete.' },
       },
       additionalProperties: false,
@@ -1070,10 +1198,15 @@ const TOOLS = [
   },
   {
     name: 'compare_pages',
-    description: 'Compare every collected page over the same period, including views per follower — the fair comparison across pages of very different audience sizes. Use for "which country page is doing best".',
+    description: 'Compare collected pages over the same period: totals, views per follower (the fair comparison across pages of very different audience sizes), and medians per post for views, engagement rate, reach beyond followers and shares — all from the same window. Use for "which country page is doing best" or "compare page A and page B".',
     inputSchema: {
       type: 'object',
-      properties: { days: { type: 'number', description: 'Look back this many days (default 30).' } },
+      properties: {
+        days: { type: 'number', description: 'Look back this many days (default 30). Ignored when since is given.' },
+        since: { type: 'string', description: 'Window start, YYYY-MM-DD, for posts published from this date.' },
+        until: { type: 'string', description: 'Window end INCLUSIVE, YYYY-MM-DD. Defaults to today.' },
+        page_ids: { type: 'array', items: { type: 'string' }, description: 'Only these pages. Omit for every page.' },
+      },
       additionalProperties: false,
     },
     handler: (store, args) => comparePages(store, args),
@@ -1096,12 +1229,15 @@ const TOOLS = [
   },
   {
     name: 'outliers',
-    description: 'Establish what "normal" looks like for a page (median views, engagement rate, shares) and list the posts that broke away from it or fell well below. Use this to answer "was this post actually good", "what worked", or "why did this one do so well" — a raw view count is meaningless without the page baseline to compare it against.',
+    description: 'Establish what "normal" looks like for each page (its own median views, engagement rate, shares) and list the posts that beat it (default 2× the median views or more) or fell well below it. Use this to answer "which posts beat their page\'s normal last week", "was this post actually good", "what worked". Pass since/until to judge one week\'s or month\'s posts against the page\'s longer-run normal in one call. Every page is judged against its own median, never a pooled one.',
     inputSchema: {
       type: 'object',
       properties: {
-        page_id: { type: 'string', description: 'Restrict to one page. Omit for all pages.' },
-        days: { type: 'number', description: 'Window to compute the baseline over (default 90). A longer window gives a steadier baseline.' },
+        page_id: { type: 'string', description: 'Restrict to one page. Omit for all pages (each still judged against its own median).' },
+        days: { type: 'number', description: 'Window the baseline (the page\'s "normal") is computed over, trailing from today (default 90).' },
+        since: { type: 'string', description: 'Judge only posts published from this date, YYYY-MM-DD, against the baseline. Omit to judge every post in the baseline window.' },
+        until: { type: 'string', description: 'End of the judged window, INCLUSIVE, YYYY-MM-DD.' },
+        threshold: { type: 'number', description: 'Multiple of the page median that counts as beating normal (default 2). Well below is the reciprocal (0.5 at the default).' },
         limit: { type: 'number', description: 'How many posts to list at each end (default 25). The count of any left out is always stated.' },
       },
       additionalProperties: false,
@@ -1130,9 +1266,13 @@ const TOOLS = [
       type: 'object',
       properties: {
         page_id: { type: 'string', description: 'Restrict to the Instagram account linked to this Facebook page id.' },
-        days: { type: 'number', description: 'Look back this many days (default 30, 0 for all).' },
-        sort: { type: 'string', enum: ['reach', 'saved', 'views', 'interactions', 'recent'], description: 'Ranking metric (default reach).' },
-        limit: { type: 'number', description: 'How many posts (default 15).' },
+        days: { type: 'number', description: 'Look back this many days (default 30). Ignored when since is given.' },
+        since: { type: 'string', description: 'Only posts published from this date, YYYY-MM-DD.' },
+        until: { type: 'string', description: 'Window end INCLUSIVE, YYYY-MM-DD.' },
+        type: { type: 'string', enum: ['reels', 'feed', 'carousels', 'images', 'stories'], description: 'Only this format. Use "reels" for any question about Reels or watch time, so every Reel is read rather than only those that rank among all posts.' },
+        sort: { type: 'string', enum: ['reach', 'saved', 'views', 'interactions', 'recent', 'watch'], description: 'Ranking metric (default reach). "watch" = Reels average watch time.' },
+        limit: { type: 'number', description: 'How many posts (default 15, max 100).' },
+        offset: { type: 'number', description: 'Skip this many ranked posts. The output names the next offset while more remain.' },
       },
       additionalProperties: false,
     },
