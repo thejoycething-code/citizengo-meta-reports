@@ -14,7 +14,8 @@
 //   node collector/peers-ig.js [--dry-run] [--only handle1,handle2] [--posts 50]
 // Env: META_TOKENS (or META_TOKEN), SUPABASE_URL, SUPABASE_SERVICE_KEY,
 //      PEER_IG_VIA (optional: our Instagram username to call as; default the
-//      first linked account found, preferring citizengo_uk).
+//      first linked account found, preferring citizengo_uk),
+//      PEER_IG_VIA_ID (optional: our Instagram user id to call as; tried first).
 
 const fs = require('fs');
 const path = require('path');
@@ -192,8 +193,19 @@ async function main() {
   // One token per Business Portfolio: use the one that holds the account we
   // want to call as, falling back to the first linked account found.
   let client = null, via = null, fallback = null;
+  // A direct id wins: some linked accounts (citizengo_uk among them) are not
+  // listed by /me/accounts but are still readable, so try each token on it.
+  const viaId = String(process.env.PEER_IG_VIA_ID || '').trim();
+  if (viaId) {
+    for (const token of tokens) {
+      const c = makeClient({ token, version: VERSION });
+      const r = await c.get(`/${viaId}`, { fields: 'id,username' });
+      if (r.ok && r.body && r.body.id) { client = c; via = { id: r.body.id, username: r.body.username || viaId }; break; }
+    }
+    if (!client) console.log(`PEER_IG_VIA_ID ${viaId} is not readable with these tokens; falling back to a linked account`);
+  }
   const wanted = process.env.PEER_IG_VIA ? [norm(process.env.PEER_IG_VIA)] : PREFERRED_VIA;
-  for (const token of tokens) {
+  for (const token of client ? [] : tokens) {
     const c = makeClient({ token, version: VERSION });
     const found = await findVia(c.get).catch(() => null);
     if (!found) continue;

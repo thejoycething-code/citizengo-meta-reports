@@ -48,6 +48,8 @@ jobs:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL || vars.SUPABASE_URL }}
       SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
       PEER_IG_VIA: ${{ vars.PEER_IG_VIA }}
+      # @citizengo_uk. Not listed by /me/accounts, so it is addressed by id.
+      PEER_IG_VIA_ID: ${{ vars.PEER_IG_VIA_ID || '17841422748868275' }}
       ONLY: ${{ github.event.inputs.only }}
       POSTS: ${{ github.event.inputs.posts || '50' }}
       # Scheduled runs write; manual runs default to a dry run.
