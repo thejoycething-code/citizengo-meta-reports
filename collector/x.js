@@ -401,7 +401,11 @@ async function collectAccount(account, out) {
   // posts, and "zero posts" must never be reported as "ok" - that is the
   // silent-failure shape this project keeps meeting (see README, Failure modes).
   const passFailures = [];
-  const keep = (p) => account.kind !== 'spokesperson' || (p.citizengo_urls && p.citizengo_urls.length);
+  // exclude=retweets is not enough on its own: X ignored it on the 3650-day
+  // backfills of @CitizenGO_GB (30 Sep 2026, 305 retweets) and @CitizenGOar
+  // (7 Oct 2026, 1,212), so a retweet that slips through is dropped here.
+  const keep = (p) => (INCLUDE_RETWEETS || p.referenced_type !== 'retweeted')
+    && (account.kind !== 'spokesperson' || (p.citizengo_urls && p.citizengo_urls.length));
 
   function absorb(res, privateWindow, label) {
     const data = (res.body && res.body.data) || [];
