@@ -118,7 +118,7 @@ function aggregate(posts, sigs, { includeUnposted = false, reach = new Map() } =
     }
     const borrowed = [...new Set(e.posts.filter((p) => usualOwner.get(p.account_id) && e.owner && usualOwner.get(p.account_id) !== e.owner).map((p) => p.account_label || p.account_id))];
     if (borrowed.length) {
-      flags.push(`also shared elsewhere: link made by ${String(e.owner).toUpperCase()}, not ${borrowed.join(', ')}, so its figures include everyone who used it`);
+      flags.push(`${sharedElsewhere ? '' : 'also shared elsewhere: '}link made by ${String(e.owner).toUpperCase()}, not ${borrowed.join(', ')}, so its figures include everyone who used it`);
       sharedElsewhere = true;
     }
 
