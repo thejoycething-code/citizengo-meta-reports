@@ -10,7 +10,7 @@
 //
 // A pull replaces the table: rows are upserted with this run's pulled_at, then
 // rows from older pulls are deleted - but only when the pull looks complete
-// (rows came back and the 5,000-row limit was not hit), so a broken or
+// (rows came back and the row limit was not hit), so a broken or
 // truncated pull never wipes good data.
 
 const fs = require('fs');
@@ -18,7 +18,7 @@ const { loadEnv } = require('../lib/graph');
 const links = require('../lib/links');
 const { makeSink } = require('../collector/lib/sinks');
 
-const LIMIT = 5000;
+const LIMIT = 50000; // the limit both Looker queries ask for (link-signatures-mini.sh)
 const SOCIAL_SERIES = /^(fb|ig|tw|tk|yt|tg)\d{1,2}$/;
 const SOCIAL_SOURCES = new Set(['fb', 'ig', 'tw', 'tk', 'yt', 'tg']);
 // Generic values that are not one post's link: the thank-you-page share
@@ -93,7 +93,7 @@ async function main() {
   const rows = toSignatureRows(looker, pulledAt);
   // Either query at its cap means rows are missing: keep the older rows.
   const truncated = (looker.perQuery || [looker.length]).some((c) => c >= LIMIT);
-  console.log(`${pulledAt} Looker returned ${(looker.perQuery || [looker.length]).join(' + ')} rows; ${rows.length} social campaign-code rows${truncated ? ' (HIT THE 5,000 LIMIT: older rows kept)' : ''}`);
+  console.log(`${pulledAt} Looker returned ${(looker.perQuery || [looker.length]).join(' + ')} rows; ${rows.length} social campaign-code rows${truncated ? ' (HIT THE ROW LIMIT: older rows kept)' : ''}`);
   if (!rows.length) { console.log('nothing to load; existing rows kept'); return; }
   const sink = makeSink({ dryRun: dry, dir: require('path').join(__dirname, '..', 'data') });
   for (let i = 0; i < rows.length; i += 500) await sink.upsert('link_signatures', rows.slice(i, i + 500));
