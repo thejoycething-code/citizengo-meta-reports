@@ -34,6 +34,11 @@ on:
         description: 'Space-separated account ids or handles to restrict to (blank = all)'
         required: false
         default: ''
+      rescan:
+        description: 'With backfill_days: re-read the whole window, not just below the oldest post held (billed per post)'
+        type: boolean
+        required: false
+        default: false
       dry_run:
         description: 'Write to data/x_*.ndjson instead of Supabase'
         type: boolean
@@ -68,6 +73,7 @@ jobs:
       BACKFILL_DAYS: ${{ github.event.inputs.backfill_days || '0' }}
       BACKFILL_FROM_DAYS: ${{ github.event.inputs.backfill_from_days }}
       ACCOUNTS: ${{ github.event.inputs.accounts }}
+      RESCAN: ${{ (github.event.inputs.rescan == true || github.event.inputs.rescan == 'true') && 'true' || 'false' }}
       ALERT_WEBHOOK_URL: ${{ secrets.ALERT_WEBHOOK_URL }}
       DRY_RUN: ${{ (github.event.inputs.dry_run == true || github.event.inputs.dry_run == 'true') && 'true' || 'false' }}
 
@@ -105,6 +111,7 @@ jobs:
           BF=""
           if [ "$BACKFILL_DAYS" != "0" ]; then BF="--backfill-days $BACKFILL_DAYS"; fi
           if [ -n "$BACKFILL_FROM_DAYS" ]; then BF="$BF --backfill-from-days $BACKFILL_FROM_DAYS"; fi
+          if [ "$RESCAN" = "true" ]; then BF="$BF --rescan"; fi
           # Passed only when chosen: an explicit window disables the first-run
           # widening that stops a new account missing posts aged 8-29 days.
           LB=""

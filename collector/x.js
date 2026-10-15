@@ -31,7 +31,7 @@
 // personal account is discarded before it is written.
 //
 // Usage:
-//   node collector/x.js [--dry-run] [--lookback-days 8] [--backfill-days 3650] [--backfill-from-days 90]
+//   node collector/x.js [--dry-run] [--lookback-days 8] [--backfill-days 3650] [--backfill-from-days 90] [--rescan]
 //                       [--no-checkpoints] [--include-retweets] [--accounts <id> <id>] [--budget-usd 100]
 //
 // Dry runs without a database can still exercise the API using
@@ -70,6 +70,10 @@ const BACKFILL_DAYS = Number(flag('backfill-days', 0));
 // Set 90 to take only history the daily and checkpoint passes never read, so a
 // deep backfill of an account already collected does not pay again for 8-89.
 const BACKFILL_FROM_DAYS = flag('backfill-from-days', null) === null ? null : Number(flag('backfill-from-days', null));
+// Re-read the whole backfill window instead of resuming below the oldest post
+// held. For when the keep rule widens (15 Oct 2026: spokesperson mentions) and
+// posts already read and discarded must be read again. Billed per post.
+const RESCAN = args.includes('--rescan');
 const MAX_POSTS = Number(flag('max-posts', process.env.X_MAX_POSTS || 1000));
 const BUDGET_USD = Number(flag('budget-usd', process.env.X_MONTHLY_BUDGET_USD || 100));
 const ONLY = (() => {
@@ -485,7 +489,7 @@ async function collectAccount(account, out) {
     // (budget, credits, an outage) continues where it left off. Without this a
     // re-run re-fetches the whole window, and X only waives repeat charges
     // within the same UTC day.
-    if (SUPABASE && !account.inline) {
+    if (SUPABASE && !account.inline && !RESCAN) {
       const oldest = await pg('GET', `x_posts?select=created_at&account_id=eq.${encodeURIComponent(String(u.id))}&order=created_at.asc&limit=1`);
       const o = oldest.ok && Array.isArray(oldest.body) && oldest.body[0] ? oldest.body[0].created_at : null;
       if (o && Date.parse(o) < Date.parse(end)) {
