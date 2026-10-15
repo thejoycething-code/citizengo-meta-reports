@@ -47,7 +47,9 @@ async function main() {
     found = r.found;
     if (!found) {
       // Fall back to Business Discovery through one of our own Instagram accounts.
-      const ourIgIds = [...new Set(((await pg('GET', 'meta_pages?select=ig_user_id&ig_user_id=not.is.null')) || []).map((p) => p.ig_user_id))];
+      // Our own Instagram accounts (meta_pages.ig_user_id is empty in production;
+      // meta_ig_media carries the ids of every account we collect).
+      const ourIgIds = [...new Set(((await pg('GET', 'meta_ig_media?select=ig_user_id&order=timestamp.desc&limit=500')) || []).map((p) => p.ig_user_id).filter(Boolean))];
       found = await igpartner.idByDiscovery({ tokens: TOKENS, ourIgIds, username });
       console.log(found ? `  business_discovery: @${found.username} is Instagram user ${found.igUserId}` : '  business_discovery: not found (personal account, wrong username, or our accounts cannot look it up)');
     }
