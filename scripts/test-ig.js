@@ -129,6 +129,13 @@ function mockRes() {
   } });
   const fb = await igpartner.findShared({ tokens: ['tokB'], businessIds: null, username: 'rociodangelo', makeApi: bizApi });
   eq('with no business list, each token says which business it belongs to', fb.found && fb.found.businessId, '200');
+  const discApi = () => ({ async get(path, params) {
+    if (path === '900' && /business_discovery\.username\(rociodangelo\)/.test(params.fields)) return { ok: true, status: 200, body: { business_discovery: { id: '178', username: 'rociodangelo' } } };
+    return { ok: false, status: 400, body: {} };
+  } });
+  const disc = await igpartner.idByDiscovery({ tokens: ['t'], ourIgIds: ['900'], username: '@rociodangelo', makeApi: discApi });
+  eq('Business Discovery through one of our accounts gives the user id', disc && [disc.igUserId, disc.edge], ['178', 'business_discovery']);
+  eq('Business Discovery: unknown username gives nothing', await igpartner.idByDiscovery({ tokens: ['t'], ourIgIds: ['900'], username: 'nobody', makeApi: discApi }), null);
   const g = (map) => ({ async get(path) { const v = map[path]; return v ? { ok: true, status: 200, body: v } : { ok: false, status: 400, body: { error: { message: 'Insufficient permission' } } }; } });
   const full = await igpartner.checkAccess(g({ '178': { username: 'rociodangelo' }, '178/media': { data: [{ id: 'm1' }] }, 'm1/insights': { data: [] } }), '178');
   ok('posts and insights readable: accepted', full.ok && full.insights === true);

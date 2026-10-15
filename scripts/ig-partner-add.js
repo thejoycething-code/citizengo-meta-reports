@@ -46,6 +46,12 @@ async function main() {
     for (const t of r.tried) console.log(`  token ${t.token} · business ${t.business} · ${t.edge}: ${t.ok ? `${t.count} account(s)` : 'not available'}`);
     found = r.found;
     if (!found) {
+      // Fall back to Business Discovery through one of our own Instagram accounts.
+      const ourIgIds = [...new Set(((await pg('GET', 'meta_pages?select=ig_user_id&ig_user_id=not.is.null')) || []).map((p) => p.ig_user_id))];
+      found = await igpartner.idByDiscovery({ tokens: TOKENS, ourIgIds, username });
+      console.log(found ? `  business_discovery: @${found.username} is Instagram user ${found.igUserId}` : '  business_discovery: not found (personal account, wrong username, or our accounts cannot look it up)');
+    }
+    if (!found) {
       console.error(`\n@${username} is not among the Instagram accounts our Business Managers can see. Check that (1) the holder added CitizenGO's Business Manager as a partner on that Instagram account with Insights access, and (2) the shared account is assigned to our System User (Business settings → Instagram accounts → the account → Assign people). Or pass --id with its Instagram user id.`);
       process.exit(1);
     }
