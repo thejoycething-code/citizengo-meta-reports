@@ -20,6 +20,10 @@ const { makeSink } = require('../collector/lib/sinks');
 
 const LIMIT = 5000;
 const SOCIAL_SERIES = /^(fb|ig|tw|tk|yt|tg)\d{1,2}$/;
+const SOCIAL_SOURCES = new Set(['fb', 'ig', 'tw', 'tk', 'yt', 'tg']);
+// Generic values that are not one post's link: the thank-you-page share
+// ("typage"), share buttons that send only the list ("es_mx-"), placeholders.
+const GENERIC = (c) => c === 'typage' || /-$/.test(c) || c.length < 8 || /\{\{/.test(c);
 const F = 'petitions_signatures_3_0.';
 
 // Pull the query rows out of a stream-json transcript. Pure, for the tests.
@@ -36,11 +40,16 @@ function rowsFromStream(text, readFile = (p) => fs.readFileSync(p, 'utf8')) {
     }
   }
   if (!results.length) throw new Error('no Looker query result in the stream (did Claude call the query tool?)');
-  const c = results[results.length - 1];
-  let body = Array.isArray(c.content) ? c.content.map((x) => x.text || '').join('') : String(c.content || '');
-  const saved = body.match(/saved to:?\s*(\/\S+?\.(?:txt|json))/i);
-  if (saved) body = readFile(saved[1]);
-  return parseRows(body);
+  // Every query's rows, concatenated (the pull makes two; overlap is merged later).
+  const perQuery = results.map((c) => {
+    let body = Array.isArray(c.content) ? c.content.map((x) => x.text || '').join('') : String(c.content || '');
+    const saved = body.match(/saved to:?\s*(\/\S+?\.(?:txt|json))/i);
+    if (saved) body = readFile(saved[1]);
+    return parseRows(body);
+  });
+  const all = perQuery.flat();
+  all.perQuery = perQuery.map((r) => r.length);
+  return all;
 }
 
 function parseRows(body) {
@@ -59,8 +68,11 @@ function toSignatureRows(lookerRows, pulledAt) {
     const code = String(r[F + 'utm_campaign'] || '').trim().toLowerCase();
     if (!code) continue;
     const p = links.parseCode(code);
-    if (!p.series || !SOCIAL_SERIES.test(p.series)) continue;
     const source = String(r[F + 'source'] || '(unassigned)').toLowerCase();
+    // A Copilot social code (any arrival source), or any non-generic code
+    // whose signers came straight from a social platform (hand-made codes).
+    const socialCode = p.series && SOCIAL_SERIES.test(p.series);
+    if (!socialCode && !(SOCIAL_SOURCES.has(source) && !GENERIC(code))) continue;
     const num = (k) => (r[F + k] === null || r[F + k] === undefined ? null : Number(r[F + k]));
     out.set(`${code}|${source}`, {
       campaign_code: code, source,
@@ -79,8 +91,9 @@ async function main() {
   const pulledAt = new Date().toISOString();
   const looker = rowsFromStream(fs.readFileSync(file, 'utf8'));
   const rows = toSignatureRows(looker, pulledAt);
-  const truncated = looker.length >= LIMIT;
-  console.log(`${pulledAt} Looker returned ${looker.length} rows; ${rows.length} social campaign-code rows${truncated ? ' (HIT THE 5,000 LIMIT: older rows kept)' : ''}`);
+  // Either query at its cap means rows are missing: keep the older rows.
+  const truncated = (looker.perQuery || [looker.length]).some((c) => c >= LIMIT);
+  console.log(`${pulledAt} Looker returned ${(looker.perQuery || [looker.length]).join(' + ')} rows; ${rows.length} social campaign-code rows${truncated ? ' (HIT THE 5,000 LIMIT: older rows kept)' : ''}`);
   if (!rows.length) { console.log('nothing to load; existing rows kept'); return; }
   const sink = makeSink({ dryRun: dry, dir: require('path').join(__dirname, '..', 'data') });
   for (let i = 0; i < rows.length; i += 500) await sink.upsert('link_signatures', rows.slice(i, i + 500));

@@ -106,6 +106,8 @@ async function linkPerformance(store, args = {}) {
   notes.push(`Signatures, new and reactivated members come from Looker (Bluebook signatures by utm_campaign), all time for each code${fresh.pulledAt ? `, pulled ${String(fresh.pulledAt).slice(0, 16).replace('T', ' ')} UTC` : ' — **not pulled yet, so every figure is blank**'}. "Direct" is signers who arrived from the platform the link was made for; the rest arrived after it was shared on (mostly WhatsApp).`);
   const unmatched = rows.filter((r) => !r.matched).length;
   if (unmatched) notes.push(`${n(unmatched)} code(s) have no signatures recorded in Looker yet (shown as —): too new, no signers, or the code was changed after the link was made.`);
+  const donation = rows.filter((r) => /-(md|otd)_[a-z]+-/.test(r.code)).length;
+  if (donation) notes.push(`${n(donation)} code(s) are donation-form links (MD/OTD): this tool counts signatures, not donations, so they show none.`);
   if (untraced.length) notes.push(`${n(untraced.length)} post link(s) carried no campaign code (a plain petition link or an unresolved short link), so their signatures cannot be traced. Make links in Campaign Copilot.`);
   notes.push('Posts are what the connector collects: Facebook first comments, Stories and DMs are not posts here; with include_unposted their codes still count.');
 

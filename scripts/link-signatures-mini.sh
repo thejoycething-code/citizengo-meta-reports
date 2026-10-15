@@ -20,7 +20,11 @@ mkdir -p "$WORK"
 cd "$REPO" && git pull -q --ff-only origin main 2>>"$WORK/err.txt"
 cd "$WORK"
 SINCE=$(date -v-400d +%Y/%m/%d)
-claude -p "Use the CitizenGO Looker connector. Call its query tool exactly ONCE, read-only, with: model google_analytics_4; view (explore) petitions_signatures_3_0; fields petitions_signatures_3_0.utm_campaign, petitions_signatures_3_0.source, petitions_signatures_3_0.sum_signatures, petitions_signatures_3_0.sum_new_members, petitions_signatures_3_0.sum_reactivated_members; filters petitions_signatures_3_0.utm_campaign = '%-fb%,%-ig%,%-tw%,%-tk%,%-yt%,%-tg%' and petitions_signatures_3_0.date_date = 'after ${SINCE}'; sorts petitions_signatures_3_0.sum_signatures desc; limit 5000. Do not call any other tool, do not summarise the rows. When the call returns, reply with the single word DONE." \
+# Two queries: (1) Copilot social codes (…-FB1, -IG2…) whatever source the
+# signer arrived from (WhatsApp shares count); (2) ANY code whose signers
+# arrived straight from a social platform, which catches hand-made codes.
+FIELDS="petitions_signatures_3_0.utm_campaign, petitions_signatures_3_0.source, petitions_signatures_3_0.sum_signatures, petitions_signatures_3_0.sum_new_members, petitions_signatures_3_0.sum_reactivated_members"
+claude -p "Use the CitizenGO Looker connector, read-only. Call its query tool exactly TWICE, both with model google_analytics_4, view (explore) petitions_signatures_3_0, fields ${FIELDS}, sorts petitions_signatures_3_0.sum_signatures desc, limit 5000. Query 1 filters: petitions_signatures_3_0.utm_campaign = '%-fb%,%-ig%,%-tw%,%-tk%,%-yt%,%-tg%' and petitions_signatures_3_0.date_date = 'after ${SINCE}'. Query 2 filters: petitions_signatures_3_0.source = 'fb,ig,tw,tk,yt,tg' and petitions_signatures_3_0.date_date = 'after ${SINCE}'. Do not call any other tool, do not summarise the rows. When both calls return, reply with the single word DONE." \
   --allowedTools "mcp__claude_ai_CitizenGO_Looker__query" --output-format stream-json --verbose > stream.jsonl 2>> err.txt
 node "$REPO/scripts/load-link-signatures.js" stream.jsonl >> run.log 2>&1
 echo "$(date -u +%FT%TZ) exit $?" >> run.log

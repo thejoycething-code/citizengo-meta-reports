@@ -59,11 +59,21 @@ const lookerRows = [
   { 'petitions_signatures_3_0.utm_campaign': 'pt_br-2026_06_10-apoie-o-pl-liberdade', 'petitions_signatures_3_0.source': 'other', 'petitions_signatures_3_0.sum_signatures': 425 },
 ];
 const sig = toSignatureRows(lookerRows, '2026-10-15T10:00:00Z');
-eq('only social codes kept (email l1 and free text dropped)', sig.map((r) => `${r.series}|${r.source}`), ['tw1|tw', 'tw1|wa']);
+eq('only social codes kept (email l1 and free text from "other" dropped)', sig.map((r) => `${r.series}|${r.source}`), ['tw1|tw', 'tw1|wa']);
+const extra = toSignatureRows([
+  { 'petitions_signatures_3_0.utm_campaign': 'en_gb-snp_cta_x_23/09', 'petitions_signatures_3_0.source': 'tw', 'petitions_signatures_3_0.sum_signatures': 12 },
+  { 'petitions_signatures_3_0.utm_campaign': 'typage', 'petitions_signatures_3_0.source': 'fb', 'petitions_signatures_3_0.sum_signatures': 9000 },
+  { 'petitions_signatures_3_0.utm_campaign': 'es_mx-', 'petitions_signatures_3_0.source': 'fb', 'petitions_signatures_3_0.sum_signatures': 50 },
+  { 'petitions_signatures_3_0.utm_campaign': 'en_gb-snp_cta_x_23/09', 'petitions_signatures_3_0.source': 'wa', 'petitions_signatures_3_0.sum_signatures': 3 },
+], 'x');
+eq('hand-made code kept when signers came from a social platform; generic share values dropped', extra.map((r) => `${r.campaign_code}|${r.source}`), ['en_gb-snp_cta_x_23/09|tw']);
 eq('owner and petition parsed onto the row', [sig[0].owner, sig[0].petition_id, sig[0].code_date], ['rda', '19538', '2026-10-14']);
 const toolUse = { type: 'message', message: { content: [{ type: 'tool_use', id: 'tu1', name: 'mcp__claude_ai_CitizenGO_Looker__query' }] } };
 const inline = [JSON.stringify(toolUse), JSON.stringify({ message: { content: [{ type: 'tool_result', tool_use_id: 'tu1', content: [{ type: 'text', text: JSON.stringify(lookerRows) }] }] } })].join('\n');
 eq('rows read from an inline tool result', rowsFromStream(inline).length, 4);
+const toolUse2 = { message: { content: [{ type: 'tool_use', id: 'tu2', name: 'mcp__claude_ai_CitizenGO_Looker__query' }] } };
+const two = [inline, JSON.stringify(toolUse2), JSON.stringify({ message: { content: [{ type: 'tool_result', tool_use_id: 'tu2', content: JSON.stringify(lookerRows.slice(0, 1)) }] } })].join('\n');
+eq('both queries read, with a row count for each (truncation is per query)', rowsFromStream(two).perQuery, [4, 1]);
 const savedStream = [JSON.stringify(toolUse), JSON.stringify({ message: { content: [{ type: 'tool_result', tool_use_id: 'tu1', content: 'Output too large. Full output saved to: /tmp/q.txt\nPreview...' }] } })].join('\n');
 eq('rows read from the saved file when the result was persisted', rowsFromStream(savedStream, () => JSON.stringify([{ type: 'text', text: JSON.stringify(lookerRows) }])).length, 4);
 let threw = false; try { rowsFromStream(JSON.stringify(toolUse)); } catch (e) { threw = /no Looker query result/.test(e.message); }
