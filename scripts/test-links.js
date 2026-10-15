@@ -113,6 +113,31 @@ const clicks = aggregate([ro('q1', OK1, 'rda', 'tw1')], [S(OK1, 'tw', 40)], { re
 ok('more X signers than link clicks allow: reported, noted as shared elsewhere', clicks.codes[0].credited.signatures === 40 && /3 link clicks/.test(clicks.codes[0].flags.join()));
 const acct = groupBy(rr.codes, 'account');
 eq('account total: X signers from its posts (878 + 14), with 878 shown as via a link also shared elsewhere', acct.map((g) => [g.key, g.signatures, g.shared_signatures]), [['X @rociodangelo6', 892, 878]]);
+
+// Facebook and Instagram (16 Oct 2026). The real case: CitizenGO Magyarország
+// tags every Page link "cgo-fbpage", a standing code since June 2025, so its
+// 39,598 Facebook signers (all time) belong to every use of it, not to the
+// four September posts, which had 18,996 views and 1,143 clicks between them.
+const hu = (id) => ({ platform: 'facebook', post_id: id, account_id: '773710406017012', account_label: 'CitizenGO Magyarország', account_kind: 'organisation', posted_at: '2026-09-28', campaign_code: 'cgo-fbpage', owner: null, series: null, petition_id: null });
+const huPosts = [hu('f1'), hu('f2'), hu('f3'), hu('f4')];
+const huSigs = [S('cgo-fbpage', 'fb', 39598, 15439), S('cgo-fbpage', 'tw', 7, 2)];
+const huReach = new Map([['f1', { platform: 'facebook', impressions: 2738, url_link_clicks: 402 }], ['f2', { platform: 'facebook', impressions: 9476, url_link_clicks: 110 }], ['f3', { platform: 'facebook', impressions: 1260, url_link_clicks: 29 }], ['f4', { platform: 'facebook', impressions: 5522, url_link_clicks: 602 }]]);
+const huAg = aggregate(huPosts, huSigs, { reach: huReach });
+ok('Magyarország cgo-fbpage: 39,598 Facebook signers from posts with 18,996 views is noted as shared elsewhere', huAg.codes[0].sharedElsewhere && /these Facebook posts had 18,996 views \(organic and paid\), so most of the 39,598 Facebook signers/.test(huAg.codes[0].flags.join()), JSON.stringify(huAg.codes[0].flags));
+eq('Magyarország: still reported as Facebook signers (Chris: report, and say so); the 7 X signers are other uses', [huAg.codes[0].credited.signatures, huAg.codes[0].other_uses], [39598, 7]);
+eq('Magyarország by account: all 39,598 shown as via a link also shared elsewhere', groupBy(huAg.codes, 'account').map((g) => [g.key, g.signatures, g.shared_signatures]), [['Facebook CitizenGO Magyarország', 39598, 39598]]);
+const fbClicks = aggregate([hu('f1')], [S('cgo-fbpage', 'fb', 900)], { reach: new Map([['f1', { impressions: 50000, url_link_clicks: 400 }]]) });
+ok('Facebook: within views but over clicks x1.5+5 is noted, citing the clicks', fbClicks.codes[0].sharedElsewhere && /these Facebook posts had 400 clicks/.test(fbClicks.codes[0].flags.join()));
+const fbFine = aggregate([hu('f1')], [S('cgo-fbpage', 'fb', 600)], { reach: new Map([['f1', { impressions: 50000, url_link_clicks: 400 }]]) });
+eq('Facebook: 600 signers from 400 clicks (within x1.5+5) and 50,000 views: no note', [fbFine.codes[0].credited.signatures, fbFine.codes[0].flags.length], [600, 0]);
+const fbPart = aggregate([hu('f1'), hu('f2')], [S('cgo-fbpage', 'fb', 39598)], { reach: new Map([['f1', { impressions: 2738, url_link_clicks: 402 }]]) });
+eq('Facebook: one post\'s views unknown, so no judgement (never compare against a partial total)', fbPart.codes[0].flags.length, 0);
+const igp = (id) => ({ platform: 'instagram', post_id: id, account_id: 'ig1', account_label: '@citizengo_magyar', account_kind: 'organisation', posted_at: '2026-09-20', campaign_code: 'hu-2026_09_20-x-mma-aa_na-gl-fr-19247-ig1', owner: 'mma', series: 'ig1', petition_id: '19247' });
+const igAg = aggregate([igp('m1')], [S('hu-2026_09_20-x-mma-aa_na-gl-fr-19247-ig1', 'ig', 800)], { reach: new Map([['m1', { platform: 'instagram', impressions: 631, url_link_clicks: null }]]) });
+ok('Instagram: more signers than the post reached is noted as shared elsewhere', igAg.codes[0].sharedElsewhere && /these Instagram posts had 631 accounts reached\/views/.test(igAg.codes[0].flags.join()), JSON.stringify(igAg.codes[0].flags));
+const igOk = aggregate([igp('m1')], [S('hu-2026_09_20-x-mma-aa_na-gl-fr-19247-ig1', 'ig', 40)], { reach: new Map([['m1', { impressions: 631, url_link_clicks: null }]]) });
+eq('Instagram: 40 signers from 631 reached, clicks unknown: no note', igOk.codes[0].flags.length, 0);
+
 const ownr = groupBy(rr.codes, 'owner');
 eq('by owner: every use of the links each person made', ownr.map((g) => [g.key, g.signatures]).sort(), [['fes', 1147], ['rda', 899]].sort());
 eq('links with no code are counted as untraced', ag.untraced.length, 1);
@@ -137,6 +162,45 @@ const store = {
   ok('empty answer says the registry is not built', /not been built/.test(none.text));
   const bad = await linkPerformance(store, { month: 'Smarch' });
   ok('bad month is explained, not thrown', /Give the month/.test(bad.text));
+  let asked = null;
+  const huStore = { ...store, async linkPosts() { return [...huPosts, igp('m1')]; }, async linkSignatures() { return huSigs; },
+    async linkPostReach(w) { asked = w; return [...huReach.values()].map((v, i) => ({ post_id: `f${i + 1}`, ...v })); } };
+  const hr = await linkPerformance(huStore, { account: 'Magyarország', month: '2026-09' });
+  eq('the tool asks for Facebook and Instagram reach, not only X', asked && [asked.xPostIds, asked.fbPostIds, asked.igMediaIds], [[], ['f1', 'f2', 'f3', 'f4'], ['m1']]);
+  ok('the answer carries the Magyarország note', /these Facebook posts had 18,996 views/.test(hr.text) && /via links also shared elsewhere/.test(hr.text), hr.text.slice(0, 400));
+
+  console.log('\nReach for the check (store, Supabase faked)');
+  const { supabaseStore } = require('../lib/store');
+  const realFetch = global.fetch;
+  const TABLES = {
+    x_post_latest: [{ post_id: 'x1', impressions: 57, url_link_clicks: null }],
+    meta_post_latest: [{ post_id: 'f1', views_total: 2738, views_organic: 2738, clicks_total: 402 }, { post_id: 'f2', views_total: 1000, views_organic: 400, clicks_total: 10 }, { post_id: 'f3', views_total: null, views_organic: null, clicks_total: null }],
+    meta_post_ad_spend: [{ post_id: 'f2', impressions: 5000 }, { post_id: 'f2', impressions: 1000 }],
+    meta_ig_latest: [{ media_id: 'm1', reach: 631, views: 925 }],
+    ig_media_latest: [{ media_id: 'm2', reach: null, views: null }],
+  };
+  const seenTables = [];
+  global.fetch = async (url) => {
+    const table = new URL(url).pathname.split('/').pop();
+    seenTables.push(table);
+    if (!TABLES[table]) return { status: 404, ok: false, text: async () => '{"code":"42P01"}' };
+    return { status: 200, ok: true, text: async () => JSON.stringify(TABLES[table]) };
+  };
+  try {
+    const st = supabaseStore({ url: 'https://example.supabase.co', serviceKey: 'k' });
+    const got = await st.linkPostReach({ xPostIds: ['x1'], fbPostIds: ['f1', 'f2', 'f3'], igMediaIds: ['m1', 'm2'] });
+    const by = new Map(got.map((r) => [r.post_id, r]));
+    eq('X: impressions and link clicks as before', [by.get('x1').impressions, by.get('x1').url_link_clicks], [57, null]);
+    eq('Facebook: views (organic + paid) and all clicks', [by.get('f1').impressions, by.get('f1').url_link_clicks], [2738, 402]);
+    eq('Facebook boosted post: organic views + ad impressions when the ads API counted more', by.get('f2').impressions, 6400);
+    eq('Facebook post with no figures: unknown, not zero', by.get('f3').impressions, null);
+    eq('Instagram: the larger of reach and views; clicks unknown', [by.get('m1').impressions, by.get('m1').url_link_clicks], [925, null]);
+    ok('Instagram media with no metrics is left out (unknown, not zero)', !by.has('m2'));
+    ok('reads every source', ['x_post_latest', 'meta_post_latest', 'meta_post_ad_spend', 'meta_ig_latest', 'ig_media_latest'].every((t) => seenTables.includes(t)));
+    delete TABLES.ig_media_latest;
+    const noConn = await st.linkPostReach({ igMediaIds: ['m1'] });
+    eq('a missing table (connected IG not set up) is not an error', noConn.map((r) => r.post_id), ['m1']);
+  } finally { global.fetch = realFetch; }
   console.log(`\n${pass} passed, ${fail} failed`);
   process.exit(fail ? 1 : 0);
 })();

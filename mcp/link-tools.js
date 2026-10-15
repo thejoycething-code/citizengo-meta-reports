@@ -14,6 +14,9 @@ const n = (v) => (v === null || v === undefined ? '—' : Number(v).toLocaleStri
 const clampRows = (v, dflt, max = 200) => Math.min(Math.max(Number(v) || dflt, 1), max);
 const PLATFORM_SOURCE = { facebook: 'fb', instagram: 'ig', x: 'tw' };
 const PLATFORM_LABEL = { facebook: 'Facebook', instagram: 'Instagram', x: 'X' };
+const SOURCE_PLATFORM = { fb: 'facebook', ig: 'instagram', tw: 'x' };
+// What store.linkPostReach measured on each platform: [audience, clicks].
+const REACH_WORDS = { x: ['impressions', 'link clicks'], facebook: ['views (organic and paid)', 'clicks'], instagram: ['accounts reached/views', 'clicks'] };
 
 function table(headers, rows) {
   if (!rows.length) return '_No rows._';
@@ -28,7 +31,8 @@ const SOURCE_LABEL = { fb: 'Facebook', ig: 'Instagram', tw: 'X', tk: 'TikTok', y
 
 // Pure aggregation, exported for the tests.
 //   posts: link_posts rows; sigs: link_signatures rows (any codes);
-//   reach: Map post_id -> {impressions, url_link_clicks} for X posts.
+//   reach: Map post_id -> {impressions, url_link_clicks} for X, Facebook and
+//          Instagram posts (store.linkPostReach says what each measures).
 //
 // A campaign code is a LINK, not a post: the same link can sit in other
 // people's posts, an ad, a bio, Stories or DMs. So (16 Oct 2026, after a
@@ -92,17 +96,20 @@ function aggregate(posts, sigs, { includeUnposted = false, reach = new Map() } =
     for (const srcKey of postedSources) {
       const row = e.sources[srcKey];
       const sig = row ? Number(row.signatures) || 0 : 0;
-      if (srcKey === 'tw' && sig > 0) {
-        const xp = e.posts.filter((p) => p.platform === 'x');
-        const r = xp.map((p) => reach.get(p.post_id)).filter(Boolean);
-        const impr = r.length === xp.length ? r.reduce((a, x) => a + (Number(x.impressions) || 0), 0) : null;
-        const clicksKnown = r.length === xp.length && r.every((x) => x.url_link_clicks !== null && x.url_link_clicks !== undefined);
+      const plat = SOURCE_PLATFORM[srcKey];
+      if (plat && sig > 0) {
+        const pp = e.posts.filter((p) => p.platform === plat);
+        const r = pp.map((p) => reach.get(String(p.post_id))).filter((x) => x && x.impressions !== null && x.impressions !== undefined);
+        const impr = r.length === pp.length ? r.reduce((a, x) => a + (Number(x.impressions) || 0), 0) : null;
+        const clicksKnown = r.length === pp.length && r.every((x) => x.url_link_clicks !== null && x.url_link_clicks !== undefined);
         const clicks = clicksKnown ? r.reduce((a, x) => a + (Number(x.url_link_clicks) || 0), 0) : null;
+        const label = PLATFORM_LABEL[plat];
+        const [seen, clicked] = REACH_WORDS[plat];
         if (impr !== null && sig > impr) {
-          flags.push(`also shared elsewhere: these X posts had ${n(impr)} impressions, so most of the ${n(sig)} X signers came from the link's other uses`);
+          flags.push(`also shared elsewhere: these ${label} posts had ${n(impr)} ${seen}, so most of the ${n(sig)} ${label} signers came from the link's other uses`);
           sharedElsewhere = true;
         } else if (clicks !== null && sig > clicks * 1.5 + 5) {
-          flags.push(`also shared elsewhere: these X posts had ${n(clicks)} link clicks, so most of the ${n(sig)} X signers came from the link's other uses`);
+          flags.push(`also shared elsewhere: these ${label} posts had ${n(clicks)} ${clicked}, so most of the ${n(sig)} ${label} signers came from the link's other uses`);
           sharedElsewhere = true;
         }
       }
@@ -179,8 +186,10 @@ async function linkPerformance(store, args = {}) {
     const seen = new Set(sigs.map((s) => `${s.campaign_code}|${s.source}`));
     sigs = sigs.concat(extra.filter((s) => !seen.has(`${s.campaign_code}|${s.source}`) && (!campaign || s.campaign_code.includes(String(campaign).toLowerCase()))));
   }
-  const xIds = posts.filter((p) => p.platform === 'x' && p.campaign_code).map((p) => p.post_id);
-  const reach = new Map((store.linkPostReach && xIds.length ? await store.linkPostReach({ xPostIds: xIds }) : []).map((r) => [String(r.post_id), r]));
+  const idsOn = (plat) => posts.filter((p) => p.platform === plat && p.campaign_code).map((p) => p.post_id);
+  const want = { xPostIds: idsOn('x'), fbPostIds: idsOn('facebook'), igMediaIds: idsOn('instagram') };
+  const anyIds = Object.values(want).some((a) => a.length);
+  const reach = new Map((store.linkPostReach && anyIds ? await store.linkPostReach(want) : []).map((r) => [String(r.post_id), r]));
   const fresh = await store.linkFreshness();
   const { codes: rows, untraced } = aggregate(posts, sigs, { includeUnposted, reach });
 
