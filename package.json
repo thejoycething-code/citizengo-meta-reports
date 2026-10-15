@@ -48,6 +48,9 @@
     "x:set-client": "node scripts/x-set-client.js",
     "collect:peers": "node collector/peers-ig.js",
     "collect:peers:dry": "node collector/peers-ig.js --dry-run",
-    "test:peers": "node scripts/test-peers-ig.js"
+    "test:peers": "node scripts/test-peers-ig.js",
+    "collect:links": "node collector/links.js",
+    "load:link-signatures": "node scripts/load-link-signatures.js",
+    "test:links": "node scripts/test-links.js"
   }
 }

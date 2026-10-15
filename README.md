@@ -68,6 +68,7 @@ need. The production root serves a static notice and nothing else.
 | Nightly collection | 04:30 UTC daily | Collects posts, metrics, page trends, ad spend |
 | Weekly digest | Mondays 06:00 UTC | Plain-language summary on the run page |
 | Watchdog | 09:00 UTC daily | Fails if data is stale, incomplete, **or a token is expiring** |
+| Link registry | 06:40 UTC daily | Every CitizenGO link our accounts posted, with its campaign code (`link_posts`) |
 | Monthly heartbeat | 1st & 15th | Commits `STATUS.md` so GitHub doesn't disable the crons |
 | Dry run | manual | Collects to files, never touches the database |
 
@@ -528,6 +529,39 @@ To switch off: unset `X_TOOLS_ENABLED` (tools vanish), set
 
 ---
 
+## Link performance (signatures per tracked link) — 15 Oct 2026
+
+The `link_performance` tool answers "how many signatures did Rocío's links
+bring this month" or "which of our posts brought the most new members", for
+every connected account (Facebook Pages, Instagram, X, spokespeople).
+
+It joins two tables on the campaign code (`utm_campaign`, lowercased), which
+follows the CitizenGO UTM standard
+(`LIST-DATE-TITLE-OWNER-CTA-SCOPE-TOPIC-ASSETID-SERIES`, e.g.
+`…-RDA-AA_NA-GL-FR-19538-TW1`; OWNER is whoever made the link in Campaign
+Copilot):
+
+- **`link_posts`**, built nightly by `collector/links.js` (workflow *Link
+  registry*). It reads posts the other collectors stored, finds our links
+  (`lib/links.js`), and resolves `cgo.ac` short links once each through the
+  shortener's redirect (`link_shortcodes`). No social API calls.
+- **`link_signatures`**, loaded nightly on the **Mac Mini** by
+  `scripts/link-signatures-mini.sh` (launchd `net.citizengo.link-signatures`).
+  Looker is only reachable through the claude.ai CitizenGO Looker connector, so
+  Claude Code makes one read-only query on `google_analytics_4 /
+  petitions_signatures_3_0` (signatures, new and reactivated members by
+  `utm_campaign` and arrival `source`, social codes only) and
+  `scripts/load-link-signatures.js` loads the result. A pull with no rows or at
+  the 5,000-row cap never deletes older rows.
+
+Limits the tool states in every answer: figures are all-time per code; links in
+Facebook *first comments*, Stories and DMs are not posts we collect (their codes
+still count with `include_unposted`); a post with a plain petition link has no
+code and cannot be traced. Schema: `sql/links-schema.sql`. Tests:
+`npm run test:links`.
+
+---
+
 ## Why the connector can hold a service key
 
 The reporting tables are the **only** things PostgREST exposes on this project.
@@ -546,7 +580,7 @@ MCP talks to Postgres directly.
 ## Layout
 
 ```
-collector/     collect.js, instagram.js, adspend.js, x.js (X source), sync-sheet.js, verify.js
+collector/     collect.js, instagram.js, adspend.js, x.js (X source), links.js (link registry), sync-sheet.js, verify.js
 lib/           shape.js (shared rules), store.js, graph.js, oauth.js, retry.js,
                xapi.js, xauth.js, xschedule.js, xflow.js (X source)
 mcp/           tools.js (10 tools), x-tools.js (6, flag-gated), server.js (stdio), test-client.js

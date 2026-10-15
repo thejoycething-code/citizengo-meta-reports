@@ -30,6 +30,10 @@ function jsonSink({ dir }) {
     if (table === 'x_posts') return row.post_id;
     if (table === 'x_post_metrics') return `${row.post_id}|${row.collected_date}`;
     if (table === 'x_account_metrics') return `${row.account_id}|${row.metric_date}`;
+    // Link performance - see sql/links-schema.sql.
+    if (table === 'link_shortcodes') return row.short_code;
+    if (table === 'link_posts') return `${row.platform}|${row.post_id}|${row.url}`;
+    if (table === 'link_signatures') return `${row.campaign_code}|${row.source}`;
     return null; // *_collection_runs are append-only
   }
 
@@ -85,6 +89,10 @@ function supabaseSink({ url, serviceKey }) {
     x_posts: 'post_id',
     x_post_metrics: 'post_id,collected_date',
     x_account_metrics: 'account_id,metric_date',
+    // Link performance - see sql/links-schema.sql.
+    link_shortcodes: 'short_code',
+    link_posts: 'platform,post_id,url',
+    link_signatures: 'campaign_code,source',
   };
 
   // Append-only by design: a surrogate id primary key and no unique constraint,

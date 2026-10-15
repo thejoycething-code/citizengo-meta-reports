@@ -1153,6 +1153,8 @@ async function adSpend(store, { page_id, days: d = 90, limit: l = 20 }) {
 const xtools = require('./x-tools');
 // Config for the CitizenGO Page Inviter Chrome extension. See mcp/inviter-tools.js.
 const { INVITER_TOOLS, toolAllowed } = require('./inviter-tools');
+// Link performance (15 Oct 2026): every connected account, all platforms.
+const { LINK_TOOLS } = require('./link-tools');
 
 const TOOLS = [
   {
@@ -1313,6 +1315,7 @@ const TOOLS = [
     handler: (store) => dataHealth(store),
   },
   ...(xtools.enabled() ? xtools.X_TOOLS : []),
+  ...LINK_TOOLS,
   ...INVITER_TOOLS,
 ];
 
