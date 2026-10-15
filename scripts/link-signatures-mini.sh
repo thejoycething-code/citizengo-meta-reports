@@ -8,10 +8,13 @@
 # read-only query and scripts/load-link-signatures.js reads its result from
 # the stream and writes Supabase with the .env credentials in this checkout.
 #
-# Run it by hand to test:  zsh scripts/link-signatures-mini.sh
+# Runs from its own checkout, ~/runner/meta-reports (with a copy of .env):
+# launchd jobs cannot read ~/Desktop (macOS privacy protection), so the
+# Desktop checkout fails with exit 127 before the first line.
+# Run it by hand to test:  zsh ~/runner/meta-reports/scripts/link-signatures-mini.sh
 set -u
 export PATH=$HOME/.local/bin:$HOME/.local/node/bin:/opt/homebrew/bin:/usr/bin:/bin
-REPO="$HOME/Desktop/Claude Code Projects/Meta Reports"
+REPO="${0:A:h:h}"
 WORK="$HOME/bb/link-signatures"
 mkdir -p "$WORK"
 cd "$REPO" && git pull -q --ff-only origin main 2>>"$WORK/err.txt"
