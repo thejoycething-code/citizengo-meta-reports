@@ -26,7 +26,7 @@
 --
 -- kind distinguishes a CitizenGO country account from a spokesperson's personal
 -- account, because the two are collected differently: a personal account is
--- read only for posts that carry a CitizenGO link (see x_posts.citizengo_urls)
+-- read only for posts that carry a CitizenGO link or mention CitizenGO (lib/xschedule.js isAboutUs)
 -- and its holder can revoke at any time. That distinction is a data-protection
 -- commitment made in the scoping brief, so it lives in the schema, not a comment.
 -- ---------------------------------------------------------------------------

@@ -432,9 +432,14 @@ against the live API — `npm run probe:x` is that check and must run first.
   only the GitHub Actions collector holds the private key. The deployment that
   faces the internet can write a credential it cannot read (`lib/xauth.js`).
 - **Spokesperson accounts are collected only for posts carrying a CitizenGO
-  link** (citizengo.org, hazteoir.org, cgo.ac, derechoavivir.org). That rule
-  is in the schema (`x_accounts.kind`), the collector and the tools, because it
-  is a commitment made to the account holders, not a preference.
+  link or mentioning CitizenGO** (links to citizengo.org, hazteoir.org, cgo.ac,
+  derechoavivir.org; or CitizenGO, HazteOir or Derecho a Vivir by name,
+  @-mention or hashtag; widened from links only on 15 Oct 2026,
+  `lib/xschedule.js isAboutUs`). That rule is in the schema
+  (`x_accounts.kind`), the collector and the tools, because it is a commitment
+  made to the account holders, not a preference. Changing it means telling
+  every connected spokesperson and updating the consent page
+  (`api/x/authorize.js`).
 - **Attribution stops at the click.** `x_link_posts` lists which post carried
   which link, its UTM tags and X's click count. Signatures from those clicks
   are in the Bluebook under the same UTM; our UTM scheme has no

@@ -26,8 +26,9 @@
 //   6. A run row with reads and estimated cost. Refuses to START when the
 //      month's estimated spend has reached X_MONTHLY_BUDGET_USD.
 //
-// Spokesperson accounts are collected only for posts carrying a CitizenGO link.
-// Everything else on a personal account is discarded before it is written.
+// Spokesperson accounts are collected only for posts carrying a CitizenGO link
+// or mentioning CitizenGO (lib/xschedule.js isAboutUs). Everything else on a
+// personal account is discarded before it is written.
 //
 // Usage:
 //   node collector/x.js [--dry-run] [--lookback-days 8] [--backfill-days 3650] [--backfill-from-days 90]
@@ -347,7 +348,7 @@ async function collectAccount(account, out) {
   const log = out;
   const started = new Date().toISOString();
   const now = new Date();
-  log(`\n── ${account.label || account.account_id || '?'}${account.kind === 'spokesperson' ? ' (spokesperson: link posts only)' : ''}`);
+  log(`\n── ${account.label || account.account_id || '?'}${account.kind === 'spokesperson' ? ' (spokesperson: CitizenGO links and mentions only)' : ''}`);
 
   const runRow = (status, extra = {}) => ({
     run_id: RUN_ID, account_id: account.account_id || null, started_at: started,
@@ -401,7 +402,7 @@ async function collectAccount(account, out) {
   // posts, and "zero posts" must never be reported as "ok" - that is the
   // silent-failure shape this project keeps meeting (see README, Failure modes).
   const passFailures = [];
-  const keep = (p) => account.kind !== 'spokesperson' || (p.citizengo_urls && p.citizengo_urls.length);
+  const keep = (p) => account.kind !== 'spokesperson' || sched.isAboutUs(p);
 
   function absorb(res, privateWindow, label) {
     const data = (res.body && res.body.data) || [];

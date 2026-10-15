@@ -10,7 +10,7 @@
 //     exist only for posts collected while X still served them (documented 30
 //     days, observed ~89 on 30 Sep 2026);
 //   * a spokesperson account is collected ONLY for posts carrying a CitizenGO
-//     link, so its totals are not the account's totals.
+//     link or mentioning CitizenGO, so its totals are not the account's totals.
 
 const sched = require('../lib/xschedule');
 
@@ -36,7 +36,7 @@ function truncate(s, len) {
   return one.length > len ? one.slice(0, len - 1) + '…' : one;
 }
 const spokesNote = (rows) => (rows.some((r) => r.kind === 'spokesperson')
-  ? '\n\n_Spokesperson accounts are collected only for posts that carry a CitizenGO link. Their figures describe those posts, not the whole account._' : '');
+  ? '\n\n_Spokesperson accounts are collected only for posts that carry a CitizenGO link or mention CitizenGO. Their figures describe those posts, not the whole account._' : '');
 // Two different reasons a click column is empty, and they must not be
 // confused: X had stopped serving private metrics when the post was collected,
 // or the post simply had no link (X then returns no link-click field at all).

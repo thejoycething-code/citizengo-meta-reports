@@ -315,6 +315,17 @@ eq('utmOf reads campaign and source', sched.utmOf(ex.citizengo_urls[1]), { utm_s
 eq('utmOf on a short link is null', sched.utmOf('https://cgo.ac/x'), null);
 eq('no entities -> empty, not null', sched.extractUrls(undefined), { urls: [], citizengo_urls: [] });
 ok('hazteoir subdomain is ours', sched.isOurHost('www.hazteoir.org'));
+
+// Spokesperson filter (15 Oct 2026): our link OR a mention of us.
+const sp = (o) => ({ citizengo_urls: [], mentions: null, hashtags: null, text: '', ...o });
+ok('spokesperson: our link is kept', sched.isAboutUs(sp({ citizengo_urls: ['https://cgo.ac/x'] })));
+ok('spokesperson: @-mention of a country account is kept', sched.isAboutUs(sp({ mentions: ['CitizenGOar'], text: '@CitizenGOar gracias' })));
+ok('spokesperson: hashtag is kept', sched.isAboutUs(sp({ hashtags: ['HazteOir'] })));
+ok('spokesperson: name in text is kept', sched.isAboutUs(sp({ text: 'Firmé con Citizen Go hoy' })));
+ok('spokesperson: Derecho a Vivir in text is kept', sched.isAboutUs(sp({ text: 'Con Derecho a Vivir en la marcha' })));
+ok('spokesperson: unrelated post is dropped', !sched.isAboutUs(sp({ text: 'Buenos días a todos', mentions: ['someone'], hashtags: ['lunes'] })));
+ok('spokesperson: "citizen going" is not us', !sched.isAboutUs(sp({ text: 'every citizen going to vote' })));
+ok('spokesperson: a non-CitizenGO link is dropped', !sched.isAboutUs(sp({ text: 'read this https://bbc.co.uk/x' })));
 ok('trailing dot host is normalised', sched.isOurHost('citizengo.org.'));
 
 // ---------------------------------------------------------------------------

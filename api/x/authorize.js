@@ -42,7 +42,7 @@ module.exports = async (req, res) => {
 
   const next = xauth.authorizeUrl({ clientId: cfg.clientId, redirectUri: cfg.redirectUri, state, challenge });
   const what = invite.kind === 'spokesperson'
-    ? 'Only posts that contain a CitizenGO link (citizengo.org, hazteoir.org or cgo.ac) will be stored, with their impressions, engagement and link clicks. Nothing else you post is kept.'
+    ? 'Only posts that contain a CitizenGO link (citizengo.org, hazteoir.org or cgo.ac) or mention CitizenGO (by name, @-mention or hashtag) will be stored, with their impressions, engagement and link clicks. Nothing else you post is kept.'
     : 'Your posts from the last 30 days, and their impressions, engagement and link clicks, will be collected each night and kept for reporting.';
 
   return flow.page(res, 200, 'Connect an X account',
