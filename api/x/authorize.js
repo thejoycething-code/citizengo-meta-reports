@@ -35,6 +35,10 @@ module.exports = async (req, res) => {
     return flow.page(res, 400, 'Invite not valid',
       '<h1>This link is not valid</h1><p>It may have expired (invites last seven days) or been altered. Ask for a fresh one.</p>');
   }
+  if (invite.platform && invite.platform !== 'x') {
+    return flow.page(res, 400, 'Wrong link',
+      '<h1>This invite is for Instagram, not X</h1><p>Ask the person who sent it for the right link.</p>');
+  }
 
   const { verifier, challenge } = xauth.pkcePair();
   const state = require('crypto').randomBytes(16).toString('base64url');

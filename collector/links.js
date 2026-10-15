@@ -51,7 +51,7 @@ async function mapLimit(items, n, fn) {
 }
 
 // Pure: posts in, link rows out. Exported for the tests.
-function rowsFor({ fbPosts = [], igMedia = [], xPosts = [], pages = [], xAccounts = [], shortMap = new Map() }) {
+function rowsFor({ fbPosts = [], igMedia = [], xPosts = [], igConnected = [], igAccounts = [], pages = [], xAccounts = [], shortMap = new Map() }) {
   const pageName = new Map(pages.map((p) => [p.page_id, p.name]));
   const xAcc = new Map(xAccounts.map((a) => [a.account_id, a]));
   const rows = [];
@@ -71,6 +71,14 @@ function rowsFor({ fbPosts = [], igMedia = [], xPosts = [], pages = [], xAccount
       account_kind: 'organisation', posted_at: m.timestamp, permalink_url: m.permalink || null };
     for (const u of links.extractLinks(m.caption)) add(base, u);
   }
+  // Instagram accounts connected by their holders (sql/ig-schema.sql).
+  const igAcc = new Map(igAccounts.map((a) => [a.ig_user_id, a]));
+  for (const m of igConnected) {
+    const a = igAcc.get(m.ig_user_id) || {};
+    const base = { platform: 'instagram', post_id: m.media_id, account_id: m.ig_user_id, account_label: a.username ? '@' + a.username : (a.label || null),
+      account_kind: a.kind || 'spokesperson', posted_at: m.timestamp, permalink_url: m.permalink || null };
+    for (const u of links.extractLinks(m.caption)) add(base, u);
+  }
   for (const x of xPosts) {
     const a = xAcc.get(x.account_id) || {};
     const base = { platform: 'x', post_id: x.post_id, account_id: x.account_id, account_label: a.username ? '@' + a.username : (a.label || null),
@@ -84,17 +92,19 @@ async function main() {
   if (!BASE || !KEY) { console.error('SUPABASE_URL and SUPABASE_SERVICE_KEY are needed (the registry reads what the collectors stored).'); process.exit(2); }
   const since = encodeURIComponent(SINCE);
   console.log(`Link registry · posts since ${SINCE.slice(0, 10)}${DRY_RUN ? ' · dry run' : ''}`);
-  const [pages, fbPosts, igMedia, xPosts, xAccounts] = await Promise.all([
+  const [pages, fbPosts, igMedia, xPosts, xAccounts, igConnected, igAccounts] = await Promise.all([
     readAll('meta_pages', 'select=page_id,name'),
     readAll('meta_posts', `select=post_id,page_id,created_time,message,link_url,permalink_url&created_time=gte.${since}&or=(message.ilike.*citizengo*,message.ilike.*cgo.ac*,message.ilike.*hazteoir*,message.ilike.*derechoavivir*,link_url.not.is.null)`),
     readAll('meta_ig_media', `select=media_id,page_id,ig_user_id,ig_username,caption,permalink,timestamp&timestamp=gte.${since}&or=(caption.ilike.*citizengo*,caption.ilike.*cgo.ac*,caption.ilike.*hazteoir*,caption.ilike.*derechoavivir*)`),
     readAll('x_posts', `select=post_id,account_id,created_at,citizengo_urls,permalink_url&created_at=gte.${since}&citizengo_urls=neq.[]`),
     readAll('x_accounts', 'select=account_id,username,label,kind'),
+    readAll('ig_media', `select=media_id,ig_user_id,caption,permalink,timestamp&timestamp=gte.${since}`).catch(() => []),
+    readAll('ig_accounts', 'select=ig_user_id,username,label,kind').catch(() => []),
   ]);
-  console.log(`  read ${fbPosts.length} Facebook, ${igMedia.length} Instagram and ${xPosts.length} X posts that may carry our links`);
+  console.log(`  read ${fbPosts.length} Facebook, ${igMedia.length} Instagram (Pages), ${igConnected.length} Instagram (connected accounts) and ${xPosts.length} X posts that may carry our links`);
 
   // Short codes: cached ones first, then resolve the rest.
-  const first = rowsFor({ fbPosts, igMedia, xPosts, pages, xAccounts });
+  const first = rowsFor({ fbPosts, igMedia, xPosts, igConnected, igAccounts, pages, xAccounts });
   const codes = [...new Set(first.map((r) => r.short_code).filter(Boolean))];
   const shortMap = new Map();
   for (let i = 0; i < codes.length; i += 150) {
@@ -111,7 +121,7 @@ async function main() {
   });
   if (failed) console.log(`  ${failed} short link(s) could not be resolved; they are retried next run`);
 
-  const rows = rowsFor({ fbPosts, igMedia, xPosts, pages, xAccounts, shortMap });
+  const rows = rowsFor({ fbPosts, igMedia, xPosts, igConnected, igAccounts, pages, xAccounts, shortMap });
   const sink = makeSink({ dryRun: DRY_RUN, dir: path.join(__dirname, '..', 'data') });
   for (let i = 0; i < resolved.length; i += 500) await sink.upsert('link_shortcodes', resolved.slice(i, i + 500));
   // One post can list the same link twice (link_url and message): keyed rows only.

@@ -68,6 +68,7 @@ need. The production root serves a static notice and nothing else.
 | Nightly collection | 04:30 UTC daily | Collects posts, metrics, page trends, ad spend |
 | Weekly digest | Mondays 06:00 UTC | Plain-language summary on the run page |
 | Watchdog | 09:00 UTC daily | Fails if data is stale, incomplete, **or a token is expiring** |
+| Connected Instagram | 06:15 UTC daily | Spokespeople's own Instagram accounts: posts, insights, token refresh |
 | Link registry | 06:40 UTC daily | Every CitizenGO link our accounts posted, with its campaign code (`link_posts`) |
 | Monthly heartbeat | 1st & 15th | Commits `STATUS.md` so GitHub doesn't disable the crons |
 | Dry run | manual | Collects to files, never touches the database |
@@ -559,6 +560,47 @@ Facebook *first comments*, Stories and DMs are not posts we collect (their codes
 still count with `include_unposted`); a post with a plain petition link has no
 code and cannot be traced. Schema: `sql/links-schema.sql`. Tests:
 `npm run test:links`.
+
+---
+
+## Instagram accounts connected by their holders — 16 Oct 2026
+
+For spokespeople's own Instagram accounts (first: Rocío D'Angelo), which are not
+in CitizenGO's Business Manager and have no Facebook Page, so the Page-linked
+collector (`collector/instagram.js`) cannot reach them. Same design as the X
+source: a signed invite, the holder allows read-only access on instagram.com,
+the token is sealed to the collector's public key.
+
+- **API:** Meta's *Instagram API with Instagram Login*, scopes
+  `instagram_business_basic` + `instagram_business_manage_insights`
+  (`lib/igauth.js`). Needs a **professional account** (Creator or Business);
+  the consent page tells a personal account how to switch (free).
+- **Connect:** `npm run x:invite -- "Rocío D'Angelo" --kind spokesperson --platform instagram`
+  prints `/api/ig/authorize?t=…`; `api/ig/callback.js` exchanges the code for a
+  60-day token, checks it is the right account, and stores it **sealed**
+  (`ig_oauth_tokens`, same `X_TOKEN_PUBLIC_KEY`).
+- **Collect:** workflow *Connected Instagram collection* (06:15 UTC,
+  `collector/ig-connected.js`) refreshes each token once it is a day old, reads
+  posts and insights (reach, views, likes, comments, shares, saves). A
+  spokesperson's posts are kept only if they link to or mention CitizenGO
+  (`isAboutUs`), as the consent page promises. Stories are not read.
+- **Use:** `ig_connected_posts` (posts and connection health) and
+  `link_performance` (signatures from their links). Schema: `sql/ig-schema.sql`.
+  Tests: `npm run test:ig`.
+
+### Go-live (once, in Meta and Vercel)
+
+1. developers.facebook.com → the reporting app → **Add product: Instagram** →
+   *API setup with Instagram login*. Note the **Instagram app ID** and
+   **Instagram app secret** (not the Facebook app ones).
+2. *Business login settings* → OAuth redirect URI
+   `https://meta-organic-reporting.vercel.app/api/ig/callback`.
+3. While the app has no Advanced Access for these scopes, only **Instagram
+   testers** can connect: *App roles → Roles → Instagram testers → Add* the
+   holder's username; they accept in Instagram (*Settings → Website
+   permissions → Tester invites*).
+4. Vercel (Production): `IG_APP_ID`, `IG_APP_SECRET` (sensitive),
+   `IG_REDIRECT_URI` as above; redeploy. Until then `/api/ig/*` answers 503.
 
 ---
 

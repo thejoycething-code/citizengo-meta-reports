@@ -34,6 +34,9 @@ function jsonSink({ dir }) {
     if (table === 'link_shortcodes') return row.short_code;
     if (table === 'link_posts') return `${row.platform}|${row.post_id}|${row.url}`;
     if (table === 'link_signatures') return `${row.campaign_code}|${row.source}`;
+    if (table === 'ig_accounts') return row.ig_user_id;
+    if (table === 'ig_media') return row.media_id;
+    if (table === 'ig_media_metrics') return `${row.media_id}|${row.collected_date}`;
     return null; // *_collection_runs are append-only
   }
 
@@ -93,12 +96,18 @@ function supabaseSink({ url, serviceKey }) {
     link_shortcodes: 'short_code',
     link_posts: 'platform,post_id,url',
     link_signatures: 'campaign_code,source',
+    // Instagram accounts connected by their holders - see sql/ig-schema.sql.
+    // ig_oauth_tokens is absent on purpose: written by api/ig/callback.js and
+    // PATCHed by the collector, never bulk-upserted.
+    ig_accounts: 'ig_user_id',
+    ig_media: 'media_id',
+    ig_media_metrics: 'media_id,collected_date',
   };
 
   // Append-only by design: a surrogate id primary key and no unique constraint,
   // so every run adds a row rather than replacing one. A plain insert is
   // correct here and on_conflict would be wrong.
-  const APPEND_ONLY = new Set(['meta_collection_runs', 'x_collection_runs']);
+  const APPEND_ONLY = new Set(['meta_collection_runs', 'x_collection_runs', 'ig_collection_runs']);
 
   // Any other table missing from CONFLICT is not a small omission: the POST
   // would go out with no on_conflict, so each run either duplicates rows or

@@ -4,6 +4,7 @@
 //
 //   npm run x:invite -- "CitizenGO UK" --country GB
 //   npm run x:invite -- "Sebastian Lukomski" --kind spokesperson --days 14
+//   npm run x:invite -- "Rocio D'Angelo" --kind spokesperson --platform instagram
 //
 // Prints a link to send to whoever holds the account. The link says which
 // label and kind the account will be enrolled under, is signed, and expires
@@ -18,7 +19,7 @@ loadEnv();
 
 const args = process.argv.slice(2);
 const label = args.find((a) => !a.startsWith('--') && args[args.indexOf(a) - 1] !== '--kind'
-  && args[args.indexOf(a) - 1] !== '--country' && args[args.indexOf(a) - 1] !== '--days');
+  && args[args.indexOf(a) - 1] !== '--country' && args[args.indexOf(a) - 1] !== '--days' && args[args.indexOf(a) - 1] !== '--platform');
 const opt = (name, dflt) => { const i = args.indexOf('--' + name); return i !== -1 && args[i + 1] ? args[i + 1] : dflt; };
 
 if (!label) {
@@ -31,13 +32,16 @@ if (!secret || secret.length < 24) {
   process.exit(2);
 }
 const kind = opt('kind', 'organisation');
+const platform = opt('platform', 'x');
+if (!['x', 'instagram'].includes(platform)) { console.error('--platform must be x or instagram'); process.exit(2); }
 if (!['organisation', 'spokesperson'].includes(kind)) { console.error('--kind must be organisation or spokesperson'); process.exit(2); }
 
 const token = xauth.signInvite(secret, {
   label, kind, country: opt('country', null), days: Number(opt('days', 7)),
-  by: process.env.X_INVITE_BY || process.env.USER || null,
+  by: process.env.X_INVITE_BY || process.env.USER || null, platform,
 });
 const base = (process.env.X_PUBLIC_URL || 'https://meta-organic-reporting.vercel.app').replace(/\/+$/, '');
 console.log(`\nInvite for "${label}" (${kind}${opt('country') ? ', ' + opt('country') : ''}), valid ${opt('days', 7)} day(s):\n`);
-console.log(`  ${base}/api/x/authorize?t=${token}\n`);
-console.log('Send it to the person who holds the X account. They must be signed into THAT account when they click Continue.');
+const route = platform === 'instagram' ? 'ig' : 'x';
+console.log(`  ${base}/api/${route}/authorize?t=${token}\n`);
+console.log(`Send it to the person who holds the ${platform === 'instagram' ? 'Instagram' : 'X'} account. They must be signed into THAT account when they click Continue.`);

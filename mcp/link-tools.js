@@ -132,6 +132,32 @@ async function linkPerformance(store, args = {}) {
   return { text: head + body + '\n\n' + notes.map((x) => `_${x}_`).join('\n\n'), rows, untraced: untraced.length };
 }
 
+// Instagram accounts connected by their holders (sql/ig-schema.sql), e.g. a
+// spokesperson's professional account. Their posts are collected only when they
+// link to or mention CitizenGO, so totals describe those posts.
+async function igConnectedPosts(store, args = {}) {
+  const w = xt.windowFor({ month: args.month, from: args.from, to: args.to, days: args.days }, 90);
+  if (w.error) return { text: w.error };
+  const accounts = await store.igConnectedAccounts();
+  if (!accounts.length) return { text: 'No Instagram accounts have been connected by their holders yet. Invites are made with scripts/x-invite.js --platform instagram.' };
+  const off = Math.max(Number(args.offset) || 0, 0);
+  const rows = await store.igConnectedPosts({ account: args.account, since: w.since, until: w.until, order: args.sort, limit: clampRows(args.limit, 25), offset: off });
+  const acctLines = accounts.map((a) => {
+    const t = a.token;
+    const state = !a.is_active ? 'disconnected' : !t ? 'needs reconnecting (no live token)' : t.last_error ? `token problem: ${t.last_error}` : `connected, token valid to ${String(t.expires_at || '').slice(0, 10)}`;
+    return `- **@${a.username}** (${a.label || '—'}, ${a.kind}): ${n(a.followers_count)} followers · ${state}`;
+  }).join('\n');
+  const body = rows.length ? table(['Account', 'Posted', 'Type', 'Caption', 'Reach', 'Views', 'Likes', 'Comments', 'Shares', 'Saves'], rows.map((r) => [
+    `@${cell(r.username, 30)}`, r.permalink ? `[${String(r.timestamp).slice(0, 10)}](${r.permalink})` : String(r.timestamp).slice(0, 10),
+    cell(r.media_product_type === 'REELS' ? 'Reel' : (r.media_type || '').toLowerCase().replace('_', ' '), 12), cell(r.caption, 60),
+    n(r.reach), n(r.views), n(r.likes), n(r.comments), n(r.shares), n(r.saved)]))
+    : '_No posts in this window._';
+  const spokes = accounts.some((a) => a.kind === 'spokesperson');
+  return { text: `**Connected Instagram accounts**\n\n${acctLines}\n\n**Posts, ${w.label}**\n\n${body}`
+    + (rows.length === clampRows(args.limit, 25) ? `\n\n_More posts may follow: call again with offset ${off + rows.length}._` : '')
+    + (spokes ? '\n\n_Spokesperson accounts are collected only for posts that link to or mention CitizenGO, so these figures describe those posts, not the whole account. Stories are not collected. For signatures from the links, use link_performance._' : ''), rows };
+}
+
 const LINK_TOOLS = [
   {
     name: 'link_performance',
@@ -157,6 +183,25 @@ const LINK_TOOLS = [
     },
     handler: linkPerformance,
   },
+  {
+    name: 'ig_connected_posts',
+    description: 'Instagram accounts connected by their holders (for example a spokesperson\'s professional account, such as Rocío D\'Angelo\'s), whether each connection is healthy, and their posts with reach, views, likes, comments, shares and saves. Spokesperson accounts only include posts that link to or mention CitizenGO. CitizenGO\'s own Page-linked Instagram accounts are in the other Instagram tools; signatures from links are in link_performance.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        account: { type: 'string', description: 'Instagram @username or label; partial names match.' },
+        days: { type: 'number', description: 'Posts from the last N days (default 90, 0 for all).' },
+        month: { type: 'string', description: 'A month, e.g. "2026-09", instead of days.' },
+        from: { type: 'string', description: 'Start date (YYYY-MM-DD).' },
+        to: { type: 'string', description: 'End date inclusive (YYYY-MM-DD).' },
+        sort: { type: 'string', enum: ['timestamp', 'reach', 'views', 'total_interactions', 'shares'], description: 'Newest first (default) or by a metric.' },
+        limit: { type: 'number', description: 'Posts per page (default 25, max 200).' },
+        offset: { type: 'number', description: 'Where the page starts (0 = first).' },
+      },
+      additionalProperties: false,
+    },
+    handler: igConnectedPosts,
+  },
 ];
 
-module.exports = { LINK_TOOLS, aggregate, groupBy, linkPerformance };
+module.exports = { LINK_TOOLS, aggregate, groupBy, linkPerformance, igConnectedPosts };
