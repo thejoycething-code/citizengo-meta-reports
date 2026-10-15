@@ -24,54 +24,133 @@ const cell = (s, len = 70) => {
   return one.length > len ? one.slice(0, len - 1) + '…' : one;
 };
 
+const SOURCE_LABEL = { fb: 'Facebook', ig: 'Instagram', tw: 'X', tk: 'TikTok', yt: 'YouTube', tg: 'Telegram' };
+
 // Pure aggregation, exported for the tests.
-//   posts: link_posts rows; sigs: link_signatures rows (any codes).
-// Returns one entry per campaign code with its posts and totals, plus counts
-// of links that carry no code (they cannot be traced).
-function aggregate(posts, sigs, { includeUnposted = false } = {}) {
+//   posts: link_posts rows; sigs: link_signatures rows (any codes);
+//   reach: Map post_id -> {impressions, url_link_clicks} for X posts.
+//
+// A campaign code is a LINK, not a post: the same link can sit in other
+// people's posts, an ad, a bio, Stories or DMs. So (16 Oct 2026, after a
+// 57-impression post was shown with 1,159 signatures that belonged to its
+// link's other uses) each code's signatures are split by where the signer
+// arrived from:
+//   credited   - signers who came from a platform the code was POSTED on in
+//                the posts we hold (an X post gets "tw" signers);
+//   other uses - everything else: shares (WhatsApp...), and the link's uses
+//                outside these posts.
+// Flags: the link was made for another platform (an IG1 code posted on X);
+// the link was made by someone else (a spokesperson reusing a colleague's
+// link); the credited signers exceed the posts' impressions or link clicks,
+// so they cannot have come from these posts (then nothing is credited).
+function aggregate(posts, sigs, { includeUnposted = false, reach = new Map() } = {}) {
   const byCode = new Map();
   const untraced = posts.filter((p) => !p.campaign_code);
   for (const p of posts) {
     if (!p.campaign_code) continue;
-    if (!byCode.has(p.campaign_code)) byCode.set(p.campaign_code, { code: p.campaign_code, owner: p.owner, petition_id: p.petition_id, posts: [], sources: {} });
+    if (!byCode.has(p.campaign_code)) byCode.set(p.campaign_code, { code: p.campaign_code, owner: p.owner, petition_id: p.petition_id, series: p.series || null, posts: [], sources: {} });
     byCode.get(p.campaign_code).posts.push(p);
   }
   for (const s of sigs) {
     if (!byCode.has(s.campaign_code)) {
       if (!includeUnposted) continue;
-      byCode.set(s.campaign_code, { code: s.campaign_code, owner: s.owner, petition_id: s.petition_id, posts: [], sources: {} });
+      byCode.set(s.campaign_code, { code: s.campaign_code, owner: s.owner, petition_id: s.petition_id, series: s.series || null, posts: [], sources: {} });
     }
     byCode.get(s.campaign_code).sources[s.source] = s;
   }
+
+  // Each spokesperson account's usual link maker: the initials on most of the
+  // codes it posted. A code by anyone else is someone else's link.
+  const ownersByAccount = new Map();
+  for (const p of posts) {
+    if (!p.campaign_code || !p.owner || p.account_kind !== 'spokesperson') continue;
+    const m = ownersByAccount.get(p.account_id) || new Map();
+    m.set(p.owner, (m.get(p.owner) || 0) + 1);
+    ownersByAccount.set(p.account_id, m);
+  }
+  const usualOwner = new Map([...ownersByAccount].map(([acct, m]) => {
+    const [top, cnt] = [...m].sort((a, b) => b[1] - a[1])[0];
+    const all = [...m.values()].reduce((a, b) => a + b, 0);
+    return [acct, all >= 2 && cnt / all > 0.5 ? top : null];
+  }));
+
   const out = [];
   for (const e of byCode.values()) {
     const src = Object.values(e.sources);
-    const sum = (k) => (src.length ? src.reduce((a, s) => a + (Number(s[k]) || 0), 0) : null);
-    // "Direct": signers who arrived from the platform the link was made for
-    // (fb for an FB1 code). The rest came via shares (WhatsApp, email...).
-    const own = (e.code.match(/-(fb|ig|tw|tk|yt|tg)\d+$/) || [])[1];
-    const direct = own && e.sources[own] ? Number(e.sources[own].signatures) || 0 : (src.length ? 0 : null);
-    out.push({ ...e, signatures: sum('signatures'), new_members: sum('new_members'), reactivated_members: sum('reactivated_members'),
-      direct, via_shares: e.signatures === null ? null : (sum('signatures') - (direct || 0)), matched: src.length > 0 });
+    const sumOf = (rows, k) => rows.reduce((a, s) => a + (Number(s[k]) || 0), 0);
+    const matched = src.length > 0;
+    const all = { signatures: matched ? sumOf(src, 'signatures') : null, new_members: matched ? sumOf(src, 'new_members') : null, reactivated_members: matched ? sumOf(src, 'reactivated_members') : null };
+    const madeFor = (String(e.series || '').match(/^(fb|ig|tw|tk|yt|tg)\d+$/) || [])[1] || (e.code.match(/-(fb|ig|tw|tk|yt|tg)\d+$/) || [])[1] || null;
+    const postedSources = [...new Set(e.posts.map((p) => PLATFORM_SOURCE[p.platform]).filter(Boolean))];
+    const flags = [];
+
+    // Signers per posted platform, after the plausibility check.
+    const creditedBySource = {};
+    for (const srcKey of postedSources) {
+      const row = e.sources[srcKey];
+      const sig = row ? Number(row.signatures) || 0 : 0;
+      if (srcKey === 'tw' && sig > 0) {
+        const xp = e.posts.filter((p) => p.platform === 'x');
+        const r = xp.map((p) => reach.get(p.post_id)).filter(Boolean);
+        const impr = r.length === xp.length ? r.reduce((a, x) => a + (Number(x.impressions) || 0), 0) : null;
+        const clicksKnown = r.length === xp.length && r.every((x) => x.url_link_clicks !== null && x.url_link_clicks !== undefined);
+        const clicks = clicksKnown ? r.reduce((a, x) => a + (Number(x.url_link_clicks) || 0), 0) : null;
+        if (impr !== null && sig > impr) {
+          flags.push(`${n(sig)} X signers but these posts had ${n(impr)} impressions: they came from other uses of the link`);
+          continue;
+        }
+        if (clicks !== null && sig > clicks * 1.5 + 5) {
+          flags.push(`${n(sig)} X signers but only ${n(clicks)} link clicks on these posts: most came from other uses of the link`);
+          continue;
+        }
+      }
+      if (row) creditedBySource[srcKey] = row;
+    }
+    const cRows = Object.values(creditedBySource);
+    const credited = e.posts.length && matched
+      ? { signatures: sumOf(cRows, 'signatures'), new_members: sumOf(cRows, 'new_members'), reactivated_members: sumOf(cRows, 'reactivated_members') }
+      : { signatures: null, new_members: null, reactivated_members: null };
+
+    if (madeFor && e.posts.length && !postedSources.includes(madeFor)) {
+      flags.push(`link made for ${SOURCE_LABEL[madeFor] || madeFor} (${String(e.series || madeFor).toUpperCase()}), posted on ${postedSources.map((x) => SOURCE_LABEL[x] || x).join(' and ')}: its ${SOURCE_LABEL[madeFor] || madeFor} signers are not credited to these posts`);
+    }
+    const borrowed = [...new Set(e.posts.filter((p) => usualOwner.get(p.account_id) && e.owner && usualOwner.get(p.account_id) !== e.owner).map((p) => p.account_label || p.account_id))];
+    if (borrowed.length) flags.push(`link made by ${String(e.owner).toUpperCase()}, not ${borrowed.join(', ')}: its totals include everyone who used it`);
+
+    out.push({ ...e, matched, ...all, credited, creditedBySource,
+      other_uses: matched && credited.signatures !== null ? all.signatures - credited.signatures : all.signatures, flags });
   }
-  out.sort((a, b) => (b.signatures || 0) - (a.signatures || 0) || String(b.code).localeCompare(a.code));
+  out.sort((a, b) => ((b.credited.signatures ?? -1) - (a.credited.signatures ?? -1)) || ((b.signatures || 0) - (a.signatures || 0)) || String(b.code).localeCompare(a.code));
   return { codes: out, untraced };
 }
 
-// Totals per account / owner / petition. A code posted by two accounts counts
-// for each of them, so the group totals can exceed the grand total (said so).
+// Totals per account / owner / petition.
+//   account: ONLY the signers credited to that account's own posts (its
+//            platform's arrivals, after the plausibility check), so a reused
+//            link does not inflate the account. A code posted by two accounts
+//            on the same platform still counts for both (said so).
+//   owner / petition: every use of the links (who made them, what for).
 function groupBy(codes, key) {
   const g = new Map();
+  const bump = (k, sig, nw, re, posts, unmatched) => {
+    if (!g.has(k)) g.set(k, { key: k, codes: 0, posts: 0, signatures: 0, new_members: 0, reactivated_members: 0, unmatched: 0 });
+    const t = g.get(k);
+    t.codes++; t.posts += posts; if (unmatched) t.unmatched++;
+    t.signatures += sig || 0; t.new_members += nw || 0; t.reactivated_members += re || 0;
+  };
   for (const c of codes) {
-    const keys = key === 'account'
-      ? [...new Set(c.posts.map((p) => `${PLATFORM_LABEL[p.platform] || p.platform} ${p.account_label || p.account_id}`))].concat(c.posts.length ? [] : ['(not seen in a post)'])
-      : [c[key] || '(none)'];
-    for (const k of keys) {
-      if (!g.has(k)) g.set(k, { key: k, codes: 0, posts: 0, signatures: 0, new_members: 0, reactivated_members: 0, unmatched: 0 });
-      const t = g.get(k);
-      t.codes++; t.posts += c.posts.length;
-      if (!c.matched) t.unmatched++;
-      t.signatures += c.signatures || 0; t.new_members += c.new_members || 0; t.reactivated_members += c.reactivated_members || 0;
+    if (key !== 'account') { bump(c[key] || '(none)', c.signatures, c.new_members, c.reactivated_members, c.posts.length, !c.matched); continue; }
+    if (!c.posts.length) { bump('(not seen in a post)', c.signatures, c.new_members, c.reactivated_members, 0, !c.matched); continue; }
+    const byAcct = new Map();
+    for (const p of c.posts) {
+      const k = `${PLATFORM_LABEL[p.platform] || p.platform} ${p.account_label || p.account_id}`;
+      if (!byAcct.has(k)) byAcct.set(k, { posts: 0, sources: new Set() });
+      const a = byAcct.get(k); a.posts++; a.sources.add(PLATFORM_SOURCE[p.platform]);
+    }
+    for (const [k, a] of byAcct) {
+      const rows = [...a.sources].map((x) => c.creditedBySource[x]).filter(Boolean);
+      const sum = (f) => rows.reduce((t, r) => t + (Number(r[f]) || 0), 0);
+      bump(k, sum('signatures'), sum('new_members'), sum('reactivated_members'), a.posts, !c.matched);
     }
   }
   return [...g.values()].sort((a, b) => b.signatures - a.signatures);
@@ -93,42 +172,47 @@ async function linkPerformance(store, args = {}) {
     const seen = new Set(sigs.map((s) => `${s.campaign_code}|${s.source}`));
     sigs = sigs.concat(extra.filter((s) => !seen.has(`${s.campaign_code}|${s.source}`) && (!campaign || s.campaign_code.includes(String(campaign).toLowerCase()))));
   }
+  const xIds = posts.filter((p) => p.platform === 'x' && p.campaign_code).map((p) => p.post_id);
+  const reach = new Map((store.linkPostReach && xIds.length ? await store.linkPostReach({ xPostIds: xIds }) : []).map((r) => [String(r.post_id), r]));
   const fresh = await store.linkFreshness();
-  const { codes: rows, untraced } = aggregate(posts, sigs, { includeUnposted });
+  const { codes: rows, untraced } = aggregate(posts, sigs, { includeUnposted, reach });
 
   const who = [account && `account "${account}"`, own && `links made by ${own.toUpperCase()}`, pet && `petition ${pet}`, campaign && `codes containing "${campaign}"`, platform && PLATFORM_LABEL[platform]].filter(Boolean).join(', ');
   const title = `**Link performance${who ? ` · ${who}` : ''}, ${w.label}**`;
   if (!rows.length && !untraced.length) {
     return { text: `${title}\n\nNo tracked CitizenGO links found.${fresh.registryAt ? '' : ' The link registry has not been built yet.'}` };
   }
-  const total = (k) => rows.reduce((a, r) => a + (r[k] || 0), 0);
+  const sumAll = (k) => rows.reduce((a, r) => a + (r[k] || 0), 0);
+  const sumCred = (k) => rows.reduce((a, r) => a + (r.credited[k] || 0), 0);
   const notes = [];
-  notes.push(`Signatures, new and reactivated members come from Looker (Bluebook signatures by utm_campaign), all time for each code${fresh.pulledAt ? `, pulled ${String(fresh.pulledAt).slice(0, 16).replace('T', ' ')} UTC` : ' — **not pulled yet, so every figure is blank**'}. "Direct" is signers who arrived from the platform the link was made for; the rest arrived after it was shared on (mostly WhatsApp).`);
+  notes.push(`Figures come from Looker (Bluebook signatures by utm_campaign), all time for each code${fresh.pulledAt ? `, pulled ${String(fresh.pulledAt).slice(0, 16).replace('T', ' ')} UTC` : ' — **not pulled yet, so every figure is blank**'}. A code is a link, and one link can be used in many places. "From these posts" counts only signers who arrived from the platform each post is on (an X post gets X arrivals); "Other uses" is everything else the link brought: WhatsApp shares, and the link in other posts, ads, bios, Stories or DMs.`);
+  const flagged = rows.filter((r) => r.flags.length).length;
+  if (flagged) notes.push(`${n(flagged)} code(s) carry a warning (⚠): read it before quoting the number.`);
   const unmatched = rows.filter((r) => !r.matched).length;
   if (unmatched) notes.push(`${n(unmatched)} code(s) have no signatures recorded in Looker yet (shown as —): too new, no signers, or the code was changed after the link was made.`);
   const donation = rows.filter((r) => /-(md|otd)_[a-z]+-/.test(r.code)).length;
   if (donation) notes.push(`${n(donation)} code(s) are donation-form links (MD/OTD): this tool counts signatures, not donations, so they show none.`);
   if (untraced.length) notes.push(`${n(untraced.length)} post link(s) carried no campaign code (a plain petition link or an unresolved short link), so their signatures cannot be traced. Make links in Campaign Copilot.`);
-  notes.push('Posts are what the connector collects: Facebook first comments, Stories and DMs are not posts here; with include_unposted their codes still count.');
+  notes.push('Posts are what the connector collects: Facebook first comments, Stories and DMs are not posts here; with include_unposted their codes still count under "Other uses".');
 
   let body;
   if (group_by !== 'link') {
     const key = group_by === 'owner' ? 'owner' : group_by === 'petition' ? 'petition_id' : 'account';
     const g = groupBy(rows, key);
-    body = table([key === 'account' ? 'Account' : key === 'owner' ? 'Made by' : 'Petition', 'Codes', 'Posts', 'Signatures', 'New members', 'Reactivated'],
+    body = table([key === 'account' ? 'Account' : key === 'owner' ? 'Made by' : 'Petition', 'Codes', 'Posts', key === 'account' ? 'Signatures from its posts' : 'Signatures (every use)', 'New members', 'Reactivated'],
       g.map((t) => [cell(key === 'owner' ? String(t.key).toUpperCase() : t.key, 50), n(t.codes), n(t.posts), n(t.signatures), n(t.new_members), n(t.reactivated_members)]));
-    if (key === 'account') notes.push('A code posted by more than one account counts for each, so account rows can add up to more than the total.');
+    if (key === 'account') notes.push('Account totals count only signers who arrived from that account\'s own posts\' platform, after the warnings above; a code posted by more than one account on the same platform counts for each.');
   } else {
     const off = Math.max(Number(offset) || 0, 0);
     const page = rows.slice(off, off + clampRows(limit, 50));
-    body = table(['Campaign code', 'Posted', 'Signatures', 'Direct', 'Via shares', 'New', 'Reactivated'], page.map((r) => {
+    body = table(['Campaign code', 'Posted', 'From these posts', 'New', 'Reactivated', 'Other uses', 'Notes'], page.map((r) => {
       const where = r.posts.length
         ? r.posts.slice(0, 3).map((p) => `${p.permalink_url ? `[${cell(`${PLATFORM_LABEL[p.platform]} ${p.account_label || ''} ${String(p.posted_at).slice(0, 10)}`, 40)}](${p.permalink_url})` : cell(`${PLATFORM_LABEL[p.platform]} ${p.account_label || ''}`, 40)}`).join('<br>') + (r.posts.length > 3 ? `<br>+${r.posts.length - 3} more` : '')
         : '_not in a post_';
-      return [cell(r.code, 80), where, n(r.signatures), n(r.direct), n(r.via_shares), n(r.new_members), n(r.reactivated_members)];
+      return [cell(r.code, 80), where, n(r.credited.signatures), n(r.credited.new_members), n(r.credited.reactivated_members), n(r.other_uses), r.flags.length ? cell('⚠ ' + r.flags.join('; '), 220) : ''];
     })) + xt.pageNote(off, page.length, rows.length, 'Codes').replace('x_period_summary', 'group_by');
   }
-  const head = `${title}\n\n${n(rows.length)} campaign codes · ${n(total('signatures'))} signatures · ${n(total('new_members'))} new members · ${n(total('reactivated_members'))} reactivated\n\n`;
+  const head = `${title}\n\n${n(rows.length)} campaign codes · **${n(sumCred('signatures'))} signatures from these posts** (${n(sumCred('new_members'))} new members, ${n(sumCred('reactivated_members'))} reactivated) · ${n(sumAll('signatures'))} from every use of these links\n\n`;
   return { text: head + body + '\n\n' + notes.map((x) => `_${x}_`).join('\n\n'), rows, untraced: untraced.length };
 }
 

@@ -88,11 +88,37 @@ const posts = [
 const unposted = { ...sig[0], campaign_code: 'es_row-2026_07_14-onu-rda-aa_na-gl-ot-18162-ig1', source: 'ig', series: 'ig1', signatures: 171, new_members: 145, reactivated_members: 3 };
 const ag = aggregate(posts, [...sig, unposted]);
 eq('a code posted twice is one row with two posts', [ag.codes.length, ag.codes[0].posts.length], [1, 2]);
-eq('totals across sources; direct = the platform the link was made for', [ag.codes[0].signatures, ag.codes[0].direct, ag.codes[0].via_shares, ag.codes[0].new_members], [160, 120, 40, 40]);
+eq('all uses: every source summed', [ag.codes[0].signatures, ag.codes[0].new_members], [160, 40]);
+eq('credited to the X posts: only X arrivals; WhatsApp is "other uses"', [ag.codes[0].credited.signatures, ag.codes[0].other_uses], [120, 40]);
+
+// Real cases from 16 Oct 2026.
+const ro = (id, code, owner, series) => ({ platform: 'x', post_id: id, account_id: 'a9', account_label: '@rociodangelo6', account_kind: 'spokesperson', posted_at: '2026-06-18', campaign_code: code, owner, series, petition_id: '1' });
+const S = (code, source, sig, nw = 0) => ({ campaign_code: code, source, signatures: sig, new_members: nw, reactivated_members: 0 });
+const FES = 'es_row-2026_04_21-rechaza_el_plan_de_la_onu_pmx-fes-aa_na-lo-ot-17926-tw1';
+const OEA = 'es_row-2026_06_17-detengan_a_la_oea-rda-aa_na-gl-ot-18368-ig1';
+const ONU = 'es_row-2026_07_14-firma_para_evitar-rda-aa_na-gl-ot-18162-ig1';
+const OK1 = 'en_row-2026_04_23-reject_the_un_plan-rda-aa_na-gl-ot-17857-tw1';
+const rposts = [ro('p1', FES, 'fes', 'tw1'), ro('p2', OEA, 'rda', 'ig1'), ro('p3', ONU, 'rda', 'ig1'), ro('p4', OK1, 'rda', 'tw1')];
+const rsigs = [S(FES, 'tw', 878, 672), S(FES, 'wa', 269, 196), S(OEA, 'ig', 352, 250), S(OEA, 'wa', 110, 53), S(ONU, 'ig', 358, 300), S(ONU, 'wa', 65, 16), S(OK1, 'tw', 14, 9)];
+const reach = new Map([['p1', { impressions: 57, url_link_clicks: null }], ['p2', { impressions: 36, url_link_clicks: null }], ['p3', { impressions: 457, url_link_clicks: 0 }], ['p4', { impressions: 2181, url_link_clicks: null }]]);
+const rr = aggregate(rposts, rsigs, { reach });
+const byC = (c) => rr.codes.find((x) => x.code === c);
+eq('FES link on a 57-impression post: nothing credited, everything is other uses', [byC(FES).credited.signatures, byC(FES).other_uses], [0, 1147]);
+ok('FES link: flagged as impossible from these posts', byC(FES).flags.some((f) => /57 impressions/.test(f)), JSON.stringify(byC(FES).flags));
+ok('FES link: flagged as someone else\'s link (Rocío usually posts RDA links)', byC(FES).flags.some((f) => /made by FES/.test(f)));
+eq('IG1 link posted on X: its Instagram signers are not credited to the X post', [byC(OEA).credited.signatures, byC(OEA).other_uses], [0, 462]);
+ok('IG1 link on X: flagged as made for Instagram', byC(OEA).flags.some((f) => /made for Instagram \(IG1\), posted on X/.test(f)));
+eq('a TW1 link with 14 X signers from 2,181 impressions: credited, no warning', [byC(OK1).credited.signatures, byC(OK1).flags.length], [14, 0]);
+const clicks = aggregate([ro('q1', OK1, 'rda', 'tw1')], [S(OK1, 'tw', 40)], { reach: new Map([['q1', { impressions: 5000, url_link_clicks: 3 }]]) });
+ok('more X signers than link clicks allow: not credited, flagged', clicks.codes[0].credited.signatures === 0 && /3 link clicks/.test(clicks.codes[0].flags.join()));
+const acct = groupBy(rr.codes, 'account');
+eq('account total counts only credited signers (14), not the 2,044 from other uses', acct.map((g) => [g.key, g.signatures]), [['X @rociodangelo6', 14]]);
+const ownr = groupBy(rr.codes, 'owner');
+eq('by owner: every use of the links each person made', ownr.map((g) => [g.key, g.signatures]).sort(), [['fes', 1147], ['rda', 899]].sort());
 eq('links with no code are counted as untraced', ag.untraced.length, 1);
 eq('unposted codes only with include_unposted', aggregate(posts, [...sig, unposted], { includeUnposted: true }).codes.length, 2);
 const gb = groupBy(aggregate(posts, [...sig, unposted], { includeUnposted: true }).codes, 'account');
-eq('group by account: unposted codes get their own row', gb.map((g) => g.key), ['(not seen in a post)', 'X @rociodangelo6']);
+eq('group by account: unposted codes get their own row', gb.map((g) => g.key).sort(), ['(not seen in a post)', 'X @rociodangelo6'].sort());
 
 console.log('\nThe tool');
 const store = {
