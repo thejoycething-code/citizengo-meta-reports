@@ -36,6 +36,7 @@ jobs:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL || vars.SUPABASE_URL }}
       SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
       X_TOKEN_PRIVATE_KEY: ${{ secrets.X_TOKEN_PRIVATE_KEY }}
+      META_TOKENS: ${{ secrets.META_TOKENS }}
       DAYS: ${{ github.event.inputs.days || '30' }}
       ACCOUNTS: ${{ github.event.inputs.accounts }}
       DRY_RUN: ${{ (github.event.inputs.dry_run == true || github.event.inputs.dry_run == 'true') && 'true' || 'false' }}

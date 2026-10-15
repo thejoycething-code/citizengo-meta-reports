@@ -588,7 +588,26 @@ the token is sealed to the collector's public key.
   `link_performance` (signatures from their links). Schema: `sql/ig-schema.sql`.
   Tests: `npm run test:ig`.
 
-### Go-live (once, in Meta and Vercel)
+### Partner access (the route in use, no app review or app role)
+
+Chosen on 16 Oct 2026 for Rocío: Instagram Login needs either Meta App Review
+or a tester role on our app, and neither was wanted. Instead:
+
+1. **The holder**, in Meta Business Suite (business.facebook.com) as their
+   Instagram account → *Settings → Partners → Add partner* → enter
+   CitizenGO's Business Manager ID → share the Instagram account with
+   **Insights (view only)**. They can remove it there at any time.
+2. **CitizenGO**, in Business settings → *Accounts → Instagram accounts* →
+   the shared account → *Assign people* → the reporting **System User** with
+   view-insights access.
+3. Run the **Instagram partner account** workflow (username, label, kind):
+   `scripts/ig-partner-add.js` finds the account in our Business Managers,
+   checks posts *and* insights are readable, and writes `ig_accounts`
+   (`access = 'partner'`). The nightly *Connected Instagram collection* reads
+   it with the System User token (`lib/igpartner.js`), keeping only posts that
+   link to or mention CitizenGO for a spokesperson.
+
+### Instagram Login route: go-live (not in use)
 
 1. developers.facebook.com → the reporting app → **Add product: Instagram** →
    *API setup with Instagram login*. Note the **Instagram app ID** and

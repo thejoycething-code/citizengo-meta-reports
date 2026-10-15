@@ -139,12 +139,13 @@ async function igConnectedPosts(store, args = {}) {
   const w = xt.windowFor({ month: args.month, from: args.from, to: args.to, days: args.days }, 90);
   if (w.error) return { text: w.error };
   const accounts = await store.igConnectedAccounts();
-  if (!accounts.length) return { text: 'No Instagram accounts have been connected by their holders yet. Invites are made with scripts/x-invite.js --platform instagram.' };
+  if (!accounts.length) return { text: 'No Instagram accounts have been connected by their holders yet. A holder shares the account with CitizenGO\'s Business Manager as a partner (Insights access), then the "Instagram partner account" workflow registers it.' };
   const off = Math.max(Number(args.offset) || 0, 0);
   const rows = await store.igConnectedPosts({ account: args.account, since: w.since, until: w.until, order: args.sort, limit: clampRows(args.limit, 25), offset: off });
   const acctLines = accounts.map((a) => {
     const t = a.token;
-    const state = !a.is_active ? 'disconnected' : !t ? 'needs reconnecting (no live token)' : t.last_error ? `token problem: ${t.last_error}` : `connected, token valid to ${String(t.expires_at || '').slice(0, 10)}`;
+    const state = !a.is_active ? 'disconnected' : a.access === 'partner' ? `shared with our Business Manager (partner access), last read ${String(a.last_seen_at || '').slice(0, 10) || 'not yet'}`
+      : !t ? 'needs reconnecting (no live token)' : t.last_error ? `token problem: ${t.last_error}` : `connected, token valid to ${String(t.expires_at || '').slice(0, 10)}`;
     return `- **@${a.username}** (${a.label || '—'}, ${a.kind}): ${n(a.followers_count)} followers · ${state}`;
   }).join('\n');
   const body = rows.length ? table(['Account', 'Posted', 'Type', 'Caption', 'Reach', 'Views', 'Likes', 'Comments', 'Shares', 'Saves'], rows.map((r) => [

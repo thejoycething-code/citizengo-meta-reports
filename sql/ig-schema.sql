@@ -28,6 +28,16 @@ create table if not exists public.ig_accounts (
   constraint ig_accounts_kind check (kind in ('organisation', 'spokesperson'))
 );
 
+-- How we reach the account (migration ig_accounts_access_route, 16 Oct 2026):
+--   login   - the holder connected through Instagram Login; token in ig_oauth_tokens.
+--   partner - the holder added CitizenGO's Business Manager as a partner with
+--             Insights access in Meta Business Suite; read with the System User
+--             token (META_TOKENS) of business_id. No app review, no app role.
+alter table public.ig_accounts add column if not exists access text not null default 'login';
+alter table public.ig_accounts add column if not exists business_id text;
+alter table public.ig_accounts drop constraint if exists ig_accounts_access;
+alter table public.ig_accounts add constraint ig_accounts_access check (access in ('login', 'partner'));
+
 -- Long-lived tokens (60 days), SEALED to the collector's public key. The
 -- collector refreshes each one when it is a day old and writes the new token
 -- back sealed; a re-authorisation revokes the old row.

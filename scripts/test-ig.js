@@ -98,7 +98,7 @@ function mockRes() {
 
   console.log('\nThe tool');
   const none = await igConnectedPosts({ igConnectedAccounts: async () => [], igConnectedPosts: async () => [] }, {});
-  ok('no accounts yet: says how to invite', /--platform instagram/.test(none.text));
+  ok('no accounts yet: says how to add one', /partner/.test(none.text));
   const store = {
     igConnectedAccounts: async () => [{ ig_user_id: 'u9', username: 'rociodangelo', label: "Rocío D'Angelo", kind: 'spokesperson', followers_count: 5200, is_active: true, token: { expires_at: '2026-12-15T00:00:00Z', last_error: null } }],
     igConnectedPosts: async () => [{ username: 'rociodangelo', permalink: 'https://instagram.com/p/m1', timestamp: '2026-10-16T10:00:00Z', media_type: 'IMAGE', caption: 'Firmá', reach: 900, views: 1500, likes: 80, comments: 4, shares: 12, saved: 3 }],
@@ -106,6 +106,45 @@ function mockRes() {
   const t = await igConnectedPosts(store, { days: 30 });
   ok('lists the account, its token state and its posts', /@rociodangelo/.test(t.text) && /token valid to 2026-12-15/.test(t.text) && /\| 900 \|/.test(t.text), t.text.slice(0, 300));
   ok('states the spokesperson rule', /link to or mention CitizenGO/.test(t.text));
+  const tp = await igConnectedPosts({ ...store, igConnectedAccounts: async () => [{ ig_user_id: '178', username: 'rociodangelo', label: "Rocío D'Angelo", kind: 'spokesperson', access: 'partner', is_active: true, last_seen_at: '2026-10-17T06:20:00Z', token: null }] }, {});
+  ok('a partner account reads as shared, not as needing reconnection', /partner access/.test(tp.text) && !/needs reconnecting/.test(tp.text), tp.text.slice(0, 200));
+
+  console.log('\nPartner access (shared with our Business Manager)');
+  const igpartner = require('../lib/igpartner');
+  const { accessFor } = require('../collector/ig-connected');
+  // A fake Graph: token "tokB" sees business 200's client assets, which hold @rociodangelo.
+  const fakeApi = (token) => ({ async get(path, params) {
+    if (path === '200/client_instagram_assets' && token === 'tokB') return { ok: true, status: 200, body: { data: [{ id: '178', username: 'RocioDAngelo' }] } };
+    if (path.endsWith('/client_instagram_assets') || path.endsWith('_accounts')) return { ok: false, status: 400, body: { error: { message: 'Unknown path' } } };
+    return { ok: false, status: 400, body: {} };
+  } });
+  const f = await igpartner.findShared({ tokens: ['tokA', 'tokB'], businessIds: ['100', '200'], username: '@rociodangelo', makeApi: fakeApi });
+  eq('found by username (any case, @ ignored) with the token and business that see it', f.found && [f.found.igUserId, f.found.tokenIndex, f.found.businessId, f.found.edge], ['178', 1, '200', 'client_instagram_assets']);
+  ok('every edge tried is logged, without tokens', f.tried.length > 1 && f.tried.every((t) => typeof t.token === 'number'));
+  eq('not shared: nothing found', (await igpartner.findShared({ tokens: ['tokA'], businessIds: ['100'], username: 'nobody', makeApi: fakeApi })).found, null);
+  const bizApi = (token) => ({ async get(path) {
+    if (path === 'me') return { ok: true, status: 200, body: { id: 'su1', business: { id: '200', name: 'CitizenGO' } } };
+    if (path === 'me/businesses') return { ok: false, status: 400, body: {} };
+    return fakeApi(token).get(path);
+  } });
+  const fb = await igpartner.findShared({ tokens: ['tokB'], businessIds: null, username: 'rociodangelo', makeApi: bizApi });
+  eq('with no business list, each token says which business it belongs to', fb.found && fb.found.businessId, '200');
+  const g = (map) => ({ async get(path) { const v = map[path]; return v ? { ok: true, status: 200, body: v } : { ok: false, status: 400, body: { error: { message: 'Insufficient permission' } } }; } });
+  const full = await igpartner.checkAccess(g({ '178': { username: 'rociodangelo' }, '178/media': { data: [{ id: 'm1' }] }, 'm1/insights': { data: [] } }), '178');
+  ok('posts and insights readable: accepted', full.ok && full.insights === true);
+  const noIns = await igpartner.checkAccess(g({ '178': { username: 'rociodangelo' }, '178/media': { data: [{ id: 'm1' }] } }), '178');
+  ok('posts readable but insights refused: rejected, saying Insights access is missing', !noIns.ok && /needs Insights access/.test(noIns.why));
+  const unread = await igpartner.checkAccess(g({}), '178');
+  ok('account not readable: rejected', !unread.ok && /cannot read the account/.test(unread.why));
+  const realApi = igpartner.api;
+  igpartner.api = (tok) => ({ async get(path) { return tok === 'good' && path === '178' ? { ok: true, status: 200, body: { id: '178' } } : { ok: false, status: 400, body: {} }; } });
+  const acc = await accessFor({ ig_user_id: '178', access: 'partner' }, { metaTokens: ['bad', 'good'], log: () => {} });
+  eq('collector picks the META token that can read the partner account, addressed by id', [Boolean(acc.g), acc.self], [true, '178']);
+  const lost = await accessFor({ ig_user_id: '178', access: 'partner' }, { metaTokens: ['bad'], log: () => {} });
+  ok('share removed: a clear failure, not a crash', /partner share was removed/.test(lost.error || ''));
+  igpartner.api = realApi;
+  const noTok = await accessFor({ ig_user_id: 'u9', access: 'login' }, { tokenRow: null, log: () => {} });
+  eq('login account without a token: says so', noTok.error, 'no live token');
 
   console.log(`\n${pass} passed, ${fail} failed`);
   process.exit(fail ? 1 : 0);

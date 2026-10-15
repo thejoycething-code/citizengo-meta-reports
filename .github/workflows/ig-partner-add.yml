@@ -1,0 +1,60 @@
+name: Instagram partner account
+
+# Registers an Instagram account its holder shared with CitizenGO's Business
+# Manager as a partner (Meta Business Suite -> Settings -> Partners, Insights
+# access). Finds it, checks posts and insights are readable, writes ig_accounts.
+# See scripts/ig-partner-add.js and README "Instagram accounts connected by
+# their holders".
+
+on:
+  workflow_dispatch:
+    inputs:
+      username:
+        description: 'Instagram username (without @)'
+        required: true
+      label:
+        description: 'Label, e.g. "Rocío D''Angelo"'
+        required: true
+      kind:
+        description: 'spokesperson (CitizenGO posts only) or organisation (everything)'
+        required: false
+        default: 'spokesperson'
+      country:
+        description: 'Country code (optional)'
+        required: false
+        default: ''
+      ig_user_id:
+        description: 'Instagram user id, if the search cannot find it (optional)'
+        required: false
+        default: ''
+      business_id:
+        description: 'CitizenGO Business Manager id to search (optional; default: every one our tokens belong to)'
+        required: false
+        default: ''
+
+jobs:
+  add:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      META_TOKENS: ${{ secrets.META_TOKENS }}
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL || vars.SUPABASE_URL }}
+      SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+      USERNAME: ${{ github.event.inputs.username }}
+      LABEL: ${{ github.event.inputs.label }}
+      KIND: ${{ github.event.inputs.kind }}
+      COUNTRY: ${{ github.event.inputs.country }}
+      IG_ID: ${{ github.event.inputs.ig_user_id }}
+      BIZ: ${{ github.event.inputs.business_id }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
+        with:
+          node-version: '24'
+      - name: Find, check and register
+        run: |
+          EXTRA=""
+          if [ -n "$COUNTRY" ]; then EXTRA="$EXTRA --country $COUNTRY"; fi
+          if [ -n "$IG_ID" ]; then EXTRA="$EXTRA --id $IG_ID"; fi
+          if [ -n "$BIZ" ]; then EXTRA="$EXTRA --business $BIZ"; fi
+          node scripts/ig-partner-add.js "$USERNAME" "$LABEL" --kind "$KIND" $EXTRA

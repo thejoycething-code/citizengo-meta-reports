@@ -4,9 +4,14 @@
 //
 //   node collector/ig-connected.js [--days 30] [--dry-run] [--accounts <username> ...]
 //
-// For each active ig_accounts row with a live token:
-//   1. open the sealed token (X_TOKEN_PRIVATE_KEY); once it is a day old,
-//      refresh it for another 60 days and write it back sealed;
+// Two ways in (ig_accounts.access):
+//   login   - the holder connected through Instagram Login (lib/igauth.js):
+//             open the sealed token (X_TOKEN_PRIVATE_KEY); once it is a day
+//             old, refresh it for another 60 days and write it back sealed.
+//   partner - the holder shared the account with CitizenGO's Business Manager
+//             in Meta Business Suite (lib/igpartner.js): read with the System
+//             User token in META_TOKENS that can see it.
+// Then, for each account:
 //   2. refresh the account's profile (followers, posts);
 //   3. read its posts (feed and reels) since the window - all of them, up to
 //      1,000, on the first run - and keep, for a spokesperson, only those that
@@ -18,6 +23,7 @@
 const path = require('path');
 const { loadEnv } = require('../lib/graph');
 const igauth = require('../lib/igauth');
+const igpartner = require('../lib/igpartner');
 const xauth = require('../lib/xauth');
 const links = require('../lib/links');
 const sched = require('../lib/xschedule');
@@ -69,29 +75,32 @@ function parseInsights(body) {
   return out;
 }
 
-async function insightsFor(mediaId, token) {
-  const all = await igauth.get(`${mediaId}/insights`, { metric: igauth.INSIGHT_METRICS.join(',') }, token);
+async function insightsFor(mediaId, g) {
+  const all = await g.get(`${mediaId}/insights`, { metric: igauth.INSIGHT_METRICS.join(',') });
   if (all.ok) return parseInsights(all.body);
   // One unsupported metric fails the whole batch: ask one at a time instead.
   const out = {};
   for (const m of igauth.INSIGHT_METRICS) {
-    const one = await igauth.get(`${mediaId}/insights`, { metric: m }, token);
+    const one = await g.get(`${mediaId}/insights`, { metric: m });
     if (one.ok) Object.assign(out, parseInsights(one.body));
   }
   return out;
 }
 
-async function collectAccount(account, tokenRow, { privateKey, publicKey, sink, log }) {
-  const started = new Date().toISOString();
-  const run = (status, extra = {}) => ({ run_id: RUN_ID, ig_user_id: account.ig_user_id, started_at: started, finished_at: new Date().toISOString(),
-    status, media_seen: 0, media_kept: 0, metrics_written: 0, error_message: null, ...extra });
-  log(`\n── ${account.label || account.username} (@${account.username}, ${account.kind})`);
-
-  let token;
-  try { token = xauth.open(privateKey, tokenRow.sealed_token); } catch (e) {
-    log('   cannot open the stored token (wrong X_TOKEN_PRIVATE_KEY?)');
-    return run('failed', { error_message: 'token could not be opened' });
+// The client for one account: { g: {get}, self, fields } or { error }.
+async function accessFor(account, { tokenRow, privateKey, publicKey, metaTokens, log }) {
+  if (account.access === 'partner') {
+    // The token for the account's Business Manager first, then any other.
+    for (const tok of metaTokens) {
+      const g = igpartner.api(tok);
+      const r = await g.get(account.ig_user_id, { fields: 'id' });
+      if (r.ok) return { g, self: account.ig_user_id, fields: igpartner.USER_FIELDS };
+    }
+    return { error: 'no META_TOKENS token can read this account: the partner share was removed, or it is not assigned to the System User' };
   }
+  if (!tokenRow) return { error: 'no live token' };
+  let token;
+  try { token = xauth.open(privateKey, tokenRow.sealed_token); } catch (e) { return { error: 'token could not be opened' }; }
   // Refresh once a day old: keeps the 60-day clock from ever running out.
   const age = Date.now() - Date.parse(tokenRow.refreshed_at || tokenRow.authorized_at);
   if (age > REFRESH_AFTER_MS) {
@@ -107,11 +116,23 @@ async function collectAccount(account, tokenRow, { privateKey, publicKey, sink, 
       log(`   token refresh FAILED: ${e.message}`);
       if (!DRY_RUN) await pg('PATCH', `ig_oauth_tokens?id=eq.${tokenRow.id}`, { last_error: String(e.message).slice(0, 300) }, 'return=minimal').catch(() => {});
       // An expired or revoked token cannot be used either; the holder must reconnect.
-      if (e.status === 400 || e.status === 401 || e.status === 190) return run('failed', { error_message: `needs re-authorisation: ${e.message}`.slice(0, 300) });
+      if (e.status === 400 || e.status === 401) return { error: `needs re-authorisation: ${e.message}`.slice(0, 300) };
     }
   }
+  return { g: { get: (path, params) => igauth.get(path, params, token) }, self: 'me', fields: igauth.ME_FIELDS };
+}
 
-  const me = await igauth.get('me', { fields: igauth.ME_FIELDS }, token);
+async function collectAccount(account, ctx) {
+  const { sink, log } = ctx;
+  const started = new Date().toISOString();
+  const run = (status, extra = {}) => ({ run_id: RUN_ID, ig_user_id: account.ig_user_id, started_at: started, finished_at: new Date().toISOString(),
+    status, media_seen: 0, media_kept: 0, metrics_written: 0, error_message: null, ...extra });
+  log(`\n── ${account.label || account.username} (@${account.username}, ${account.kind}, ${account.access || 'login'})`);
+  const a = await accessFor(account, ctx);
+  if (a.error) { log(`   ${a.error}`); return run('failed', { error_message: a.error }); }
+  const { g, self } = a;
+
+  const me = await g.get(self, { fields: a.fields });
   if (!me.ok) {
     log(`   profile read FAILED: HTTP ${me.status}`);
     return run('failed', { error_message: `me: HTTP ${me.status} ${JSON.stringify(me.body).slice(0, 200)}` });
@@ -124,7 +145,7 @@ async function collectAccount(account, tokenRow, { privateKey, publicKey, sink, 
   const media = [];
   let after = null;
   do {
-    const page = await igauth.get('me/media', { fields: igauth.MEDIA_FIELDS, limit: 50, after }, token);
+    const page = await g.get(`${self}/media`, { fields: igauth.MEDIA_FIELDS, limit: 50, after });
     if (!page.ok) { log(`   media read FAILED: HTTP ${page.status}`); return run('failed', { error_message: `media: HTTP ${page.status}` }); }
     const rows = page.body.data || [];
     media.push(...rows.filter((m) => Date.parse(m.timestamp) >= since));
@@ -140,7 +161,7 @@ async function collectAccount(account, tokenRow, { privateKey, publicKey, sink, 
   if (mediaRows.length) await sink.upsert('ig_media', mediaRows);
   const metrics = [];
   for (const m of kept) {
-    const i = await insightsFor(m.id, token);
+    const i = await insightsFor(m.id, g);
     metrics.push({ media_id: String(m.id), collected_date: TODAY, collected_at: new Date().toISOString(),
       reach: i.reach ?? null, views: i.views ?? null, likes: i.likes ?? m.like_count ?? null, comments: i.comments ?? m.comments_count ?? null,
       shares: i.shares ?? null, saved: i.saved ?? null, total_interactions: i.total_interactions ?? null });
@@ -151,9 +172,10 @@ async function collectAccount(account, tokenRow, { privateKey, publicKey, sink, 
 
 async function main() {
   const privateKey = String(process.env.X_TOKEN_PRIVATE_KEY || '').replace(/\\n/g, '\n');
-  if (!BASE || !KEY || !privateKey) { console.error('SUPABASE_URL, SUPABASE_SERVICE_KEY and X_TOKEN_PRIVATE_KEY are needed.'); process.exit(2); }
-  const publicKey = xauth.publicKeyOf(privateKey);
-  let accounts = await pg('GET', 'ig_accounts?select=ig_user_id,username,label,kind&is_active=eq.true') || [];
+  const metaTokens = String(process.env.META_TOKENS || process.env.META_TOKEN || '').split(/[\n,]/).map((t) => t.trim()).filter(Boolean);
+  if (!BASE || !KEY) { console.error('SUPABASE_URL and SUPABASE_SERVICE_KEY are needed.'); process.exit(2); }
+  const publicKey = privateKey ? xauth.publicKeyOf(privateKey) : null;
+  let accounts = await pg('GET', 'ig_accounts?select=ig_user_id,username,label,kind,access,business_id&is_active=eq.true') || [];
   if (ONLY.length) accounts = accounts.filter((a) => ONLY.includes(String(a.username).toLowerCase()));
   console.log(`Connected Instagram collector ${RUN_ID} · ${accounts.length} account(s)${DRY_RUN ? ' · dry run' : ''}`);
   if (!accounts.length) { console.log('No Instagram accounts connected yet.'); return; }
@@ -162,8 +184,7 @@ async function main() {
   const runs = [];
   for (const a of accounts) {
     const t = tokens.find((x) => x.ig_user_id === a.ig_user_id);
-    if (!t) { console.log(`\n── @${a.username}: no live token; skipped`); runs.push({ run_id: RUN_ID, ig_user_id: a.ig_user_id, started_at: new Date().toISOString(), finished_at: new Date().toISOString(), status: 'failed', media_seen: 0, media_kept: 0, metrics_written: 0, error_message: 'no live token' }); continue; }
-    try { runs.push(await collectAccount(a, t, { privateKey, publicKey, sink, log: console.log })); } catch (e) {
+    try { runs.push(await collectAccount(a, { tokenRow: t, privateKey, publicKey, metaTokens, sink, log: console.log })); } catch (e) {
       console.log(`   FAILED: ${e.message}`);
       runs.push({ run_id: RUN_ID, ig_user_id: a.ig_user_id, started_at: new Date().toISOString(), finished_at: new Date().toISOString(), status: 'failed', media_seen: 0, media_kept: 0, metrics_written: 0, error_message: String(e.message).slice(0, 300) });
     }
@@ -177,4 +198,4 @@ async function main() {
 
 if (require.main === module) main().catch((e) => { console.error(e.message); process.exit(1); });
 
-module.exports = { describe, keep, parseInsights };
+module.exports = { describe, keep, parseInsights, accessFor };
