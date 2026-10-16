@@ -27,7 +27,11 @@ const names = args.filter((a, i) => !a.startsWith('--') && !(viaI !== -1 && i ==
 const dateOfId = (id) => new Date(Number(BigInt(id) >> 22n) + 1288834974657);
 
 async function main() {
-  const handles = [...new Set(names.filter((n) => n.toLowerCase() !== via))];
+  // X usernames are 1-15 letters, digits or underscores; one invalid name
+  // fails the whole request, so leave those out and say so.
+  const valid = (n) => /^[A-Za-z0-9_]{1,15}$/.test(n);
+  for (const n of names.filter((x) => !valid(x))) console.log(`skipped: ${n} (not a possible X username)`);
+  const handles = [...new Set(names.filter((n) => valid(n) && n.toLowerCase() !== via))];
   if (!handles.length || handles.length > 100) { console.error('Give 1-100 usernames.'); process.exit(2); }
   const accounts = await loadAccounts();
   const acct = accounts.find((a) => String(a.username || '').toLowerCase() === via);
@@ -36,6 +40,7 @@ async function main() {
   if (cred.error) { console.error(`credential: ${cred.error}`); process.exit(1); }
   const client = xapi.makeClient({ token: cred.token });
   const r = await client.get('/2/users/by', { usernames: handles.join(','), 'user.fields': 'created_at,public_metrics,most_recent_tweet_id,description,protected' }, { countAs: 'user' });
+  if (!r.ok && !(r.body && r.body.data)) { console.error(`X refused the lookup: HTTP ${r.status} ${JSON.stringify(r.body || r.transport_error).slice(0, 300)}`); process.exit(1); }
   const users = (r.body && r.body.data) || [];
   const errs = (r.body && r.body.errors) || [];
   console.log(`\nLooked up ${handles.length} handle(s) via @${acct.username}: ${users.length} found (~$${(users.length * 0.01).toFixed(2)})\n`);
