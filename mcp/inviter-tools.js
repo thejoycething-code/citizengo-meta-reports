@@ -37,8 +37,9 @@ const toolAllowed = (who, name) => !isScoped(who) || name.startsWith('inviter_')
 
 const REACTION_KEYS = ['rLike', 'rLove', 'rCare', 'rWow', 'rSad', 'rHaha', 'rAngry'];
 const ROUTE_KEYS = ['feed_grid', 'prodash', 'notifications'];
-// Routes added with extension 2.8 and 2.11: checked only when present.
-const OPTIONAL_ROUTE_KEYS = ['page_feed', 'photos'];
+// Routes added with extension 2.8, 2.11 and 2.13.15 (metapost: one post's insights page, by
+// {postId}): checked only when present.
+const OPTIONAL_ROUTE_KEYS = ['page_feed', 'photos', 'metapost'];
 const LIST_KEYS = ['inviteWords', 'closeWords', 'supportedLangs', 'limitPatterns', 'pageLimitPatterns', 'reactSummaryPatterns'];
 // Lists added with extension 2.11 and 2.12 (captcha wording, "View more comments" wording, the popup's
 // subtitles): checked only when present, so configs saved before them stay valid.
@@ -54,7 +55,9 @@ const TOP_KEYS = ['configVersion', 'minExtensionVersion', 'killSwitch', 'notice'
   // to, and the pattern that recognises Facebook's default profile picture.
   'maintainerName', 'maintainerEmail', 'defaultAvatarPattern',
   // Optional (added with extension 2.11 and 2.12).
-  ...OPTIONAL_LIST_KEYS, 'captchaSelector', 'photoLinkPattern'];
+  ...OPTIONAL_LIST_KEYS, 'captchaSelector', 'photoLinkPattern',
+  // Optional (added with extension 2.13.14): each Page's ID → its facebook.com profile ID.
+  'pageProfiles'];
 
 // Who requests are routed to when someone without edit rights asks for a change.
 // The config's own maintainer wins; INVITER_CONFIG_CONTACT is the fallback.
@@ -138,6 +141,13 @@ function problems(cfg) {
   if ('photoLinkPattern' in cfg && (typeof cfg.photoLinkPattern !== 'string' || !cfg.photoLinkPattern || !compiles(cfg.photoLinkPattern))) out.push('photoLinkPattern must be a valid pattern.');
   if ('defaultAvatarPattern' in cfg && (typeof cfg.defaultAvatarPattern !== 'string' || !cfg.defaultAvatarPattern || !compiles(cfg.defaultAvatarPattern))) out.push('defaultAvatarPattern must be a valid pattern.');
 
+  if ('pageProfiles' in cfg) {
+    if (!isObj(cfg.pageProfiles)) out.push('pageProfiles must map Page IDs to profile IDs.');
+    else for (const [page, prof] of Object.entries(cfg.pageProfiles)) {
+      if (!/^\d{5,25}$/.test(page) || !/^\d{5,25}$/.test(String(prof))) out.push(`pageProfiles: "${page}" → "${prof}" must be two numeric IDs.`);
+    }
+  }
+
   if (!isObj(cfg.routes)) out.push('routes must be an object.');
   else {
     for (const k of Object.keys(cfg.routes)) if (!ROUTE_KEYS.includes(k) && !OPTIONAL_ROUTE_KEYS.includes(k)) out.push(`routes.${k} is not a route the extension has.`);
@@ -146,7 +156,7 @@ function problems(cfg) {
       if (!isObj(r)) { out.push(`routes.${k} must have a url and a match.`); continue; }
       // Facebook addresses only: the extension opens these in campaigners' browsers.
       let host = '';
-      try { host = new URL(String(r.url).replace('{pageId}', '1')).hostname; } catch (e) { /* reported below */ }
+      try { host = new URL(String(r.url).replace('{pageId}', '1').replace('{postId}', '1')).hostname; } catch (e) { /* reported below */ }
       if (!/^(www|web|business)\.facebook\.com$/.test(host) || !String(r.url).startsWith('https://')) out.push(`routes.${k}.url must be an https address on facebook.com.`);
       if (typeof r.match !== 'string' || !compiles(r.match)) out.push(`routes.${k}.match must be a valid pattern.`);
     }
@@ -165,7 +175,7 @@ function applyChanges(base, { set = {}, add = {}, remove = {} }) {
   for (const [k, v] of Object.entries(set || {})) {
     if (unknown(k)) continue;
     if (k === 'configVersion') { errors.push('configVersion is set automatically.'); continue; }
-    if (['reactions', 'selectors', 'routes'].includes(k) && v && typeof v === 'object' && !Array.isArray(v)) {
+    if (['reactions', 'selectors', 'routes', 'pageProfiles'].includes(k) && v && typeof v === 'object' && !Array.isArray(v)) {
       cfg[k] = { ...(cfg[k] || {}), ...v };
       if (k === 'routes') for (const [rk, rv] of Object.entries(v)) cfg.routes[rk] = { ...((base.routes || {})[rk] || {}), ...rv };
     } else cfg[k] = v;
@@ -305,6 +315,69 @@ async function invitePosts(store, args) {
   return { text: JSON.stringify(out), raw: true, structured: out };
 }
 
+// Usage reports from the extension: its running daily invite totals per Page, with the
+// person's Chrome sign-in email and a random ID for the computer (one person may run
+// it on two machines). Bounded so a broken or hostile copy can't flood the table.
+const USAGE_MAX_ROWS = 500;
+async function reportUsage(store, args) {
+  const email = String(args.user_email || '').trim().toLowerCase();
+  const device = String(args.device_id || '').trim();
+  const version = String(args.extension_version || '').slice(0, 40);
+  if (email.length > 200 || !/^[^\s@<>]+@[^\s@<>]+\.[a-z]{2,}$/i.test(email) && email !== 'unknown') return { text: 'user_email must be an email address (or "unknown").', raw: true, isError: true };
+  if (!/^[A-Za-z0-9-]{8,64}$/.test(device)) return { text: 'device_id must be 8–64 letters, digits or dashes.', raw: true, isError: true };
+  const days = Array.isArray(args.days) ? args.days : [];
+  if (days.length > USAGE_MAX_ROWS) return { text: `At most ${USAGE_MAX_ROWS} rows per report.`, raw: true, isError: true };
+  const today = new Date(Date.now() + 864e5).toISOString().slice(0, 10);
+  const oldest = new Date(Date.now() - 40 * 864e5).toISOString().slice(0, 10);
+  const rows = [];
+  for (const d of days) {
+    const day = String((d && d.day) || '');
+    const pageId = String((d && d.page_id) || '');
+    const invites = Number(d && d.invites);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || day > today || day < oldest) continue;
+    if (!/^(\d{5,25}|profile:\d{5,25})$/.test(pageId)) continue;
+    if (!Number.isInteger(invites) || invites < 0 || invites > 100000) continue;
+    rows.push({ day, user_email: email, device_id: device, page_id: pageId, page_name: String((d && d.page_name) || '').slice(0, 200) || null, invites, extension_version: version || null, updated_at: new Date().toISOString() });
+  }
+  const saved = await store.upsertInviterUsage(rows);
+  return { text: JSON.stringify({ ok: true, saved, skipped: days.length - rows.length }), raw: true, structured: { ok: true, saved } };
+}
+
+// Who uses the Page Inviter and how many invites went to each Page, for the maintainer.
+async function readUsage(store, args) {
+  const days = Math.min(365, Math.max(1, Math.floor(Number(args.days)) || 30));
+  const since = new Date(Date.now() - (days - 1) * 864e5).toISOString().slice(0, 10);
+  let rows = await store.inviterUsage({ since });
+  if (args.user) rows = rows.filter((r) => r.user_email.includes(String(args.user).toLowerCase()));
+  if (args.page_id) rows = rows.filter((r) => r.page_id === String(args.page_id));
+  if (!rows.length) return { text: `No Page Inviter usage reported since ${since}.`, raw: true };
+  const fmt = (n) => Number(n).toLocaleString('en-GB');
+  const sum = (list) => list.reduce((a, r) => a + r.invites, 0);
+  const group = (key) => { const m = new Map(); for (const r of rows) { const k = key(r); m.set(k, [...(m.get(k) || []), r]); } return [...m.entries()]; };
+  const names = new Map(rows.filter((r) => r.page_name).map((r) => [r.page_id, r.page_name]));
+  const people = group((r) => r.user_email).map(([u, list]) => ({
+    u, total: sum(list), pages: new Set(list.map((r) => r.page_id)).size, devices: new Set(list.map((r) => r.device_id)).size,
+    last: list.reduce((a, r) => (r.day > a ? r.day : a), ''), version: list.reduce((a, r) => (r.updated_at > a.t ? { t: r.updated_at, v: r.extension_version } : a), { t: '' }).v,
+  })).sort((a, b) => b.total - a.total);
+  const pages = group((r) => r.page_id).map(([p, list]) => ({ p, total: sum(list), users: new Set(list.map((r) => r.user_email)).size })).sort((a, b) => b.total - a.total);
+  const byDay = group((r) => r.day).map(([d, list]) => [d, sum(list)]).sort((a, b) => a[0].localeCompare(b[0]));
+  const text = [
+    `**Page Inviter usage since ${since}** · ${fmt(sum(rows))} invites by ${people.length} ${people.length === 1 ? 'person' : 'people'} on ${pages.length} Pages`,
+    '',
+    '| Person | Invites | Pages | Computers | Last used | Version |', '| --- | --- | --- | --- | --- | --- |',
+    ...people.map((x) => `| ${x.u} | ${fmt(x.total)} | ${x.pages} | ${x.devices} | ${x.last} | ${x.version || '—'} |`),
+    '',
+    '| Page | Invites | People |', '| --- | --- | --- |',
+    ...pages.map((x) => `| ${names.get(x.p) || x.p} | ${fmt(x.total)} | ${x.users} |`),
+    '',
+    '| Day | Invites |', '| --- | --- |',
+    ...byDay.map(([d, n]) => `| ${d} | ${fmt(n)} |`),
+    '',
+    '_Invites the extension clicked (Facebook does not say how many were accepted). Each computer reports its own daily totals, usually within half an hour._',
+  ].join('\n');
+  return { text, raw: true, structured: { since, people, pages, days: byDay } };
+}
+
 const LIST_SCHEMA = (verb) => ({
   type: 'object',
   description: `Lists to ${verb}, e.g. {"inviteWords": ["Zaproś do polubienia"]} or {"subtitles": ["Growing CitizenGO"]}. Works on: ${EDITABLE_LISTS.join(', ')}.`,
@@ -312,6 +385,36 @@ const LIST_SCHEMA = (verb) => ({
 });
 
 const INVITER_TOOLS = [
+  {
+    name: 'inviter_report_usage',
+    description: 'Used by the CitizenGO Page Inviter extension itself to report its daily invite totals per Page. Not for people: to see usage, use page_inviter_usage.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        user_email: { type: 'string', description: 'The Chrome sign-in email, or "unknown".' },
+        device_id: { type: 'string', description: 'Random ID of this copy of the extension.' },
+        extension_version: { type: 'string' },
+        days: { type: 'array', description: 'Rows of { day: YYYY-MM-DD, page_id, page_name, invites } (running totals for that day).', items: { type: 'object' } },
+      },
+      required: ['user_email', 'device_id', 'days'],
+      additionalProperties: false,
+    },
+    handler: (store, args) => reportUsage(store, args),
+  },
+  {
+    name: 'page_inviter_usage',
+    description: 'Who uses the CitizenGO Page Inviter Chrome extension and how many invites it has sent per person, per Page and per day (from the extension\'s own reports). Use for "who is using the Page Inviter", "invites sent per Page", "how much has HazteOir been invited for this week".',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        days: { type: 'number', description: 'Look back this many days (default 30, max 365).' },
+        user: { type: 'string', description: 'Only people whose email contains this.' },
+        page_id: { type: 'string', description: 'Only this Page.' },
+      },
+      additionalProperties: false,
+    },
+    handler: (store, args) => readUsage(store, args),
+  },
   {
     name: 'inviter_pages',
     description: 'For the CitizenGO Page Inviter extension: the Facebook Pages being collected, as JSON with page_id and name only. For performance data use list_pages.',

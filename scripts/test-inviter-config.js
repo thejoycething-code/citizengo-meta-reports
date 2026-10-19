@@ -175,7 +175,7 @@ async function main() {
   console.log('\n7. The extension\'s own token is limited to Page Inviter tools');
   const ext = { who: 'invite-to-like-extension' };
   const seen = visibleTools(ext.who).map((t) => t.name).sort();
-  check('it sees only the inviter tools', JSON.stringify(seen) === JSON.stringify(['inviter_config', 'inviter_pages', 'inviter_posts', 'update_inviter_config']), seen.join(', '));
+  check('it sees only the inviter tools', JSON.stringify(seen) === JSON.stringify(['inviter_config', 'inviter_pages', 'inviter_posts', 'inviter_report_usage', 'update_inviter_config']), seen.join(', '));
   check('everyone else still sees every tool', visibleTools('chris').length === TOOLS.length);
   let refused = null;
   try { await callTool(store, 'top_posts', {}, ext); } catch (e) { refused = e; }
