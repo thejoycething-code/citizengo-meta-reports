@@ -41,22 +41,21 @@ Other pages reuse these posts, so each alert carries a fact check made at the mo
 
 Then build the fact-check block. Write it **in English, in standard Markdown** (`**bold**`, `[label](url)`), the same format as `slack_text`, and never invent a link: every URL must be a page you actually opened in this run.
 
-If **every** claim is Verified, add this at the very end of `slack_text`, after a blank line:
+**Verified claims never get a line of their own** (Chris, 22 Oct 2026: per-claim ✅ lines made the alerts too cluttered). They are summed up in one line at most.
+
+If **every** claim is Verified, add this single line at the very end of `slack_text`, after a blank line, with up to three source links on that one line:
 
 ```
-**✅ Fact check:** the claims check out.
-• <claim in a few words>: [source](url)
-• …
+**✅ Fact check:** the claims check out ([source](url), [source](url)).
 ```
 
-If **any** claim is Wrong, Unverified or Outdated, the reader must see it before they reuse the post. Put this block **directly under the first line** of `slack_text` (the "Automated alert…" line), with a blank line either side, and leave the rest of `slack_text` exactly as it is:
+If **any** claim is Wrong, Unverified or Outdated, the reader must see it before they reuse the post. Put this block **directly under the first line** of `slack_text` (the "Automated alert…" line), with a blank line either side, and leave the rest of `slack_text` exactly as it is. Give a bullet **only** to the problem claims; Verified claims are left out of this block entirely:
 
 ```
 **⚠️ Check before reusing:** <one line saying what is wrong or unsupported>
 • ❌ Wrong: <claim>: <what the source says instead> ([source](url))
 • ❓ Unverified: <claim>: no source found
 • 🕓 Outdated: <claim>: <what changed> ([source](url))
-• ✅ Verified: <claim> ([source](url))
 ```
 
 Special cases:
