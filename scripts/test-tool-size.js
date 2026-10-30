@@ -61,6 +61,7 @@ const POSTS = 600;
   const argsFor = {
     page_summary: { page_id: 'P1', ...HOSTILE },
     search_posts: { query: 'x', ...HOSTILE },
+    topic_performance: { query: 'x', ...HOSTILE },
   };
   const argsFrom = (name) => argsFor[name] || { ...HOSTILE };
 

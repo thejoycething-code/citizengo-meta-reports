@@ -533,6 +533,8 @@ To switch off: unset `X_TOOLS_ENABLED` (tools vanish), set
 
 ## Link performance (signatures per tracked link) — 15 Oct 2026
 
+The `topic_performance` tool answers "how is this topic doing across our channels" in one call: Facebook, Instagram (captions and what is said in videos) and X, each post scored against its own account's median, audiences never added across platforms (`mcp/topic-tools.js`, `npm run test:topic`).
+
 The `link_performance` tool answers "how many signatures did Rocío's links
 bring this month" or "which of our posts brought the most new members", for
 every connected account (Facebook Pages, Instagram, X, spokespeople).
