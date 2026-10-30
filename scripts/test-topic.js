@@ -29,6 +29,9 @@ const corpus = {
   ],
   x: null,
 };
+const withX = { ...corpus, facebook: [...corpus.facebook, fb('6', 'Italia', 'utero in affitto oggi', null)],
+  x: [{ post_id: 'x1', account_id: 'S', username: 'spoke', kind: 'spokesperson', created_at: '2026-10-10T00:00:00Z', text: 'surrogacy', impressions: 50 },
+    { post_id: 'x2', account_id: 'O', username: 'cgo', kind: 'organisation', created_at: '2026-10-10T00:00:00Z', text: 'surrogacy', impressions: null }] };
 const terms = termsOf('Utero in affitto, surrogacy, gestación subrogada');
 eq('terms: split on commas, lower-cased', terms, ['utero in affitto', 'surrogacy', 'gestación subrogada']);
 eq('terms: " OR " also separates', termsOf('a OR bb, bb'), ['bb']);
@@ -49,6 +52,15 @@ eq('x: not collected is null, not zero', s.x, null);
   eq('answer: no grand total across platforms', /3,900|total across/i.test(out.text), false);
   eq('answer: pipe in post text escaped', out.text.includes('Surrogacy \\| exploitation') || !out.text.includes('Surrogacy | exploitation'), true);
   eq('answer: asks for a topic when none given', (await topicPerformance({ topicCorpus: async () => corpus }, { query: ' ' })).text.startsWith('Give a topic'), true);
+
+  const s2 = summarise(withX, terms);
+  eq('unmeasured post is not counted as zero audience', [s2.facebook.posts, s2.facebook.measured, s2.facebook.total], [3, 2, 3500]);
+  eq('spokesperson X accounts left out', [s2.x.estatePosts, s2.x.posts], [1, 1]);
+  eq('no figures at all: total unknown, not 0', s2.x.total, null);
+  const out2 = await topicPerformance({ topicCorpus: async () => withX }, { query: 'utero in affitto, surrogacy' });
+  eq('answer: partial measurement labelled', out2.text.includes('3,500 views (2 of 3 posts measured)'), true);
+  eq('answer: unmeasured platform says so', out2.text.includes('_not measured yet_'), true);
+  eq('answer: spokesperson exclusion explained', out2.text.includes('spokesperson accounts are left out'), true);
 
   console.log(`\n${passed} passed, ${failed} failed`);
   process.exit(failed ? 1 : 0);

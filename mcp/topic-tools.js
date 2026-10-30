@@ -50,8 +50,11 @@ function termsOf(query) {
 function summarise(corpus, terms) {
   const out = {};
   for (const [key, P] of Object.entries(PLATFORMS)) {
-    const rows = corpus[key];
-    if (rows === null || rows === undefined) { out[key] = null; continue; }
+    if (corpus[key] === null || corpus[key] === undefined) { out[key] = null; continue; }
+    // A spokesperson's X account holds only the posts that link to or mention
+    // CitizenGO (lib/xschedule.js isAboutUs), so it has no "all posts" to take a
+    // share of, and its normal is not that account's normal. Left out.
+    const rows = corpus[key].filter((r) => r.kind !== 'spokesperson');
     // Each account's normal over the whole window, on posts that have a figure.
     // Fewer than 3 posts is no baseline at all, and the post is left unscored.
     const byAccount = new Map();
@@ -80,7 +83,10 @@ function summarise(corpus, terms) {
       estatePosts: rows.length,
       posts: matched.length,
       accounts: accounts.size,
-      total: matched.reduce((s, r) => s + (r._value || 0), 0),
+      // Posts without a figure (not yet collected, or Meta served none) are
+      // counted as unmeasured, never as zero audience.
+      measured: matched.filter((r) => r._value !== null).length,
+      total: matched.some((r) => r._value !== null) ? matched.reduce((s, r) => s + (r._value || 0), 0) : null,
       typical: scored.length ? median(scored.map((r) => r._ratio)) : null,
       aboveNormal: scored.filter((r) => r._ratio > 1).length,
       scored: scored.length,
@@ -112,8 +118,10 @@ async function topicPerformance(store, args = {}) {
     keys.map((k) => {
       const P = PLATFORMS[k]; const s = sum[k];
       if (!s) return [P.label, '—', '—', '—', '—', '_not collected_', '—', ''];
+      const audience = s.total === null ? (s.posts ? '_not measured yet_' : '—')
+        : `${n(s.total)} ${P.metric}${s.measured < s.posts ? ` (${n(s.measured)} of ${n(s.posts)} posts measured)` : ''}`;
       return [P.label, n(s.posts), s.estatePosts ? `${((s.posts / s.estatePosts) * 100).toFixed(1)}%` : '—', n(s.accounts),
-        `${n(s.total)} ${P.metric}`, times(s.typical), s.scored ? `${n(s.aboveNormal)} of ${n(s.scored)}` : '—', verdict(s)];
+        audience, times(s.typical), s.scored ? `${n(s.aboveNormal)} of ${n(s.scored)}` : '—', verdict(s)];
     }));
 
   const sections = keys.filter((k) => sum[k] && sum[k].posts).map((k) => {
@@ -130,6 +138,7 @@ async function topicPerformance(store, args = {}) {
     '"× normal" is a post\'s audience against the median of ALL its own account\'s posts in the same window, so a small page and a large one are comparable, and so are the three platforms. 1× is an ordinary post for that account. The audiences themselves are different measures (Facebook views, Instagram reach, X impressions) and must not be added together.',
     'Recent posts are still growing, so a window that ends today understates the newest posts.',
   ];
+  if (corpus.x && corpus.x.some((r) => r.kind === 'spokesperson')) notes.push('X spokesperson accounts are left out: only their posts about CitizenGO are collected, so they have no normal to compare against. Use x_search_posts for them.');
   if (keys.some((k) => !sum[k])) notes.push(`Not collected here: ${keys.filter((k) => !sum[k]).map((k) => PLATFORMS[k].label).join(', ')}.`);
   notes.push('Google Trends (what the public is searching for) is not connected yet; this covers CitizenGO\'s own posts only. For allies, use ally_watch.');
 
