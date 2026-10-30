@@ -18,7 +18,7 @@ build. Phase 2 looks outward; hers looks inward.
 
 | Piece | Where | State |
 |---|---|---|
-| Instagram peer watch: 61 ally accounts (UK 20, US 28, IE, AU, CA...) read free through `business_discovery`, scored against each account's own median | `collector/peers-ig.js`, `config/peers-ig.json`, `sql/peer-schema.sql` (`peer_ig_latest.vs_median`) | Built 7 Oct; weekly; dormant until `PEER_IG_ENABLED` is set |
+| Instagram peer watch: 61 ally accounts (UK 20, US 28, IE, AU, CA...) read free through `business_discovery`, scored against each account's own median | `collector/peers-ig.js`, `config/peers-ig.json`, `sql/peer-schema.sql` (`peer_ig_latest.vs_median`) | Running weekly since 12 Oct (61 accounts, ~3,000 posts a run); daily, with the `ally_watch` tool, from 30 Oct |
 | X collector with per-read cost ledger and a monthly budget guard | `collector/x.js`, `lib/xschedule.js` | Live, own accounts only |
 | X topic labels and hashtags on our posts | `x_topics` tool | Live |
 | Breakout alerts to #comm-social-networks, with fact check and dedup of translated copies | `scripts/breakout-alerts.js`, `skills/breakout-alerts` | Live, own posts only |
@@ -107,7 +107,7 @@ watched-account list prioritised by country.
 
 ## Phasing
 
-* **2a (≈2 weeks).** Turn on IG peer watch, daily; add opponents to it. Add 30
+* **2a (≈2 weeks).** IG ally watch is now daily with an `ally_watch` tool (done 30 Oct); add opponents to it. Add 30
   X accounts and the counts probe. Ad Library for ~20 opponent Pages. Rules 1, 2
   and 4. Daily digest for the UK only, tied into the UK opposition and narrative
   monitoring work.

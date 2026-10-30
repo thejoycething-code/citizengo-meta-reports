@@ -70,6 +70,7 @@ need. The production root serves a static notice and nothing else.
 | Watchdog | 09:00 UTC daily | Fails if data is stale, incomplete, **or a token is expiring** |
 | Connected Instagram | 06:15 UTC daily | Spokespeople's own Instagram accounts: posts, insights, token refresh |
 | Link registry | 06:40 UTC daily | Every CitizenGO link our accounts posted, with its campaign code (`link_posts`) |
+| Peer watch (Instagram) | 06:10 UTC daily | 61 ally accounts' public posts via `business_discovery` (free); read by the `ally_watch` tool |
 | Monthly heartbeat | 1st & 15th | Commits `STATUS.md` so GitHub doesn't disable the crons |
 | Dry run | manual | Collects to files, never touches the database |
 

@@ -79,6 +79,25 @@ function fakeGet(calls) {
   await run({ get: fakeGet([]), upsert: async () => dryWrites.push(1), list, opts: { dryRun: true, posts: 50 }, log: () => {} });
   eq('dry run writes nothing', dryWrites.length, 0);
 
+  // ally_watch: the connector tool over peer_ig_latest.
+  const { allyWatch, render } = require('../mcp/peer-tools');
+  const accts = [{ username: 'spucprolife', label: 'SPUC', last_status: 'ok', last_checked_at: '2026-10-29T06:11:00Z' },
+    { username: 'gone', label: 'Gone', last_status: 'not_found', last_checked_at: '2026-10-29T06:11:00Z' }];
+  const post = { username: 'spucprolife', label: 'SPUC', country: 'UK', media_type: 'VIDEO', media_product_type: 'REELS',
+    caption: 'Assisted suicide | bill', permalink: 'https://www.instagram.com/reel/x/', timestamp: '2026-10-28T10:00:00Z',
+    like_count: 900, comments_count: 100, settled: false, vs_median: 6.25 };
+  const asked = [];
+  const fakeStore = { peerAccounts: async () => accts, peerPosts: async (q) => { asked.push(q); return [post]; } };
+  const out = await allyWatch(fakeStore, { country: 'uk', query: 'assisted', min_multiple: 5, sort: 'recent' });
+  eq('ally_watch: filters reach the store', [asked[0].country, asked[0].q, asked[0].min, asked[0].order], ['uk', 'assisted', 5, 'timestamp']);
+  eq('ally_watch: counts only accounts read', out.text.includes('1 ally accounts read, last on 2026-10-29'), true);
+  eq('ally_watch: young post marked still rising', out.text.includes('6.3× ↑'), true);
+  eq('ally_watch: pipe in caption escaped', out.text.includes('Assisted suicide \\| bill'), true);
+  eq('ally_watch: no paging note under the limit', out.text.includes('offset'), false);
+  eq('ally_watch: paging note at the limit', render({ rows: [post], accounts: accts, label: 'x', off: 0, limit: 1 }).includes('offset 1'), true);
+  const none = await allyWatch({ peerAccounts: async () => [], peerPosts: async () => [] }, {});
+  eq('ally_watch: says when nothing is collected', none.text.startsWith('Ally watch has not collected'), true);
+
   console.log(`\n${passed} passed, ${failed} failed`);
   process.exit(failed ? 1 : 0);
 })();
