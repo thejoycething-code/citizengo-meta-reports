@@ -70,6 +70,7 @@ need. The production root serves a static notice and nothing else.
 | Watchdog | 09:00 UTC daily | Fails if data is stale, incomplete, **or a token is expiring** |
 | Connected Instagram | 06:15 UTC daily | Spokespeople's own Instagram accounts: posts, insights, token refresh |
 | Link registry | 06:40 UTC daily | Every CitizenGO link our accounts posted, with its campaign code (`link_posts`) |
+| Peer watch (Instagram) | 06:10 UTC daily | 61 ally accounts' public posts via `business_discovery` (free); read by the `ally_watch` tool |
 | Monthly heartbeat | 1st & 15th | Commits `STATUS.md` so GitHub doesn't disable the crons |
 | Dry run | manual | Collects to files, never touches the database |
 
@@ -531,6 +532,8 @@ To switch off: unset `X_TOOLS_ENABLED` (tools vanish), set
 ---
 
 ## Link performance (signatures per tracked link) — 15 Oct 2026
+
+The `topic_performance` tool answers "how is this topic doing across our channels" in one call: Facebook, Instagram (captions and what is said in videos) and X, each post scored against its own account's median, audiences never added across platforms (`mcp/topic-tools.js`, `npm run test:topic`).
 
 The `link_performance` tool answers "how many signatures did Rocío's links
 bring this month" or "which of our posts brought the most new members", for

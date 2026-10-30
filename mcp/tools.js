@@ -1155,6 +1155,10 @@ const xtools = require('./x-tools');
 const { INVITER_TOOLS, toolAllowed } = require('./inviter-tools');
 // Link performance (15 Oct 2026): every connected account, all platforms.
 const { LINK_TOOLS } = require('./link-tools');
+// Ally watch (30 Oct 2026): peer organisations' Instagram posts. See mcp/peer-tools.js.
+const { PEER_TOOLS } = require('./peer-tools');
+// One topic across Facebook, Instagram and X (30 Oct 2026). See mcp/topic-tools.js.
+const { TOPIC_TOOLS } = require('./topic-tools');
 
 const TOOLS = [
   {
@@ -1316,6 +1320,8 @@ const TOOLS = [
   },
   ...(xtools.enabled() ? xtools.X_TOOLS : []),
   ...LINK_TOOLS,
+  ...TOPIC_TOOLS,
+  ...PEER_TOOLS,
   ...INVITER_TOOLS,
 ];
 

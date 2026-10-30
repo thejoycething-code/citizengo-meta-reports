@@ -6,13 +6,14 @@ name: Peer watch (Instagram)
 # VARIABLE PEER_IG_ENABLED is set to 'true' (after sql/peer-schema.sql is
 # applied). workflow_dispatch always runs, so a dry run can be tried first.
 #
-# Mondays 06:10 UTC, clear of the nightly Meta run (04:30) and the X run (05:15).
-# Weekly is enough: peer posts feed the monthly playbook refresh and evergreen
-# ideas, not same-day news.
+# Daily 06:10 UTC, clear of the nightly Meta run (04:30) and the X run (05:15).
+# Daily since 30 Oct 2026 (was Mondays): ally_watch exists to catch an ally's
+# post while it is still taking off, and a weekly read saw it up to six days
+# late. Still free: ~60 business_discovery calls a day.
 
 on:
   schedule:
-    - cron: '10 6 * * 1'
+    - cron: '10 6 * * *'
   workflow_dispatch:
     inputs:
       only:

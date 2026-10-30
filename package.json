@@ -49,6 +49,7 @@
     "collect:peers": "node collector/peers-ig.js",
     "collect:peers:dry": "node collector/peers-ig.js --dry-run",
     "test:peers": "node scripts/test-peers-ig.js",
+    "test:topic": "node scripts/test-topic.js",
     "collect:links": "node collector/links.js",
     "load:link-signatures": "node scripts/load-link-signatures.js",
     "test:links": "node scripts/test-links.js",
