@@ -7,7 +7,7 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { loadList, classify, run, findVia } = require('../collector/peers-ig');
+const { loadList, classify, run, findVia, args, gate, LISTS } = require('../collector/peers-ig');
 
 let passed = 0, failed = 0;
 function eq(name, actual, expected) {
@@ -78,6 +78,18 @@ function fakeGet(calls) {
   const dryWrites = [];
   await run({ get: fakeGet([]), upsert: async () => dryWrites.push(1), list, opts: { dryRun: true, posts: 50 }, log: () => {} });
   eq('dry run writes nothing', dryWrites.length, 0);
+
+  // Opponents list: a dry run, with no posts named, until it is switched on.
+  eq('args: --list opponents', args(['--list', 'opponents']).list, 'opponents');
+  eq('args: unknown list refused', (() => { try { args(['--list', 'x']); return 'accepted'; } catch (e) { return 'refused'; } })(), 'refused');
+  eq('gate: allies untouched', gate({ list: 'allies', dryRun: false }, {}).dryRun, false);
+  eq('gate: opponents forced to dry run when not enabled', [gate({ list: 'opponents', dryRun: false }, {}).dryRun, gate({ list: 'opponents', dryRun: false }, {}).quiet], [true, true]);
+  eq('gate: opponents write once enabled', gate({ list: 'opponents', dryRun: false }, { OPPONENTS_IG_ENABLED: 'true' }).dryRun, false);
+  const opp = loadList(LISTS.opponents);
+  eq('opponents list loads, no overlap with allies', [opp.length > 0, opp.filter((o) => loadList().some((a) => a.username === o.username)).length], [true, 0]);
+  const quietLog = [];
+  await run({ get: fakeGet([]), upsert: async () => {}, list: [list[0]], opts: { dryRun: true, quiet: true, posts: 50 }, log: (l) => quietLog.push(l) });
+  eq('quiet run names no posts', quietLog.some((l) => l.includes('http')), false);
 
   // ally_watch: the connector tool over peer_ig_latest.
   const { allyWatch, render } = require('../mcp/peer-tools');

@@ -16,6 +16,11 @@ on:
     - cron: '10 6 * * *'
   workflow_dispatch:
     inputs:
+      list:
+        description: 'Which list: allies (config/peers-ig.json) or opponents (config/opponents-ig.json; always a dry run until OPPONENTS_IG_ENABLED is set)'
+        type: choice
+        options: [allies, opponents]
+        default: allies
       only:
         description: 'Comma-separated handles to restrict to (blank = all)'
         required: false
@@ -52,6 +57,9 @@ jobs:
       # @citizengo_uk. Not listed by /me/accounts, so it is addressed by id.
       PEER_IG_VIA_ID: ${{ vars.PEER_IG_VIA_ID || '17841422748868275' }}
       ONLY: ${{ github.event.inputs.only }}
+      LIST: ${{ github.event.inputs.list || 'allies' }}
+      # Repository VARIABLE, set only after the data-protection sign-off.
+      OPPONENTS_IG_ENABLED: ${{ vars.OPPONENTS_IG_ENABLED }}
       POSTS: ${{ github.event.inputs.posts || '50' }}
       # Scheduled runs write; manual runs default to a dry run.
       DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && (github.event.inputs.dry_run == true || github.event.inputs.dry_run == 'true') && 'true' || 'false' }}
@@ -71,4 +79,4 @@ jobs:
           if [ "$DRY_RUN" = "true" ]; then FLAG="--dry-run"; fi
           ONLYARG=""
           if [ -n "$ONLY" ]; then ONLYARG="--only $ONLY"; fi
-          node collector/peers-ig.js $FLAG $ONLYARG --posts "$POSTS"
+          node collector/peers-ig.js $FLAG $ONLYARG --list "$LIST" --posts "$POSTS"
