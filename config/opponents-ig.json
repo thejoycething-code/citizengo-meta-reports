@@ -1,15 +1,11 @@
 [
-  {"handle": "bpas_1968", "name": "BPAS (British Pregnancy Advisory Service)", "country": "UK", "group": "abortion", "source": "https://www.bpas.org/ (handle from a local services directory)", "confidence": "medium"},
-  {"handle": "msichoicesuk", "name": "MSI Reproductive Choices UK", "country": "UK", "group": "abortion", "source": "https://www.msichoices.org.uk/", "confidence": "low"},
-  {"handle": "abortionrightsuk", "name": "Abortion Rights UK", "country": "UK", "group": "abortion", "source": "https://www.abortionrights.org.uk/", "confidence": "low"},
-  {"handle": "brookcharity", "name": "Brook (sexual health and RSE)", "country": "UK", "group": "sex-education", "source": "https://www.brook.org.uk/", "confidence": "low"},
-  {"handle": "dignityindying", "name": "Dignity in Dying", "country": "UK", "group": "assisted-dying", "source": "https://www.dignityindying.org.uk/ (handle cited in its own posts)", "confidence": "medium"},
-  {"handle": "mydeathmydecision", "name": "My Death, My Decision", "country": "UK", "group": "assisted-dying", "source": "https://www.mydeath-mydecision.org.uk/", "confidence": "low"},
-  {"handle": "humanistsuk", "name": "Humanists UK", "country": "UK", "group": "assisted-dying", "source": "https://humanists.uk/", "confidence": "medium"},
-  {"handle": "stonewalluk", "name": "Stonewall", "country": "UK", "group": "gender", "source": "https://www.stonewall.org.uk/", "confidence": "medium"},
-  {"handle": "mermaidsgender", "name": "Mermaids", "country": "UK", "group": "gender", "source": "https://mermaidsuk.org.uk/ (handle cited by several sources)", "confidence": "high"},
-  {"handle": "transactualuk", "name": "TransActual", "country": "UK", "group": "gender", "source": "https://transactual.org.uk/", "confidence": "low"},
-  {"handle": "genderedintelligence", "name": "Gendered Intelligence", "country": "UK", "group": "gender", "source": "https://genderedintelligence.co.uk/", "confidence": "low"},
-  {"handle": "goodlawproject", "name": "Good Law Project", "country": "UK", "group": "gender", "source": "https://goodlawproject.org/", "confidence": "medium"},
-  {"handle": "nationalsecularsociety", "name": "National Secular Society", "country": "UK", "group": "secularism", "source": "https://www.secularism.org.uk/", "confidence": "low"}
+  {"handle": "bpas_1968", "name": "BPAS (British Pregnancy Advisory Service)", "country": "UK", "group": "abortion", "source": "https://www.bpas.org/ (handle from a local services directory)", "confidence": "verified 31 Oct 2026"},
+  {"handle": "dignityindying", "name": "Dignity in Dying", "country": "UK", "group": "assisted-dying", "source": "https://www.dignityindying.org.uk/ (handle cited in its own posts)", "confidence": "verified 31 Oct 2026"},
+  {"handle": "mydeathmydecision", "name": "My Death, My Decision", "country": "UK", "group": "assisted-dying", "source": "https://www.mydeath-mydecision.org.uk/", "confidence": "readable 31 Oct 2026, but only 156 followers: check it is the organisation's own account"},
+  {"handle": "stonewalluk", "name": "Stonewall", "country": "UK", "group": "gender", "source": "https://www.stonewall.org.uk/", "confidence": "verified 31 Oct 2026"},
+  {"handle": "mermaidsgender", "name": "Mermaids", "country": "UK", "group": "gender", "source": "https://mermaidsuk.org.uk/ (handle cited by several sources)", "confidence": "verified 31 Oct 2026"},
+  {"handle": "transactualuk", "name": "TransActual", "country": "UK", "group": "gender", "source": "https://transactual.org.uk/", "confidence": "verified 31 Oct 2026"},
+  {"handle": "genderedintelligence", "name": "Gendered Intelligence", "country": "UK", "group": "gender", "source": "https://genderedintelligence.co.uk/", "confidence": "verified 31 Oct 2026"},
+  {"handle": "goodlawproject", "name": "Good Law Project", "country": "UK", "group": "gender", "source": "https://goodlawproject.org/", "confidence": "verified 31 Oct 2026"},
+  {"handle": "nationalsecularsociety", "name": "National Secular Society", "country": "UK", "group": "secularism", "source": "https://www.secularism.org.uk/", "confidence": "verified 31 Oct 2026"}
 ]
