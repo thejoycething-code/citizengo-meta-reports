@@ -7,7 +7,7 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { loadList, classify, run, findVia } = require('../collector/peers-ig');
+const { loadList, classify, run, findVia, args, gate, LISTS } = require('../collector/peers-ig');
 
 let passed = 0, failed = 0;
 function eq(name, actual, expected) {
@@ -79,6 +79,18 @@ function fakeGet(calls) {
   await run({ get: fakeGet([]), upsert: async () => dryWrites.push(1), list, opts: { dryRun: true, posts: 50 }, log: () => {} });
   eq('dry run writes nothing', dryWrites.length, 0);
 
+  // Opponents list: a dry run, with no posts named, until it is switched on.
+  eq('args: --list opponents', args(['--list', 'opponents']).list, 'opponents');
+  eq('args: unknown list refused', (() => { try { args(['--list', 'x']); return 'accepted'; } catch (e) { return 'refused'; } })(), 'refused');
+  eq('gate: allies untouched', gate({ list: 'allies', dryRun: false }, {}).dryRun, false);
+  eq('gate: opponents forced to dry run when not enabled', [gate({ list: 'opponents', dryRun: false }, {}).dryRun, gate({ list: 'opponents', dryRun: false }, {}).quiet], [true, true]);
+  eq('gate: opponents write once enabled', gate({ list: 'opponents', dryRun: false }, { OPPONENTS_IG_ENABLED: 'true' }).dryRun, false);
+  const opp = loadList(LISTS.opponents);
+  eq('opponents list loads, no overlap with allies', [opp.length > 0, opp.filter((o) => loadList().some((a) => a.username === o.username)).length], [true, 0]);
+  const quietLog = [];
+  await run({ get: fakeGet([]), upsert: async () => {}, list: [list[0]], opts: { dryRun: true, quiet: true, posts: 50 }, log: (l) => quietLog.push(l) });
+  eq('quiet run names no posts', quietLog.some((l) => l.includes('http')), false);
+
   // ally_watch: the connector tool over peer_ig_latest.
   const { allyWatch, render } = require('../mcp/peer-tools');
   const accts = [{ username: 'spucprolife', label: 'SPUC', last_status: 'ok', last_checked_at: '2026-10-29T06:11:00Z' },
@@ -97,6 +109,24 @@ function fakeGet(calls) {
   eq('ally_watch: paging note at the limit', render({ rows: [post], accounts: accts, label: 'x', off: 0, limit: 1 }).includes('offset 1'), true);
   const none = await allyWatch({ peerAccounts: async () => [], peerPosts: async () => [] }, {});
   eq('ally_watch: says when nothing is collected', none.text.startsWith('Ally watch has not collected'), true);
+
+  // Opponents: stance, and allies and opponents never shown together.
+  const stanceWrites = [];
+  await run({ get: fakeGet([]), upsert: async (t, rows) => stanceWrites.push(rows[0]), purge: async () => ({ posts_deleted: 2 }),
+    list: [list[0]], opts: { dryRun: false, posts: 50, list: 'opponents' }, log: () => {} });
+  eq('opponents stored with stance opponent', stanceWrites[0].stance, 'opponent');
+  const { opponentWatch, renderAds } = require('../mcp/peer-tools');
+  const mixed = [{ username: 'a', stance: 'ally', last_status: 'ok' }, { username: 'o', stance: 'opponent', last_status: 'ok' }];
+  const seen = [];
+  const st = { peerAccounts: async () => mixed, peerPosts: async (q) => { seen.push(q.stance); return []; }, opponentAds: async () => [] };
+  await allyWatch(st, {}); await opponentWatch(st, {});
+  eq('ally_watch asks for allies, opponent_watch for opponents', seen, ['ally', 'opponent']);
+  const { adAccount } = require('../mcp/peer-tools');
+  eq('ads filter: Instagram handle becomes the organisation name', adAccount('@bpas_1968', [{ username: 'bpas_1968', label: 'BPAS' }]), 'BPAS');
+  eq('ads filter: a name passes through', adAccount('Good Law', [{ username: 'bpas_1968', label: 'BPAS' }]), 'Good Law');
+  const adsText = renderAds([{ label: 'GLP', spend_lower: 100, spend_upper: 199, currency: 'GBP', delivery_start: '2026-10-20', snapshot_url: 'https://fb/1', link_titles: 'Act' },
+    { label: 'GLP', spend_lower: 0, spend_upper: 99, currency: 'GBP', delivery_start: '2026-10-21', delivery_stop: '2026-10-25', snapshot_url: 'https://fb/2', link_titles: 'Give' }], 'last 7 days');
+  eq('ads: spend summed as a range, running counted', [adsText.includes('GBP 100–298'), adsText.includes('| GLP | 2 | 1 |')], [true, true]);
 
   console.log(`\n${passed} passed, ${failed} failed`);
   process.exit(failed ? 1 : 0);

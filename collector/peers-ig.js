@@ -10,8 +10,15 @@
 // calls a week, well inside our Instagram rate limit. Personal (non-business)
 // accounts cannot be read this way; they are recorded as not_business.
 //
+// Opponents (30 Oct 2026): --list opponents reads config/opponents-ig.json, a
+// separate list of organisations campaigning against us, stored with stance
+// 'opponent' (sql/opponent-schema.sql). Collection was authorised by Christopher
+// Joyce on 31 Oct 2026; OPPONENTS_IG_ENABLED stays the switch, so turning it off
+// makes the opponents list a dry run again (its log then names no posts). Each
+// stored run ends by deleting opponent posts older than 120 days.
+//
 // Usage:
-//   node collector/peers-ig.js [--dry-run] [--only handle1,handle2] [--posts 50]
+//   node collector/peers-ig.js [--dry-run] [--list allies|opponents] [--only handle1,handle2] [--posts 50]
 // Env: META_TOKENS (or META_TOKEN), SUPABASE_URL, SUPABASE_SERVICE_KEY,
 //      PEER_IG_VIA (optional: our Instagram username to call as; default the
 //      first linked account found, preferring citizengo_uk),
@@ -23,15 +30,20 @@ const { loadEnv, makeClient } = require('../lib/graph');
 const { withRetry } = require('../lib/retry');
 
 const VERSION = process.env.GRAPH_VERSION || 'v23.0';
-const LIST = path.join(__dirname, '..', 'config', 'peers-ig.json');
+const LISTS = {
+  allies: path.join(__dirname, '..', 'config', 'peers-ig.json'),
+  opponents: path.join(__dirname, '..', 'config', 'opponents-ig.json'),
+};
+const LIST = LISTS.allies;
 const MEDIA_FIELDS = 'id,caption,like_count,comments_count,media_type,media_product_type,permalink,timestamp';
 const PREFERRED_VIA = ['citizengo_uk', 'citizengo'];
 
 function args(argv) {
-  const out = { dryRun: false, only: null, posts: 50 };
+  const out = { dryRun: false, only: null, posts: 50, list: 'allies' };
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === '--dry-run') out.dryRun = true;
     else if (argv[i] === '--only') out.only = String(argv[++i] || '').split(',').map(norm).filter(Boolean);
+    else if (argv[i] === '--list') out.list = LISTS[argv[i + 1]] ? argv[++i] : (() => { throw new Error(`--list must be one of ${Object.keys(LISTS).join(', ')}`); })();
     else if (argv[i] === '--posts') out.posts = Math.max(1, Math.min(100, Number(argv[++i]) || 50));
   }
   return out;
@@ -53,6 +65,14 @@ function loadList(file = LIST) {
     out.push({ username, label: r.name || null, country: r.country || null, topic: r.group || null });
   }
   return out;
+}
+
+// The opponents list stays a dry run until the data-protection sign-off turns
+// it on. Pure, so the test pins the gate.
+function gate(opts, env = process.env) {
+  if (opts.list !== 'opponents') return opts;
+  const enabled = String(env.OPPONENTS_IG_ENABLED || '').trim() === 'true';
+  return { ...opts, dryRun: opts.dryRun || !enabled, quiet: !enabled, gated: !enabled };
 }
 
 // Our linked Instagram account to call business_discovery as.
@@ -119,7 +139,7 @@ function makePg() {
   const base = String(process.env.SUPABASE_URL || '').trim().replace(/\/rest\/v1\/?$/, '').replace(/\/+$/, '');
   const key = process.env.SUPABASE_SERVICE_KEY;
   if (!base || !key) throw new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY are required (or use --dry-run)');
-  return async function upsert(table, rows, onConflict) {
+  const upsert = async function upsert(table, rows, onConflict) {
     if (!rows.length) return;
     for (let i = 0; i < rows.length; i += 500) {
       const chunk = rows.slice(i, i + 500);
@@ -141,9 +161,21 @@ function makePg() {
       }
     }
   };
+  // Retention for opponent data (sql/opponent-schema.sql purge_opponent_data).
+  async function purge(days = 120) {
+    const r = await fetch(`${base}/rest/v1/rpc/purge_opponent_data`, {
+      method: 'POST',
+      headers: { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p_days: days }),
+    });
+    if (!r.ok) throw new Error(`retention purge failed (HTTP ${r.status})`);
+    const [row] = await r.json();
+    return row || { posts_deleted: 0, ads_deleted: 0 };
+  }
+  return { upsert, purge };
 }
 
-async function run({ get, upsert, list, opts, via, now = new Date(), log = console.log }) {
+async function run({ get, upsert, purge = null, list, opts, via, now = new Date(), log = console.log }) {
   via = via || await findVia(get, process.env.PEER_IG_VIA);
   log(`calling business_discovery as @${via.username} for ${list.length} peer account(s)`);
 
@@ -156,6 +188,7 @@ async function run({ get, upsert, list, opts, via, now = new Date(), log = conso
     counts[r.status] = (counts[r.status] || 0) + 1;
     const account = {
       username: peer.username, label: peer.label, country: peer.country, topic: peer.topic,
+      stance: opts.list === 'opponents' ? 'opponent' : 'ally',
       last_status: r.status, last_error: r.error || null, last_checked_at: checkedAt,
       ...(r.profile || {}),
     };
@@ -168,7 +201,7 @@ async function run({ get, upsert, list, opts, via, now = new Date(), log = conso
     counts.posts += r.media.length;
     const top = r.media.reduce((a, m) => ((m.like_count || 0) + (m.comments_count || 0) > (a ? (a.like_count || 0) + (a.comments_count || 0) : -1) ? m : a), null);
     log(`  @${peer.username}: ${r.profile.followers_count ?? '?'} followers, ${r.media.length} posts`
-      + (top ? `; top ${(top.like_count || 0) + (top.comments_count || 0)} (${top.permalink})` : ''));
+      + (top && !opts.quiet ? `; top ${(top.like_count || 0) + (top.comments_count || 0)} (${top.permalink})` : ''));
     if (opts.dryRun) continue;
     await upsert('peer_ig_accounts', [account], 'username');
     await upsert('peer_ig_media', r.media.map(({ like_count, comments_count, ...m }) => m), 'media_id');
@@ -179,6 +212,10 @@ async function run({ get, upsert, list, opts, via, now = new Date(), log = conso
     })), 'media_id,collected_date');
   }
 
+  if (opts.list === 'opponents' && !opts.dryRun && purge) {
+    const p = await purge();
+    log(`retention: deleted ${p.posts_deleted} opponent posts older than 120 days`);
+  }
   log(`done: ${counts.ok} read, ${counts.not_business} not business, ${counts.not_found} not found, `
     + `${counts.rate_limited} rate limited, ${counts.error} errors; ${counts.posts} posts${opts.dryRun ? ' (dry run, nothing written)' : ''}`);
   return counts;
@@ -186,7 +223,8 @@ async function run({ get, upsert, list, opts, via, now = new Date(), log = conso
 
 async function main() {
   loadEnv();
-  const opts = args(process.argv.slice(2));
+  const opts = gate(args(process.argv.slice(2)));
+  if (opts.gated) console.log('opponents list: dry run only, nothing stored (OPPONENTS_IG_ENABLED is not set; it waits on the data-protection sign-off)');
   const tokens = String(process.env.META_TOKENS || process.env.META_TOKEN || '')
     .split(/[\n,]/).map((t) => t.trim()).filter(Boolean);
   if (!tokens.length) throw new Error('META_TOKENS is not set');
@@ -215,10 +253,10 @@ async function main() {
   if (!client && process.env.PEER_IG_VIA) throw new Error(`PEER_IG_VIA @${wanted[0]} is not linked to any Page these tokens can read`);
   if (!client && fallback) ({ c: client, found: via } = fallback);
   if (!client) throw new Error('no token can see a linked Instagram account');
-  let list = loadList();
+  let list = loadList(LISTS[opts.list]);
   if (opts.only) list = list.filter((p) => opts.only.includes(p.username));
-  const upsert = opts.dryRun ? null : makePg();
-  const counts = await run({ get: client.get, upsert, list, opts, via });
+  const pg = opts.dryRun ? {} : makePg();
+  const counts = await run({ get: client.get, upsert: pg.upsert, purge: pg.purge, list, opts, via });
   // Every account failing means something is wrong with the token or route, not the peers.
   if (list.length && counts.ok === 0) process.exitCode = 1;
 }
@@ -227,4 +265,4 @@ if (require.main === module) {
   main().catch((e) => { console.error(`peer watch failed: ${e.message}`); process.exit(1); });
 }
 
-module.exports = { args, norm, loadList, findVia, classify, discover, run };
+module.exports = { args, gate, norm, makePg, loadList, findVia, classify, discover, run, LISTS };
