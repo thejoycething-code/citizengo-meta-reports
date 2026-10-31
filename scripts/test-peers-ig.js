@@ -121,6 +121,9 @@ function fakeGet(calls) {
   const st = { peerAccounts: async () => mixed, peerPosts: async (q) => { seen.push(q.stance); return []; }, opponentAds: async () => [] };
   await allyWatch(st, {}); await opponentWatch(st, {});
   eq('ally_watch asks for allies, opponent_watch for opponents', seen, ['ally', 'opponent']);
+  const { adAccount } = require('../mcp/peer-tools');
+  eq('ads filter: Instagram handle becomes the organisation name', adAccount('@bpas_1968', [{ username: 'bpas_1968', label: 'BPAS' }]), 'BPAS');
+  eq('ads filter: a name passes through', adAccount('Good Law', [{ username: 'bpas_1968', label: 'BPAS' }]), 'Good Law');
   const adsText = renderAds([{ label: 'GLP', spend_lower: 100, spend_upper: 199, currency: 'GBP', delivery_start: '2026-10-20', snapshot_url: 'https://fb/1', link_titles: 'Act' },
     { label: 'GLP', spend_lower: 0, spend_upper: 99, currency: 'GBP', delivery_start: '2026-10-21', delivery_stop: '2026-10-25', snapshot_url: 'https://fb/2', link_titles: 'Give' }], 'last 7 days');
   eq('ads: spend summed as a range, running counted', [adsText.includes('GBP 100–298'), adsText.includes('| GLP | 2 | 1 |')], [true, true]);

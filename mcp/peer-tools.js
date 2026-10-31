@@ -88,6 +88,15 @@ function renderAds(ads, label) {
     + table(['Organisation', 'Ads started', 'Still running', 'Spend (Meta\'s ranges, summed)', 'Latest ad'], rows);
 }
 
+// The ads are labelled by organisation name, not Instagram handle, so a handle
+// such as @bpas_1968 is turned into that account's name before filtering ads.
+function adAccount(account, accounts) {
+  if (!account) return account;
+  const h = String(account).trim().replace(/^@/, '').toLowerCase();
+  const hit = accounts.find((a) => String(a.username || '').toLowerCase() === h);
+  return hit && hit.label ? hit.label : account;
+}
+
 async function opponentWatch(store, args = {}) {
   const w = xt.windowFor({ month: args.month, from: args.from, to: args.to, days: args.days }, 7);
   if (w.error) return { text: w.error };
@@ -98,7 +107,7 @@ async function opponentWatch(store, args = {}) {
   const [rows, ads] = await Promise.all([
     accounts.length ? store.peerPosts({ stance: 'opponent', account: args.account, topic: args.topic, q: args.query,
       min, since: w.since, until: w.until, order: SORTS[args.sort] || 'vs_median', limit, offset: off }) : [],
-    store.opponentAds({ account: args.account, topic: args.topic, q: args.query, since: w.since, until: w.until }),
+    store.opponentAds({ account: adAccount(args.account, accounts), topic: args.topic, q: args.query, since: w.since, until: w.until }),
   ]);
   if (!accounts.length && !ads.length) return { text: 'Opponent watch has not collected anything yet. The list is config/opponents-ig.json; the "Peer watch (Instagram)" workflow reads it daily.' };
   const posts = accounts.length ? render({ rows, accounts, label: w.label, off, min, limit, stance: 'opponent' }) : '_No opponent Instagram accounts read yet._';
@@ -154,4 +163,4 @@ const PEER_TOOLS = [
   },
 ];
 
-module.exports = { PEER_TOOLS, allyWatch, opponentWatch, render, renderAds };
+module.exports = { PEER_TOOLS, allyWatch, opponentWatch, render, renderAds, adAccount };

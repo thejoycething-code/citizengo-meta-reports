@@ -24,6 +24,8 @@ const ad = (id, page_id, page_name, extra = {}) => ({ id, page_id, page_name, ad
 
   const r = toRow(ad('1', 9, 'X', { ad_delivery_stop_time: null }), { label: 'X', topic: 'gender' }, '2026-10-31T00:00:00Z');
   eq('row: ranges as numbers, text variants deduplicated', [r.spend_lower, r.spend_upper, r.link_titles, r.delivery_stop], [100, 199, 'Act', null]);
+  const leaky = toRow(ad('5', 9, 'X', { ad_snapshot_url: 'https://www.facebook.com/ads/archive/render_ad/?id=5&access_token=SECRET' }), { label: 'X' }, 'now');
+  eq('row: never stores the token-bearing snapshot URL', [leaky.snapshot_url, JSON.stringify(leaky).includes('SECRET')], ['https://www.facebook.com/ads/library/?id=5', false]);
 
   const calls = [];
   const get = async (path, params) => {
@@ -42,6 +44,7 @@ const ad = (id, page_id, page_name, extra = {}) => ({ id, page_id, page_name, ad
     pages: testPages, opts, now: new Date('2026-10-31T00:00:00Z'), log: () => {} });
   eq('by id: both pages of results read', writes[0][1].slice(0, 2), ['1', '2']);
   eq('by name: only the exact Page kept', writes[0][1].slice(2), ['3']);
+  eq('snapshot URL never requested', calls.every((c) => !String(c.fields).includes('ad_snapshot_url')), true);
   eq('UK issue ads only, 90 days back', [calls[0].ad_type, calls[0].ad_reached_countries, calls[0].ad_delivery_date_min], ['POLITICAL_AND_ISSUE_ADS', '["GB"]', '2026-08-02']);
   eq('counts', [counts.pages, counts.ads], [2, 3]);
 

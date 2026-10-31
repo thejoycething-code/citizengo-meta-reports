@@ -24,8 +24,9 @@ const { makePg } = require('./peers-ig');
 
 const VERSION = process.env.GRAPH_VERSION || 'v23.0';
 const LIST = path.join(__dirname, '..', 'config', 'opponents-ig.json');
+// ad_snapshot_url is deliberately not requested: it carries our access token.
 const FIELDS = 'id,page_id,page_name,ad_creation_time,ad_delivery_start_time,ad_delivery_stop_time,'
-  + 'ad_creative_bodies,ad_creative_link_titles,ad_snapshot_url,spend,impressions,currency,publisher_platforms';
+  + 'ad_creative_bodies,ad_creative_link_titles,spend,impressions,currency,publisher_platforms';
 const MAX_PAGES = 20;   // 100 ads a page; a runaway guard, not a quota
 
 function loadPages(file = LIST) {
@@ -50,7 +51,10 @@ function toRow(ad, page, seenAt) {
     delivery_stop: ad.ad_delivery_stop_time || null,
     bodies: (ad.ad_creative_bodies || []).filter(Boolean).join('\n---\n') || null,
     link_titles: [...new Set((ad.ad_creative_link_titles || []).filter(Boolean))].join(' | ') || null,
-    snapshot_url: ad.ad_snapshot_url || null,
+    // Never ad.ad_snapshot_url: Meta builds it with the caller's access token in
+    // the query string, so storing it would hand our credential to every reader.
+    // The public Ad Library page for the same ad needs no token.
+    snapshot_url: `https://www.facebook.com/ads/library/?id=${encodeURIComponent(String(ad.id))}`,
     spend_lower: num(ad.spend && ad.spend.lower_bound),
     spend_upper: num(ad.spend && ad.spend.upper_bound),
     impressions_lower: num(ad.impressions && ad.impressions.lower_bound),
