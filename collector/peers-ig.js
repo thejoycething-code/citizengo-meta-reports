@@ -11,10 +11,11 @@
 // accounts cannot be read this way; they are recorded as not_business.
 //
 // Opponents (30 Oct 2026): --list opponents reads config/opponents-ig.json, a
-// separate list of organisations campaigning against us. Storing their posts
-// waits on a data-protection sign-off, so until OPPONENTS_IG_ENABLED is 'true'
-// that list is ALWAYS a dry run - which still checks every handle is a readable
-// business account - and its log names no posts.
+// separate list of organisations campaigning against us, stored with stance
+// 'opponent' (sql/opponent-schema.sql). Collection was authorised by Christopher
+// Joyce on 31 Oct 2026; OPPONENTS_IG_ENABLED stays the switch, so turning it off
+// makes the opponents list a dry run again (its log then names no posts). Each
+// stored run ends by deleting opponent posts older than 120 days.
 //
 // Usage:
 //   node collector/peers-ig.js [--dry-run] [--list allies|opponents] [--only handle1,handle2] [--posts 50]
@@ -138,7 +139,7 @@ function makePg() {
   const base = String(process.env.SUPABASE_URL || '').trim().replace(/\/rest\/v1\/?$/, '').replace(/\/+$/, '');
   const key = process.env.SUPABASE_SERVICE_KEY;
   if (!base || !key) throw new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY are required (or use --dry-run)');
-  return async function upsert(table, rows, onConflict) {
+  const upsert = async function upsert(table, rows, onConflict) {
     if (!rows.length) return;
     for (let i = 0; i < rows.length; i += 500) {
       const chunk = rows.slice(i, i + 500);
@@ -160,9 +161,21 @@ function makePg() {
       }
     }
   };
+  // Retention for opponent data (sql/opponent-schema.sql purge_opponent_data).
+  async function purge(days = 120) {
+    const r = await fetch(`${base}/rest/v1/rpc/purge_opponent_data`, {
+      method: 'POST',
+      headers: { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p_days: days }),
+    });
+    if (!r.ok) throw new Error(`retention purge failed (HTTP ${r.status})`);
+    const [row] = await r.json();
+    return row || { posts_deleted: 0, ads_deleted: 0 };
+  }
+  return { upsert, purge };
 }
 
-async function run({ get, upsert, list, opts, via, now = new Date(), log = console.log }) {
+async function run({ get, upsert, purge = null, list, opts, via, now = new Date(), log = console.log }) {
   via = via || await findVia(get, process.env.PEER_IG_VIA);
   log(`calling business_discovery as @${via.username} for ${list.length} peer account(s)`);
 
@@ -175,6 +188,7 @@ async function run({ get, upsert, list, opts, via, now = new Date(), log = conso
     counts[r.status] = (counts[r.status] || 0) + 1;
     const account = {
       username: peer.username, label: peer.label, country: peer.country, topic: peer.topic,
+      stance: opts.list === 'opponents' ? 'opponent' : 'ally',
       last_status: r.status, last_error: r.error || null, last_checked_at: checkedAt,
       ...(r.profile || {}),
     };
@@ -198,6 +212,10 @@ async function run({ get, upsert, list, opts, via, now = new Date(), log = conso
     })), 'media_id,collected_date');
   }
 
+  if (opts.list === 'opponents' && !opts.dryRun && purge) {
+    const p = await purge();
+    log(`retention: deleted ${p.posts_deleted} opponent posts older than 120 days`);
+  }
   log(`done: ${counts.ok} read, ${counts.not_business} not business, ${counts.not_found} not found, `
     + `${counts.rate_limited} rate limited, ${counts.error} errors; ${counts.posts} posts${opts.dryRun ? ' (dry run, nothing written)' : ''}`);
   return counts;
@@ -237,8 +255,8 @@ async function main() {
   if (!client) throw new Error('no token can see a linked Instagram account');
   let list = loadList(LISTS[opts.list]);
   if (opts.only) list = list.filter((p) => opts.only.includes(p.username));
-  const upsert = opts.dryRun ? null : makePg();
-  const counts = await run({ get: client.get, upsert, list, opts, via });
+  const pg = opts.dryRun ? {} : makePg();
+  const counts = await run({ get: client.get, upsert: pg.upsert, purge: pg.purge, list, opts, via });
   // Every account failing means something is wrong with the token or route, not the peers.
   if (list.length && counts.ok === 0) process.exitCode = 1;
 }
@@ -247,4 +265,4 @@ if (require.main === module) {
   main().catch((e) => { console.error(`peer watch failed: ${e.message}`); process.exit(1); });
 }
 
-module.exports = { args, gate, norm, loadList, findVia, classify, discover, run, LISTS };
+module.exports = { args, gate, norm, makePg, loadList, findVia, classify, discover, run, LISTS };

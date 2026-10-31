@@ -110,6 +110,21 @@ function fakeGet(calls) {
   const none = await allyWatch({ peerAccounts: async () => [], peerPosts: async () => [] }, {});
   eq('ally_watch: says when nothing is collected', none.text.startsWith('Ally watch has not collected'), true);
 
+  // Opponents: stance, and allies and opponents never shown together.
+  const stanceWrites = [];
+  await run({ get: fakeGet([]), upsert: async (t, rows) => stanceWrites.push(rows[0]), purge: async () => ({ posts_deleted: 2 }),
+    list: [list[0]], opts: { dryRun: false, posts: 50, list: 'opponents' }, log: () => {} });
+  eq('opponents stored with stance opponent', stanceWrites[0].stance, 'opponent');
+  const { opponentWatch, renderAds } = require('../mcp/peer-tools');
+  const mixed = [{ username: 'a', stance: 'ally', last_status: 'ok' }, { username: 'o', stance: 'opponent', last_status: 'ok' }];
+  const seen = [];
+  const st = { peerAccounts: async () => mixed, peerPosts: async (q) => { seen.push(q.stance); return []; }, opponentAds: async () => [] };
+  await allyWatch(st, {}); await opponentWatch(st, {});
+  eq('ally_watch asks for allies, opponent_watch for opponents', seen, ['ally', 'opponent']);
+  const adsText = renderAds([{ label: 'GLP', spend_lower: 100, spend_upper: 199, currency: 'GBP', delivery_start: '2026-10-20', snapshot_url: 'https://fb/1', link_titles: 'Act' },
+    { label: 'GLP', spend_lower: 0, spend_upper: 99, currency: 'GBP', delivery_start: '2026-10-21', delivery_stop: '2026-10-25', snapshot_url: 'https://fb/2', link_titles: 'Give' }], 'last 7 days');
+  eq('ads: spend summed as a range, running counted', [adsText.includes('GBP 100–298'), adsText.includes('| GLP | 2 | 1 |')], [true, true]);
+
   console.log(`\n${passed} passed, ${failed} failed`);
   process.exit(failed ? 1 : 0);
 })();

@@ -28,17 +28,24 @@ const typeOf = (r) => (r.media_product_type === 'REELS' ? 'Reel' : r.media_type 
 const multiple = (r) => (r.vs_median === null || r.vs_median === undefined ? '—' : `${Number(r.vs_median).toLocaleString('en-GB', { maximumFractionDigits: 1 })}×${r.settled ? '' : ' ↑'}`);
 
 // Pure rendering, exported for the tests.
-function render({ rows, accounts, label, off, min, limit }) {
+const WORDS = {
+  ally: { title: 'Ally watch', who: 'Ally', plural: 'ally' },
+  opponent: { title: 'Opponent watch', who: 'Organisation', plural: 'opponent' },
+};
+const stanceOf = (a) => a.stance || 'ally';
+
+function render({ rows, accounts, label, off, min, limit, stance = 'ally' }) {
+  const W = WORDS[stance];
   const read = accounts.filter((a) => a.last_status === 'ok');
   const lastRead = accounts.map((a) => a.last_checked_at).filter(Boolean).sort().pop();
-  const head = `**Ally watch (Instagram), posts ${label}**\n\n${n(read.length)} ally accounts read`
+  const head = `**${W.title} (Instagram), posts ${label}**\n\n${n(read.length)} ${W.plural} accounts read`
     + (lastRead ? `, last on ${String(lastRead).slice(0, 10)}` : '') + '.';
   const body = rows.length
-    ? table(['Ally', 'Country', 'Posted', 'Type', 'Caption', 'Likes', 'Comments', '× normal'], rows.map((r) => [
+    ? table([W.who, 'Country', 'Posted', 'Type', 'Caption', 'Likes', 'Comments', '× normal'], rows.map((r) => [
       cell(r.label || '@' + r.username, 40), r.country || '—',
       r.permalink ? `[${String(r.timestamp).slice(0, 10)}](${r.permalink})` : String(r.timestamp).slice(0, 10),
       typeOf(r), cell(r.caption, 80), n(r.like_count), n(r.comments_count), multiple(r)]))
-    : `_No ally posts${min ? ` at ${min}× normal or more` : ''} in this window._`;
+    : `_No ${W.plural} posts${min ? ` at ${min}× normal or more` : ''} in this window._`;
   const notes = [
     '"× normal" is likes + comments against that account\'s own median over its last 120 days, so small and large groups are comparable. 5× or more is a breakout for that account.',
     '↑ marks posts under three days old: still gathering likes, so the multiple can only rise.',
@@ -51,17 +58,77 @@ function render({ rows, accounts, label, off, min, limit }) {
 async function allyWatch(store, args = {}) {
   const w = xt.windowFor({ month: args.month, from: args.from, to: args.to, days: args.days }, 7);
   if (w.error) return { text: w.error };
-  const accounts = await store.peerAccounts();
+  const accounts = (await store.peerAccounts()).filter((a) => stanceOf(a) === 'ally');
   if (!accounts.length) return { text: 'Ally watch has not collected anything yet. The list of ally accounts is config/peers-ig.json; the "Peer watch (Instagram)" workflow reads them.' };
   const off = Math.max(Number(args.offset) || 0, 0);
   const limit = clampRows(args.limit, 25);
   const min = Number(args.min_multiple) > 0 ? Number(args.min_multiple) : null;
-  const rows = await store.peerPosts({ account: args.account, country: args.country, topic: args.topic, q: args.query,
+  const rows = await store.peerPosts({ stance: 'ally', account: args.account, country: args.country, topic: args.topic, q: args.query,
     min, since: w.since, until: w.until, order: SORTS[args.sort] || 'vs_median', limit, offset: off });
   return { text: render({ rows, accounts, label: w.label, off, min, limit }), rows };
 }
 
+// Opponents' paid campaigns, from the Ad Library rows. Pure, for the tests.
+// Spend is a sum of Meta's published ranges, so it is reported as a range.
+function renderAds(ads, label) {
+  if (!ads.length) return `**Their ads (Meta Ad Library, UK issue ads), started ${label}**\n\n_No ads started in this window._`;
+  const by = new Map();
+  for (const a of ads) {
+    const k = a.label || a.page_name;
+    if (!by.has(k)) by.set(k, { name: k, ads: 0, running: 0, lo: 0, hi: 0, cur: a.currency, latest: a });
+    const e = by.get(k);
+    e.ads++; if (!a.delivery_stop) e.running++;
+    e.lo += Number(a.spend_lower) || 0; e.hi += Number(a.spend_upper) || Number(a.spend_lower) || 0;
+    if (String(a.delivery_start) > String(e.latest.delivery_start)) e.latest = a;
+  }
+  const rows = [...by.values()].sort((a, b) => b.hi - a.hi).map((e) => [
+    cell(e.name, 40), n(e.ads), n(e.running), `${e.cur || ''} ${n(e.lo)}–${n(e.hi)}`.trim(),
+    e.latest.snapshot_url ? `[${cell(e.latest.link_titles || e.latest.bodies || 'latest ad', 60)}](${e.latest.snapshot_url})` : cell(e.latest.link_titles || e.latest.bodies, 60)]);
+  return `**Their ads (Meta Ad Library, UK issue ads), started ${label}**\n\n`
+    + table(['Organisation', 'Ads started', 'Still running', 'Spend (Meta\'s ranges, summed)', 'Latest ad'], rows);
+}
+
+async function opponentWatch(store, args = {}) {
+  const w = xt.windowFor({ month: args.month, from: args.from, to: args.to, days: args.days }, 7);
+  if (w.error) return { text: w.error };
+  const accounts = (await store.peerAccounts()).filter((a) => stanceOf(a) === 'opponent');
+  const off = Math.max(Number(args.offset) || 0, 0);
+  const limit = clampRows(args.limit, 25);
+  const min = Number(args.min_multiple) > 0 ? Number(args.min_multiple) : null;
+  const [rows, ads] = await Promise.all([
+    accounts.length ? store.peerPosts({ stance: 'opponent', account: args.account, topic: args.topic, q: args.query,
+      min, since: w.since, until: w.until, order: SORTS[args.sort] || 'vs_median', limit, offset: off }) : [],
+    store.opponentAds({ account: args.account, topic: args.topic, q: args.query, since: w.since, until: w.until }),
+  ]);
+  if (!accounts.length && !ads.length) return { text: 'Opponent watch has not collected anything yet. The list is config/opponents-ig.json; the "Peer watch (Instagram)" workflow reads it daily.' };
+  const posts = accounts.length ? render({ rows, accounts, label: w.label, off, min, limit, stance: 'opponent' }) : '_No opponent Instagram accounts read yet._';
+  const note = '_UK organisations campaigning against us, in their public role only. Collected from free public sources and deleted after 120 days. Use it to see what they are pushing and spending on, early enough to respond._';
+  return { text: `${posts}\n\n${renderAds(ads, w.label)}\n\n${note}`, rows, ads };
+}
+
 const PEER_TOOLS = [
+  {
+    name: 'opponent_watch',
+    description: 'What UK organisations campaigning against us are doing: their Instagram posts ranked by how far each beats that account\'s normal, and the issue ads they are running on Facebook and Instagram (Meta Ad Library: ads started, still running, spend ranges, latest ad). Covers BPAS, Dignity in Dying, Stonewall, Mermaids, Good Law Project and others on abortion, assisted dying, gender and secularism. Use for "what are our opponents pushing this week", "is Dignity in Dying running ads", "how much is Good Law Project spending on trans ads", or to spot a campaign early enough to respond. Filter by organisation, topic or words.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        account: { type: 'string', description: 'An organisation, by name or Instagram handle; partial names match.' },
+        topic: { type: 'string', description: 'abortion, assisted-dying, gender, sex-education or secularism.' },
+        query: { type: 'string', description: 'Word or phrase in the post caption or ad text. Case-insensitive.' },
+        min_multiple: { type: 'number', description: 'Only posts at least this many times their account\'s normal, e.g. 5.' },
+        sort: { type: 'string', enum: Object.keys(SORTS), description: 'normal (default), engagement, or recent.' },
+        days: { type: 'number', description: 'Posts and ads from the last N days (default 7, 0 for all).' },
+        month: { type: 'string', description: 'A month, e.g. "2026-10", instead of days.' },
+        from: { type: 'string', description: 'Start date (YYYY-MM-DD).' },
+        to: { type: 'string', description: 'End date inclusive (YYYY-MM-DD).' },
+        limit: { type: 'number', description: 'Posts per page (default 25, max 200).' },
+        offset: { type: 'number', description: 'Where the page starts (0 = first).' },
+      },
+      additionalProperties: false,
+    },
+    handler: opponentWatch,
+  },
   {
     name: 'ally_watch',
     description: 'What allied organisations (Right To Life UK, SPUC, CARE, Christian Institute, Live Action and about 60 others in the UK, US, Ireland, Canada and Australia) are posting on Instagram, ranked by how far each post beats that account\'s own normal. Use for "what are our allies posting", "which ally posts are taking off this week", "what are pro-life groups saying about assisted dying", or to find content to reshare or adapt. Filter by account, country (UK, US, IE, CA, AU), topic (pro-life, family, gender, end-of-life, faith, persecution, policy, religious-freedom) or words in the caption. Likes and comments only; not comparable with our own posts.',
@@ -87,4 +154,4 @@ const PEER_TOOLS = [
   },
 ];
 
-module.exports = { PEER_TOOLS, allyWatch, render };
+module.exports = { PEER_TOOLS, allyWatch, opponentWatch, render, renderAds };

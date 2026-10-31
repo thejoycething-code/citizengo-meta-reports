@@ -10,6 +10,12 @@ name: Peer watch (Instagram)
 # Daily since 30 Oct 2026 (was Mondays): ally_watch exists to catch an ally's
 # post while it is still taking off, and a weekly read saw it up to six days
 # late. Still free: ~60 business_discovery calls a day.
+#
+# Opponents (31 Oct 2026, authorised by Christopher Joyce, Asana
+# 1220076872722026): the scheduled run then reads config/opponents-ig.json the
+# same way, and their UK issue ads from Meta's Ad Library (collector/ad-library.js),
+# and deletes opponent data older than 120 days. Free sources only. To stop it,
+# set OPPONENTS_IG_ENABLED below to 'false': both steps become dry runs.
 
 on:
   schedule:
@@ -17,7 +23,7 @@ on:
   workflow_dispatch:
     inputs:
       list:
-        description: 'Which list: allies (config/peers-ig.json) or opponents (config/opponents-ig.json; always a dry run until OPPONENTS_IG_ENABLED is set)'
+        description: 'Manual runs only: allies (config/peers-ig.json) or opponents (config/opponents-ig.json plus their Ad Library ads). The schedule runs both.'
         type: choice
         options: [allies, opponents]
         default: allies
@@ -58,8 +64,9 @@ jobs:
       PEER_IG_VIA_ID: ${{ vars.PEER_IG_VIA_ID || '17841422748868275' }}
       ONLY: ${{ github.event.inputs.only }}
       LIST: ${{ github.event.inputs.list || 'allies' }}
-      # Repository VARIABLE, set only after the data-protection sign-off.
-      OPPONENTS_IG_ENABLED: ${{ vars.OPPONENTS_IG_ENABLED }}
+      # Opponent collection switch. On since 31 Oct 2026 (authorised by
+      # Christopher Joyce); 'false' turns opponents back into dry runs.
+      OPPONENTS_IG_ENABLED: 'true'
       POSTS: ${{ github.event.inputs.posts || '50' }}
       # Scheduled runs write; manual runs default to a dry run.
       DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && (github.event.inputs.dry_run == true || github.event.inputs.dry_run == 'true') && 'true' || 'false' }}
@@ -73,10 +80,31 @@ jobs:
       - name: Test
         run: node scripts/test-peers-ig.js
 
-      - name: Collect
+      - name: Test opponent ads
+        run: node scripts/test-ad-library.js
+
+      - name: Allies
+        if: github.event_name == 'schedule' || env.LIST == 'allies'
         run: |
           FLAG=""
           if [ "$DRY_RUN" = "true" ]; then FLAG="--dry-run"; fi
           ONLYARG=""
           if [ -n "$ONLY" ]; then ONLYARG="--only $ONLY"; fi
-          node collector/peers-ig.js $FLAG $ONLYARG --list "$LIST" --posts "$POSTS"
+          node collector/peers-ig.js $FLAG $ONLYARG --list allies --posts "$POSTS"
+
+      # Opponents run even if the allies step failed: they are separate accounts.
+      - name: Opponents (Instagram)
+        if: always() && (github.event_name == 'schedule' || env.LIST == 'opponents')
+        run: |
+          FLAG=""
+          if [ "$DRY_RUN" = "true" ]; then FLAG="--dry-run"; fi
+          ONLYARG=""
+          if [ -n "$ONLY" ]; then ONLYARG="--only $ONLY"; fi
+          node collector/peers-ig.js $FLAG $ONLYARG --list opponents --posts "$POSTS"
+
+      - name: Opponents (Ad Library)
+        if: always() && (github.event_name == 'schedule' || env.LIST == 'opponents')
+        run: |
+          FLAG=""
+          if [ "$DRY_RUN" = "true" ]; then FLAG="--dry-run"; fi
+          node collector/ad-library.js $FLAG --days 90
