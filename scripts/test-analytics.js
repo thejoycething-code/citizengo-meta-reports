@@ -13,6 +13,7 @@ function eq(name, actual, expected) {
 const tools = require('../mcp/tools');
 const xtools = require('../mcp/x-tools');
 const { ENGINE_TOOLS } = require('../mcp/engine-tools');
+const peer = require('../mcp/peer-tools');
 
 const pages = [{ page_id: '105', name: 'Citizen GO UK' }, { page_id: '120', name: 'Citizen GO Scotland' }, { page_id: '434', name: 'CitizenGO' }, { page_id: '154', name: 'HazteOir.org' }];
 const stub = (list, name, fn) => { list.find((t) => t.name === name).handler = fn; };
@@ -58,6 +59,29 @@ const callErr = async (args, who) => { try { await call(args, who); return null;
   const fullWeek = tr.series[0].reach[tr.weeks.length - 1];
   eq('trend: 12 complete Monday weeks; the team\'s Page with weekly reach and net follows; the median is of CitizenGO Pages only', [tr.weeks.length, new Date(tr.weeks[0] + 'T00:00:00Z').getUTCDay(), tr.series.map((x) => x.name), fullWeek, tr.series[0].net[tr.weeks.length - 1], tr.median.reach[tr.weeks.length - 1], Date.parse(tr.weeks[11]) + 7 * 864e5 <= Date.now()], [12, 1, ['Citizen GO UK'], 7000, 14, 14000, true]);
   eq('trend: the CitizenGO view shows its biggest Pages, HazteOir never', (await call({})).trend.series.map((x) => x.name), ['CitizenGO', 'Citizen GO UK']);
+
+  // Listening.
+  {
+    const ago = (d) => new Date(Date.now() - d * 864e5).toISOString();
+    const P = (page_id, page_name, views, msg, d) => ({ page_id, page_name, views_total: views, message: msg, permalink_url: `https://fb/${msg}`, created_time: ago(d), media_type: 'photo' });
+    stub(tools.TOOLS, 'top_posts', async (st, a) => ({ data: { rows: [
+      P('105', 'Citizen GO UK', 50000, 'uk-big', 2), P('105', 'Citizen GO UK', 1000, 'uk1', 40), P('105', 'Citizen GO UK', 1000, 'uk2', 50),
+      P('773', 'CitizenGO Magyarország', 90000, 'hu-big', 5), P('773', 'CitizenGO Magyarország', 10000, 'hu1', 40), P('773', 'CitizenGO Magyarország', 10000, 'hu2', 60), P('773', 'CitizenGO Magyarország', 9000, 'hu-old', 80),
+      P('154', 'HazteOir.org', 9e6, 'hz', 3), P('154', 'HazteOir.org', 1000, 'hz1', 50) ] } }));
+    pages.push({ page_id: '773', name: 'CitizenGO Magyarország' });
+    const ls = (a) => call({ ...a });
+    const callL = async (args, who = 'chris') => JSON.parse((await ENGINE_TOOLS.find((t) => t.name === 'engine_listening').handler(store, args, { who })).text);
+    const cg = await callL({ tab: 'citizengo', team: 'uk' });
+    eq('listening, CitizenGO: other Pages beating their own normal; not my team, not HazteOir, not old', cg.posts.map((p) => [p.who, p.text, p.x]), [['CitizenGO Magyarország', 'hu-big', 9]]);
+    peer.PEER_TOOLS.find((t) => t.name === 'ally_watch').handler = async (st, a) => ({ rows: [{ username: 'righttolifeuk', label: 'Right To Life UK', country: 'UK', caption: 'Prince Alois', permalink: 'https://ig/1', timestamp: ago(1), like_count: 2000, comments_count: 90, vs_median: 11.4, settled: false }], seen: a });
+    peer.PEER_TOOLS.find((t) => t.name === 'opponent_watch').handler = async () => ({ rows: [], ads: [{ label: 'TransActual', delivery_start: ago(2), spend_lower: 100, spend_upper: 199, currency: 'GBP', link_titles: 'Trans rights', snapshot_url: 'https://ads/1' }] });
+    const al = await callL({ tab: 'allies', country: 'UK' });
+    eq('listening, allies: the ally rows as data', al.posts.map((p) => [p.who, p.x, p.settled]), [['Right To Life UK', 11.4, false]]);
+    const op = await callL({ tab: 'opponents' });
+    eq('listening, opponents: their ads with spend ranges', op.ads.map((a) => [a.who, a.spend_lower, a.spend_upper, a.running]), [['TransActual', 100, 199, true]]);
+    let e = null; try { await callL({}, 'stranger'); } catch (x) { e = x.code; }
+    eq('listening: team members only', e, 'ENGINE_NOT_MEMBER');
+  }
 
   console.log(`\n${passed} passed, ${failed} failed`);
   process.exit(failed ? 1 : 0);

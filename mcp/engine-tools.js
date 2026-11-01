@@ -579,6 +579,44 @@ async function engineAnalytics(store, args, { who }) {
   });
 }
 
+// Listening [slice 3, 1 Nov]: posts beating their own normal, as data.
+// citizengo: other CitizenGO Pages' posts (not your team's), views against that
+// Page's 90-day median. allies / opponents: the watched Instagram accounts
+// (likes + comments against their own 120-day median, from ally_watch and
+// opponent_watch), opponents with their Meta Ad Library issue ads. "Rework
+// for…" on the desk files a Plan request; nothing here posts anything.
+async function engineListening(store, args, { who }) {
+  const ctx = await context(store, who);
+  if (!ctx.maintainer && !Object.keys(ctx.myTeams).length) throw err('Join a Content Engine team to see Listening.', 'ENGINE_NOT_MEMBER');
+  const tab = ['citizengo', 'allies', 'opponents'].includes(args.tab) ? args.tab : 'citizengo';
+  const minX = Math.max(1.5, Math.min(50, Number(args.min_multiple) || 3));
+  const team = args.team ? teamById(ctx, String(args.team)) : null;
+  if (team && !E.canEditTeam(ctx, team.id)) throw err('You are not in that team.', 'ENGINE_NOT_MEMBER');
+  if (tab === 'citizengo') {
+    const days = [7, 30].includes(Number(args.days)) ? Number(args.days) : 30;
+    const { TOOLS } = require('./tools');
+    const own = new Set(((team && team.accounts) || []).filter((a) => a.page_id).map((a) => a.page_id));
+    const rows = ((await TOOLS.find((t) => t.name === 'top_posts').handler(store, { days: 90, sort: 'recent', compact: true, limit: 1000 })).data || {}).rows || [];
+    const cgo = rows.filter((r) => IS_CGO.test(r.page_name || '') && typeof r.views_total === 'number');
+    const med = {};
+    for (const r of cgo) (med[r.page_id] = med[r.page_id] || []).push(r.views_total);
+    for (const k of Object.keys(med)) med[k] = median(med[k]);
+    const since = Date.now() - days * 864e5;
+    const posts = cgo.filter((r) => !own.has(r.page_id) && Date.parse(r.created_time) >= since && med[r.page_id] && r.views_total >= minX * med[r.page_id])
+      .map((r) => ({ who: r.page_name, page_id: r.page_id, text: String(r.message || '').slice(0, 300), url: r.permalink_url, created_time: r.created_time, format: r.media_type || r.status_type || null,
+        views: r.views_total, x: Math.round((r.views_total / med[r.page_id]) * 10) / 10, beyond_pct: r.beyond_followers_pct }))
+      .sort((a, b) => b.x - a.x).slice(0, 40);
+    return json({ tab, days, min_multiple: minX, posts });
+  }
+  const { PEER_TOOLS } = require('./peer-tools');
+  const days = [7, 10, 30].includes(Number(args.days)) ? Number(args.days) : (tab === 'allies' ? 10 : 7);
+  const out = await PEER_TOOLS.find((t) => t.name === (tab === 'allies' ? 'ally_watch' : 'opponent_watch')).handler(store, { days, min_multiple: minX, limit: 40, ...(tab === 'allies' && args.country ? { country: String(args.country) } : {}) });
+  const posts = ((out && out.rows) || []).map((r) => ({ who: r.label || `@${r.username}`, handle: r.username, country: r.country || null, text: String(r.caption || '').slice(0, 300), url: r.permalink, created_time: r.timestamp,
+    format: r.media_product_type || r.media_type || null, likes: r.like_count, comments: r.comments_count, x: r.vs_median === null || r.vs_median === undefined ? null : Number(r.vs_median), settled: !!r.settled }));
+  const ads = tab === 'opponents' ? ((out && out.ads) || []).slice(0, 40).map((a) => ({ who: a.label || a.page_name, started: a.delivery_start, running: !a.delivery_stop, spend_lower: Number(a.spend_lower) || 0, spend_upper: Number(a.spend_upper) || Number(a.spend_lower) || 0, currency: a.currency || null, title: a.link_titles || a.bodies || null, url: a.snapshot_url || null })) : [];
+  return json({ tab, days, min_multiple: minX, posts, ads, note: out && !out.rows ? String(out.text || '').slice(0, 300) : null });
+}
+
 const WEEKS = 12;
 function weekStart(d) { const t = new Date(`${d}T00:00:00Z`); const wd = (t.getUTCDay() + 6) % 7; t.setUTCDate(t.getUTCDate() - wd); return t.toISOString().slice(0, 10); }
 async function weeklyTrend(store, { pagesAll, inScope, scope, now = Date.now() }) {
@@ -706,6 +744,7 @@ const ENGINE_TOOLS = [
   { name: 'engine_inbox_alert', description: 'Content Engine Inbox: mark a pile-on alert (from engine_inbox alerts) as seen, so it leaves the desk for everyone in the team.', inputSchema: obj({ team: { type: 'string' }, id: { type: 'number' } }, ['team', 'id']), handler: engineInboxAlert },
   { name: 'engine_inbox_history', description: 'Content Engine Inbox moderation history for one of your teams: every reply, hide, delete, like, assignment, label and done, by whom, newest first.', inputSchema: obj({ team: { type: 'string' }, limit: { type: 'number' } }, ['team']), handler: engineInboxHistory },
   { name: 'engine_analytics', description: 'Content Engine Analytics for the desk, as data: page reach, views, engagements and net follows, Instagram follower movement, top Facebook posts against their own Page\'s median, top Instagram posts and X totals, for the last 7, 30 or 90 days. scope citizengo (every CitizenGO Page, default), hazteoir (kept apart) or team (with team).', inputSchema: obj({ scope: { type: 'string', enum: ['citizengo', 'hazteoir', 'team'] }, team: { type: 'string' }, days: { type: 'number', enum: [7, 30, 90] } }), handler: engineAnalytics },
+  { name: 'engine_listening', description: 'Content Engine Listening for the desk, as data: posts beating their own normal (min_multiple, default 3). tab citizengo: other CitizenGO Pages\' posts (not your team\'s, with team) by views against that Page\'s 90-day median, last 7 or 30 days. tab allies: watched ally Instagram accounts (optional country UK, US, IE, CA, AU), last 7, 10 or 30 days. tab opponents: watched opponent accounts plus their Meta Ad Library issue ads.', inputSchema: obj({ tab: { type: 'string', enum: ['citizengo', 'allies', 'opponents'] }, team: { type: 'string' }, country: { type: 'string' }, days: { type: 'number' }, min_multiple: { type: 'number' } }), handler: engineListening },
   { name: 'engine_record', description: 'Content Engine: record bookkeeping on a post in any status, posted and rejected included: results, posted (the real post links and time), stale, and posting.asanaTaskGid / asanaUrl / syncedAt / removedAt. Nothing else; the post itself is saved with engine_save. version must be the one you read.', inputSchema: obj({ id: { type: 'string' }, version: { type: 'number' }, patch: { type: 'object' } }, ['id', 'version', 'patch']), handler: engineRecord },
   { name: 'engine_status', description: 'Content Engine: approve (schedules it; needs publishing rights for every Facebook and Instagram account), hold, changes (needs a note), reject, reopen, or mark as posted (it went out) a post.', inputSchema: obj({ id: { type: 'string' }, version: { type: 'number' }, action: { type: 'string', enum: ['approve', 'hold', 'changes', 'reject', 'reopen', 'posted'] }, note: { type: 'string' }, reasons: { type: 'array', items: { type: 'string' } } }, ['id', 'version', 'action']), handler: engineStatus },
   { name: 'engine_create', description: 'Content Engine: add a new post to Review in one of your teams (the daily engine, "Rework for…" and imports use this).', inputSchema: obj({ team: { type: 'string' }, doc: { type: 'object' }, id: { type: 'string' }, source_team: { type: 'string' }, source_post: { type: 'string' } }, ['team', 'doc']), handler: engineCreate },
