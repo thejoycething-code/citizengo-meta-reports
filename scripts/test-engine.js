@@ -188,10 +188,10 @@ const callErr = async (store, name, args, who) => { try { await tool(name)(store
     const t = F.signLink('s3cret', 'greg', 1000);
     eq('connect link: names the person, ten minutes, tamper-proof', [F.verifyLink('s3cret', t, 2000).who, F.verifyLink('s3cret', t, 1000 + 11 * 60_000), F.verifyLink('other', t, 2000), F.verifyLink('s3cret', t.replace(/^./, 'x'), 2000)], ['greg', null, null, null]);
     const before = { ...process.env };
-    Object.assign(process.env, { FB_APP_ID: '1', FB_APP_SECRET: '2', FB_REDIRECT_URI: 'https://x/api/fb/callback', OAUTH_SIGNING_SECRET: 's3cret', X_TOKEN_PUBLIC_KEY: 'k', PUBLIC_ORIGIN: 'https://meta.example' });
+    Object.assign(process.env, { FB_APP_ID: '1', FB_APP_SECRET: '2', FB_REDIRECT_URI: 'https://x/api/fb/callback', OAUTH_SIGNING_SECRET: 's3cret', ENGINE_TOKEN_PUBLIC_KEY: 'k', PUBLIC_ORIGIN: 'https://meta.example' });
     const link = await call(store, 'engine_connect', {}, 'greg');
     eq('engine_connect: a link for the signed-in person', [link.ok, link.url.startsWith('https://meta.example/api/fb/authorize?t='), F.verifyLink('s3cret', decodeURIComponent(link.url.split('t=')[1])).who], [true, true, 'greg']);
-    for (const k of ['FB_APP_ID', 'FB_APP_SECRET', 'FB_REDIRECT_URI', 'OAUTH_SIGNING_SECRET', 'X_TOKEN_PUBLIC_KEY', 'PUBLIC_ORIGIN']) { if (k in before) process.env[k] = before[k]; else delete process.env[k]; }
+    for (const k of ['FB_APP_ID', 'FB_APP_SECRET', 'FB_REDIRECT_URI', 'OAUTH_SIGNING_SECRET', 'ENGINE_TOKEN_PUBLIC_KEY', 'PUBLIC_ORIGIN']) { if (k in before) process.env[k] = before[k]; else delete process.env[k]; }
     eq('engine_connect: says plainly when it is not switched on', (await call(store, 'engine_connect', {}, 'greg')).configured, false);
     eq('engine_connect: anonymous is turned away', await callErr(store, 'engine_connect', {}, 'anonymous'), 'ENGINE_SIGN_IN');
   }

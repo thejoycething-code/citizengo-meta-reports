@@ -8,8 +8,8 @@
 //   node collector/publish.js            # dry run unless ENGINE_PUBLISH_LIVE=1
 //   node collector/publish.js --dry-run  # always a dry run
 //
-// Needs SUPABASE_URL, SUPABASE_SERVICE_KEY and X_TOKEN_PRIVATE_KEY (the key
-// that opens sealed Page tokens). A dry run reads everything and changes
+// Needs SUPABASE_URL, SUPABASE_SERVICE_KEY and ENGINE_TOKEN_PRIVATE_KEY (the
+// key that opens sealed Page tokens; only on the Mini, scripts/engine-keygen.js). A dry run reads everything and changes
 // nothing: it prints what it would publish, and why anything is held back.
 
 const { loadEnv } = require('../lib/graph');
@@ -100,8 +100,8 @@ async function run({ store, privateKey, live, now = Date.now(), log = console.lo
 if (require.main === module) {
   loadEnv();
   const live = process.env.ENGINE_PUBLISH_LIVE === '1' && !process.argv.includes('--dry-run');
-  const privateKey = String(process.env.X_TOKEN_PRIVATE_KEY || '').replace(/\\n/g, '\n');
-  if (!privateKey) { console.error('X_TOKEN_PRIVATE_KEY is not set: cannot open sealed Page tokens.'); process.exit(1); }
+  const privateKey = String(process.env.ENGINE_TOKEN_PRIVATE_KEY || '').replace(/\\n/g, '\n');
+  if (!privateKey) { console.error('ENGINE_TOKEN_PRIVATE_KEY is not set: cannot open sealed Page tokens (scripts/engine-keygen.js).'); process.exit(1); }
   const store = supabaseStore({ url: process.env.SUPABASE_URL, serviceKey: process.env.SUPABASE_SERVICE_KEY });
   console.log(`Content Engine publisher, ${live ? 'LIVE' : 'dry run'}, ${new Date().toISOString()}`);
   run({ store, privateKey, live }).then((t) => console.log(JSON.stringify(t))).catch((e) => { console.error(e.message); process.exit(1); });

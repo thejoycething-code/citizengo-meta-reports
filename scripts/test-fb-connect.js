@@ -25,7 +25,7 @@ function fakeRes() {
 const keys = xauth.generateKeyPair();
 Object.assign(process.env, {
   FB_APP_ID: 'app1', FB_APP_SECRET: 'sec1', FB_REDIRECT_URI: 'https://meta.example/api/fb/callback', OAUTH_SIGNING_SECRET: 'sign1',
-  X_TOKEN_PUBLIC_KEY: keys.publicKey, SUPABASE_URL: 'https://db.example', SUPABASE_SERVICE_KEY: 'svc',
+  ENGINE_TOKEN_PUBLIC_KEY: keys.publicKey, SUPABASE_URL: 'https://db.example', SUPABASE_SERVICE_KEY: 'svc',
 });
 
 const writes = [];

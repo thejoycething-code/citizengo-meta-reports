@@ -74,7 +74,7 @@ Decisions from Christopher Joyce are in brackets with the date._
   opens `api/fb/authorize.js` and then Facebook. `api/fb/callback.js` reads the Pages they manage (`/me/accounts`):
   each Page where they have CREATE_CONTENT, and its linked Instagram account, that matches a team account becomes a
   publishing right (`engine_publish_rights`, source `meta`; `lib/engine.js` `rightsFromPages`). Each Page token is
-  sealed to the collector's public key (`X_TOKEN_PUBLIC_KEY`, as for X) into `engine_page_tokens`; only the Mini,
+  sealed to the publishing public key (`ENGINE_TOKEN_PUBLIC_KEY`) into `engine_page_tokens`; only the Mini,
   with the private key, can open one. Reconnecting removes Facebook rights they no longer have; rights a maintainer
   added by hand stay.
 - The desk locks Facebook and Instagram accounts you can't post to (🔒: can be unticked, not ticked).
@@ -88,7 +88,7 @@ To switch it on (Chris, in Meta for Developers):
    (admin, developer, tester) can connect, which suits a small team; anyone else needs App Review and Business
    Verification.
 4. In Vercel (meta-organic-reporting, production): `FB_APP_ID`, `FB_APP_SECRET`,
-   `FB_REDIRECT_URI` = the URI above. `OAUTH_SIGNING_SECRET`, `X_TOKEN_PUBLIC_KEY` and `PUBLIC_ORIGIN` are already set.
+   `FB_REDIRECT_URI` = the URI above. `OAUTH_SIGNING_SECRET`, `ENGINE_TOKEN_PUBLIC_KEY` and `PUBLIC_ORIGIN` are already set.
    Until then the endpoints answer "Not available yet" and the desk says Connect Facebook isn't switched on.
 
 ### Publisher (built 1 Nov, dry run until switched on)
@@ -97,7 +97,8 @@ To switch it on (Chris, in Meta for Developers):
   comment, and the finished images (drawn in the browser, uploaded as JPEGs through `engine_media` into the private
   `engine-media` Storage bucket). Any edit while scheduled refreshes it two seconds later. The publisher only ever
   posts this snapshot.
-- `collector/publish.js` (on the Mini, which holds `X_TOKEN_PRIVATE_KEY`): for each scheduled post's Facebook and
+- `collector/publish.js` (on the Mini, the only place `ENGINE_TOKEN_PRIVATE_KEY` exists; made there by
+  `scripts/engine-keygen.js`, which prints only the public half for Vercel): for each scheduled post's Facebook and
   Instagram destinations whose own time has come, it re-checks that the approver still holds the right, opens their
   sealed Page token, signs one-hour links to the images, publishes (photo, multi-photo post, text post, Instagram
   image or carousel), adds the first comment, and records `published[account]` with the link. X stays manual. When
