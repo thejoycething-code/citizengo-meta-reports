@@ -1929,8 +1929,12 @@ document.addEventListener("click",async ev=>{
           slides.push({template:"free",bg:"#000000",layers:[{type:"photo",x:0,y:0,w:100,h:125,fx:0.5,fy:0.5,id:r.id,url:r.url}]})}
         const cur=d.card?JSON.parse(JSON.stringify(d.card)):null;const add=cur&&cur.template==="carousel";
         const card=add?{...cur,slides:[...(cur.slides||[]),...slides]}:slides.length===1?slides[0]:{template:"carousel",slides};
-        const upd={card,cardChoice:null};if(cur&&!add)upd.cardOptions=[...(d.cardOptions||[]),{id:"prev-"+Date.now(),label:"Before upload",card:cur}];
-        await S.db.doc("drafts/"+d.id).update(upd);if(add)S.slide=(cur.slides||[]).length;
+        /* The upload is an option too (and the one chosen), so it stays in the strip whatever is picked next; any open
+           AI preview is closed, or it would keep showing over the upload. */
+        const now=Date.now(),opt={id:"upload-"+now,label:add?`Carousel + ${slides.length} uploaded`:slides.length===1?"Uploaded image":`Uploaded carousel (${slides.length})`,card};
+        const opts=[...(d.cardOptions||[])];if(cur&&!add&&!opts.some(o=>JSON.stringify(o.card)===JSON.stringify(cur)))opts.push({id:"prev-"+now,label:"Before upload",card:cur});opts.push(opt);
+        const upd={card,cardChoice:opt.id,cardOptions:opts};S.gPreview=null;
+        await S.db.doc("drafts/"+d.id).update(upd);S.slide=add?(cur.slides||[]).length:0;renderDetail();
         await logFeedback({draftId:d.id,action:"graphic-upload",images:slides.length,type:d.type,issue:d.issue});
         toast(add?`${slides.length} slide${slides.length===1?"":"s"} added to the carousel`:slides.length===1?"Image uploaded: it's the graphic now (the old one is in the options)":`Carousel of ${slides.length} images made (the old graphic is in the options)`)}
       catch(e){toast(e?.code==="too_large"?"An image is too large (20 MB max)":e?.code==="unsupported_type"?"Use JPG, PNG or WebP images":"Couldn't upload the images")}};inp.click();return}
