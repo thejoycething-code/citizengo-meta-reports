@@ -594,6 +594,44 @@ async function engineDeskDocs(store, args, { who }) {
   return json({ ok: false, error: 'action is list or put.' });
 }
 
+// Analytics and Listening read 90 days of posts, so their answers are kept for
+// CACHE_MS (the collectors refresh hourly at most). Access is checked on every
+// call before anything is served; fresh: true recalculates now.
+const CACHE_MS = 10 * 60e3;
+async function cached(store, key, args, compute) {
+  if (!args.fresh && store.engineCacheGet) {
+    const hit = await store.engineCacheGet(key).catch(() => null);
+    if (hit && Date.now() - Date.parse(hit.computed_at) < CACHE_MS) return json({ ...hit.value, cached_at: hit.computed_at });
+  }
+  const out = await compute();
+  let value; try { value = JSON.parse(out.text); } catch (e) { return out; }
+  if (value && value.ok !== false && store.engineCacheSet) await store.engineCacheSet(key, value).catch(() => {});
+  return json({ ...value, cached_at: new Date().toISOString() });
+}
+async function engineAnalytics(store, args, ctx0) {
+  const ctx = await context(store, ctx0.who);
+  if (!ctx.maintainer && !Object.keys(ctx.myTeams).length) throw err('Join a Content Engine team to see Analytics.', 'ENGINE_NOT_MEMBER');
+  if (!ctx.maintainer) {
+    const off = (store.engineAccessLimits ? await store.engineAccessLimits({ who: ctx0.who }) : []).filter((l) => l.account_key === '*' && l.can_analytics === false).map((l) => l.team_id);
+    if (Object.keys(ctx.myTeams).every((t) => off.includes(t))) throw err('A team admin has turned Analytics off for you.', 'ENGINE_NOT_ALLOWED');
+  }
+  const scope = ['citizengo', 'hazteoir', 'team'].includes(args.scope) ? args.scope : 'citizengo';
+  const days = [7, 30, 90].includes(Number(args.days)) ? Number(args.days) : 30;
+  const team = scope === 'team' ? String(args.team || '') : '';
+  if (team && !E.canEditTeam(ctx, team)) throw err('You are not in that team.', 'ENGINE_NOT_MEMBER');
+  return cached(store, `analytics:${scope}:${days}:${team}`, args, () => analyticsCompute(store, args, ctx0));
+}
+async function engineListening(store, args, ctx0) {
+  const ctx = await context(store, ctx0.who);
+  if (!ctx.maintainer && !Object.keys(ctx.myTeams).length) throw err('Join a Content Engine team to see Listening.', 'ENGINE_NOT_MEMBER');
+  const team = args.team ? String(args.team) : '';
+  if (team && !E.canEditTeam(ctx, team)) throw err('You are not in that team.', 'ENGINE_NOT_MEMBER');
+  const tab = ['citizengo', 'allies', 'opponents'].includes(args.tab) ? args.tab : 'citizengo';
+  // Only the citizengo tab depends on the team (it leaves the team's own Pages out).
+  const key = `listening:${tab}:${tab === 'citizengo' ? team : ''}:${args.country || ''}:${Number(args.days) || ''}:${Number(args.min_multiple) || ''}`;
+  return cached(store, key, args, () => listeningCompute(store, args, ctx0));
+}
+
 // Comment-to-DM automations: the team sees them; team admins change them.
 async function engineAutomationsList(store, args, { who }) {
   const ctx = await context(store, who);
@@ -685,7 +723,7 @@ const median = (xs) => { const v = xs.filter((x) => typeof x === 'number').sort(
 // with the same link: keep its first, original appearance.
 const oncePerLink = (rows) => { const seen = new Set(); return rows.filter((r) => { const k = r.permalink_url || r.url; if (!k) return true; if (seen.has(k)) return false; seen.add(k); return true; }); };
 const sumOf = (xs) => { const v = xs.filter((x) => typeof x === 'number'); return v.length ? v.reduce((a, b) => a + b, 0) : null; };
-async function engineAnalytics(store, args, { who }) {
+async function analyticsCompute(store, args, { who }) {
   const ctx = await context(store, who);
   if (!ctx.maintainer && !Object.keys(ctx.myTeams).length) throw err('Join a Content Engine team to see Analytics.', 'ENGINE_NOT_MEMBER');
   if (!ctx.maintainer) {
@@ -786,7 +824,7 @@ async function engineAnalytics(store, args, { who }) {
 // (likes + comments against their own 120-day median, from ally_watch and
 // opponent_watch), opponents with their Meta Ad Library issue ads. "Rework
 // for…" on the desk files a Plan request; nothing here posts anything.
-async function engineListening(store, args, { who }) {
+async function listeningCompute(store, args, { who }) {
   const ctx = await context(store, who);
   if (!ctx.maintainer && !Object.keys(ctx.myTeams).length) throw err('Join a Content Engine team to see Listening.', 'ENGINE_NOT_MEMBER');
   const tab = ['citizengo', 'allies', 'opponents'].includes(args.tab) ? args.tab : 'citizengo';
@@ -1104,8 +1142,8 @@ const ENGINE_TOOLS = [
   { name: 'engine_automations', description: 'Content Engine comment-to-DM automations for one of your teams: each rule\'s keywords, private message, public replies (taking turns), what it applies to (one post, a post type, or every post; the most specific wins), Facebook and/or Instagram, tag and hand-over, whether it is on, and its last 7 days (queued, sent, failed, and per step). paused: Pause everything is holding the team\'s accounts, so automations are held too.', inputSchema: obj({ team: { type: 'string' } }, ['team']), handler: engineAutomationsList },
   { name: 'engine_automation', description: 'Content Engine: add or update a comment-to-DM automation (team admins; name, keywords (whole words), dm_text with the real cgo.ac link, reply_texts (up to 5 public replies, taking turns), scope all / type (post_type petition, prayer, reel, wins, news) / post (thread_id), platforms facebook and/or instagram, skip_repeat (someone who already got the link just gets a like; default on), tag, hand_to (who to assign the comment to)), or pause, resume or remove one (id). A new comment with a keyword gets the private message (and a public reply) as you, through the Mini, at most one per comment and 200 per rule a day; Pause everything holds them too.', inputSchema: obj({ action: { type: 'string', enum: ['add', 'update', 'pause', 'resume', 'remove'] }, team: { type: 'string' }, id: { type: 'number' }, name: { type: 'string' }, keywords: { type: 'array', items: { type: 'string' } }, dm_text: { type: 'string' }, reply_text: { type: 'string' }, reply_texts: { type: 'array', items: { type: 'string' } }, scope: { type: 'string', enum: ['all', 'type', 'post'] }, post_type: { type: 'string', enum: ['petition', 'prayer', 'reel', 'wins', 'news'] }, thread_id: { type: 'string' }, platforms: { type: 'array', items: { type: 'string', enum: ['facebook', 'instagram'] } }, skip_repeat: { type: 'boolean' }, tag: { type: 'string' }, hand_to: { type: 'string' } }, ['action', 'team']), handler: engineAutomation },
   { name: 'engine_inbox_history', description: 'Content Engine Inbox moderation history for one of your teams: every reply, hide, delete, like, assignment, label and done, by whom, newest first.', inputSchema: obj({ team: { type: 'string' }, limit: { type: 'number' } }, ['team']), handler: engineInboxHistory },
-  { name: 'engine_analytics', description: 'Content Engine Analytics for the desk, as data: page reach, views, engagements and net follows, Instagram follower movement, top Facebook posts against their own Page\'s median, top Instagram posts and X totals, for the last 7, 30 or 90 days. scope citizengo (every CitizenGO Page, default), hazteoir (kept apart) or team (with team).', inputSchema: obj({ scope: { type: 'string', enum: ['citizengo', 'hazteoir', 'team'] }, team: { type: 'string' }, days: { type: 'number', enum: [7, 30, 90] } }), handler: engineAnalytics },
-  { name: 'engine_listening', description: 'Content Engine Listening for the desk, as data: posts beating their own normal (min_multiple, default 3). tab citizengo: other CitizenGO Pages\' posts (not your team\'s, with team) by views against that Page\'s 90-day median, last 7 or 30 days. tab allies: watched ally Instagram accounts (optional country UK, US, IE, CA, AU), last 7, 10 or 30 days. tab opponents: watched opponent accounts plus their Meta Ad Library issue ads.', inputSchema: obj({ tab: { type: 'string', enum: ['citizengo', 'allies', 'opponents'] }, team: { type: 'string' }, country: { type: 'string' }, days: { type: 'number' }, min_multiple: { type: 'number' } }), handler: engineListening },
+  { name: 'engine_analytics', description: 'Content Engine Analytics for the desk, as data: page reach, views, engagements and net follows, Instagram follower movement, top Facebook posts against their own Page\'s median, top Instagram posts and X totals, for the last 7, 30 or 90 days. scope citizengo (every CitizenGO Page, default), hazteoir (kept apart) or team (with team).', inputSchema: obj({ scope: { type: 'string', enum: ['citizengo', 'hazteoir', 'team'] }, team: { type: 'string' }, days: { type: 'number', enum: [7, 30, 90] }, fresh: { type: 'boolean' } }), handler: engineAnalytics },
+  { name: 'engine_listening', description: 'Content Engine Listening for the desk, as data: posts beating their own normal (min_multiple, default 3). tab citizengo: other CitizenGO Pages\' posts (not your team\'s, with team) by views against that Page\'s 90-day median, last 7 or 30 days. tab allies: watched ally Instagram accounts (optional country UK, US, IE, CA, AU), last 7, 10 or 30 days. tab opponents: watched opponent accounts plus their Meta Ad Library issue ads.', inputSchema: obj({ tab: { type: 'string', enum: ['citizengo', 'allies', 'opponents'] }, team: { type: 'string' }, country: { type: 'string' }, days: { type: 'number' }, min_multiple: { type: 'number' }, fresh: { type: 'boolean' } }), handler: engineListening },
   { name: 'engine_record', description: 'Content Engine: record bookkeeping on a post in any status, posted and rejected included: results, posted (the real post links and time), stale, and posting.asanaTaskGid / asanaUrl / syncedAt / removedAt. Nothing else; the post itself is saved with engine_save. version must be the one you read.', inputSchema: obj({ id: { type: 'string' }, version: { type: 'number' }, patch: { type: 'object' } }, ['id', 'version', 'patch']), handler: engineRecord },
   { name: 'engine_status', description: 'Content Engine: approve (schedules it; needs publishing rights for every Facebook and Instagram account), hold, changes (needs a note), reject, reopen, or mark as posted (it went out) a post.', inputSchema: obj({ id: { type: 'string' }, version: { type: 'number' }, action: { type: 'string', enum: ['approve', 'hold', 'changes', 'reject', 'reopen', 'posted'] }, note: { type: 'string' }, reasons: { type: 'array', items: { type: 'string' } } }, ['id', 'version', 'action']), handler: engineStatus },
   { name: 'engine_create', description: 'Content Engine: add a new post to Review in one of your teams (the daily engine, "Rework for…" and imports use this).', inputSchema: obj({ team: { type: 'string' }, doc: { type: 'object' }, id: { type: 'string' }, source_team: { type: 'string' }, source_post: { type: 'string' } }, ['team', 'doc']), handler: engineCreate },
@@ -1119,4 +1157,4 @@ const ENGINE_TOOLS = [
   { name: 'engine_calendar', description: 'Content Engine calendar: every team\'s scheduled and posted items (read-only for teams you are not in) plus your own teams\' drafts and holds, and the key dates (CitizenGO-wide and your teams\' own), between from and to (YYYY-MM-DD).', inputSchema: obj({ from: { type: 'string' }, to: { type: 'string' } }), handler: engineCalendar },
 ];
 
-module.exports = { convergence, convergenceBuilding, topicsOf, langOf, storyKeys, ENGINE_TOOLS, context };
+module.exports = { cached, CACHE_MS, convergence, convergenceBuilding, topicsOf, langOf, storyKeys, ENGINE_TOOLS, context };

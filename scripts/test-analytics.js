@@ -14,7 +14,7 @@ const tools = require('../mcp/tools');
 const xtools = require('../mcp/x-tools');
 const { ENGINE_TOOLS } = require('../mcp/engine-tools');
 const peer = require('../mcp/peer-tools');
-const { convergence, convergenceBuilding, topicsOf, langOf, storyKeys } = require('../mcp/engine-tools');
+const { cached, CACHE_MS, convergence, convergenceBuilding, topicsOf, langOf, storyKeys } = require('../mcp/engine-tools');
 
 const pages = [{ page_id: '105', name: 'Citizen GO UK' }, { page_id: '120', name: 'Citizen GO Scotland' }, { page_id: '434', name: 'CitizenGO' }, { page_id: '154', name: 'HazteOir.org' }];
 const stub = (list, name, fn) => { list.find((t) => t.name === name).handler = fn; };
@@ -137,6 +137,18 @@ const callErr = async (args, who) => { try { await call(args, who); return null;
     eq('listening: team members only', e, 'ENGINE_NOT_MEMBER');
   }
 
+  {
+    const mem = {}; let runs = 0;
+    const cs = { async engineCacheGet(k) { return mem[k] || null; }, async engineCacheSet(k, v) { mem[k] = { value: v, computed_at: new Date().toISOString() }; } };
+    const compute = async () => { runs++; return { raw: true, text: JSON.stringify({ n: runs }) }; };
+    const a = JSON.parse((await cached(cs, 'k', {}, compute)).text);
+    const b = JSON.parse((await cached(cs, 'k', {}, compute)).text);
+    const c = JSON.parse((await cached(cs, 'k', { fresh: true }, compute)).text);
+    mem.k.computed_at = new Date(Date.now() - CACHE_MS - 1000).toISOString();
+    const d = JSON.parse((await cached(cs, 'k', {}, compute)).text);
+    const e = JSON.parse((await cached(cs, 'bad', {}, async () => ({ raw: true, text: JSON.stringify({ ok: false }) }))).text);
+    eq('cache: a repeat is served from the cache; fresh and expired recalculate; refusals are not kept', [a.n, b.n, c.n, d.n, !!b.cached_at, e.ok, 'bad' in mem], [1, 1, 2, 3, true, false, false]);
+  }
   console.log(`\n${passed} passed, ${failed} failed`);
   process.exit(failed ? 1 : 0);
 })().catch((e) => { console.error(e); process.exit(1); });
