@@ -8,7 +8,7 @@
 //   SUPABASE_URL=… SUPABASE_SERVICE_KEY="$(pbpaste)" node scripts/desk-migrate-blobs.js <folder of <id>.<ext> files>
 const fs = require('fs');
 const path = require('path');
-const TYPES = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', gif: 'image/gif' };
+const TYPES = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', gif: 'image/gif', mp4: 'video/mp4' };
 
 async function main() {
   const base = String(process.env.SUPABASE_URL || '').replace(/\/+$/, '');
