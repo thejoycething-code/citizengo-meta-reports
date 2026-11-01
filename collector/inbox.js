@@ -104,11 +104,20 @@ async function pileOnAlerts({ store, team, live, now, log }) {
   return n;
 }
 
+// Posts by others that tag the Page (Facebook) or the account (Instagram).
+async function readMentions({ team, account, tok, token, since, fetchImpl }) {
+  const ig = account.platform === 'instagram';
+  const data = ig
+    ? (await I.call('GET', `${tok.ig_id}/tags`, { fields: 'id,caption,username,timestamp,permalink', limit: '25' }, token, fetchImpl)).data || []
+    : (await I.call('GET', `${tok.page_id}/tagged`, { fields: 'id,message,from{id,name},created_time,permalink_url', limit: '25' }, token, fetchImpl)).data || [];
+  return data.filter((m) => Date.parse(ig ? m.timestamp : m.created_time) >= since).map((m) => I.mention(m, { team, account }));
+}
+
 async function run({ store, privateKey, live, now = Date.now(), log = console.log, fetchImpl }) {
   const [teams, tokens] = await Promise.all([store.engineTeams(), store.engineConnectedTokens()]);
   const readers = readerTokens(tokens);
   const since = now - WINDOW_DAYS * 24 * 3600_000;
-  const tally = { accounts: 0, comments: 0, messages: 0, skipped: 0, failed: 0, auto_hidden: 0, pile_ons: 0 };
+  const tally = { accounts: 0, comments: 0, messages: 0, mentions: 0, skipped: 0, failed: 0, auto_hidden: 0, pile_ons: 0 };
   for (const t of teams) {
     for (const acc of t.accounts || []) {
       if (!['facebook', 'instagram'].includes(acc.platform)) continue;
@@ -120,6 +129,7 @@ async function run({ store, privateKey, live, now = Date.now(), log = console.lo
       const parts = [
         ['comments', () => (acc.platform === 'facebook' ? readFacebook : readInstagram)({ team: t.id, account, tok, token, since, fetchImpl })],
         ['messages', () => readMessages({ team: t.id, account, tok, token, fetchImpl })],
+        ['mentions', () => readMentions({ team: t.id, account, tok, token, since, fetchImpl })],
       ];
       tally.accounts++;
       for (const [what, read] of parts) {

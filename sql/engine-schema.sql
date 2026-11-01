@@ -305,3 +305,10 @@ create table if not exists public.engine_inbox_alerts (
 create index if not exists engine_inbox_alerts_team on public.engine_inbox_alerts (team_id, status, at desc);
 alter table public.engine_inbox_alerts enable row level security;
 comment on table public.engine_inbox_alerts is 'Content Engine Inbox pile-on alerts: a burst of mostly hostile comments on one post.';
+
+-- Mentions [slice 3, 1 Nov]: other people's posts that tag our Pages
+-- (/{page}/tagged) or Instagram accounts (/{ig}/tags), read by the inbox
+-- collector. Desk actions only: replying would mean commenting on someone
+-- else's post, so the desk links to it instead.
+alter table public.engine_inbox drop constraint if exists engine_inbox_kind_check;
+alter table public.engine_inbox add constraint engine_inbox_kind_check check (kind in ('comment', 'message', 'mention'));
