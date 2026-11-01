@@ -83,12 +83,12 @@ as far as that allows.
 - [ ] (needs Chris) Sentiment without paid AI; digest by Slack or email; opponent-watch data-protection sign-off.
 
 ## 9. Analytics
-- [ ] Account picker: search, saved groups, platform filter, multi-select, compare side by side.
-- [ ] Account selector on the Facebook, Instagram and X pages; X date range and KPIs (engagements, rate,
-      link clicks, profile clicks); Facebook views, post engagements, median engagement; every post ranked.
-- [ ] Overview: followers total with net, fastest growing, best post tiles; page growth chart; format and
-      language tags in top posts.
-- [ ] Phase 2 figures: comment-to-DM links sent, clicks on reply and DM links.
+- [x] Account picker: search, saved groups, platform filter, multi-select, compare side by side. Done 1 Nov: on the desk (search, platform, tick, compare side by side); saved groups in the artifact db (analyticsGroups).
+- [x] Account selector on the Facebook, Instagram and X pages; X date range and KPIs (engagements, rate,
+      link clicks, profile clicks); Facebook views, post engagements, median engagement; every post ranked. Done 1 Nov: account selector on each platform page; X impressions, engagements, rate, link and profile clicks; Facebook views, post engagements, median engagement and every post ranked (team scope; top posts across every Page).
+- [x] Overview: followers total with net, fastest growing, best post tiles; page growth chart; format and
+      language tags in top posts. Done 1 Nov: followers with net, fastest growing, best post tiles, the 12-week chart (net follows metric), format and language tags.
+- [x] Phase 2 figures: comment-to-DM links sent, clicks on reply and DM links. Done 1 Nov except clicks: comment-to-DM links sent and tracked links in replies/DMs; clicks need shortener click data.
 - [ ] (needs Chris) Signatures from social (Looker on the Mini).
 
 ## 10. Tools
