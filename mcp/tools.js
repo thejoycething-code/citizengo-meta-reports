@@ -1161,6 +1161,7 @@ const { PEER_TOOLS } = require('./peer-tools');
 const { TOPIC_TOOLS } = require('./topic-tools');
 // Daily UK monitoring digest (1 Nov 2026). See mcp/digest-tools.js.
 const { DIGEST_TOOLS } = require('./digest-tools');
+const { ENGINE_TOOLS } = require('./engine-tools');
 
 const TOOLS = [
   {
@@ -1325,6 +1326,7 @@ const TOOLS = [
   ...TOPIC_TOOLS,
   ...PEER_TOOLS,
   ...DIGEST_TOOLS,
+  ...ENGINE_TOOLS,
   ...INVITER_TOOLS,
 ];
 
