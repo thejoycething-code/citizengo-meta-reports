@@ -36,6 +36,7 @@ function engine() {
     async enginePost(id) { const p = db.posts.find((x) => x.id === id); return p ? clone(p) : null; },
     async engineUpdatePost(id, version, fields) { const p = db.posts.find((x) => x.id === id && x.version === version); if (!p) return null; Object.assign(p, fields, { version: version + 1 }); return clone(p); },
     async engineEvent(row) { db.events.push(row); },
+    async enginePauses() { return clone(db.pauses || []); },
     async engineRights({ who }) { return clone(db.rights.filter((r) => r.who === who)); },
     async enginePageToken({ who, account_key }) { return clone(db.tokens.find((t) => t.who === who && t.account_key === account_key) || null); },
     async engineMediaUrl(path) { return path in db.media || path.startsWith('uk/') ? `https://db.example/signed/${path}?token=t` : null; },
@@ -82,6 +83,18 @@ const quiet = () => {};
   const fb0 = fakeFacebook();
   const t0 = await run({ store: s0, privateKey: keys.privateKey, live: false, now: NOW, log: quiet, fetchImpl: fb0.fetchImpl });
   eq('dry run: says what it would publish, calls nothing, changes nothing', [t0.would, fb0.calls.length, s0.db.posts[0].version, s0.db.events.length], [1, 0, 1, 0]);
+
+  // Pause everything: held, nothing called, and a long pause never marks it late.
+  {
+    const sp = engine();
+    addPost(sp, 'pp', { review: approved, final, posting: { destinations: ['uk-fb'], at: '2026-11-03T14:00:00Z' } });
+    sp.db.pauses = [{ id: 1, scope: 'mine', account_keys: ['uk-fb'], reason: 'National tragedy', paused_by: 'chris', until: null, resumed_at: null }];
+    const fbp = fakeFacebook();
+    const tp = await run({ store: sp, privateKey: keys.privateKey, live: true, now: NOW + 8 * 3600e3, log: quiet, fetchImpl: fbp.fetchImpl });
+    eq('paused: held even 8 hours past its time, Facebook not called, post untouched', [tp.held, tp.failed, fbp.calls.length, sp.db.posts[0].version], [1, 0, 0, 1]);
+    sp.db.pauses = [{ id: 2, scope: 'all', account_keys: [], reason: 'x', paused_by: 'admin', until: '2026-11-03T13:00:00Z', resumed_at: null }];
+    eq('an organisation pause that has run out holds nothing', P.plan(await sp.enginePosts(), sp.db.teams, NOW, sp.db.pauses).map((i) => i.action), ['publish']);
+  }
 
   // Live: Facebook at 14:00, Instagram at 18:00, X by hand.
   const s1 = engine();

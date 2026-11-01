@@ -174,3 +174,25 @@ create table if not exists public.engine_page_tokens (
 );
 alter table public.engine_page_tokens enable row level security;
 comment on table public.engine_page_tokens is 'Content Engine: per-person Page tokens from Connect Facebook, sealed to the publishing key (private half only on the Mini). Never stored in the clear.';
+
+-- Pause everything [1 Nov, A + B + C]: for a national tragedy or a breaking
+-- crisis, hold every scheduled post at once. A pause covers the accounts the
+-- person could post to (all their teams', or one team's), or every account in
+-- the organisation (scope 'all', maintainers only). Active while resumed_at is
+-- null and until (if set) is in the future. Never deletes or changes a post:
+-- the publisher just skips paused accounts.
+create table if not exists public.engine_pauses (
+  id bigint generated always as identity primary key,
+  scope text not null check (scope in ('mine', 'team', 'all')),
+  team_id text references public.engine_teams(id) on delete cascade,
+  account_keys text[] not null default '{}',  -- empty for scope 'all'
+  reason text not null,
+  paused_by text not null,
+  paused_at timestamptz not null default now(),
+  until timestamptz,                           -- null = until someone resumes
+  resumed_at timestamptz,
+  resumed_by text
+);
+create index if not exists engine_pauses_open on public.engine_pauses (resumed_at) where resumed_at is null;
+alter table public.engine_pauses enable row level security;
+comment on table public.engine_pauses is 'Content Engine Pause everything: holds scheduled posts on the listed accounts (or all) until resumed or until.';

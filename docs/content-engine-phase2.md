@@ -63,7 +63,8 @@ Decisions from Christopher Joyce are in brackets with the date._
    Restore and "It went out" use `engine_evergreen_update`, which also adds posts. Seeded with the UK refresh list
    from content-engine/evergreen-bank.md (the 3.5x post left out). Later: the monthly run adds new 5x winners.
    The desk's connector manifest: engine_me, engine_posts, engine_save, engine_status, engine_calendar,
-   engine_requests, engine_request, engine_evergreen, engine_evergreen_update, engine_connect, engine_media.
+   engine_requests, engine_request, engine_evergreen, engine_evergreen_update, engine_connect, engine_media,
+   engine_pause.
 5. ⬜ Until Meta publishing works, "Approve" still hands UK posts to Asana as today.
 6. ◐ Cutover (prepared 1 Nov; nothing switched yet). The daily engine's instructions are ready in
    content-engine/DAILY.md, section "Engine mode", which only applies once the file content-engine/ENGINE_LIVE
@@ -77,7 +78,7 @@ Decisions from Christopher Joyce are in brackets with the date._
       `node scripts/engine-import-board.js <dump>/drafts --apply` with the service key in the shell. Posts nobody
       has edited in the engine are refreshed; ones edited there are left alone.
    3. Publish content-engine/desk.html onto the board URL (SxCXeQPMkaBMNiABjiiULw) from a session whose
-      connector list includes the engine tools, with the 11-tool manifest above.
+      connector list includes the engine tools, with the 12-tool manifest above.
    4. `touch content-engine/ENGINE_LIVE`. The next run works in the engine.
    5. Check the first run: new drafts appear on the desk in Review, nothing was written to the board's `drafts`.
    To go back: delete ENGINE_LIVE and republish review-board.html onto the board URL (its drafts are as they were
@@ -142,11 +143,24 @@ like a problem with the Meta app, so nothing is removed. Rights the maintainer s
 Limit: someone moved to a lesser Page role keeps a working token, so that case still shows only when the
 publisher's post is refused.
 
+### Pause everything (built 1 Nov, A + B + C)
+
+`engine_pauses` (applied) holds each pause: scope `mine` (every account the person can post to: Facebook and
+Instagram they hold a right for, plus their teams' X), `team` (one of their teams, same rule) or `all` (every
+account, maintainers only), a reason the team sees, and `until` (24 hours) or open until resumed. `engine_pause`
+pauses and resumes; the person who paused, a maintainer, or anyone who can post to all of its accounts can resume.
+Active pauses come back with `engine_me` and `engine_posts`, so every desk sees one within a poll. The publisher
+holds paused accounts before any other check (`P.plan` action `paused`), so a long pause never fails a post as
+missed while it lasts; after resuming, a post more than 6 hours past its time asks for a new one. Nothing is
+deleted or changed. Desk: A, the switch at the top of the Calendar queue; B, a chip in the header on every view and
+a red line across the top while paused, with "‖ held" on held posts and in a post's Publishing box; C, the confirm
+dialog with scope, reason and resume. Not yet: "Pause and tell Slack" (needs a Slack webhook and Chris's OK to
+post), and automations pausing too (none exist yet).
+
 ### Still to build
 
 - Stories; Reels and videos;
   Instagram collab invites; Facebook collaborators added in Meta Business Suite for now.
-- Pause everything (A + B + C).
 
 ## Slice 3 onwards
 
