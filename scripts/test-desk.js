@@ -15,11 +15,12 @@ function eq(name, got, want) {
 }
 
 // A tiny PostgREST: tables of rows, eq / is.null / neq filters, upserts.
-const db = { engine_desk_sessions: [], engine_desk_invites: [], engine_people: [{ who: 'chris', fb_user_id: 'fb1' }], engine_members: [], engine_desk_docs: [] };
+const db = { engine_desk_presence: [], engine_desk_events: [], engine_desk_sessions: [], engine_desk_invites: [], engine_people: [{ who: 'chris', fb_user_id: 'fb1' }], engine_members: [], engine_desk_docs: [] };
 function filt(rows, params) {
   return rows.filter((r) => [...params].every(([k, v]) => {
     if (['select', 'order', 'limit', 'on_conflict', 'or'].includes(k)) return true;
     if (v.startsWith('eq.')) return String(r[k]) === v.slice(3);
+    if (v.startsWith('gt.')) return k === 'id' ? Number(r[k]) > Number(v.slice(3)) : String(r[k]) > v.slice(3);
     if (v.startsWith('neq.')) return String(r[k]) !== v.slice(4);
     if (v === 'is.null') return r[k] == null;
     return true;
@@ -35,7 +36,7 @@ global.fetch = async (url, opts = {}) => {
       const key = u.searchParams.get('on_conflict');
       const keys = key ? key.split(',') : null;
       const i = keys ? rows.findIndex((r) => keys.every((k) => r[k] === b[k])) : -1;
-      if (i >= 0) { if (!prefer.includes('ignore')) rows[i] = { ...rows[i], ...b }; } else rows.push({ ...b });
+      if (i >= 0) { if (!prefer.includes('ignore')) rows[i] = { ...rows[i], ...b }; } else rows.push({ ...(table === 'engine_desk_events' ? { id: rows.length + 1 } : {}), ...b });
       out.push(b);
     }
   } else if (opts.method === 'PATCH') { out = filt(rows, u.searchParams); out.forEach((r) => Object.assign(r, body)); }
@@ -80,6 +81,16 @@ const reqWith = (cookie, headers = {}) => ({ headers: { cookie, ...headers } });
   eq('shared documents: known collections only; merge keeps fields', [
     await D.docsPut('secrets', null, {}, 'chris').then(() => 'ok', (e) => e.status), db.engine_desk_docs.length, r.id, db.engine_desk_docs.find((d) => d.id === 'd1-o1').data.status,
   ], [400, 2, 'd1-o1', 'done']);
+
+  const a = await D.presenceSync({ idHash: 'h1', who: 'chris', name: 'Chris', state: { view: 'inbox', item: 'c1' } });
+  await D.presenceSync({ idHash: 'h2', who: 'tobias', name: 'Tobias', state: { view: 'inbox', item: 'c1' } });
+  await D.emitEvent({ topic: 'assigned', data: { to: 'chris', text: 'Hello' }, by: 'tobias' });
+  const b = await D.presenceSync({ idHash: 'h1', who: 'chris', name: 'Chris', state: { view: 'inbox', item: 'c1' }, after: a.last_id });
+  const c = await D.presenceSync({ idHash: 'h1', who: 'chris', name: 'Chris', state: {}, after: b.last_id });
+  eq('presence: peers marked self; the first sync skips old nudges, the next gets new ones once', [
+    a.events.length, b.peers.map((p) => [p.who, p.self, p.state.item]).sort(), b.events.map((e) => [e.topic, e.by, e.data.to]), c.events.length,
+    await D.emitEvent({ topic: 'secret', by: 'x' }).then(() => 'ok', (e) => e.status),
+  ], [0, [['chris', true, 'c1'], ['tobias', false, 'c1']], [['assigned', 'tobias', 'chris']], 0, 400]);
 
   console.log(`\n${pass} passed, ${fail} failed`);
   process.exit(fail ? 1 : 0);

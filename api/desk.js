@@ -84,6 +84,15 @@ module.exports = async (req, res) => {
         return send(res, 200, { ok: true, id: out.id });
       }
     }
+    if (op === 'presence' && req.method === 'POST') {
+      const body = (await readBody(req)) || {};
+      return send(res, 200, await D.presenceSync({ idHash: session.idHash, who, name: body.state && body.state.name, state: body.state, after: body.after }));
+    }
+    if (op === 'emit' && req.method === 'POST') {
+      const body = (await readBody(req)) || {};
+      await D.emitEvent({ topic: String(body.topic || ''), data: body.data, by: who });
+      return send(res, 200, { ok: true });
+    }
     if (op === 'upload' && req.method === 'POST') {
       const body = (await readBody(req)) || {};
       try { return send(res, 200, await D.signedUpload({ type: String(body.type || ''), size: Number(body.size) })); }
