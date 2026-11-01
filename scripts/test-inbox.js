@@ -197,6 +197,22 @@ function fakeMeta() {
     eq('pile-on: shown with the inbox; marking it seen clears it for the team', [inboxNow.alerts.length, (await call(pa, 'engine_inbox_alert', { team: 'uk', id: 1 }, 'sam')).ok, (await call(pa, 'engine_inbox', { team: 'uk' }, 'chris')).alerts.length], [1, true, 0]);
   }
 
+  // Bulk by topic.
+  {
+    const b = engine();
+    await collect.run({ store: b, privateKey: keys.privateKey, live: true, now: NOW, log: () => {}, fetchImpl: fakeMeta().fetchImpl });
+    eq('bulk: nothing picked, or no reply text, is refused', [(await call(b, 'engine_inbox_bulk', { ids: [], action: 'done' }, 'chris')).ok, (await call(b, 'engine_inbox_bulk', { ids: ['fbc_c1'], action: 'reply' }, 'chris')).ok], [false, false]);
+    const lab = await call(b, 'engine_inbox_bulk', { ids: ['fbc_c1', 'fbc_c9', 'igc_i1'], action: 'label', labels: ['petition'] }, 'sam');
+    eq('bulk: desk actions on many at once, no rights needed', [lab.done, lab.refused, ['fbc_c1', 'fbc_c9', 'igc_i1'].map((id) => b.db.inbox.find((r) => r.id === id).labels)], [3, [], [['petition'], ['petition'], ['petition']]]);
+    const rep = await call(b, 'engine_inbox_bulk', { ids: ['fbc_c1', 'fbc_c9', 'igc_i1', 'fbm_mm1'], action: 'reply', texts: ['Thank you 🙏', 'Thanks for standing with us'] }, 'chris');
+    const q = b.db.actions.filter((a) => a.action === 'reply');
+    eq('bulk replies: wording rotates, a DM is left to answer by hand, 30 seconds to undo', [rep.done, rep.refused.map((r) => r.id), q.map((a) => a.text), Date.parse(q[0].run_after) - Date.parse(q[0].created_at) >= 29000], [3, ['fbm_mm1'], ['Thank you 🙏', 'Thanks for standing with us', 'Thank you 🙏'], true]);
+    eq('bulk likes: Instagram refused by the rule, Facebook queued', (await call(b, 'engine_inbox_bulk', { ids: ['fbc_c1', 'igc_i1'], action: 'like' }, 'chris')).refused.map((r) => r.id), ['igc_i1']);
+    eq('bulk: sam has no rights, so every Meta action is refused, none queued', [(await call(b, 'engine_inbox_bulk', { ids: ['fbc_c1', 'fbc_c9'], action: 'hide' }, 'sam')).refused.length, b.db.actions.filter((a) => a.action === 'hide').length], [2, 0]);
+    const u = await call(b, 'engine_inbox_undo', { action_ids: rep.action_ids }, 'chris');
+    eq('bulk undo: the whole batch is cancelled at once', [u.undone, b.db.actions.filter((a) => a.action === 'reply').every((a) => a.status === 'cancelled')], [3, true]);
+  }
+
   console.log(`\n${passed} passed, ${failed} failed`);
   process.exit(failed ? 1 : 0);
 })().catch((e) => { console.error(e); process.exit(1); });
