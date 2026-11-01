@@ -47,6 +47,11 @@ function memoryStore() {
       return clone(p);
     },
     async engineEvent(row) { db.events.push(row); },
+    async engineRequests({ team_ids, statuses }) {
+      return clone((db.requests || []).filter((r) => team_ids.includes(r.team_id) && (!statuses || statuses.includes(r.status))));
+    },
+    async engineInsertRequest(row) { db.requests = db.requests || []; const r = { id: db.requests.length + 1, status: 'open', ...row }; db.requests.push(r); return clone(r); },
+    async engineUpdateRequest(id, fields) { const r = (db.requests || []).find((x) => x.id === id && x.status === 'open'); if (!r) return null; Object.assign(r, fields); return clone(r); },
     async engineKeyDates({ team_ids, from, to }) {
       return clone(db.keyDates.filter((k) => (k.team_id === null || team_ids.includes(k.team_id)) && k.starts < to && (k.ends || k.starts) >= from));
     },
@@ -130,6 +135,17 @@ const callErr = async (store, name, args, who) => { try { await tool(name)(store
 
   eq('posted: only once scheduled or on hold, and needs no publishing right', [E.transition({ from: 'review', action: 'posted' }).ok, E.transition({ from: 'scheduled', action: 'posted', doc: { posting: { destinations: ['sc-fb'] } }, rights: [] }).status], [false, 'posted']);
   eq('reopen: a scheduled post can go back to review', E.transition({ from: 'scheduled', action: 'reopen' }).status, 'review');
+
+  // Plan: requests to draft a post for a date.
+  eq('request: past dates and blank titles refused', [E.checkRequest({ for_date: '2026-10-01', title: 'x' }, new Date('2026-11-01')).ok, E.checkRequest({ for_date: '2026-11-08', title: ' ' }, new Date('2026-11-01')).ok], [false, false]);
+  const rq = await call(store, 'engine_request', { action: 'create', team: 'uk', for_date: '2099-11-08', title: 'Remembrance Sunday', angle: 'Respectful poppy post', source: 'key_date' }, 'chris');
+  eq('chris asks for a Remembrance Sunday draft', [rq.ok, rq.request.status, rq.request.requested_by, rq.request.source], [true, 'open', 'chris', 'key_date']);
+  eq('greg cannot plan for the UK', await callErr(store, 'engine_request', { action: 'create', team: 'uk', for_date: '2099-11-08', title: 'x' }, 'greg'), 'ENGINE_NOT_MEMBER');
+  eq('greg cannot see or cancel UK requests', [await callErr(store, 'engine_requests', { team: 'uk' }, 'greg'), (await call(store, 'engine_request', { action: 'cancel', id: rq.request.id }, 'greg')).ok], ['ENGINE_NOT_MEMBER', false]);
+  const dr = await call(store, 'engine_request', { action: 'drafted', id: rq.request.id, post_id: 'uk-1' }, 'chris');
+  eq('the daily engine marks it drafted with the new post', [dr.ok, dr.request.status, dr.request.post_id], [true, 'drafted', 'uk-1']);
+  eq('a drafted request cannot be cancelled', (await call(store, 'engine_request', { action: 'cancel', id: rq.request.id }, 'chris')).ok, false);
+  eq('the plan lists open and drafted requests', (await call(store, 'engine_requests', { team: 'uk' }, 'chris')).requests.map((r) => r.status), ['drafted']);
 
   // Copy an idea across teams.
   const cp = await call(store, 'engine_copy', { id: 'de-1', to_team: 'at' }, 'tamara@citizengo.net');
