@@ -14,7 +14,7 @@ const tools = require('../mcp/tools');
 const xtools = require('../mcp/x-tools');
 const { ENGINE_TOOLS } = require('../mcp/engine-tools');
 const peer = require('../mcp/peer-tools');
-const { convergence, storyKeys } = require('../mcp/engine-tools');
+const { convergence, convergenceBuilding, topicsOf, langOf, storyKeys } = require('../mcp/engine-tools');
 
 const pages = [{ page_id: '105', name: 'Citizen GO UK' }, { page_id: '120', name: 'Citizen GO Scotland' }, { page_id: '434', name: 'CitizenGO' }, { page_id: '154', name: 'HazteOir.org' }];
 const stub = (list, name, fn) => { list.find((t) => t.name === name).handler = fn; };
@@ -108,7 +108,11 @@ const callErr = async (args, who) => { try { await call(args, who); return null;
       { who: 'A', handle: 'a', text: '#ProLife weekend', created_time: h(3) }, { who: 'B', handle: 'b', text: '#ProLife', created_time: h(4) },
     ];
     eq('convergence: 3+ accounts on the same story within 48 hours; older posts and a 2-account story do not count', convergence(rows).map((c) => [c.key, c.kind, c.accounts]), [['Prince Alois', 'story', 3], ['#prolife', 'hashtag', 3]]);
+    const more = rows.concat([{ who: 'SPUC', handle: 'spuc', text: 'Assisted Suicide Bill vote', created_time: h(6) }, { who: 'SPUC', handle: 'spuc', text: 'Assisted Suicide Bill: write to your MP', created_time: h(2) }]);
+    eq('building: one account twice or two accounts, under the alert line; converged stories left out', convergenceBuilding(more, convergence(more)).map((b) => [b.key, b.accounts, b.needs]), [['Assisted Suicide', 1, 2]]);
+    eq('topics: keys used by 2+ of the posts shown', topicsOf(rows.map((r) => ({ ...r, x: 3 }))).map((t) => [t.key, t.posts, t.accounts]).slice(0, 2), [['Prince Alois', 5, 4], ['#prolife', 3, 3]]);
   }
+  eq('language from common words', [langOf('Stop the UN from turning your beliefs into a crime and we are with you'), langOf('Firma la petición para que el gobierno no apruebe la ley'), langOf('Nie dla aborcji, to jest życie i nie'), langOf('Amen 🙏')], ['en', 'es', 'pl', null]);
 
   // Listening.
   {

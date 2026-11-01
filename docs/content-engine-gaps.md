@@ -75,11 +75,11 @@ as far as that allows.
 - [x] Per-country calendar switcher; lock banner on other countries; "Copy as an idea to <my team>". Done 1 Nov: "Copy as an idea" adds a Plan request (engine_request) rather than a draft copy.
 
 ## 8. Listening
-- [ ] Topics tab; mentions count.
-- [ ] Rework team picker for people in several teams; Share.
-- [ ] Convergence "building" (one account twice) before the alert.
-- [ ] Language tag and filter; HazteOir filter off by default; "Already reworked by"; landed drafts marked
-      "From <Page>" with the original's numbers.
+- [x] Topics tab; mentions count. Done 1 Nov: Topics merges allies, opponents and CitizenGO (engine topics per tab); mentions count is the sidebar badge.
+- [x] Rework team picker for people in several teams; Share. Done 1 Nov: "Rework for" picker when in several teams; Share saves to the artifact db (listenShares) and copies the link.
+- [x] Convergence "building" (one account twice) before the alert. Done 1 Nov: engine building[] (one account twice, or two accounts).
+- [x] Language tag and filter; HazteOir filter off by default; "Already reworked by"; landed drafts marked
+      "From <Page>" with the original's numbers. Done 1 Nov: lang from common words (no paid AI); HazteOir Pages included but hidden by default; reworked[] from Plan requests; drafts show "From <Page>" with the original's numbers.
 - [ ] (needs Chris) Sentiment without paid AI; digest by Slack or email; opponent-watch data-protection sign-off.
 
 ## 9. Analytics
