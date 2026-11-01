@@ -14,6 +14,7 @@ const tools = require('../mcp/tools');
 const xtools = require('../mcp/x-tools');
 const { ENGINE_TOOLS } = require('../mcp/engine-tools');
 const peer = require('../mcp/peer-tools');
+const { convergence, storyKeys } = require('../mcp/engine-tools');
 
 const pages = [{ page_id: '105', name: 'Citizen GO UK' }, { page_id: '120', name: 'Citizen GO Scotland' }, { page_id: '434', name: 'CitizenGO' }, { page_id: '154', name: 'HazteOir.org' }];
 const stub = (list, name, fn) => { list.find((t) => t.name === name).handler = fn; };
@@ -77,6 +78,21 @@ const callErr = async (args, who) => { try { await call(args, who); return null;
   const ib = (await call({ scope: 'team', team: 'uk' })).inbox;
   eq('team Analytics carries the Inbox figures: received, answered, how fast, hidden, auto-hidden, deleted', [ib.comments, ib.messages, ib.answered, ib.answered_pct, ib.median_reply_minutes, ib.replies, ib.hidden, ib.auto_hidden, ib.deleted, ib.on_ads], [3, 1, 2, 50, 40, 2, 1, 1, 1, 1]);
   eq('the CitizenGO-wide view has no Inbox figures', (await call({})).inbox, null);
+
+  // Convergence.
+  eq('story keys: hashtags, whole links and two-word names; no stop-word pairs', storyKeys('Prince Alois of Liechtenstein vetoes it. #ProLife Read righttolife.org.uk/news/alois?x=1 This Friday'), ['#prolife', 'link:righttolife.org.uk/news/alois', 'Prince Alois']);
+  {
+    const h = (n) => new Date(Date.now() - n * 3600e3).toISOString();
+    const rows = [
+      { who: 'Right To Life UK', handle: 'rtl', text: 'Prince Alois vetoes the abortion Bill', created_time: h(30) },
+      { who: 'Right To Life UK', handle: 'rtl', text: 'Thank you Prince Alois', created_time: h(10) },
+      { who: 'SPUC', handle: 'spuc', text: 'Liechtenstein: Prince Alois stands firm', created_time: h(20) },
+      { who: 'CARE', handle: 'care', text: 'Prince Alois and the right to life #ProLife', created_time: h(5) },
+      { who: 'Live Action', handle: 'la', text: 'Prince Alois said no', created_time: h(60) },
+      { who: 'A', handle: 'a', text: '#ProLife weekend', created_time: h(3) }, { who: 'B', handle: 'b', text: '#ProLife', created_time: h(4) },
+    ];
+    eq('convergence: 3+ accounts on the same story within 48 hours; older posts and a 2-account story do not count', convergence(rows).map((c) => [c.key, c.kind, c.accounts]), [['Prince Alois', 'story', 3], ['#prolife', 'hashtag', 3]]);
+  }
 
   // Listening.
   {
