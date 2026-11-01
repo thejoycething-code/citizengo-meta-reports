@@ -40,8 +40,8 @@ function engine() {
     async engineConnectedTokens() { return clone(db.tokens); },
     async enginePageToken({ who, account_key }) { return clone(db.tokens.find((t) => t.who === who && t.account_key === account_key) || null); },
     async enginePauses() { return []; },
-    async engineInbox({ team_ids, statuses, thread_id, platform, kind }) {
-      const rows = db.inbox.filter((r) => (!team_ids || team_ids.includes(r.team_id)) && (!statuses || statuses.includes(r.status)) && (!thread_id || r.thread_id === thread_id) && (!platform || r.platform === platform) && (!kind || r.kind === kind) && !r.deleted_at);
+    async engineInbox({ team_ids, statuses, thread_id, platform, kind, author_id, since }) {
+      const rows = db.inbox.filter((r) => (!team_ids || team_ids.includes(r.team_id)) && (!statuses || statuses.includes(r.status)) && (!thread_id || r.thread_id === thread_id) && (!platform || r.platform === platform) && (!kind || r.kind === kind) && (!author_id || r.author_id === author_id) && (!since || r.created_at >= since) && !r.deleted_at);
       return clone(rows.sort((a, b) => (thread_id ? a.created_at.localeCompare(b.created_at) : b.created_at.localeCompare(a.created_at))));
     },
     async engineInboxItem(id) { return clone(db.inbox.find((r) => r.id === id) || null); },
@@ -141,6 +141,16 @@ function fakeMeta() {
     ['done', true, ['assign:done', 'done:done', 'hide:cancelled', 'label:done', 'reply:done', 'reply:done'].sort()]);
   const w2 = await worker.run({ store: s, privateKey: keys.privateKey, live: true, now: later + 60_000, log: () => {}, fetchImpl: fm.fetchImpl });
   eq('worker: never twice', [w2.sent, fm.calls.length], [0, 2]);
+
+  // Supporter history and By post (the fake Meta's dates are relative to 3 Nov; shift them to now).
+  const shift = Date.now() - NOW;
+  for (const r of s.db.inbox) r.created_at = new Date(Date.parse(r.created_at) + shift).toISOString();
+  const person = await call(s, 'engine_inbox_person', { team: 'uk', author_id: 'u1' }, 'sam');
+  eq('supporter history: Margaret\'s comments, counts and labels', [person.author_name, person.counts, person.recent.map((r) => r.id)], ['Margaret T.', { comments: 1, messages: 0, hidden: 0, on_ads: 0 }, ['fbc_c1']]);
+  const bp = await call(s, 'engine_inbox_posts', { team: 'uk' }, 'sam');
+  eq('by post: comments grouped by post or ad, ours counted apart, ads can be picked out', [bp.posts.map((p) => [p.thread_id, p.comments, p.open, p.ours, p.is_ad]), (await call(s, 'engine_inbox_posts', { team: 'uk', ads: true }, 'sam')).posts.map((p) => p.thread_id)],
+    [[['105_9', 1, 1, 0, true], ['105_1', 1, 0, 1, false], ['m1', 1, 0, 1, false]], ['105_9']]);
+  eq('by post: another team cannot look', await callErr(s, 'engine_inbox_posts', { team: 'uk' }, 'tamara'), 'ENGINE_NOT_MEMBER');
 
   console.log(`\n${passed} passed, ${failed} failed`);
   process.exit(failed ? 1 : 0);
