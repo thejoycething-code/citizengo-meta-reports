@@ -26,6 +26,7 @@ function memoryStore() {
     members: [{ team_id: 'de', who: 'greg', role: 'editor' }, { team_id: 'at', who: 'tamara@citizengo.net', role: 'editor' }, { team_id: 'uk', who: 'chris', role: 'admin' }],
     rights: [{ who: 'greg', account_key: 'de-fb' }, { who: 'tamara@citizengo.net', account_key: 'at-fb' }, { who: 'chris', account_key: 'uk-fb' }],
     posts: [], events: [],
+    keyDates: [{ team_id: null, starts: '2026-11-20', title: "Universal Children's Day" }, { team_id: 'de', starts: '2026-11-22', title: 'Totensonntag' }, { team_id: 'at', starts: '2026-11-15', title: 'Leopolditag' }],
   };
   const clone = (x) => JSON.parse(JSON.stringify(x));
   return {
@@ -46,6 +47,9 @@ function memoryStore() {
       return clone(p);
     },
     async engineEvent(row) { db.events.push(row); },
+    async engineKeyDates({ team_ids, from, to }) {
+      return clone(db.keyDates.filter((k) => (k.team_id === null || team_ids.includes(k.team_id)) && k.starts < to && (k.ends || k.starts) >= from));
+    },
   };
 }
 const tool = (name) => ENGINE_TOOLS.find((t) => t.name === name).handler;
@@ -66,6 +70,14 @@ const callErr = async (store, name, args, who) => { try { await tool(name)(store
     eq('import: ids with no team are skipped', !!toRow('de-1', {}).skip, true);
     const sql = upsertSql([r]);
     eq('import SQL: quotes escaped, only untouched posts refreshed', [sql.includes("'Scotland''s vote'"), /where engine_posts\.updated_by = 'import'/.test(sql)], [true, true]);
+  }
+  {
+    const K = require('./engine-key-dates');
+    eq('key dates: single day, week, and a span across years', [K.parseWhen('**Sun 8 Nov 2026**'), K.parseWhen('15–22 Nov 2026'), K.parseWhen('18 Dec 2026 – 4 Jan 2027')],
+      [{ starts: '2026-11-08', ends: null }, { starts: '2026-11-15', ends: '2026-11-22' }, { starts: '2026-12-18', ends: '2027-01-04' }]);
+    eq('key dates: no firm date, no row', [K.parseWhen('Mid-Jan 2027'), K.parseWhen('Oct 2026 (month)')], [null, null]);
+    const md = '| Date | Occasion | a | b | c |\n| Fri 27 Nov 2026 | Hospice Funding Bill, Second Reading | x | y | verified |\n| Sat 11 Sep 2027 | 1 year since the Commons defeated the bill | x | y | verified |\n| **Sun 7 Mar 2027** | **Mothering Sunday** | Motherhood | Thank you | verified |';
+    eq('key dates: sittings left out, anniversaries kept, Mothering Sunday is the team\'s Mother\'s Day', K.teamDates(md, 'uk').map((r) => [r.starts, r.kind]), [['2027-09-11', 'key'], ['2027-03-07', 'mothers_day']]);
   }
   eq('merge: objects merge, arrays replace, null removes', E.mergeDoc({ a: { x: 1, y: 2 }, l: [1, 2], k: 1 }, { a: { y: 3 }, l: [9], k: null }), { a: { x: 1, y: 3 }, l: [9] });
   eq('post times: per-account time wins, earliest first', E.postAt({ posting: { destinations: ['uk-fb', 'uk-x'], at: '2026-11-03T14:00:00Z', times: { 'uk-x': '2026-11-03T10:00:00Z' } } }), '2026-11-03T10:00:00.000Z');
@@ -92,6 +104,7 @@ const callErr = async (store, name, args, who) => { try { await tool(name)(store
 
   let cal = await call(store, 'engine_calendar', { from: '2026-11-01', to: '2026-11-30' }, 'tamara@citizengo.net');
   eq('calendar: German draft hidden from tamara, her own shows', cal.items.map((i) => i.id), ['at-1']);
+  eq('calendar key dates: CitizenGO-wide plus her own team, not Germany\'s', cal.key_dates.map((k) => k.title).sort(), ['Leopolditag', "Universal Children's Day"]);
 
   // Approving: rights and versions.
   let st = await call(store, 'engine_status', { id: 'de-1', version: 1, action: 'approve' }, 'greg');

@@ -48,6 +48,11 @@ Decisions from Christopher Joyce are in brackets with the date._
    action; a scheduled post can be reopened). Approve schedules; the menu adds "Approve and hold". At cutover the
    desk is published onto the board's own artifact URL, because card photos are `/_blob/<id>` assets of that
    artifact and would not load anywhere else.
+   Calendar view added 1 Nov (Calendar B): week or month, your team's posts (drafts hatched at their suggested
+   time, 🕒 scheduled, ✓ posted), other teams' scheduled and posted items read-only behind "Other teams", key
+   dates dashed; the queue alongside lists On hold posts and key dates in the next four weeks with nothing drafted.
+   Key dates live in `engine_key_dates` (CitizenGO-wide rows have no team; each team has its own, including its
+   Mother's Day; no parliament days), seeded by `scripts/engine-key-dates.js` from content-engine/evergreen-calendar.md.
 5. ⬜ Until Meta publishing works, "Approve" still hands UK posts to Asana as today.
 
 ## Slice 2: Meta publishing
