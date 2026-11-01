@@ -530,6 +530,9 @@ async function engineInboxHistory(store, args, { who }) {
 // apart, never mixed into CitizenGO totals) or team (one of your teams).
 const IS_CGO = /citizen\s?go/i;
 const median = (xs) => { const v = xs.filter((x) => typeof x === 'number').sort((a, b) => a - b); return v.length ? (v.length % 2 ? v[(v.length - 1) / 2] : (v[v.length / 2 - 1] + v[v.length / 2]) / 2) : null; };
+// One post shared to a second Page (UK to Scotland) comes back once per Page
+// with the same link: keep its first, original appearance.
+const oncePerLink = (rows) => { const seen = new Set(); return rows.filter((r) => { const k = r.permalink_url || r.url; if (!k) return true; if (seen.has(k)) return false; seen.add(k); return true; }); };
 const sumOf = (xs) => { const v = xs.filter((x) => typeof x === 'number'); return v.length ? v.reduce((a, b) => a + b, 0) : null; };
 async function engineAnalytics(store, args, { who }) {
   const ctx = await context(store, who);
@@ -563,7 +566,7 @@ async function engineAnalytics(store, args, { who }) {
   const rows = ((tp && tp.rows) || []).filter((r) => pageIds.has(r.page_id));
   const med = {};
   for (const id of pageIds) med[id] = median(rows.filter((r) => r.page_id === id).map((r) => r.views_total));
-  const top = rows.filter((r) => typeof r.views_total === 'number').sort((a, b) => b.views_total - a.views_total).slice(0, 10).map((r) => ({
+  const top = oncePerLink(rows.filter((r) => typeof r.views_total === 'number').sort((a, b) => b.views_total - a.views_total || String(a.created_time).localeCompare(String(b.created_time)))).slice(0, 10).map((r) => ({
     page: r.page_name, text: String(r.message || '').slice(0, 140), url: r.permalink_url, created_time: r.created_time,
     views: r.views_total, x_median: med[r.page_id] ? Math.round((r.views_total / med[r.page_id]) * 10) / 10 : null,
     beyond_pct: r.beyond_followers_pct, engagement_rate: r.engagement_rate, shares: r.shares_total,
@@ -644,10 +647,10 @@ async function engineListening(store, args, { who }) {
     for (const r of cgo) (med[r.page_id] = med[r.page_id] || []).push(r.views_total);
     for (const k of Object.keys(med)) med[k] = median(med[k]);
     const since = Date.now() - days * 864e5;
-    const posts = cgo.filter((r) => !own.has(r.page_id) && Date.parse(r.created_time) >= since && med[r.page_id] && r.views_total >= minX * med[r.page_id])
+    const posts = oncePerLink(cgo.filter((r) => !own.has(r.page_id) && Date.parse(r.created_time) >= since && med[r.page_id] && r.views_total >= minX * med[r.page_id])
       .map((r) => ({ who: r.page_name, page_id: r.page_id, text: String(r.message || '').slice(0, 300), url: r.permalink_url, created_time: r.created_time, format: r.media_type || r.status_type || null,
         views: r.views_total, x: Math.round((r.views_total / med[r.page_id]) * 10) / 10, beyond_pct: r.beyond_followers_pct }))
-      .sort((a, b) => b.x - a.x).slice(0, 40);
+      .sort((a, b) => b.x - a.x)).slice(0, 40);
     return json({ tab, days, min_multiple: minX, posts });
   }
   const { PEER_TOOLS } = require('./peer-tools');
