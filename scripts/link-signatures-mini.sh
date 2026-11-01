@@ -28,3 +28,5 @@ claude -p "Use the CitizenGO Looker connector, read-only. Call its query tool ex
   --allowedTools "mcp__claude_ai_CitizenGO_Looker__query" --output-format stream-json --verbose > stream.jsonl 2>> err.txt
 node "$REPO/scripts/load-link-signatures.js" stream.jsonl >> run.log 2>&1
 echo "$(date -u +%FT%TZ) exit $?" >> run.log
+# Then the desk's Analytics and Listening views, from the data now in Supabase.
+cd "$REPO" && node scripts/engine-warm-cache.js >> "$WORK/run.log" 2>&1

@@ -159,5 +159,6 @@
   window.claude = { use: async (name) => (name in caps ? caps[name] : null) };
   window.DESK_WEB = true;
   window.deskInvite = invite;
+  window.deskFile = (name) => api('file', { query: `&name=${encodeURIComponent(name)}` });
   window.deskSignOut = async () => { try { await api('logout', { method: 'POST' }); } catch (e) {} location.href = '/desk/login'; };
 })();

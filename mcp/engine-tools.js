@@ -594,10 +594,12 @@ async function engineDeskDocs(store, args, { who }) {
   return json({ ok: false, error: 'action is list or put.' });
 }
 
-// Analytics and Listening read 90 days of posts, so their answers are kept for
-// CACHE_MS (the collectors refresh hourly at most). Access is checked on every
-// call before anything is served; fresh: true recalculates now.
-const CACHE_MS = 10 * 60e3;
+// Analytics and Listening read 90 days of posts, so their answers are kept:
+// the Mini works out the desk's views every night from the collected data
+// (scripts/engine-warm-cache.js) and they last until the next night's run.
+// Access is checked on every call before anything is served; fresh: true
+// (the desk's Refresh) recalculates now.
+const CACHE_MS = 26 * 3600e3;
 async function cached(store, key, args, compute) {
   if (!args.fresh && store.engineCacheGet) {
     const hit = await store.engineCacheGet(key).catch(() => null);
@@ -797,6 +799,7 @@ async function analyticsCompute(store, args, { who }) {
   // biggest Pages (a team: all of its own), against the median CitizenGO Page.
   const trend = await weeklyTrend(store, { pagesAll, inScope, scope });
   const inbox = team ? await inboxFigures(store, team.id, days) : null;
+  const signatures = team && store.engineSignatures ? await signaturesFor(store, team.id, days).catch(() => null) : null;
   const facebook = team ? facebookDetail(rows, med) : null;
   const instagramAll = team ? igRows.slice(0, 60).map((r) => ({
     account: r.ig_username, text: String(r.caption || '').slice(0, 140), url: r.permalink, created_time: r.timestamp, type: r.media_product_type || r.media_type,
@@ -804,7 +807,7 @@ async function analyticsCompute(store, args, { who }) {
   })) : null;
 
   return json({
-    scope, team: team ? team.id : null, days, to: new Date().toISOString().slice(0, 10), trend, inbox, facebook, instagram_all: instagramAll,
+    scope, team: team ? team.id : null, days, to: new Date().toISOString().slice(0, 10), trend, inbox, facebook, instagram_all: instagramAll, signatures,
     counts: { facebook_pages: pageIds.size, instagram: ig.length, x: x.length },
     kpis: {
       reach: sumOf(fb.map((r) => r.reach)), views: sumOf(fb.map((r) => r.views)), engagements: sumOf(fb.map((r) => r.engagements)),
@@ -924,6 +927,39 @@ function facebookDetail(rows, med) {
     views: sumOf(scored.map((r) => r.views_total)), post_engagements: sumOf(scored.map((r) => r.engagement_total)),
     median_engagements: median(scored.map((r) => r.engagement_total)), median_rate: median(scored.map((r) => r.engagement_rate)),
     best: { page: best.page_name, text: String(best.message || '').slice(0, 200), url: best.permalink_url, created_time: best.created_time, views: best.views_total, beyond_pct: best.beyond_followers_pct, shares: best.shares_total, x_median: med[best.page_id] ? Math.round((best.views_total / med[best.page_id]) * 10) / 10 : null },
+  };
+}
+
+// Signatures from social for a team's Analytics: the Looker pull (nightly on
+// the Mini) joined to each post's tracked links by campaign code, for posts
+// that went out in the window, plus the reply and DM links (by marker).
+// Signatures count from the code's whole life, not only the window.
+async function signaturesFor(store, teamId, days, now = Date.now()) {
+  const since = new Date(now - days * 864e5).toISOString();
+  const posts = (await store.enginePosts({ team_ids: [teamId], statuses: ['posted', 'scheduled'], limit: 500 }))
+    .filter((p) => (p.doc && p.doc.posted && p.doc.posted.at ? p.doc.posted.at : p.post_at || '') >= since);
+  const codeOf = {};
+  for (const p of posts) for (const [plat, l] of Object.entries((p.doc && p.doc.links) || {})) if (l && l.campaign) codeOf[String(l.campaign).toLowerCase()] = { post: p, plat };
+  const rows = await store.engineSignatures({ codes: Object.keys(codeOf), markers: true });
+  const per = {};
+  const marks = { DM: 0, RE: 0, ADM: 0, ARE: 0 };
+  let pulled = null;
+  for (const r of rows) {
+    pulled = !pulled || r.pulled_at > pulled ? r.pulled_at : pulled;
+    const hit = codeOf[r.campaign_code];
+    if (hit) {
+      const k = hit.post.id;
+      const e = per[k] = per[k] || { id: k, title: hit.post.title, posted_at: (hit.post.doc.posted && hit.post.doc.posted.at) || hit.post.post_at, signatures: 0, new_members: 0, by_platform: {} };
+      e.signatures += Number(r.signatures) || 0; e.new_members += Number(r.new_members) || 0;
+      e.by_platform[hit.plat] = (e.by_platform[hit.plat] || 0) + (Number(r.signatures) || 0);
+    }
+    const m = String(r.campaign_code).match(/^[^-]+-[^-]+-(dm|re|adm|are)_/);
+    if (m) marks[m[1].toUpperCase()] += Number(r.signatures) || 0;
+  }
+  const list = Object.values(per).sort((a, b) => b.signatures - a.signatures);
+  return {
+    total: list.reduce((n, p) => n + p.signatures, 0), new_members: list.reduce((n, p) => n + p.new_members, 0),
+    posts_with_links: new Set(Object.values(codeOf).map((x) => x.post.id)).size, posts: list.slice(0, 30), replies_and_dms: marks, pulled_at: pulled,
   };
 }
 
