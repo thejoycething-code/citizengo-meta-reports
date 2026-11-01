@@ -87,3 +87,21 @@ comment on table public.engine_members is 'Content Engine team membership (who =
 comment on table public.engine_publish_rights is 'Accounts a person can publish to, from their own Meta connection. Approving needs a row here.';
 comment on table public.engine_posts is 'Content Engine posts (the desk). doc = the post as the desk knows it; version guards concurrent saves.';
 comment on table public.engine_events is 'Content Engine activity log: every create, save and status change, by whom.';
+
+-- Key dates on the calendar [1 Nov]: CitizenGO-wide days (team_id null) first,
+-- then each team's own, including its own Mother's Day. No parliament days.
+create table if not exists public.engine_key_dates (
+  id bigint generated always as identity primary key,
+  team_id text references public.engine_teams(id) on delete cascade, -- null = CitizenGO-wide
+  starts date not null,
+  ends date,                                 -- for weeks and seasons
+  title text not null,
+  kind text not null default 'key' check (kind in ('key', 'mothers_day')),
+  confidence text,                           -- verified, calendar, pattern, unverified
+  angle text,                                -- the post idea, for "draft it"
+  source text
+);
+create unique index if not exists engine_key_dates_unique on public.engine_key_dates (coalesce(team_id, ''), starts, title);
+create index if not exists engine_key_dates_starts on public.engine_key_dates (starts);
+alter table public.engine_key_dates enable row level security;
+comment on table public.engine_key_dates is 'Content Engine key dates for the calendar: CitizenGO-wide (team_id null) and per team. No parliament days.';
