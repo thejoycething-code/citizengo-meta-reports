@@ -1,40 +1,40 @@
 # Pipeline status
 
-_Checked 2026-10-15 12:22 UTC. Written automatically; do not edit._
+_Checked 2026-11-01 13:57 UTC. Written automatically; do not edit._
 
 - Pages collected: **36**
-- Posts: **4124**
-- Metric rows: **31518**
-- Most recent collection: **2026-10-15** (0 days ago)
+- Posts: **4600**
+- Metric rows: **38238**
+- Most recent collection: **2026-11-01** (0 days ago)
 - Baseline: median **1,620 views**, 17 shares
 
 | Page | Posts | With metrics | Total views |
 | --- | --- | --- | --- |
-| HazteOir.org | 1,057 | 1,057 | 80,616,772 |
-| CitizenGO | 233 | 230 | 9,951,615 |
-| CitizenGO Latam | 107 | 104 | 7,926,107 |
-| CitizenGO Magyarország | 350 | 349 | 6,797,590 |
-| Citizen GO UK | 180 | 173 | 3,401,138 |
-| CitizenGO Argentina | 81 | 81 | 3,128,962 |
-| CitizenGO Italia | 338 | 336 | 3,005,886 |
-| CitizenGO Canada | 117 | 110 | 1,577,578 |
-| Derecho a Vivir | 41 | 41 | 1,566,282 |
-| CitizenGO Hrvatska | 86 | 86 | 1,236,335 |
-| CitizenGO Slovensko | 125 | 124 | 877,329 |
-| Citizen GO Australia | 185 | 183 | 768,938 |
-| CitizenGO France | 149 | 146 | 768,151 |
-| CitizenGO USA | 219 | 208 | 656,157 |
-| Citizen GO Schweiz | 25 | 25 | 293,091 |
-| Citizen GO Ireland | 177 | 176 | 253,967 |
-| Citizengo Brasil | 256 | 256 | 121,193 |
-| CitizenGO Nederlands | 47 | 47 | 42,184 |
+| HazteOir.org | 1,200 | 1,200 | 87,389,474 |
+| CitizenGO | 260 | 257 | 10,439,654 |
+| CitizenGO Latam | 123 | 120 | 7,956,119 |
+| CitizenGO Magyarország | 389 | 388 | 7,813,571 |
+| Citizen GO UK | 196 | 189 | 3,887,686 |
+| CitizenGO Italia | 380 | 378 | 3,341,061 |
+| CitizenGO Argentina | 91 | 91 | 3,145,817 |
+| Derecho a Vivir | 50 | 50 | 1,703,876 |
+| CitizenGO Canada | 122 | 115 | 1,578,527 |
+| CitizenGO Hrvatska | 87 | 87 | 1,239,392 |
+| CitizenGO Slovensko | 136 | 135 | 925,985 |
+| Citizen GO Australia | 201 | 199 | 774,490 |
+| CitizenGO France | 166 | 163 | 774,140 |
+| CitizenGO USA | 256 | 245 | 746,118 |
+| Citizen GO Ireland | 195 | 194 | 345,973 |
+| Citizen GO Schweiz | 29 | 29 | 293,940 |
+| Citizengo Brasil | 277 | 277 | 126,048 |
+| CitizenGO Nederlands | 58 | 58 | 80,067 |
+| CitizenGO Deutsch | 35 | 35 | 53,738 |
 | CitizenGO Africa | 49 | 48 | 35,954 |
-| CitizenGO Deutsch | 31 | 31 | 25,853 |
-| Citizen GO Scotland | 53 | 18 | 21,521 |
-| Citizengo México | 103 | 102 | 12,885 |
-| Citizen GO Québec | 49 | 49 | 4,351 |
-| Citizen GO België | 55 | 55 | 4,259 |
-| CitizenGO Österreich | 11 | 11 | 2,294 |
+| Citizen GO Scotland | 63 | 20 | 23,201 |
+| Citizengo México | 115 | 114 | 14,332 |
+| Citizen GO België | 58 | 58 | 4,597 |
+| Citizen GO Québec | 49 | 49 | 4,379 |
+| CitizenGO Österreich | 15 | 15 | 2,558 |
 | España unida siempre | 0 | 0 | — |
 | Yo educo a mis hijos | 0 | 0 | — |
 | Orgulloso de ser Cristiano | 0 | 0 | — |
