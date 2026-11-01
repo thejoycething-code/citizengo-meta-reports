@@ -42,8 +42,12 @@ Decisions from Christopher Joyce are in brackets with the date._
    `drafts` collection (ArtifactData list with out_dir), with the service key in the shell:
    `node scripts/engine-import-board.js <dump>/drafts --apply`. Board "archived" (purged rejects) become
    rejected. Re-running only refreshes posts nobody has edited in the engine yet.
-4. ⬜ Rewire the desk artifact to the engine tools (artifact `mcp` capability) and add Plan › Calendar and queue.
-   Keep every existing Claude tool.
+4. ◐ Rewire the desk artifact to the engine tools (artifact `mcp` capability) and add Plan › Calendar and queue.
+   Keep every existing Claude tool. Started 1 Nov as content-engine/desk.html (a fork of the board): posts come
+   from `engine_posts`, saves go through `engine_save`, status changes through `engine_status` (new `posted`
+   action; a scheduled post can be reopened). Approve schedules; the menu adds "Approve and hold". At cutover the
+   desk is published onto the board's own artifact URL, because card photos are `/_blob/<id>` assets of that
+   artifact and would not load anywhere else.
 5. ⬜ Until Meta publishing works, "Approve" still hands UK posts to Asana as today.
 
 ## Slice 2: Meta publishing

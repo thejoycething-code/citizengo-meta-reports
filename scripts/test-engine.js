@@ -115,6 +115,9 @@ const callErr = async (store, name, args, who) => { try { await tool(name)(store
   st = await call(store, 'engine_status', { id: 'uk-1', version: 1, action: 'hold' }, 'chris');
   eq('hold works from review', [st.ok, st.post.status], [true, 'hold']);
 
+  eq('posted: only once scheduled or on hold, and needs no publishing right', [E.transition({ from: 'review', action: 'posted' }).ok, E.transition({ from: 'scheduled', action: 'posted', doc: { posting: { destinations: ['sc-fb'] } }, rights: [] }).status], [false, 'posted']);
+  eq('reopen: a scheduled post can go back to review', E.transition({ from: 'scheduled', action: 'reopen' }).status, 'review');
+
   // Copy an idea across teams.
   const cp = await call(store, 'engine_copy', { id: 'de-1', to_team: 'at' }, 'tamara@citizengo.net');
   eq('tamara copies the scheduled German post into Austria, without its posting plan', [cp.ok, cp.post.team_id, cp.post.status, cp.post.source_team, !!cp.post.doc.posting], [true, 'at', 'review', 'de', false]);
