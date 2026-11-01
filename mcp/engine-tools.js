@@ -118,7 +118,7 @@ async function engineSave(store, args, { who }) {
     return json({ ok: false, conflict: true, error: 'Someone saved this post meanwhile. Reload it and redo your change.', post });
   }
   const doc = E.mergeDoc(post.doc, args.patch || {});
-  const rights = await store.engineRights({ who });
+  const rights = await store.engineRights({ who, kind: 'post' });
   const allowed = E.saveAllowed({ status: post.status, before: post.doc, after: doc, team: teamById(ctx, post.team_id), rights });
   if (!allowed.ok) return json({ ok: false, error: allowed.error });
   const saved = await store.engineUpdatePost(post.id, post.version, {
@@ -152,7 +152,7 @@ async function engineStatus(store, args, { who }) {
   if (Number(args.version) !== Number(post.version)) {
     return json({ ok: false, conflict: true, error: 'Someone changed this post meanwhile. Reload it first.', post });
   }
-  const rights = await store.engineRights({ who });
+  const rights = await store.engineRights({ who, kind: 'post' });
   const t = E.transition({ from: post.status, action: args.action, doc: post.doc, team: teamById(ctx, post.team_id), rights, note: args.note });
   if (!t.ok) return json({ ok: false, error: t.error });
   const review = { by: who, at: new Date().toISOString(), action: args.action };
@@ -357,7 +357,8 @@ async function actOn(store, ctx, item, args, who, undoMs, rightsCache) {
     await store.engineInboxInsertAction({ ...base, detail: fields, status: 'done', run_after: now.toISOString(), done_at: now.toISOString() });
     return { ok: true, item: saved };
   }
-  const rights = rightsCache || (await store.engineRights({ who })).map((r) => r.account_key);
+  const kind = ['reply', 'private_reply'].includes(action) ? 'reply' : 'moderate';
+  const rights = (rightsCache && rightsCache[kind]) || (await store.engineRights({ who, kind })).map((r) => r.account_key);
   if (!rights.includes(item.account_key)) return { ok: false, error: `You can't act for ${item.account_key}: connect Facebook with a Page role on it, or leave it for someone who has one.` };
   let lastIncomingAt, recipient;
   if (item.kind === 'message') {
@@ -390,7 +391,7 @@ async function engineInboxBulk(store, args, { who }) {
   if (ids.length > 100) return json({ ok: false, error: 'At most 100 at a time.' });
   const texts = [].concat(args.texts || (args.text ? [args.text] : [])).map((t) => String(t).trim()).filter(Boolean).slice(0, 5);
   if (['reply', 'private_reply'].includes(args.action) && !texts.length) return json({ ok: false, error: 'Write the reply first.' });
-  const rights = (await store.engineRights({ who })).map((r) => r.account_key);
+  const rights = { reply: (await store.engineRights({ who, kind: 'reply' })).map((r) => r.account_key), moderate: (await store.engineRights({ who, kind: 'moderate' })).map((r) => r.account_key) };
   const done = [], refused = [];
   let n = 0;
   for (const id of ids) {
@@ -494,6 +495,63 @@ async function engineInboxAlert(store, args, { who }) {
   return json(done ? { ok: true, alert: done } : { ok: false, error: 'No such alert.' });
 }
 
+// Settings › Team and access [gaps §7]: per person and account, what they can
+// do (post, reply and DM, moderate; analytics per team), where it comes from
+// (Facebook, set up by hand, none) and what an admin narrowed. Admins narrow,
+// never widen: a limit only ever turns something off. Initials (2-3 letters,
+// ideally the person's Copilot ones) go into their tracked links.
+const ACCESS_KINDS = ['post', 'reply', 'moderate'];
+async function engineAccessList(store, team, ctx) {
+  const t = teamById(ctx, team);
+  const members = (await store.engineMembers({ team_id: team })) || [];
+  const whos = [...new Set(members.map((m) => m.who))];
+  const [rights, limits, people] = await Promise.all([store.engineAllRightsFor({ whos }), store.engineAccessLimits({ team_id: team }), store.enginePeople()]);
+  const accounts = (t.accounts || []).filter((a) => a.platform !== 'x');
+  return {
+    team, can_edit: ctx.maintainer || ctx.myTeams[team] === 'admin', kinds: ACCESS_KINDS,
+    accounts: accounts.map((a) => ({ key: a.key, name: a.name || a.key, platform: a.platform })),
+    people: members.map((m) => {
+      const lim = (k) => limits.find((l) => l.who.toLowerCase() === m.who.toLowerCase() && l.account_key === k) || {};
+      const initials = ((people || []).find((p) => p.who.toLowerCase() === m.who.toLowerCase()) || {}).initials || null;
+      return {
+        who: m.who, role: m.role, initials, analytics: lim('*').can_analytics !== false,
+        accounts: accounts.map((a) => {
+          const r = rights.find((x) => x.who.toLowerCase() === m.who.toLowerCase() && x.account_key === a.key);
+          const l = lim(a.key);
+          return { key: a.key, source: r ? (r.source === 'meta' ? 'meta' : 'hand') : null, checked_at: r ? r.checked_at : null,
+            ...Object.fromEntries(ACCESS_KINDS.map((k) => [k, !!r && l[`can_${k}`] !== false])), narrowed: ACCESS_KINDS.filter((k) => l[`can_${k}`] === false) };
+        }),
+      };
+    }),
+  };
+}
+async function engineAccess(store, args, { who }) {
+  const ctx = await context(store, who);
+  const team = String(args.team || '');
+  if (!E.canEditTeam(ctx, team)) throw err('You are not in that team.', 'ENGINE_NOT_MEMBER');
+  const admin = ctx.maintainer || ctx.myTeams[team] === 'admin';
+  const now = new Date().toISOString();
+  if (args.action === 'initials') {
+    const target = String(args.who || who);
+    if (target.toLowerCase() !== String(who).toLowerCase() && !admin) return json({ ok: false, error: "Only the team's admins can set someone else's initials." });
+    const ini = String(args.initials || '').trim().toUpperCase();
+    if (!/^[A-Z]{2,3}$/.test(ini)) return json({ ok: false, error: 'Initials are 2 or 3 letters, ideally the ones Copilot shows for them (e.g. CJO).' });
+    await store.engineSetInitials(target, ini, who);
+  } else if (args.action === 'limit') {
+    if (!admin) return json({ ok: false, error: "Only the team's admins can change access." });
+    const target = String(args.who || '');
+    if (!((await store.engineMembers({ team_id: team })) || []).some((m) => m.who.toLowerCase() === target.toLowerCase())) return json({ ok: false, error: 'They are not in this team.' });
+    const key = String(args.account_key || '');
+    const t = teamById(ctx, team);
+    if (key !== '*' && !(t.accounts || []).some((a) => a.key === key)) return json({ ok: false, error: 'That account is not in this team.' });
+    const cur = (await store.engineAccessLimits({ team_id: team, who: target })).find((l) => l.account_key === key) || {};
+    const pick = (k) => (args[k] === undefined ? cur[`can_${k}`] !== false : !!args[k]);
+    await store.engineSetAccessLimit({ team_id: team, who: target, account_key: key, can_post: key === '*' ? true : pick('post'), can_reply: key === '*' ? true : pick('reply'), can_moderate: key === '*' ? true : pick('moderate'), can_analytics: key === '*' ? pick('analytics') : true, set_by: who, set_at: now });
+    await store.engineEvent({ post_id: `access:${team}`, team_id: team, who, action: 'access', detail: { who: target, account_key: key, post: args.post, reply: args.reply, moderate: args.moderate, analytics: args.analytics } }).catch(() => {});
+  } else if (args.action && args.action !== 'list') return json({ ok: false, error: 'action is list, limit or initials.' });
+  return json({ ok: true, ...(await engineAccessList(store, team, ctx)) });
+}
+
 // Comment-to-DM automations: the team sees them; team admins change them.
 async function engineAutomationsList(store, args, { who }) {
   const ctx = await context(store, who);
@@ -569,6 +627,10 @@ const sumOf = (xs) => { const v = xs.filter((x) => typeof x === 'number'); retur
 async function engineAnalytics(store, args, { who }) {
   const ctx = await context(store, who);
   if (!ctx.maintainer && !Object.keys(ctx.myTeams).length) throw err('Join a Content Engine team to see Analytics.', 'ENGINE_NOT_MEMBER');
+  if (!ctx.maintainer) {
+    const off = (await store.engineAccessLimits({ who })).filter((l) => l.account_key === '*' && l.can_analytics === false).map((l) => l.team_id);
+    if (Object.keys(ctx.myTeams).every((t) => off.includes(t))) throw err("A team admin has turned Analytics off for you.", 'ENGINE_NOT_ALLOWED');
+  }
   const scope = ['citizengo', 'hazteoir', 'team'].includes(args.scope) ? args.scope : 'citizengo';
   const days = [7, 30, 90].includes(Number(args.days)) ? Number(args.days) : 30;
   let team = null;
@@ -920,6 +982,7 @@ const ENGINE_TOOLS = [
   { name: 'engine_inbox_rules', description: 'Content Engine Inbox auto-hide list for one of your teams: banned words, phrases, "any link that isn\'t ours" and the built-in scam phrases (listed), and whether you can change it (team admins).', inputSchema: obj({ team: { type: 'string' } }, ['team']), handler: engineInboxRules },
   { name: 'engine_inbox_rule', description: 'Content Engine Inbox: add to or remove from a team\'s auto-hide list (team admins). add: kind word (whole word), phrase (anywhere), links (any link that isn\'t citizengo.org or cgo.ac) or scams (the built-in scam phrases), with value for word and phrase. remove: id. New comments that match are hidden (never deleted) as you, and labelled auto-hidden.', inputSchema: obj({ action: { type: 'string', enum: ['add', 'remove'] }, team: { type: 'string' }, kind: { type: 'string', enum: ['word', 'phrase', 'links', 'scams'] }, value: { type: 'string' }, id: { type: 'number' } }, ['action', 'team']), handler: engineInboxRule },
   { name: 'engine_inbox_alert', description: 'Content Engine Inbox: mark a pile-on alert (from engine_inbox alerts) as seen, so it leaves the desk for everyone in the team.', inputSchema: obj({ team: { type: 'string' }, id: { type: 'number' } }, ['team', 'id']), handler: engineInboxAlert },
+  { name: 'engine_access', description: "Content Engine Settings › Team and access for one of your teams: each person's role, initials (used in tracked links) and, per Facebook and Instagram account, whether they can post, reply and DM, and moderate (from their own Facebook connection, or set up by hand), plus Analytics per team. Team admins narrow access (action limit: who, account_key or '*' for Analytics, post / reply / moderate / analytics true or false; turning one back on only restores what Facebook already allows, it never widens). Anyone sets their own initials, admins anyone's (action initials: who, initials).", inputSchema: obj({ action: { type: 'string', enum: ['list', 'limit', 'initials'] }, team: { type: 'string' }, who: { type: 'string' }, account_key: { type: 'string' }, post: { type: 'boolean' }, reply: { type: 'boolean' }, moderate: { type: 'boolean' }, analytics: { type: 'boolean' }, initials: { type: 'string' } }, ['team']), handler: engineAccess },
   { name: 'engine_automations', description: 'Content Engine comment-to-DM automations for one of your teams: each rule\'s keywords, private message, public replies (taking turns), what it applies to (one post, a post type, or every post; the most specific wins), Facebook and/or Instagram, tag and hand-over, whether it is on, and its last 7 days (queued, sent, failed, and per step). paused: Pause everything is holding the team\'s accounts, so automations are held too.', inputSchema: obj({ team: { type: 'string' } }, ['team']), handler: engineAutomationsList },
   { name: 'engine_automation', description: 'Content Engine: add or update a comment-to-DM automation (team admins; name, keywords (whole words), dm_text with the real cgo.ac link, reply_texts (up to 5 public replies, taking turns), scope all / type (post_type petition, prayer, reel, wins, news) / post (thread_id), platforms facebook and/or instagram, skip_repeat (someone who already got the link just gets a like; default on), tag, hand_to (who to assign the comment to)), or pause, resume or remove one (id). A new comment with a keyword gets the private message (and a public reply) as you, through the Mini, at most one per comment and 200 per rule a day; Pause everything holds them too.', inputSchema: obj({ action: { type: 'string', enum: ['add', 'update', 'pause', 'resume', 'remove'] }, team: { type: 'string' }, id: { type: 'number' }, name: { type: 'string' }, keywords: { type: 'array', items: { type: 'string' } }, dm_text: { type: 'string' }, reply_text: { type: 'string' }, reply_texts: { type: 'array', items: { type: 'string' } }, scope: { type: 'string', enum: ['all', 'type', 'post'] }, post_type: { type: 'string', enum: ['petition', 'prayer', 'reel', 'wins', 'news'] }, thread_id: { type: 'string' }, platforms: { type: 'array', items: { type: 'string', enum: ['facebook', 'instagram'] } }, skip_repeat: { type: 'boolean' }, tag: { type: 'string' }, hand_to: { type: 'string' } }, ['action', 'team']), handler: engineAutomation },
   { name: 'engine_inbox_history', description: 'Content Engine Inbox moderation history for one of your teams: every reply, hide, delete, like, assignment, label and done, by whom, newest first.', inputSchema: obj({ team: { type: 'string' }, limit: { type: 'number' } }, ['team']), handler: engineInboxHistory },

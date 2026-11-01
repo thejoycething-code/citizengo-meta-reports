@@ -70,9 +70,9 @@ as far as that allows.
       owner = the sender's initials, series FBR / IGR / FBDM / IGDM; chip turns green before sending. Done 1 Nov, minted on Vercel at queue time (docs/tracked-links.md). Agreed with Chris: the series stays FB1/IG1, the marker (DM/RE/ADM/ARE) and sender initials go at the front of the title in utm_campaign, and Copilot being down means the long link with the same code. The chip shows once the link is made: the send toast says ✓ tracked.
 
 ## 7. Team, access and countries
-- [ ] Settings › Team and access: per person and Page, Post / Reply and DM / Moderate / Analytics, source
-      (Meta / admin narrowed); admins narrow, never widen.
-- [ ] Per-country calendar switcher; lock banner on other countries; "Copy as an idea to <my team>".
+- [x] Settings › Team and access: per person and Page, Post / Reply and DM / Moderate / Analytics, source
+      (Meta / admin narrowed); admins narrow, never widen. Done 1 Nov: engine_access; limits in engine_access_limits, applied in engineRights({kind}) for approve/save, inbox, the Mini publisher and the sender; initials for tracked links.
+- [x] Per-country calendar switcher; lock banner on other countries; "Copy as an idea to <my team>". Done 1 Nov: "Copy as an idea" adds a Plan request (engine_request) rather than a draft copy.
 
 ## 8. Listening
 - [ ] Topics tab; mentions count.

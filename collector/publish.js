@@ -55,7 +55,7 @@ async function run({ store, privateKey, live, now = Date.now(), log = console.lo
 
     const who = item.approver;
     if (!who) { await fail(item, 'Nobody is recorded as approving it.', { final: true }); continue; }
-    const rights = (await store.engineRights({ who })).map((r) => r.account_key);
+    const rights = (await store.engineRights({ who, kind: 'post' })).map((r) => r.account_key);
     if (!rights.includes(item.key)) { await fail(item, `${who} can no longer post to ${item.key}. Someone who can should approve it again.`, { final: true }); continue; }
     const tok = await store.enginePageToken({ who, account_key: item.key });
     if (!tok) { await fail(item, `${who} hasn't connected Facebook for ${item.key}, so there is nothing to publish with. Connect Facebook on the desk, then approve again.`, { final: true }); continue; }
