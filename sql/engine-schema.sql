@@ -204,3 +204,64 @@ comment on table public.engine_pauses is 'Content Engine Pause everything: holds
 -- file straight to Facebook and Instagram. So engine-media also takes
 -- application/octet-stream pieces (still 3 MB per object).
 update storage.buckets set allowed_mime_types = array['image/jpeg', 'image/png', 'application/octet-stream'] where id = 'engine-media';
+
+-- Inbox [slice 3, 1 Nov]: comments and DMs on the teams' Facebook Pages and
+-- Instagram accounts, read on the Mini (collector/inbox.js) with the sealed
+-- Page tokens. The collector fills the platform columns; people own status,
+-- assignment and labels, which a re-read never overwrites.
+create table if not exists public.engine_inbox (
+  id text primary key,                       -- fbc_<comment id>, igc_<comment id>, fbm_<message id>, igm_<message id>
+  team_id text not null references public.engine_teams(id) on delete cascade,
+  account_key text not null,
+  platform text not null check (platform in ('facebook', 'instagram')),
+  kind text not null check (kind in ('comment', 'message')),
+  thread_id text not null,                   -- the post (comments) or conversation (DMs)
+  object_id text not null,                   -- the comment or message id on Meta
+  parent_id text,                            -- a reply's parent comment
+  post_text text,                            -- the post the comment is on, first 200 characters
+  post_url text,
+  is_ad boolean not null default false,
+  author_id text,
+  author_name text,
+  text text,
+  created_at timestamptz not null,
+  from_us boolean not null default false,
+  hidden boolean not null default false,
+  status text not null default 'open' check (status in ('open', 'done')),
+  assigned_to text,
+  labels text[] not null default '{}',
+  replied_at timestamptz,
+  deleted_at timestamptz,
+  seen_at timestamptz not null default now(),
+  updated_at timestamptz,
+  updated_by text
+);
+create index if not exists engine_inbox_team_open on public.engine_inbox (team_id, status, created_at desc);
+create index if not exists engine_inbox_thread on public.engine_inbox (thread_id, created_at);
+alter table public.engine_inbox enable row level security;
+comment on table public.engine_inbox is 'Content Engine Inbox: comments and DMs on the teams'' accounts. Collector fills platform columns; people own status, assigned_to, labels.';
+
+-- Everything done in the Inbox, by whom: the moderation history. Actions on
+-- Meta (reply, private reply, like, hide, unhide, delete) are queued and run
+-- by the Mini (collector/inbox-actions.js) with the person's own Page token,
+-- after a 10-second undo window; desk-only ones (done, reopen, assign, label)
+-- are recorded as done straight away.
+create table if not exists public.engine_inbox_actions (
+  id bigint generated always as identity primary key,
+  item_id text not null,
+  team_id text not null,
+  account_key text not null,
+  action text not null check (action in ('reply', 'private_reply', 'like', 'hide', 'unhide', 'delete', 'done', 'reopen', 'assign', 'label')),
+  text text,
+  detail jsonb not null default '{}'::jsonb,
+  by text not null,
+  created_at timestamptz not null default now(),
+  run_after timestamptz not null default now(),
+  status text not null default 'queued' check (status in ('queued', 'running', 'done', 'failed', 'cancelled')),
+  result jsonb,
+  done_at timestamptz
+);
+create index if not exists engine_inbox_actions_queue on public.engine_inbox_actions (status, run_after) where status in ('queued', 'running');
+create index if not exists engine_inbox_actions_team on public.engine_inbox_actions (team_id, created_at desc);
+alter table public.engine_inbox_actions enable row level security;
+comment on table public.engine_inbox_actions is 'Content Engine Inbox actions and moderation history. Meta actions are queued for the Mini with a 10-second undo window.';

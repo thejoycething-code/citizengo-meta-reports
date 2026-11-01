@@ -293,6 +293,89 @@ async function engineEvergreenUpdate(store, args, { who }) {
 // path in the post's `final` snapshot, and the publisher signs a short-lived
 // link for Facebook or Instagram to fetch.
 const MEDIA_MAX_BYTES = 3 * 1024 * 1024;
+// Inbox [slice 3]: comments and DMs read on the Mini. Desk-only actions
+// (done, reopen, assign, label) apply at once; anything that changes Facebook
+// or Instagram is queued for the Mini, which sends it with the person's own
+// Page token after a 10-second undo window. Every action is the history.
+const I = require('../lib/inbox');
+async function inboxItem(store, ctx, id) {
+  const item = await store.engineInboxItem(String(id || ''));
+  if (!item || !E.canEditTeam(ctx, item.team_id)) throw err('No such item in your teams.', 'ENGINE_NOT_FOUND');
+  return item;
+}
+
+async function engineInbox(store, args, { who }) {
+  const ctx = await context(store, who);
+  const team = String(args.team || '');
+  if (!E.canEditTeam(ctx, team)) throw err('You are not in that team.', 'ENGINE_NOT_MEMBER');
+  if (args.thread) {
+    const items = await store.engineInbox({ team_ids: [team], thread_id: String(args.thread), limit: 500 });
+    return json({ team, thread: String(args.thread), items });
+  }
+  const status = args.status === 'all' ? null : [args.status === 'done' ? 'done' : 'open'];
+  const items = await store.engineInbox({ team_ids: [team], statuses: status, platform: args.platform || null, kind: args.kind || null, before: args.before || null, limit: args.limit || 200 });
+  const open = status && status[0] === 'open' && !args.platform && !args.kind ? items : await store.engineInbox({ team_ids: [team], statuses: ['open'], limit: 1000 });
+  const counts = { open: open.length, facebook: 0, instagram: 0, messages: 0, mine: 0 };
+  for (const i of open) { counts[i.platform]++; if (i.kind === 'message') counts.messages++; if (String(i.assigned_to || '').toLowerCase() === String(who).toLowerCase()) counts.mine++; }
+  const pending = await store.engineInboxActions({ team_ids: [team], statuses: ['queued', 'running'], limit: 100 });
+  return json({ team, items, counts, pending });
+}
+
+async function engineInboxAct(store, args, { who }) {
+  const ctx = await context(store, who);
+  const item = await inboxItem(store, ctx, args.id);
+  const action = String(args.action || '');
+  const now = new Date();
+  const base = { item_id: item.id, team_id: item.team_id, account_key: item.account_key, action, by: who };
+  if (I.DESK_ACTIONS.includes(action)) {
+    let fields;
+    if (action === 'done' || action === 'reopen') fields = { status: action === 'done' ? 'done' : 'open' };
+    else if (action === 'assign') fields = { assigned_to: args.assign_to ? String(args.assign_to).slice(0, 120) : null };
+    else {
+      const labels = [...new Set([].concat(args.labels || []).map((l) => String(l).trim().slice(0, 30)).filter(Boolean))];
+      if (labels.length > 10) return json({ ok: false, error: 'At most 10 labels.' });
+      fields = { labels };
+    }
+    const saved = await store.engineInboxUpdate(item.id, { ...fields, updated_at: now.toISOString(), updated_by: who });
+    await store.engineInboxInsertAction({ ...base, detail: fields, status: 'done', run_after: now.toISOString(), done_at: now.toISOString() });
+    return json({ ok: true, item: saved });
+  }
+  const rights = (await store.engineRights({ who })).map((r) => r.account_key);
+  if (!rights.includes(item.account_key)) return json({ ok: false, error: `You can't act for ${item.account_key}: connect Facebook with a Page role on it, or leave it for someone who has one.` });
+  let lastIncomingAt, recipient;
+  if (item.kind === 'message') {
+    const thread = await store.engineInbox({ team_ids: [item.team_id], thread_id: item.thread_id, limit: 500 });
+    const theirs = thread.filter((m) => !m.from_us);
+    const last = theirs[theirs.length - 1] || item;
+    lastIncomingAt = last.created_at; recipient = last.author_id;
+    if (!recipient) return json({ ok: false, error: "Can't tell who to reply to in this conversation." });
+  }
+  const ok = I.allowed(item, action, { text: args.text, lastIncomingAt, now: now.getTime() });
+  if (!ok.ok) return json(ok);
+  const row = await store.engineInboxInsertAction({
+    ...base, text: args.text ? String(args.text).trim() : null, detail: recipient ? { recipient } : {},
+    run_after: new Date(now.getTime() + I.UNDO_MS).toISOString(), status: 'queued',
+  });
+  return json({ ok: true, queued: row, undo_until: row.run_after });
+}
+
+async function engineInboxUndo(store, args, { who }) {
+  const ctx = await context(store, who);
+  const rows = await store.engineInboxActions({ team_ids: Object.keys(ctx.myTeams).concat(ctx.maintainer ? ctx.teams.map((t) => t.id) : []), statuses: ['queued'], limit: 500 });
+  const a = rows.find((r) => Number(r.id) === Number(args.action_id));
+  if (!a) return json({ ok: false, error: 'Too late to undo: it has already gone to Meta, or was undone.' });
+  if (String(a.by).toLowerCase() !== String(who).toLowerCase() && !ctx.maintainer) return json({ ok: false, error: 'Only the person who did it can undo it.' });
+  const done = await store.engineInboxUpdateAction(a.id, 'queued', { status: 'cancelled', done_at: new Date().toISOString() });
+  return json(done ? { ok: true, cancelled: done } : { ok: false, error: 'Too late to undo: it has already gone to Meta.' });
+}
+
+async function engineInboxHistory(store, args, { who }) {
+  const ctx = await context(store, who);
+  const team = String(args.team || '');
+  if (!E.canEditTeam(ctx, team)) throw err('You are not in that team.', 'ENGINE_NOT_MEMBER');
+  return json({ team, actions: await store.engineInboxActions({ team_ids: [team], limit: Math.min(500, Number(args.limit) || 200) }) });
+}
+
 // Reels and videos [1 Nov]: a published page can't reach Storage, so the desk
 // sends the file here in pieces (action part), then asks for them to be
 // checked (action done), which returns what goes in the post's final snapshot.
@@ -379,6 +462,10 @@ const ENGINE_TOOLS = [
   { name: 'engine_save', description: 'Content Engine: save changes to a post (text, graphic, first comment, where and when). patch merges into the post; version must be the one you read, or the save is refused as a conflict.', inputSchema: obj({ id: { type: 'string' }, version: { type: 'number' }, patch: { type: 'object' } }, ['id', 'version', 'patch']), handler: engineSave },
   { name: 'engine_pause', description: 'Content Engine Pause everything: hold every scheduled post at once (action pause: scope mine = every account you can post to, team = one of your teams (team), all = every account, admins only; a reason the team sees; optional hours, otherwise until someone resumes), or resume a pause (action resume: id). Nothing is deleted or changed: the publisher just waits.', inputSchema: obj({ action: { type: 'string', enum: ['pause', 'resume'] }, scope: { type: 'string', enum: ['mine', 'team', 'all'] }, team: { type: 'string' }, reason: { type: 'string' }, hours: { type: 'number' }, id: { type: 'number' } }, ['action']), handler: enginePause },
   { name: 'engine_video', description: 'Content Engine: send a Reel or video for a post you can edit, in pieces of up to 2.5 MB (action part: id, upload (8-32 lowercase letters and digits, the same for every piece), index from 0, data base64), then check them (action done: id, upload, parts, size, sha256 hex, mime video/mp4 or video/quicktime, optional name). done returns the video to save in the post\'s final snapshot. Up to 150 MB.', inputSchema: obj({ action: { type: 'string', enum: ['part', 'done'] }, id: { type: 'string' }, upload: { type: 'string' }, index: { type: 'number' }, data: { type: 'string' }, parts: { type: 'number' }, size: { type: 'number' }, sha256: { type: 'string' }, mime: { type: 'string', enum: ['video/mp4', 'video/quicktime'] }, name: { type: 'string' } }, ['action', 'id', 'upload']), handler: engineVideo },
+  { name: 'engine_inbox', description: 'Content Engine Inbox: comments and DMs on one of your teams\' Facebook Pages and Instagram accounts, newest first (status open by default, or done, or all; optional platform facebook/instagram, kind comment/message, before an ISO time), with open counts and actions still in their undo window. thread returns one post\'s comments or one conversation, oldest first.', inputSchema: obj({ team: { type: 'string' }, status: { type: 'string', enum: ['open', 'done', 'all'] }, platform: { type: 'string', enum: ['facebook', 'instagram'] }, kind: { type: 'string', enum: ['comment', 'message'] }, thread: { type: 'string' }, before: { type: 'string' }, limit: { type: 'number' } }, ['team']), handler: engineInbox },
+  { name: 'engine_inbox_act', description: 'Content Engine Inbox: act on a comment or message. done, reopen, assign (assign_to, or empty to unassign) and label (labels) apply at once. reply, private_reply (Facebook comments, within 7 days), like (Facebook only), hide, unhide and delete go to Meta from the Mini with your own Page token after 10 seconds, so they can be undone; message replies only within 24 hours of their last message.', inputSchema: obj({ id: { type: 'string' }, action: { type: 'string', enum: ['reply', 'private_reply', 'like', 'hide', 'unhide', 'delete', 'done', 'reopen', 'assign', 'label'] }, text: { type: 'string' }, assign_to: { type: 'string' }, labels: { type: 'array', items: { type: 'string' } } }, ['id', 'action']), handler: engineInboxAct },
+  { name: 'engine_inbox_undo', description: 'Content Engine Inbox: undo a reply, like, hide, unhide or delete you did, while it is still in its 10-second window (action_id from engine_inbox_act).', inputSchema: obj({ action_id: { type: 'number' } }, ['action_id']), handler: engineInboxUndo },
+  { name: 'engine_inbox_history', description: 'Content Engine Inbox moderation history for one of your teams: every reply, hide, delete, like, assignment, label and done, by whom, newest first.', inputSchema: obj({ team: { type: 'string' }, limit: { type: 'number' } }, ['team']), handler: engineInboxHistory },
   { name: 'engine_record', description: 'Content Engine: record bookkeeping on a post in any status, posted and rejected included: results, posted (the real post links and time), stale, and posting.asanaTaskGid / asanaUrl / syncedAt / removedAt. Nothing else; the post itself is saved with engine_save. version must be the one you read.', inputSchema: obj({ id: { type: 'string' }, version: { type: 'number' }, patch: { type: 'object' } }, ['id', 'version', 'patch']), handler: engineRecord },
   { name: 'engine_status', description: 'Content Engine: approve (schedules it; needs publishing rights for every Facebook and Instagram account), hold, changes (needs a note), reject, reopen, or mark as posted (it went out) a post.', inputSchema: obj({ id: { type: 'string' }, version: { type: 'number' }, action: { type: 'string', enum: ['approve', 'hold', 'changes', 'reject', 'reopen', 'posted'] }, note: { type: 'string' }, reasons: { type: 'array', items: { type: 'string' } } }, ['id', 'version', 'action']), handler: engineStatus },
   { name: 'engine_create', description: 'Content Engine: add a new post to Review in one of your teams (the daily engine, "Rework for…" and imports use this).', inputSchema: obj({ team: { type: 'string' }, doc: { type: 'object' }, id: { type: 'string' }, source_team: { type: 'string' }, source_post: { type: 'string' } }, ['team', 'doc']), handler: engineCreate },
