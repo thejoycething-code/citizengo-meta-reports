@@ -127,3 +127,34 @@ create table if not exists public.engine_requests (
 create index if not exists engine_requests_team_date on public.engine_requests (team_id, for_date);
 alter table public.engine_requests enable row level security;
 comment on table public.engine_requests is 'Content Engine Plan: requests to draft a post for a date. The daily engine drafts open ones into Review.';
+
+-- Evergreen bank [1 Nov, bank A]: past winners (5x the Page's normal or
+-- better). Each is due a fresh version 10 weeks after it last went out (the
+-- 10-12 week window), unless snoozed or retired. Suggest only: nothing reaches
+-- the queue unless someone picks "Make a fresh draft", which files a Plan
+-- request (engine_requests.source = 'evergreen').
+create table if not exists public.engine_evergreen (
+  id bigint generated always as identity primary key,
+  team_id text not null references public.engine_teams(id) on delete cascade,
+  title text not null,
+  url text,
+  format text,                               -- 'Reel', 'Image', 'Carousel' ...
+  account_key text,                          -- where it went out, e.g. 'uk-fb'
+  last_out date not null,
+  result text,                               -- '10.4x, 821 shares'
+  why text,                                  -- the refresh idea
+  status text not null default 'active' check (status in ('active', 'retired')),
+  snoozed_until date,
+  source_post text,
+  added_by text,
+  added_at timestamptz not null default now(),
+  updated_by text,
+  updated_at timestamptz not null default now()
+);
+create index if not exists engine_evergreen_team on public.engine_evergreen (team_id, status);
+alter table public.engine_evergreen enable row level security;
+comment on table public.engine_evergreen is 'Content Engine evergreen bank: past winners, due a fresh version 10 weeks after they last went out. Suggest only.';
+
+alter table public.engine_requests add column if not exists evergreen_id bigint references public.engine_evergreen(id) on delete set null;
+alter table public.engine_requests drop constraint if exists engine_requests_source_check;
+alter table public.engine_requests add constraint engine_requests_source_check check (source in ('key_date', 'idea', 'evergreen'));

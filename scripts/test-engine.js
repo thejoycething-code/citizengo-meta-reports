@@ -52,6 +52,9 @@ function memoryStore() {
     },
     async engineInsertRequest(row) { db.requests = db.requests || []; const r = { id: db.requests.length + 1, status: 'open', ...row }; db.requests.push(r); return clone(r); },
     async engineUpdateRequest(id, fields) { const r = (db.requests || []).find((x) => x.id === id && x.status === 'open'); if (!r) return null; Object.assign(r, fields); return clone(r); },
+    async engineEvergreen({ team_ids }) { return clone((db.evergreen || []).filter((r) => team_ids.includes(r.team_id))); },
+    async engineInsertEvergreen(row) { db.evergreen = db.evergreen || []; const r = { id: db.evergreen.length + 1, status: 'active', snoozed_until: null, ...row }; db.evergreen.push(r); return clone(r); },
+    async engineUpdateEvergreen(id, fields) { const r = (db.evergreen || []).find((x) => x.id === id); if (!r) return null; Object.assign(r, fields); return clone(r); },
     async engineKeyDates({ team_ids, from, to }) {
       return clone(db.keyDates.filter((k) => (k.team_id === null || team_ids.includes(k.team_id)) && k.starts < to && (k.ends || k.starts) >= from));
     },
@@ -146,6 +149,28 @@ const callErr = async (store, name, args, who) => { try { await tool(name)(store
   eq('the daily engine marks it drafted with the new post', [dr.ok, dr.request.status, dr.request.post_id], [true, 'drafted', 'uk-1']);
   eq('a drafted request cannot be cancelled', (await call(store, 'engine_request', { action: 'cancel', id: rq.request.id }, 'chris')).ok, false);
   eq('the plan lists open and drafted requests', (await call(store, 'engine_requests', { team: 'uk' }, 'chris')).requests.map((r) => r.status), ['drafted']);
+
+  // Evergreen bank: due 10 weeks after it last went out.
+  const nov1 = new Date('2026-11-01T09:00:00Z');
+  eq('evergreen: 18 weeks since → due; 7 weeks → coming; 2 weeks → resting; retired stays retired',
+    [E.evergreenState({ last_out: '2026-06-26' }, nov1).state, E.evergreenState({ last_out: '2026-09-13' }, nov1).state, E.evergreenState({ last_out: '2026-10-18' }, nov1).state, E.evergreenState({ last_out: '2026-06-26', status: 'retired' }, nov1).state],
+    ['due', 'coming', 'resting', 'retired']);
+  eq('evergreen: a snooze pushes the due date', E.evergreenState({ last_out: '2026-06-26', snoozed_until: '2026-11-29' }, nov1), { state: 'coming', due_on: '2026-11-29', weeks_since: 18 });
+  eq('evergreen: due date is 10 weeks on', E.evergreenState({ last_out: '2026-08-13' }, nov1).due_on, '2026-10-22');
+  eq('evergreen add: needs a title and a past date', [E.checkEvergreen({ title: '', last_out: '2026-06-26' }).ok, E.checkEvergreen({ title: 'x', last_out: '2099-01-01' }).ok, E.checkEvergreen({ title: 'x', last_out: '2026-06-26', url: 'javascript:alert(1)' }).ok], [false, false, false]);
+  const eg = await call(store, 'engine_evergreen_update', { action: 'add', team: 'uk', title: 'Pray for the persecuted Church in Nigeria', last_out: '2026-06-26', url: 'https://www.facebook.com/reel/1', format: 'Reel', account_key: 'uk-fb', result: '10.4x, 821 shares', why: 'Red Wednesday' }, 'chris');
+  eq('chris adds a past winner to the UK bank', [eg.ok, eg.post.status, eg.post.added_by], [true, 'active', 'chris']);
+  eq('greg cannot add to or see the UK bank', [await callErr(store, 'engine_evergreen_update', { action: 'add', team: 'uk', title: 'x', last_out: '2026-06-26' }, 'greg'), await callErr(store, 'engine_evergreen', { team: 'uk' }, 'greg'), (await call(store, 'engine_evergreen_update', { action: 'retire', id: eg.post.id }, 'greg')).ok], ['ENGINE_NOT_MEMBER', 'ENGINE_NOT_MEMBER', false]);
+  const fd = await call(store, 'engine_request', { action: 'create', team: 'uk', for_date: '2099-11-18', title: 'Fresh: Pray for Nigeria', source: 'evergreen', evergreen_id: eg.post.id }, 'chris');
+  eq('a fresh draft is a Plan request tied to the bank post', [fd.ok, fd.request.source, fd.request.evergreen_id], [true, 'evergreen', eg.post.id]);
+  eq('a fresh draft needs a post from the same team\'s bank', (await call(store, 'engine_request', { action: 'create', team: 'uk', for_date: '2099-11-18', title: 'x', source: 'evergreen', evergreen_id: 99 }, 'chris')).ok, false);
+  let bank = await call(store, 'engine_evergreen', { team: 'uk' }, 'chris');
+  eq('the bank shows it due, with the open request', [bank.posts[0].state, bank.posts[0].requested && bank.posts[0].requested.for_date], ['due', '2099-11-18']);
+  await call(store, 'engine_evergreen_update', { action: 'snooze', id: eg.post.id }, 'chris');
+  bank = await call(store, 'engine_evergreen', { team: 'uk' }, 'chris');
+  eq('snooze: 4 weeks, so it is coming up again, not due', bank.posts[0].state, 'coming');
+  const wo = await call(store, 'engine_evergreen_update', { action: 'went_out', id: eg.post.id, last_out: '2026-10-30' }, 'chris');
+  eq('a fresh version went out: it rests, and the snooze is cleared', [wo.post.state, wo.post.snoozed_until], ['resting', null]);
 
   // Copy an idea across teams.
   const cp = await call(store, 'engine_copy', { id: 'de-1', to_team: 'at' }, 'tamara@citizengo.net');

@@ -57,8 +57,13 @@ Decisions from Christopher Joyce are in brackets with the date._
    own idea). Picking one stores a request in `engine_requests` (`engine_request` create / cancel); it shows on its
    day as "Requested". At cutover the daily run reads open requests (`engine_requests`, status open), drafts each
    into Review for its date with `engine_create`, then calls `engine_request` drafted with the new post id.
+   Evergreen view added 1 Nov (bank A): `engine_evergreen` lists the team's bank with each post's state (due 10
+   weeks after it last went out; coming up in the 4 weeks before; resting; retired). "Make a fresh draft" files a
+   Plan request (source evergreen, with the bank post's id) for a date the person picks; Snooze 4 weeks, Retire,
+   Restore and "It went out" use `engine_evergreen_update`, which also adds posts. Seeded with the UK refresh list
+   from content-engine/evergreen-bank.md (the 3.5x post left out). Later: the monthly run adds new 5x winners.
    The desk's connector manifest: engine_me, engine_posts, engine_save, engine_status, engine_calendar,
-   engine_requests, engine_request.
+   engine_requests, engine_request, engine_evergreen, engine_evergreen_update.
 5. ⬜ Until Meta publishing works, "Approve" still hands UK posts to Asana as today.
 
 ## Slice 2: Meta publishing
