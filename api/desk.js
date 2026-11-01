@@ -84,6 +84,12 @@ module.exports = async (req, res) => {
         return send(res, 200, { ok: true, id: out.id });
       }
     }
+    if (op === 'aijob') {
+      if (req.method === 'POST') { const body = (await readBody(req)) || {}; return send(res, 200, await D.aiJobCreate(who, body.prompt)); }
+      const job = await D.aiJobGet(String(url.searchParams.get('id') || ''), who);
+      if (!job) return send(res, 404, { error: 'No such request.' });
+      return send(res, 200, { id: job.id, status: job.status, text: job.status === 'done' ? job.text : null, error: job.error || null });
+    }
     if (op === 'file' && req.method === 'GET') {
       try { return send(res, 200, await D.fileLink(String(url.searchParams.get('name') || ''))); }
       catch (e) { return send(res, e.status || 500, { error: e.message }); }

@@ -83,7 +83,48 @@
     },
   };
 
-  // "Ask Claude": the prompt goes to claude.ai in a new tab; the answer comes back by paste.
+  // AI with each person's own Claude: the request is filed as a job and the
+  // Desk AI page on claude.ai (AI_HELPER) answers it with the clicker's Claude
+  // through their CitizenGO connector; the desk waits for the answer. Without
+  // the helper (or if they choose), the copy-paste round trip below.
+  const AI_HELPER = window.DESK_AI_HELPER || null;
+  function viaHelper(prompt) {
+    const text = typeof prompt === 'string' ? prompt : (Array.isArray(prompt) ? prompt.map((t) => t.content).join('\n\n') : String(prompt));
+    return new Promise(async (resolve, reject) => {
+      let job;
+      try { job = await api('aijob', { method: 'POST', body: { prompt: text } }); } catch (e) { return askClaude(prompt).then(resolve, reject); }
+      const link = `${AI_HELPER}#${job.id}`;
+      const box = document.createElement('div');
+      box.className = 'askc';
+      box.innerHTML = `<div class="askcbox" role="dialog" aria-modal="true" aria-label="Your Claude is working on it">
+        <b>Your Claude is working on it</b>
+        <p class="src" data-k="msg">The Desk AI page asks your own Claude and sends the answer back here. If it didn't open, open it below. The first time, allow Claude and the CitizenGO connector for that page.</p>
+        <div class="ibacts"><a class="btn small primary" href="${link}" target="_blank" rel="noopener">Open Desk AI ↗</a><button class="btn small" data-k="manual">Copy and paste instead</button><button class="btn small" data-k="cancel">Cancel</button></div>
+      </div>`;
+      document.body.appendChild(box);
+      try { window.open(link, '_blank', 'noopener'); } catch (e) {}
+      let stop = false;
+      const finish = (fn) => { stop = true; box.remove(); fn(); };
+      box.addEventListener('click', (ev) => {
+        const k = ev.target.closest('[data-k]') && ev.target.closest('[data-k]').dataset.k;
+        if (k === 'cancel') finish(() => reject(Object.assign(new Error('cancelled'), { code: 'cancelled' })));
+        else if (k === 'manual') finish(() => askClaude(prompt).then(resolve, reject));
+      });
+      const started = Date.now();
+      while (!stop && Date.now() - started < 15 * 60e3) {
+        await new Promise((r) => setTimeout(r, 2000));
+        if (stop) return;
+        try {
+          const j = await api('aijob', { query: `&id=${job.id}` });
+          if (j.status === 'done' && j.text) return finish(() => resolve({ text: j.text, truncated: false }));
+          if (j.status === 'failed') { const m = box.querySelector('[data-k="msg"]'); if (m) m.textContent = `${j.error || 'Claude could not answer.'} Try again from the Desk AI tab, or copy and paste instead.`; }
+        } catch (e) {}
+      }
+      if (!stop) finish(() => reject(Object.assign(new Error('No answer from Desk AI in 15 minutes'), { code: 'ai-timeout' })));
+    });
+  }
+
+  // "Ask Claude" by hand: the prompt goes to claude.ai in a new tab; the answer comes back by paste.
   function askClaude(prompt) {
     const text = typeof prompt === 'string' ? prompt : (Array.isArray(prompt) ? prompt.map((t) => t.content).join('\n\n') : String(prompt));
     return new Promise((resolve, reject) => {
@@ -118,8 +159,9 @@
       box.querySelector('[data-k="open"]').focus();
     });
   }
-  const sample = Object.assign((input) => askClaude(input), {
-    async json(input) { const r = await askClaude(input); return JSON.parse(String(r.text).replace(/^```(?:json)?|```$/g, '').trim()); },
+  const ask = (input) => (AI_HELPER ? viaHelper(input) : askClaude(input));
+  const sample = Object.assign((input) => ask(input), {
+    async json(input) { const r = await ask(input); return JSON.parse(String(r.text).replace(/^```(?:json)?|```$/g, '').trim()); },
     async limits() { return { images: false }; },
   });
 
