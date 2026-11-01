@@ -32,14 +32,14 @@ as far as that allows.
 - [x] Instagram collab picker of CitizenGO accounts, alongside free handles (3 in all, Instagram's limit).
 
 ## 3. Calendar and Plan
-- [ ] Drag a post or idea onto a day to schedule / request it.
-- [ ] Each day's free best-time slots ("+ free 19:00").
-- [ ] "→ draft it" on key dates in the grid and the queue.
-- [ ] Evergreen due items in the queue and as a Plan tray tab.
-- [ ] Week heading with its theme ("Red Week · 3 posts, 2 key dates").
-- [ ] Key date categories (CitizenGO-wide, church calendar, awareness day, country only, new suggestion) and a
+- [x] Drag a post or idea onto a day to schedule / request it.
+- [x] Each day's free best-time slots ("+ free 19:00").
+- [x] "→ draft it" on key dates in the grid and the queue.
+- [x] Evergreen due items in the queue and as a Plan tray tab.
+- [x] Week heading with its theme ("Red Week · 3 posts, 2 key dates").
+- [x] Key date categories (CitizenGO-wide, church calendar, awareness day, country only, new suggestion) and a
       year list.
-- [ ] Images-only month view (grid planner).
+- [x] Images-only month view (grid planner).
 
 ## 4. Inbox
 - [ ] Channel tabs with counts: Facebook, Messenger, Instagram (comments), Instagram DMs, X · later.
