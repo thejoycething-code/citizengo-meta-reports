@@ -406,6 +406,32 @@ async function engineInboxPosts(store, args, { who }) {
   return json({ team, days, posts: args.ads ? posts.filter((p) => p.is_ad) : posts });
 }
 
+// Auto-hide list: everyone in the team sees it; team admins change it.
+async function engineInboxRules(store, args, { who }) {
+  const ctx = await context(store, who);
+  const team = String(args.team || '');
+  if (!E.canEditTeam(ctx, team)) throw err('You are not in that team.', 'ENGINE_NOT_MEMBER');
+  return json({ team, rules: await store.engineInboxRules({ team_ids: [team] }), scam_phrases: I.SCAM_PHRASES, can_edit: ctx.maintainer || ctx.myTeams[team] === 'admin' });
+}
+async function engineInboxRule(store, args, { who }) {
+  const ctx = await context(store, who);
+  const team = String(args.team || '');
+  if (!E.canEditTeam(ctx, team)) throw err('You are not in that team.', 'ENGINE_NOT_MEMBER');
+  if (!(ctx.maintainer || ctx.myTeams[team] === 'admin')) return json({ ok: false, error: "Only the team's admins can change the auto-hide list." });
+  if (args.action === 'remove') {
+    const gone = await store.engineDeleteInboxRule(args.id, team);
+    return json(gone ? { ok: true, rules: await store.engineInboxRules({ team_ids: [team] }) } : { ok: false, error: 'No such rule.' });
+  }
+  if (args.action !== 'add') return json({ ok: false, error: 'action is add or remove.' });
+  const c = I.checkRule({ kind: args.kind, value: args.value });
+  if (!c.ok) return json(c);
+  const have = await store.engineInboxRules({ team_ids: [team] });
+  if (have.some((r) => r.kind === args.kind && String(r.value).toLowerCase() === c.value.toLowerCase())) return json({ ok: false, error: 'Already on the list.' });
+  if (have.length >= 200) return json({ ok: false, error: 'At most 200 rules.' });
+  await store.engineInsertInboxRule({ team_id: team, kind: args.kind, value: c.value, created_by: who });
+  return json({ ok: true, rules: await store.engineInboxRules({ team_ids: [team] }) });
+}
+
 async function engineInboxHistory(store, args, { who }) {
   const ctx = await context(store, who);
   const team = String(args.team || '');
@@ -504,6 +530,8 @@ const ENGINE_TOOLS = [
   { name: 'engine_inbox_undo', description: 'Content Engine Inbox: undo a reply, like, hide, unhide or delete you did, while it is still in its 10-second window (action_id from engine_inbox_act).', inputSchema: obj({ action_id: { type: 'number' } }, ['action_id']), handler: engineInboxUndo },
   { name: 'engine_inbox_person', description: 'Content Engine Inbox supporter history: one person\'s comments and messages on your team\'s accounts in the last 90 days (author_id from an inbox item), with counts (comments, messages, hidden, on ads), their labels and the most recent.', inputSchema: obj({ team: { type: 'string' }, author_id: { type: 'string' } }, ['team', 'author_id']), handler: engineInboxPerson },
   { name: 'engine_inbox_posts', description: 'Content Engine Inbox by post: the last days\' comments (7 by default, up to 30) grouped by the post or ad they\'re on, with comment, open, hidden and our-reply counts, most open first; ads: true for ads only. Open one with engine_inbox thread.', inputSchema: obj({ team: { type: 'string' }, days: { type: 'number' }, ads: { type: 'boolean' } }, ['team']), handler: engineInboxPosts },
+  { name: 'engine_inbox_rules', description: 'Content Engine Inbox auto-hide list for one of your teams: banned words, phrases, "any link that isn\'t ours" and the built-in scam phrases (listed), and whether you can change it (team admins).', inputSchema: obj({ team: { type: 'string' } }, ['team']), handler: engineInboxRules },
+  { name: 'engine_inbox_rule', description: 'Content Engine Inbox: add to or remove from a team\'s auto-hide list (team admins). add: kind word (whole word), phrase (anywhere), links (any link that isn\'t citizengo.org or cgo.ac) or scams (the built-in scam phrases), with value for word and phrase. remove: id. New comments that match are hidden (never deleted) as you, and labelled auto-hidden.', inputSchema: obj({ action: { type: 'string', enum: ['add', 'remove'] }, team: { type: 'string' }, kind: { type: 'string', enum: ['word', 'phrase', 'links', 'scams'] }, value: { type: 'string' }, id: { type: 'number' } }, ['action', 'team']), handler: engineInboxRule },
   { name: 'engine_inbox_history', description: 'Content Engine Inbox moderation history for one of your teams: every reply, hide, delete, like, assignment, label and done, by whom, newest first.', inputSchema: obj({ team: { type: 'string' }, limit: { type: 'number' } }, ['team']), handler: engineInboxHistory },
   { name: 'engine_record', description: 'Content Engine: record bookkeeping on a post in any status, posted and rejected included: results, posted (the real post links and time), stale, and posting.asanaTaskGid / asanaUrl / syncedAt / removedAt. Nothing else; the post itself is saved with engine_save. version must be the one you read.', inputSchema: obj({ id: { type: 'string' }, version: { type: 'number' }, patch: { type: 'object' } }, ['id', 'version', 'patch']), handler: engineRecord },
   { name: 'engine_status', description: 'Content Engine: approve (schedules it; needs publishing rights for every Facebook and Instagram account), hold, changes (needs a note), reject, reopen, or mark as posted (it went out) a post.', inputSchema: obj({ id: { type: 'string' }, version: { type: 'number' }, action: { type: 'string', enum: ['approve', 'hold', 'changes', 'reject', 'reopen', 'posted'] }, note: { type: 'string' }, reasons: { type: 'array', items: { type: 'string' } } }, ['id', 'version', 'action']), handler: engineStatus },

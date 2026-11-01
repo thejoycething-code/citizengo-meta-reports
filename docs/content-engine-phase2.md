@@ -65,7 +65,7 @@ Decisions from Christopher Joyce are in brackets with the date._
    The desk's connector manifest: engine_me, engine_posts, engine_save, engine_status, engine_calendar,
    engine_requests, engine_request, engine_evergreen, engine_evergreen_update, engine_connect, engine_media,
    engine_pause, engine_video, engine_inbox, engine_inbox_act, engine_inbox_undo, engine_inbox_history, engine_inbox_person,
-   engine_inbox_posts.
+   engine_inbox_posts, engine_inbox_rules, engine_inbox_rule.
 5. ⬜ Until Meta publishing works, "Approve" still hands UK posts to Asana as today.
 6. ◐ Cutover (prepared 1 Nov; nothing switched yet). The daily engine's instructions are ready in
    content-engine/DAILY.md, section "Engine mode", which only applies once the file content-engine/ENGINE_LIVE
@@ -79,7 +79,7 @@ Decisions from Christopher Joyce are in brackets with the date._
       `node scripts/engine-import-board.js <dump>/drafts --apply` with the service key in the shell. Posts nobody
       has edited in the engine are refreshed; ones edited there are left alone.
    3. Publish content-engine/desk.html onto the board URL (SxCXeQPMkaBMNiABjiiULw) from a session whose
-      connector list includes the engine tools, with the 19-tool manifest above.
+      connector list includes the engine tools, with the 21-tool manifest above.
    4. `touch content-engine/ENGINE_LIVE`. The next run works in the engine.
    5. Check the first run: new drafts appear on the desk in Review, nothing was written to the board's `drafts`.
    To go back: delete ENGINE_LIVE and republish review-board.html onto the board URL (its drafts are as they were
@@ -234,7 +234,13 @@ can't have collaborators. Facebook collaborators are added in Meta Business Suit
    it in Conversations. Supporter history: `engine_inbox_person` (90 days on the team's accounts: comments,
    messages, on ads, hidden by us, labels, recent) shown above the comment. Tracked-link clicks per person aren't
    possible (links aren't tied to a Facebook or Instagram user). Not yet: bulk by topic.
-3. ⬜ Later: auto-hide list, pile-on alert, automations (comment to DM), X.
+   Auto-hide list (built 1 Nov): `engine_inbox_rules` (each team: words, phrases, "any link that isn't
+   citizengo.org or cgo.ac", and the built-in scam phrases in `lib/inbox.js` SCAM_PHRASES), changed by team admins
+   with `engine_inbox_rule`, shown at the top of the desk's Moderation tab. Plain matching only (no regular
+   expressions from people). The inbox collector checks each new comment once (`auto_checked_at`, comments from the
+   last 2 days) and queues a hide, never a delete, as the person who made the rule, labelled auto-hidden; the
+   action worker sends it like any other (so it stays in dry run with the rest). History shows "Auto-hide: <why>".
+3. ⬜ Later: pile-on alert, automations (comment to DM), bulk by topic, X.
 
 ## Slice 3 onwards
 

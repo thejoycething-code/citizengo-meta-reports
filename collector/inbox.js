@@ -63,11 +63,34 @@ async function readMessages({ team, account, tok, token, fetchImpl }) {
   return rows;
 }
 
+// The team's auto-hide list, on each new comment once: a match queues a hide
+// (never a delete) as the person who made the rule, labelled auto-hidden, for
+// the action worker to send. Anyone can unhide it from the desk.
+async function autoHide({ store, team, live, now, log }) {
+  const rules = await store.engineInboxRules({ team_ids: [team] });
+  const fresh = await store.engineInboxUnchecked({ team_ids: [team], since: new Date(now - 2 * 24 * 3600_000).toISOString() });
+  let hidden = 0;
+  for (const item of fresh) {
+    const m = rules.length ? I.matchRules(item.text, rules) : null;
+    if (m && !item.hidden) {
+      hidden++;
+      log(`  ‖ ${item.id}: ${live ? 'hiding' : 'would hide'} (${m.why})`);
+      if (live) {
+        await store.engineInboxInsertAction({ item_id: item.id, team_id: item.team_id, account_key: item.account_key, action: 'hide', by: m.rule.created_by, detail: { auto: true, rule_id: m.rule.id, why: m.why }, run_after: new Date(now).toISOString(), status: 'queued' });
+        await store.engineInboxUpdate(item.id, { labels: [...new Set([...(item.labels || []), 'auto-hidden'])], auto_checked_at: new Date(now).toISOString(), updated_at: new Date(now).toISOString(), updated_by: 'auto-hide' });
+        continue;
+      }
+    }
+    if (live) await store.engineInboxUpdate(item.id, { auto_checked_at: new Date(now).toISOString() });
+  }
+  return hidden;
+}
+
 async function run({ store, privateKey, live, now = Date.now(), log = console.log, fetchImpl }) {
   const [teams, tokens] = await Promise.all([store.engineTeams(), store.engineConnectedTokens()]);
   const readers = readerTokens(tokens);
   const since = now - WINDOW_DAYS * 24 * 3600_000;
-  const tally = { accounts: 0, comments: 0, messages: 0, skipped: 0, failed: 0 };
+  const tally = { accounts: 0, comments: 0, messages: 0, skipped: 0, failed: 0, auto_hidden: 0 };
   for (const t of teams) {
     for (const acc of t.accounts || []) {
       if (!['facebook', 'instagram'].includes(acc.platform)) continue;
@@ -97,6 +120,9 @@ async function run({ store, privateKey, live, now = Date.now(), log = console.lo
         }
       }
     }
+  }
+  for (const t of teams) {
+    try { tally.auto_hidden += await autoHide({ store, team: t.id, live, now, log }); } catch (e) { tally.failed++; log(`  ✗ auto-hide ${t.id}: ${e.message}`); }
   }
   return tally;
 }

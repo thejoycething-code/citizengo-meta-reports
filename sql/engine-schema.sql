@@ -265,3 +265,20 @@ create index if not exists engine_inbox_actions_queue on public.engine_inbox_act
 create index if not exists engine_inbox_actions_team on public.engine_inbox_actions (team_id, created_at desc);
 alter table public.engine_inbox_actions enable row level security;
 comment on table public.engine_inbox_actions is 'Content Engine Inbox actions and moderation history. Meta actions are queued for the Mini with a 10-second undo window.';
+
+-- Auto-hide list [slice 3, 1 Nov]: per team, banned words, banned phrases, "any
+-- link except ours", and the built-in scam phrases (kind 'scams'). The Mini
+-- checks each new comment once (auto_checked_at) and queues a hide, never a
+-- delete, as the person who made the rule; anyone can unhide it.
+create table if not exists public.engine_inbox_rules (
+  id bigint generated always as identity primary key,
+  team_id text not null references public.engine_teams(id) on delete cascade,
+  kind text not null check (kind in ('word', 'phrase', 'links', 'scams')),
+  value text not null default '',
+  created_by text not null,
+  created_at timestamptz not null default now()
+);
+create unique index if not exists engine_inbox_rules_unique on public.engine_inbox_rules (team_id, kind, lower(value));
+alter table public.engine_inbox_rules enable row level security;
+comment on table public.engine_inbox_rules is 'Content Engine Inbox auto-hide list: words, phrases, links and scam phrases that hide new comments.';
+alter table public.engine_inbox add column if not exists auto_checked_at timestamptz;
