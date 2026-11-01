@@ -57,6 +57,9 @@
     "collect:ig": "node collector/ig-connected.js",
     "test:ig": "node scripts/test-ig.js",
     "test:engine": "node scripts/test-engine.js",
-    "test:fb-connect": "node scripts/test-fb-connect.js"
+    "test:fb-connect": "node scripts/test-fb-connect.js",
+    "test:publish": "node scripts/test-publish.js",
+    "publish": "node collector/publish.js",
+    "publish:dry": "node collector/publish.js --dry-run"
   }
 }

@@ -1,0 +1,163 @@
+#!/usr/bin/env node
+'use strict';
+// The Content Engine publisher (collector/publish.js, lib/publish.js) against
+// an in-memory engine and a fake Facebook: a dry run changes nothing; a live
+// run publishes each due Facebook and Instagram destination once, with the
+// approver's sealed Page token and the first comment; X is left for a person;
+// and every reason to hold back is reported instead of published.
+// Usage: node scripts/test-publish.js
+
+const xauth = require('../lib/xauth');
+const E = require('../lib/engine');
+const P = require('../lib/publish');
+const { run } = require('../collector/publish');
+const { ENGINE_TOOLS } = require('../mcp/engine-tools');
+
+let passed = 0, failed = 0;
+function eq(name, actual, expected) {
+  const a = JSON.stringify(actual), e = JSON.stringify(expected);
+  if (a === e) { console.log(`  ok    ${name}`); passed++; } else { console.log(`  FAIL  ${name}\n          expected ${e}\n          got      ${a}`); failed++; }
+}
+const clone = (x) => JSON.parse(JSON.stringify(x));
+const keys = xauth.generateKeyPair();
+const NOW = Date.parse('2026-11-03T14:05:00Z');
+
+function engine() {
+  const db = {
+    teams: [{ id: 'uk', name: 'United Kingdom', accounts: [{ key: 'uk-fb', platform: 'facebook', page_id: '105' }, { key: 'uk-ig', platform: 'instagram', ig_id: '178' }, { key: 'uk-x', platform: 'x' }, { key: 'sc-fb', platform: 'facebook', page_id: '120' }] }],
+    rights: [{ who: 'chris', account_key: 'uk-fb', source: 'meta' }, { who: 'chris', account_key: 'uk-ig', source: 'meta' }, { who: 'chris', account_key: 'sc-fb', source: 'maintainer' }],
+    tokens: [{ who: 'chris', account_key: 'uk-fb', page_id: '105', ig_id: '178', sealed: xauth.seal(keys.publicKey, 'PAGE-TOKEN') }, { who: 'chris', account_key: 'uk-ig', page_id: '105', ig_id: '178', sealed: xauth.seal(keys.publicKey, 'PAGE-TOKEN') }],
+    posts: [], events: [], media: {},
+  };
+  return {
+    db,
+    async engineTeams() { return clone(db.teams); },
+    async enginePosts({ statuses } = {}) { return clone(db.posts.filter((p) => !statuses || statuses.includes(p.status))); },
+    async enginePost(id) { const p = db.posts.find((x) => x.id === id); return p ? clone(p) : null; },
+    async engineUpdatePost(id, version, fields) { const p = db.posts.find((x) => x.id === id && x.version === version); if (!p) return null; Object.assign(p, fields, { version: version + 1 }); return clone(p); },
+    async engineEvent(row) { db.events.push(row); },
+    async engineRights({ who }) { return clone(db.rights.filter((r) => r.who === who)); },
+    async enginePageToken({ who, account_key }) { return clone(db.tokens.find((t) => t.who === who && t.account_key === account_key) || null); },
+    async engineMediaUrl(path) { return path in db.media || path.startsWith('uk/') ? `https://db.example/signed/${path}?token=t` : null; },
+    async engineMediaUpload(path, buf) { db.media[path] = buf.length; return path; },
+    async engineMembers({ who }) { return who === 'chris' ? [{ team_id: 'uk', who: 'chris', role: 'admin' }] : []; },
+  };
+}
+const final = { facebook: { text: 'Pray with us. https://cgo.ac/x', comment: 'Sign here: https://cgo.ac/y', media: ['uk/p1/facebook-0-aa.jpg'] }, instagram: { text: 'Pray with us. Link in bio', comment: '', media: ['uk/p1/instagram-0-aa.jpg', 'uk/p1/instagram-1-bb.jpg'] } };
+const approved = { action: 'approve', by: 'chris', at: '2026-11-02T10:00:00Z' };
+function addPost(store, id, doc, status = 'scheduled') { store.db.posts.push({ id, team_id: 'uk', status, version: 1, doc: clone(doc), post_at: E.postAt(doc) }); }
+
+function fakeFacebook() {
+  const calls = [];
+  const fetchImpl = async (u, opts = {}) => {
+    const url = new URL(u);
+    const params = Object.fromEntries(new URLSearchParams(opts.body || url.search));
+    calls.push({ method: opts.method || 'GET', path: url.pathname.replace(/^\/v[\d.]+\//, ''), params });
+    const ok = (b) => ({ ok: true, status: 200, json: async () => b });
+    const p = url.pathname;
+    if (params.access_token !== 'PAGE-TOKEN') return { ok: false, status: 400, json: async () => ({ error: { message: 'Invalid OAuth access token' } }) };
+    if (p.endsWith('/105/photos')) return ok(params.published === 'false' ? { id: `ph${calls.length}` } : { id: 'ph1', post_id: '105_900' });
+    if (p.endsWith('/105/feed')) return ok({ id: '105_901' });
+    if (p.endsWith('/comments')) return ok({ id: 'c1' });
+    if (p.endsWith('/178/media')) return ok({ id: `cont${calls.length}` });
+    if (p.endsWith('/178/media_publish')) return ok({ id: 'ig555' });
+    if (p.endsWith('/ig555')) return ok({ permalink: 'https://www.instagram.com/p/abc/' });
+    return { ok: false, status: 404, json: async () => ({ error: { message: `no route ${p}` } }) };
+  };
+  return { calls, fetchImpl };
+}
+const quiet = () => {};
+
+(async () => {
+  // What is due.
+  const s0 = engine();
+  addPost(s0, 'p1', { review: approved, final, posting: { destinations: ['uk-fb', 'uk-ig', 'uk-x'], at: '2026-11-03T14:00:00Z', times: { 'uk-ig': '2026-11-03T18:00:00Z' } } });
+  addPost(s0, 'p2', { review: approved, final, posting: { destinations: ['uk-fb'], at: '2026-11-04T14:00:00Z' } });
+  addPost(s0, 'p3', { review: approved, final, posting: { destinations: ['uk-fb'], at: '2026-11-03T14:00:00Z' } }, 'hold');
+  eq('plan: only scheduled posts, only Meta accounts whose own time has come', P.plan(await s0.enginePosts(), s0.db.teams, NOW).map((i) => [i.post.id, i.key, i.action]), [['p1', 'uk-fb', 'publish']]);
+  eq('content: nothing without the approved snapshot', P.contentFor({}, 'facebook').ok, false);
+  eq('content: Instagram needs an image', P.contentFor({ final: { instagram: { text: 'x', media: [] } } }, 'instagram').ok, false);
+
+  // Dry run.
+  const fb0 = fakeFacebook();
+  const t0 = await run({ store: s0, privateKey: keys.privateKey, live: false, now: NOW, log: quiet, fetchImpl: fb0.fetchImpl });
+  eq('dry run: says what it would publish, calls nothing, changes nothing', [t0.would, fb0.calls.length, s0.db.posts[0].version, s0.db.events.length], [1, 0, 1, 0]);
+
+  // Live: Facebook at 14:00, Instagram at 18:00, X by hand.
+  const s1 = engine();
+  addPost(s1, 'p1', { review: approved, final, posting: { destinations: ['uk-fb', 'uk-ig', 'uk-x'], at: '2026-11-03T14:00:00Z', times: { 'uk-ig': '2026-11-03T18:00:00Z' } } });
+  const fb1 = fakeFacebook();
+  const t1 = await run({ store: s1, privateKey: keys.privateKey, live: true, now: NOW, log: quiet, fetchImpl: fb1.fetchImpl });
+  const p1 = s1.db.posts[0];
+  eq('live: Facebook goes out with the approver\'s Page token, the photo and the first comment', [t1.published, fb1.calls.map((c) => `${c.method} ${c.path}`), fb1.calls[0].params.url, fb1.calls[1].params.message], [1, ['POST 105/photos', 'POST 105_900/comments'], 'https://db.example/signed/uk/p1/facebook-0-aa.jpg?token=t', 'Sign here: https://cgo.ac/y']);
+  eq('live: recorded as published, claim cleared, still scheduled (Instagram later, X by hand)', [p1.doc.published['uk-fb'].url, p1.doc.publishing, p1.status], ['https://www.facebook.com/105_900', {}, 'scheduled']);
+  const fb1b = fakeFacebook();
+  await run({ store: s1, privateKey: keys.privateKey, live: true, now: NOW + 60_000, log: quiet, fetchImpl: fb1b.fetchImpl });
+  eq('never twice: the next run leaves Facebook alone', fb1b.calls.length, 0);
+  const fb1c = fakeFacebook();
+  await run({ store: s1, privateKey: keys.privateKey, live: true, now: Date.parse('2026-11-03T18:01:00Z'), log: quiet, fetchImpl: fb1c.fetchImpl });
+  eq('Instagram at its own time: a carousel of two, published, permalink kept', [fb1c.calls.map((c) => c.path), s1.db.posts[0].doc.published['uk-ig'].url], [['178/media', '178/media', '178/media', '178/media_publish', 'ig555'], 'https://www.instagram.com/p/abc/']);
+  eq('with X still to post by hand, it stays Scheduled', s1.db.posts[0].status, 'scheduled');
+
+  // Facebook only: Posted afterwards.
+  const s2 = engine();
+  addPost(s2, 'p2', { review: approved, final, posting: { destinations: ['uk-fb'], at: '2026-11-03T14:00:00Z' } });
+  await run({ store: s2, privateKey: keys.privateKey, live: true, now: NOW, log: quiet, fetchImpl: fakeFacebook().fetchImpl });
+  eq('everything out and nothing by hand: Posted', [s2.db.posts[0].status, s2.db.posts[0].doc.posted.by, s2.db.events.map((e) => e.action)], ['posted', 'publisher', ['published', 'posted']]);
+
+  // Every reason to hold back.
+  const s3 = engine();
+  addPost(s3, 'lost', { review: approved, final, posting: { destinations: ['uk-fb'], at: '2026-11-03T14:00:00Z' } });
+  s3.db.rights = s3.db.rights.filter((r) => r.account_key !== 'uk-fb');
+  addPost(s3, 'notoken', { review: approved, final, posting: { destinations: ['sc-fb'], at: '2026-11-03T14:00:00Z' } });
+  addPost(s3, 'nofinal', { review: approved, posting: { destinations: ['uk-ig'], at: '2026-11-03T14:00:00Z' } });
+  addPost(s3, 'late', { review: approved, final, posting: { destinations: ['uk-ig'], at: '2026-11-03T06:00:00Z' } });
+  addPost(s3, 'claimed', { review: approved, final, publishing: { 'uk-ig': { at: '2026-11-03T13:30:00Z' } }, posting: { destinations: ['uk-ig'], at: '2026-11-03T13:00:00Z' } });
+  addPost(s3, 'busy', { review: approved, final, publishing: { 'uk-ig': { at: '2026-11-03T14:00:00Z' } }, posting: { destinations: ['uk-ig'], at: '2026-11-03T13:59:00Z' } });
+  const fb3 = fakeFacebook();
+  const t3 = await run({ store: s3, privateKey: keys.privateKey, live: true, now: NOW, log: quiet, fetchImpl: fb3.fetchImpl });
+  const err = (id, k) => (s3.db.posts.find((p) => p.id === id).doc.publishErrors || {})[k];
+  eq('held back, nothing published', [t3.published, fb3.calls.length], [0, 0]);
+  eq('approver lost the right', /can no longer post to uk-fb/.test(err('lost', 'uk-fb').message), true);
+  eq('maintainer right but no connected Facebook', /hasn't connected Facebook/.test(err('notoken', 'sc-fb').message), true);
+  eq('no approved snapshot', /Not ready to publish/.test(err('nofinal', 'uk-ig').message), true);
+  eq('more than 6 hours late', /more than 6 hours/.test(err('late', 'uk-ig').message), true);
+  eq('an old claim with no answer is reported, not retried (it may already be up)', [/may already be up/.test(err('claimed', 'uk-ig').message), err('claimed', 'uk-ig').tries], [true, P.MAX_TRIES]);
+  eq('a fresh claim from another run is left alone', [err('busy', 'uk-ig'), t3.held], [undefined, 1]);
+
+  // Facebook refusing: counted, retried up to 3 times, then left for a person.
+  const s4 = engine();
+  addPost(s4, 'bad', { review: approved, final, posting: { destinations: ['uk-fb'], at: '2026-11-03T14:00:00Z' } });
+  s4.db.tokens[0].sealed = xauth.seal(keys.publicKey, 'EXPIRED');
+  for (let i = 0; i < 4; i++) await run({ store: s4, privateKey: keys.privateKey, live: true, now: NOW + i * 600_000, log: quiet, fetchImpl: fakeFacebook().fetchImpl });
+  const e4 = s4.db.posts[0].doc.publishErrors['uk-fb'];
+  eq('Facebook refusing: three tries, then it stops and says why', [e4.tries, /Invalid OAuth access token/.test(e4.message), s4.db.events.filter((e) => e.action === 'publish_failed').length], [3, true, 3]);
+
+  // The post goes up but the first comment fails: published, never retried.
+  const s6 = engine();
+  addPost(s6, 'cm', { review: approved, final, posting: { destinations: ['uk-fb'], at: '2026-11-03T14:00:00Z' } });
+  const fb6 = fakeFacebook();
+  const f6 = fb6.fetchImpl;
+  const noComments = async (u, o) => (String(u).includes('/comments') ? { ok: false, status: 400, json: async () => ({ error: { message: 'Comments are off' } }) } : f6(u, o));
+  await run({ store: s6, privateKey: keys.privateKey, live: true, now: NOW, log: quiet, fetchImpl: noComments });
+  const fb6b = fakeFacebook();
+  await run({ store: s6, privateKey: keys.privateKey, live: true, now: NOW + 600_000, log: quiet, fetchImpl: fb6b.fetchImpl });
+  const pub6 = s6.db.posts[0].doc.published['uk-fb'];
+  eq('first comment fails: the post counts as published, the comment is flagged, nothing is posted twice', [!!pub6.id, /Add it by hand/.test(pub6.comment_error), fb6b.calls.length, s6.db.posts[0].status], [true, true, 0, 'posted']);
+
+  // engine_media: the desk's finished images.
+  const tool = ENGINE_TOOLS.find((t) => t.name === 'engine_media').handler;
+  const s5 = engine();
+  s5.engineTeams = async () => clone(s5.db.teams);
+  addPost(s5, 'uk-1', { title: 'x' }, 'review');
+  const jpeg = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff]), Buffer.alloc(100)]).toString('base64');
+  const m = JSON.parse((await tool(s5, { id: 'uk-1', platform: 'instagram', index: 1, mime: 'image/jpeg', data: jpeg }, { who: 'chris' })).text);
+  eq('engine_media: stored under the team and post, by content hash', [m.ok, /^uk\/uk-1\/instagram-1-[0-9a-f]{12}\.jpg$/.test(m.path)], [true, true]);
+  const notJpeg = JSON.parse((await tool(s5, { id: 'uk-1', platform: 'facebook', mime: 'image/jpeg', data: Buffer.from('<svg/>').toString('base64') }, { who: 'chris' })).text);
+  eq('engine_media: refuses a file that isn\'t the image it claims to be', notJpeg.ok, false);
+  let notMember = null; try { await tool(s5, { id: 'uk-1', platform: 'facebook', mime: 'image/jpeg', data: jpeg }, { who: 'greg' }); } catch (e) { notMember = e.code; }
+  eq('engine_media: only for posts you can edit', notMember, 'ENGINE_NOT_FOUND');
+
+  console.log(`\n${passed} passed, ${failed} failed`);
+  process.exit(failed ? 1 : 0);
+})().catch((e) => { console.error(e); process.exit(1); });

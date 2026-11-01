@@ -223,6 +223,32 @@ async function engineEvergreenUpdate(store, args, { who }) {
   return json({ ok: true, post: row ? { ...row, ...E.evergreenState(row, today) } : null });
 }
 
+// Slice 2: a finished image for a post (the desk draws cards in the browser).
+// Stored in the private engine-media bucket; the desk then saves the returned
+// path in the post's `final` snapshot, and the publisher signs a short-lived
+// link for Facebook or Instagram to fetch.
+const MEDIA_MAX_BYTES = 3 * 1024 * 1024;
+async function engineMedia(store, args, { who }) {
+  const ctx = await context(store, who);
+  const post = await editablePost(store, ctx, args.id);
+  if (!['facebook', 'instagram'].includes(args.platform)) return json({ ok: false, error: 'Images are stored for Facebook or Instagram.' });
+  const index = Number(args.index || 0);
+  if (!Number.isInteger(index) || index < 0 || index > 9) return json({ ok: false, error: 'Up to 10 images per post.' });
+  const mime = String(args.mime || '');
+  const ext = { 'image/jpeg': 'jpg', 'image/png': 'png' }[mime];
+  if (!ext) return json({ ok: false, error: 'Images must be JPEG or PNG.' });
+  const buf = Buffer.from(String(args.data || ''), 'base64');
+  if (!buf.length) return json({ ok: false, error: 'No image received.' });
+  if (buf.length > MEDIA_MAX_BYTES) return json({ ok: false, error: 'That image is over 3 MB.' });
+  const magic = ext === 'jpg' ? buf[0] === 0xff && buf[1] === 0xd8 : buf.slice(0, 4).toString('hex') === '89504e47';
+  if (!magic) return json({ ok: false, error: `That isn't a ${ext.toUpperCase()} image.` });
+  const hash = require('crypto').createHash('sha256').update(buf).digest('hex').slice(0, 12);
+  const safeId = String(post.id).replace(/[^a-z0-9-]/gi, '-');
+  const path = `${post.team_id}/${safeId}/${args.platform}-${index}-${hash}.${ext}`;
+  await store.engineMediaUpload(path, buf, mime);
+  return json({ ok: true, path, bytes: buf.length });
+}
+
 // Slice 2: the "Connect Facebook" link for the signed-in person. The link
 // names them, lasts ten minutes, and starts api/fb/authorize.js.
 async function engineConnect(store, args, { who }) {
@@ -249,6 +275,7 @@ const ENGINE_TOOLS = [
   { name: 'engine_request', description: 'Content Engine Plan: ask the daily engine to draft a post for a date (action create: team, for_date YYYY-MM-DD, title, optional angle, source key_date or idea), cancel an open request (action cancel: id), or record that it was drafted (action drafted: id, post_id).', inputSchema: obj({ action: { type: 'string', enum: ['create', 'cancel', 'drafted'] }, id: { type: 'number' }, team: { type: 'string' }, for_date: { type: 'string' }, title: { type: 'string' }, angle: { type: 'string' }, source: { type: 'string', enum: ['key_date', 'idea', 'evergreen'] }, evergreen_id: { type: 'number' }, post_id: { type: 'string' } }, ['action']), handler: engineRequest },
   { name: 'engine_evergreen', description: 'Content Engine evergreen bank for one of your teams: past winners with their state (due, coming, resting, retired), due date and any open fresh-draft request. Due 10 weeks after a post last went out.', inputSchema: obj({ team: { type: 'string' } }, ['team']), handler: engineEvergreen },
   { name: 'engine_evergreen_update', description: 'Content Engine evergreen bank: add a past winner (action add: team, title, last_out YYYY-MM-DD, optional url, format, account_key, result, why), or snooze it 4 weeks, retire, restore, or record that a fresh version went out (went_out, optional last_out) by id.', inputSchema: obj({ action: { type: 'string', enum: ['add', 'snooze', 'retire', 'restore', 'went_out'] }, id: { type: 'number' }, team: { type: 'string' }, title: { type: 'string' }, last_out: { type: 'string' }, url: { type: 'string' }, format: { type: 'string' }, account_key: { type: 'string' }, result: { type: 'string' }, why: { type: 'string' }, source_post: { type: 'string' } }, ['action']), handler: engineEvergreenUpdate },
+  { name: 'engine_media', description: 'Content Engine: store one finished image (base64 JPEG or PNG, up to 3 MB) for a post you can edit, for Facebook or Instagram (index 0-9 for carousels). Returns its path for the post\'s final snapshot.', inputSchema: obj({ id: { type: 'string' }, platform: { type: 'string', enum: ['facebook', 'instagram'] }, index: { type: 'number' }, mime: { type: 'string', enum: ['image/jpeg', 'image/png'] }, data: { type: 'string' } }, ['id', 'platform', 'mime', 'data']), handler: engineMedia },
   { name: 'engine_connect', description: 'Content Engine: a ten-minute link that connects your own Facebook account, so the Pages you can post to become your publishing rights.', inputSchema: obj({}), handler: engineConnect },
   { name: 'engine_calendar', description: 'Content Engine calendar: every team\'s scheduled and posted items (read-only for teams you are not in) plus your own teams\' drafts and holds, and the key dates (CitizenGO-wide and your teams\' own), between from and to (YYYY-MM-DD).', inputSchema: obj({ from: { type: 'string' }, to: { type: 'string' } }), handler: engineCalendar },
 ];
