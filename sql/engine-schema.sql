@@ -342,3 +342,17 @@ alter table public.engine_inbox add column if not exists automation_checked_at t
 -- Facebook Page (POST/DELETE /{page}/blocked); Instagram has no ban API.
 alter table public.engine_inbox_actions drop constraint if exists engine_inbox_actions_action_check;
 alter table public.engine_inbox_actions add constraint engine_inbox_actions_action_check check (action in ('reply', 'private_reply', 'like', 'hide', 'unhide', 'delete', 'ban', 'unban', 'done', 'reopen', 'assign', 'label'));
+
+-- Automation flow builder [1 Nov, gaps §5]: what a rule applies to (one post,
+-- a post type, or every post; the most specific wins), Facebook and/or
+-- Instagram, public replies taking turns, "already got this link → just react",
+-- the tag put on each comment it answered, and who it is handed to.
+alter table public.engine_automations add column if not exists scope text not null default 'all';
+alter table public.engine_automations drop constraint if exists engine_automations_scope_check;
+alter table public.engine_automations add constraint engine_automations_scope_check check (scope in ('all', 'type', 'post'));
+alter table public.engine_automations add column if not exists post_type text;
+alter table public.engine_automations add column if not exists reply_texts text[] not null default '{}';
+alter table public.engine_automations add column if not exists platforms text[] not null default '{facebook}';
+alter table public.engine_automations add column if not exists skip_repeat boolean not null default true;
+alter table public.engine_automations add column if not exists tag text;
+alter table public.engine_automations add column if not exists hand_to text;

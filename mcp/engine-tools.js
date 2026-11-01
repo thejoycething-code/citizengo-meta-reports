@@ -497,11 +497,21 @@ async function engineAutomationsList(store, args, { who }) {
   const autos = await store.engineAutomations({ team_ids: [team] });
   const since = new Date(Date.now() - 7 * 864e5).toISOString();
   const sent = {};
+  const blank = () => ({ queued: 0, sent: 0, failed: 0, steps: { dm: 0, reply: 0, react: 0, failed: 0 } });
   for (const a of await store.engineInboxActions({ team_ids: [team], limit: 1000 })) {
     const id = a.detail && a.detail.automation_id;
-    if (id && a.action === 'private_reply' && a.created_at >= since) { sent[id] = sent[id] || { queued: 0, sent: 0, failed: 0 }; sent[id][a.status === 'done' ? 'sent' : a.status === 'failed' ? 'failed' : 'queued']++; }
+    if (!id || a.created_at < since || a.status === 'cancelled') continue;
+    const s = sent[id] = sent[id] || blank();
+    if (a.action === 'private_reply') s[a.status === 'done' ? 'sent' : a.status === 'failed' ? 'failed' : 'queued']++;
+    const step = a.action === 'private_reply' ? 'dm' : a.action === 'reply' ? 'reply' : a.action === 'like' ? 'react' : null;
+    if (step && a.status === 'done') s.steps[step]++;
+    if (step && a.status === 'failed') s.steps.failed++;
   }
-  return json({ team, automations: autos.map((a) => ({ ...a, last_7_days: sent[a.id] || { queued: 0, sent: 0, failed: 0 } })), can_edit: ctx.maintainer || ctx.myTeams[team] === 'admin', daily_max: I.AUTOMATION_DAILY_MAX });
+  const pauses = await store.enginePauses();
+  const held = E.pausedKeys(pauses);
+  const accounts = (teamById(ctx, team).accounts || []).map((a) => a.key);
+  const paused = !!held['*'] || (accounts.length > 0 && accounts.every((k) => held[k]));
+  return json({ team, automations: autos.map((a) => ({ ...a, applies_to: I.automationScope(a), last_7_days: sent[a.id] || blank() })), can_edit: ctx.maintainer || ctx.myTeams[team] === 'admin', daily_max: I.AUTOMATION_DAILY_MAX, post_types: I.POST_TYPES, paused });
 }
 async function engineAutomation(store, args, { who }) {
   const ctx = await context(store, who);
@@ -517,11 +527,19 @@ async function engineAutomation(store, args, { who }) {
     if (!fbs.some((k) => rights.includes(k))) return json({ ok: false, error: "Automations send as you, so you need a publishing right on at least one of the team's Facebook Pages." });
     if ((await store.engineAutomations({ team_ids: [team] })).length >= 20) return json({ ok: false, error: 'At most 20 automations per team.' });
     await store.engineInsertAutomation({ team_id: team, ...c.value, thread_id: args.thread_id ? String(args.thread_id) : null, created_by: who });
+  } else if (args.action === 'update') {
+    const cur = (await store.engineAutomations({ team_ids: [team] })).find((a) => a.id === Number(args.id));
+    if (!cur) return json({ ok: false, error: 'No such automation.' });
+    const keys = ['name', 'keywords', 'dm_text', 'reply_text', 'reply_texts', 'scope', 'post_type', 'thread_id', 'platforms', 'skip_repeat', 'tag', 'hand_to'];
+    const merged = Object.fromEntries(keys.map((k) => [k, args[k] !== undefined ? args[k] : cur[k]]));
+    const c = I.checkAutomation(merged);
+    if (!c.ok) return json(c);
+    if (!await store.engineUpdateAutomation(cur.id, team, { ...c.value, thread_id: merged.thread_id ? String(merged.thread_id) : null, updated_at: now, updated_by: who })) return json({ ok: false, error: 'No such automation.' });
   } else if (['pause', 'resume'].includes(args.action)) {
     if (!await store.engineUpdateAutomation(args.id, team, { active: args.action === 'resume', updated_at: now, updated_by: who })) return json({ ok: false, error: 'No such automation.' });
   } else if (args.action === 'remove') {
     if (!await store.engineUpdateAutomation(args.id, team, null)) return json({ ok: false, error: 'No such automation.' });
-  } else return json({ ok: false, error: 'action is add, pause, resume or remove.' });
+  } else return json({ ok: false, error: 'action is add, update, pause, resume or remove.' });
   return engineAutomationsList(store, { team }, { who });
 }
 
@@ -897,8 +915,8 @@ const ENGINE_TOOLS = [
   { name: 'engine_inbox_rules', description: 'Content Engine Inbox auto-hide list for one of your teams: banned words, phrases, "any link that isn\'t ours" and the built-in scam phrases (listed), and whether you can change it (team admins).', inputSchema: obj({ team: { type: 'string' } }, ['team']), handler: engineInboxRules },
   { name: 'engine_inbox_rule', description: 'Content Engine Inbox: add to or remove from a team\'s auto-hide list (team admins). add: kind word (whole word), phrase (anywhere), links (any link that isn\'t citizengo.org or cgo.ac) or scams (the built-in scam phrases), with value for word and phrase. remove: id. New comments that match are hidden (never deleted) as you, and labelled auto-hidden.', inputSchema: obj({ action: { type: 'string', enum: ['add', 'remove'] }, team: { type: 'string' }, kind: { type: 'string', enum: ['word', 'phrase', 'links', 'scams'] }, value: { type: 'string' }, id: { type: 'number' } }, ['action', 'team']), handler: engineInboxRule },
   { name: 'engine_inbox_alert', description: 'Content Engine Inbox: mark a pile-on alert (from engine_inbox alerts) as seen, so it leaves the desk for everyone in the team.', inputSchema: obj({ team: { type: 'string' }, id: { type: 'number' } }, ['team', 'id']), handler: engineInboxAlert },
-  { name: 'engine_automations', description: 'Content Engine comment-to-DM automations for one of your teams: each rule\'s keywords, private message, optional public reply, post (or every post), whether it is on, and its last 7 days (queued, sent, failed).', inputSchema: obj({ team: { type: 'string' } }, ['team']), handler: engineAutomationsList },
-  { name: 'engine_automation', description: 'Content Engine: add a comment-to-DM automation (team admins; action add: name, keywords (whole words), dm_text with the real cgo.ac link, optional reply_text, optional thread_id for one post), or pause, resume or remove one (id). A new Facebook comment with a keyword gets the private message (and public reply) as you, through the Mini, at most one per comment and 200 per rule a day.', inputSchema: obj({ action: { type: 'string', enum: ['add', 'pause', 'resume', 'remove'] }, team: { type: 'string' }, id: { type: 'number' }, name: { type: 'string' }, keywords: { type: 'array', items: { type: 'string' } }, dm_text: { type: 'string' }, reply_text: { type: 'string' }, thread_id: { type: 'string' } }, ['action', 'team']), handler: engineAutomation },
+  { name: 'engine_automations', description: 'Content Engine comment-to-DM automations for one of your teams: each rule\'s keywords, private message, public replies (taking turns), what it applies to (one post, a post type, or every post; the most specific wins), Facebook and/or Instagram, tag and hand-over, whether it is on, and its last 7 days (queued, sent, failed, and per step). paused: Pause everything is holding the team\'s accounts, so automations are held too.', inputSchema: obj({ team: { type: 'string' } }, ['team']), handler: engineAutomationsList },
+  { name: 'engine_automation', description: 'Content Engine: add or update a comment-to-DM automation (team admins; name, keywords (whole words), dm_text with the real cgo.ac link, reply_texts (up to 5 public replies, taking turns), scope all / type (post_type petition, prayer, reel, wins, news) / post (thread_id), platforms facebook and/or instagram, skip_repeat (someone who already got the link just gets a like; default on), tag, hand_to (who to assign the comment to)), or pause, resume or remove one (id). A new comment with a keyword gets the private message (and a public reply) as you, through the Mini, at most one per comment and 200 per rule a day; Pause everything holds them too.', inputSchema: obj({ action: { type: 'string', enum: ['add', 'update', 'pause', 'resume', 'remove'] }, team: { type: 'string' }, id: { type: 'number' }, name: { type: 'string' }, keywords: { type: 'array', items: { type: 'string' } }, dm_text: { type: 'string' }, reply_text: { type: 'string' }, reply_texts: { type: 'array', items: { type: 'string' } }, scope: { type: 'string', enum: ['all', 'type', 'post'] }, post_type: { type: 'string', enum: ['petition', 'prayer', 'reel', 'wins', 'news'] }, thread_id: { type: 'string' }, platforms: { type: 'array', items: { type: 'string', enum: ['facebook', 'instagram'] } }, skip_repeat: { type: 'boolean' }, tag: { type: 'string' }, hand_to: { type: 'string' } }, ['action', 'team']), handler: engineAutomation },
   { name: 'engine_inbox_history', description: 'Content Engine Inbox moderation history for one of your teams: every reply, hide, delete, like, assignment, label and done, by whom, newest first.', inputSchema: obj({ team: { type: 'string' }, limit: { type: 'number' } }, ['team']), handler: engineInboxHistory },
   { name: 'engine_analytics', description: 'Content Engine Analytics for the desk, as data: page reach, views, engagements and net follows, Instagram follower movement, top Facebook posts against their own Page\'s median, top Instagram posts and X totals, for the last 7, 30 or 90 days. scope citizengo (every CitizenGO Page, default), hazteoir (kept apart) or team (with team).', inputSchema: obj({ scope: { type: 'string', enum: ['citizengo', 'hazteoir', 'team'] }, team: { type: 'string' }, days: { type: 'number', enum: [7, 30, 90] } }), handler: engineAnalytics },
   { name: 'engine_listening', description: 'Content Engine Listening for the desk, as data: posts beating their own normal (min_multiple, default 3). tab citizengo: other CitizenGO Pages\' posts (not your team\'s, with team) by views against that Page\'s 90-day median, last 7 or 30 days. tab allies: watched ally Instagram accounts (optional country UK, US, IE, CA, AU), last 7, 10 or 30 days. tab opponents: watched opponent accounts plus their Meta Ad Library issue ads.', inputSchema: obj({ tab: { type: 'string', enum: ['citizengo', 'allies', 'opponents'] }, team: { type: 'string' }, country: { type: 'string' }, days: { type: 'number' }, min_multiple: { type: 'number' } }), handler: engineListening },

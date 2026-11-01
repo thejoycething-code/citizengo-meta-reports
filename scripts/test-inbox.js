@@ -15,6 +15,7 @@ function eq(name, actual, expected) {
 const clone = (x) => JSON.parse(JSON.stringify(x));
 const xauth = require('../lib/xauth');
 const I = require('../lib/inbox');
+const E = require('../lib/engine');
 const collect = require('../collector/inbox');
 const worker = require('../collector/inbox-actions');
 const { ENGINE_TOOLS } = require('../mcp/engine-tools');
@@ -40,7 +41,8 @@ function engine() {
     async engineRights({ who }) { return clone(db.rights.filter((r) => r.who === who)); },
     async engineConnectedTokens() { return clone(db.tokens); },
     async enginePageToken({ who, account_key }) { return clone(db.tokens.find((t) => t.who === who && t.account_key === account_key) || null); },
-    async enginePauses() { return []; },
+    async enginePauses() { return clone(db.pauses || []); },
+    async enginePosts({ team_ids } = {}) { return clone((db.posts || []).filter((p) => !team_ids || team_ids.includes(p.team_id))); },
     async engineInbox({ team_ids, statuses, thread_id, platform, kind, author_id, since }) {
       const rows = db.inbox.filter((r) => (!team_ids || team_ids.includes(r.team_id)) && (!statuses || statuses.includes(r.status)) && (!thread_id || r.thread_id === thread_id) && (!platform || r.platform === platform) && (!kind || r.kind === kind) && (!author_id || r.author_id === author_id) && (!since || r.created_at >= since) && !r.deleted_at);
       return clone(rows.sort((a, b) => (thread_id ? a.created_at.localeCompare(b.created_at) : b.created_at.localeCompare(a.created_at))));
@@ -245,9 +247,43 @@ function fakeMeta() {
     const r1 = await collect.run({ store: m, privateKey: keys.privateKey, live: true, now: NOW, log: () => {}, fetchImpl: quiet });
     const r2 = await collect.run({ store: m, privateKey: keys.privateKey, live: true, now: NOW + 60e3, log: () => {}, fetchImpl: quiet });
     eq('automations: "sign" gets the private message and the public reply as chris, once; "signal" gets nothing', [r1.automations, r2.automations, m.db.actions.map((a) => [a.item_id, a.action, a.by, a.status])], [1, 0, [['fbc_s1', 'private_reply', 'chris', 'queued'], ['fbc_s1', 'reply', 'chris', 'queued']]]);
+    // A petition post the engine published: "SIGN" works on it with no rule; the same person again just gets a like; Pause everything holds it.
+    m.db.posts = [{ id: 'uk-p9', team_id: 'uk', title: 'Isabel', status: 'posted', doc: { action: { url: 'https://citizengo.org/isabel' }, links: { facebook: { short: 'https://cgo.ac/isa' } }, published: { 'uk-fb': { id: '105_9', by: 'chris' } } } }];
+    const cm = (id, aid) => ({ id, team_id: 'uk', account_key: 'uk-fb', platform: 'facebook', kind: 'comment', thread_id: '105_9', object_id: id, author_id: aid, text: 'SIGN', created_at: t, from_us: false, status: 'open', labels: [] });
+    m.db.pauses = [{ id: 1, scope: 'all', paused_by: 'chris', reason: 'test', paused_at: t }];
+    m.db.inbox.push(cm('fbc_p1', 'u1'));
+    const held = await collect.run({ store: m, privateKey: keys.privateKey, live: true, now: NOW + 90e3, log: () => {}, fetchImpl: quiet });
+    m.db.pauses = [];
+    const n0 = m.db.actions.length;
+    const r3 = await collect.run({ store: m, privateKey: keys.privateKey, live: true, now: NOW + 120e3, log: () => {}, fetchImpl: quiet });
+    m.db.inbox.push(cm('fbc_p2', 'u1'));
+    await collect.run({ store: m, privateKey: keys.privateKey, live: true, now: NOW + 180e3, log: () => {}, fetchImpl: quiet });
+    eq('flow: SIGN on a petition draft DMs its link; held while paused; a second SIGN from them is a like', [held.automations, r3.automations, m.db.actions.slice(n0).map((a) => [a.item_id, a.action, a.by, (a.text || '').includes('cgo.ac/isa')])],
+      [0, 1, [['fbc_p1', 'private_reply', 'chris', true], ['fbc_p2', 'like', 'chris', false]]]);
     const fm = fakeMeta();
     const w = await worker.run({ store: m, privateKey: keys.privateKey, live: true, now: NOW + 1000, log: () => {}, fetchImpl: fm.fetchImpl });
     eq('automations: the worker sends the private reply to the comment (Meta\'s one per comment)', [fm.calls.filter((c) => c.path === '105/messages').map((c) => JSON.parse(c.params.recipient).comment_id), w.sent >= 1], [['s1'], true]);
+
+    // The flow builder [gaps §5].
+    const A = (x) => ({ active: true, keywords: ['sign'], ...x });
+    const c = { kind: 'comment', platform: 'facebook', text: 'sign me up', thread_id: 't1' };
+    eq('flow: the most specific rule wins (post, then post type, then all); Instagram only when ticked', [
+      I.automationFor(c, [A({ id: 1 }), A({ id: 2, scope: 'type', post_type: 'petition' }), A({ id: 3, thread_id: 't1' })], { postType: 'petition' }).id,
+      I.automationFor(c, [A({ id: 1 }), A({ id: 2, scope: 'type', post_type: 'petition' })], { postType: 'petition' }).id,
+      I.automationFor(c, [A({ id: 1 }), A({ id: 2, scope: 'type', post_type: 'prayer' })], { postType: 'petition' }).id,
+      I.automationFor({ ...c, platform: 'instagram' }, [A({ id: 1 })]),
+      I.automationFor({ ...c, platform: 'instagram' }, [A({ id: 1, platforms: ['facebook', 'instagram'] })]).id,
+    ], [3, 2, 1, null, 1]);
+    eq('flow: public replies take turns; the check refuses a type rule with no type', [
+      [0, 1, 2].map((n) => I.automationReply({ reply_texts: ['a', 'b'] }, n)), I.automationReply({ reply_text: 'x' }, 3),
+      I.checkAutomation({ name: 'x', keywords: ['sign'], dm_text: 'cgo.ac/x', scope: 'type' }).ok,
+      I.checkAutomation({ name: 'x', keywords: ['sign'], dm_text: 'cgo.ac/x', scope: 'type', post_type: 'reel', platforms: ['instagram'] }).value.platforms,
+    ], [['a', 'b', 'a'], 'x', false, ['instagram']]);
+    eq('flow: post types and the SIGN set on a petition draft (on by default, untickable)', [
+      E.postType({ action: { url: 'https://citizengo.org/x' } }), E.postType({ card: { template: 'agenda' } }), E.postType({ card: { template: 'newsbox' } }), E.postType({ card: { template: 'reel' } }),
+      E.draftCommentDm({ action: { url: 'https://citizengo.org/x' }, links: { facebook: { short: 'https://cgo.ac/abc' } } }).dm.includes('https://cgo.ac/abc'),
+      E.draftCommentDm({ action: { url: 'https://citizengo.org/x' }, commentDm: { on: false } }),
+    ], ['petition', 'prayer', 'news', 'reel', true, null]);
     const paused = await call(m, 'engine_automation', { action: 'pause', team: 'uk', id: 1 }, 'chris');
     eq('automations: pause, and the list shows the last 7 days', [paused.automations[0].active, typeof paused.automations[0].last_7_days.queued], [false, 'number']);
   }
