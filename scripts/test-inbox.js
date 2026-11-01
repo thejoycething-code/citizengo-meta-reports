@@ -28,7 +28,7 @@ function engine() {
     members: [{ team_id: 'uk', who: 'chris', role: 'admin' }, { team_id: 'uk', who: 'sam', role: 'editor' }],
     rights: [{ who: 'chris', account_key: 'uk-fb', source: 'meta' }, { who: 'chris', account_key: 'uk-ig', source: 'meta' }],
     tokens: [{ who: 'chris', account_key: 'uk-fb', page_id: '105', ig_id: '178', connected_at: '2026-11-01', sealed: xauth.seal(keys.publicKey, 'PAGE-TOKEN') }, { who: 'chris', account_key: 'uk-ig', page_id: '105', ig_id: '178', connected_at: '2026-11-01', sealed: xauth.seal(keys.publicKey, 'PAGE-TOKEN') }],
-    inbox: [], actions: [], rules: [],
+    inbox: [], actions: [], rules: [], alerts: [],
   };
   let aid = 0;
   const pick = (r, cols) => r;
@@ -53,6 +53,9 @@ function engine() {
     async engineInboxActions({ team_ids, statuses, due_before }) {
       return clone(db.actions.filter((a) => (!team_ids || team_ids.includes(a.team_id)) && (!statuses || statuses.includes(a.status)) && (!due_before || a.run_after <= due_before)));
     },
+    async engineInboxAlerts({ team_ids, statuses, since }) { return clone(db.alerts.filter((a) => team_ids.includes(a.team_id) && (!statuses || statuses.includes(a.status)) && (!since || a.at >= since))); },
+    async engineInsertInboxAlert(row) { const a = { id: db.alerts.length + 1, status: 'open', ...row }; db.alerts.push(a); return clone(a); },
+    async engineUpdateInboxAlert(id, team, fields) { const a = db.alerts.find((x) => x.id === id && x.team_id === team); if (!a) return null; Object.assign(a, fields); return clone(a); },
     async engineInboxRules({ team_ids }) { return clone(db.rules.filter((r) => team_ids.includes(r.team_id))); },
     async engineInboxUnchecked({ team_ids, since }) { return clone(db.inbox.filter((r) => team_ids.includes(r.team_id) && r.kind === 'comment' && !r.from_us && !r.auto_checked_at && r.created_at >= since)); },
     async engineInsertInboxRule(row) { const r = { id: db.rules.length + 1, ...row }; db.rules.push(r); return clone(r); },
@@ -174,6 +177,24 @@ function fakeMeta() {
     eq('auto-hide: each comment is checked once', [again.auto_hidden, a.db.actions.filter((x) => x.action === 'hide').length], [0, 1]);
     const w = await worker.run({ store: a, privateKey: keys.privateKey, live: true, now: NOW + 1000, log: () => {}, fetchImpl: meta2.fetchImpl });
     eq('auto-hide: the worker hides it on Facebook', [w.sent, a.db.inbox.find((r) => r.id === 'fbc_c9').hidden], [1, true]);
+  }
+
+  // Pile-on alert.
+  {
+    const now = Date.now(), at = (min) => new Date(now - min * 60_000).toISOString();
+    const c = (thread, min, text, i) => ({ id: `x${thread}${i}`, team_id: 'uk', account_key: 'uk-fb', platform: 'facebook', kind: 'comment', thread_id: thread, post_text: 'Isabel', created_at: at(min), text, from_us: false });
+    const usual = Array.from({ length: 20 }, (_, i) => c('old', 600 + i * 60, 'Praying 🙏', i)); // one comment an hour on an old post
+    const calm = Array.from({ length: 12 }, (_, i) => c('calm', 10 + i, 'Amen, praying for her', i));
+    const storm = Array.from({ length: 12 }, (_, i) => c('storm', 5 + i, i % 2 ? 'You bigots are disgusting' : 'Shame on you', i));
+    eq('pile-on: a burst of mostly hostile comments is flagged; a burst of kind ones is not', I.pileOns(usual.concat(calm, storm), [], now).map((p) => [p.thread_id, p.comments_hour, p.hostile_hour, p.baseline]), [['storm', 12, 12, 1]]);
+    eq('pile-on: under 10 in the hour is not a pile-on', I.pileOns(usual.concat(storm.slice(0, 9)), [], now).length, 0);
+    const pa = engine();
+    pa.db.inbox = usual.concat(storm).map((r) => ({ ...r, status: 'open', labels: [] }));
+    const r1 = await collect.run({ store: pa, privateKey: keys.privateKey, live: true, now, log: () => {}, fetchImpl: async () => ({ ok: true, json: async () => ({ data: [] }) }) });
+    const r2 = await collect.run({ store: pa, privateKey: keys.privateKey, live: true, now: now + 600_000, log: () => {}, fetchImpl: async () => ({ ok: true, json: async () => ({ data: [] }) }) });
+    eq('pile-on: one alert, not repeated within 6 hours', [r1.pile_ons, r2.pile_ons, pa.db.alerts.length], [1, 0, 1]);
+    const inboxNow = await call(pa, 'engine_inbox', { team: 'uk' }, 'sam');
+    eq('pile-on: shown with the inbox; marking it seen clears it for the team', [inboxNow.alerts.length, (await call(pa, 'engine_inbox_alert', { team: 'uk', id: 1 }, 'sam')).ok, (await call(pa, 'engine_inbox', { team: 'uk' }, 'chris')).alerts.length], [1, true, 0]);
   }
 
   console.log(`\n${passed} passed, ${failed} failed`);
