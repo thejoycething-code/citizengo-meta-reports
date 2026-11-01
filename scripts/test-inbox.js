@@ -43,6 +43,7 @@ function engine() {
     async engineAccessLimits({ team_id, who } = {}) { return clone((db.limits || []).filter((l) => (!team_id || l.team_id === team_id) && (!who || l.who === who))); },
     async engineSetAccessLimit(row) { db.limits = (db.limits || []).filter((l) => !(l.team_id === row.team_id && l.who === row.who && l.account_key === row.account_key)); if (['can_post', 'can_reply', 'can_moderate', 'can_analytics'].some((k) => row[k] === false)) db.limits.push(row); },
     async enginePeople() { return clone(db.people || []); },
+    async engineCopilotAuth() { return null; },
     async engineEvent(e) { (db.events = db.events || []).push(e); },
     async engineSetInitials(who, initials) { db.people = (db.people || []).filter((p) => p.who !== who).concat([{ who, initials }]); },
     async engineConnectedTokens() { return clone(db.tokens); },
@@ -283,6 +284,10 @@ function fakeMeta() {
     const blocked = await call(m, 'engine_inbox_act', { id: firstFb.id, action: 'reply', text: 'Thanks' }, 'chris');
     await call(m, 'engine_access', { action: 'limit', team: 'uk', who: 'chris', account_key: 'uk-fb', reply: true }, 'chris');
     eq('access: a narrowed reply is refused; turning it back on restores what Facebook allows', [blocked.ok, (m.db.limits || []).length], [false, 0]);
+    eq('copilot link: refuses incomplete args; signed out is a clear error', [
+      (await call(m, 'engine_copilot_link', { args: { assetType: 'petition' } }, 'chris')).ok,
+      (await call(m, 'engine_copilot_link', { args: { assetType: 'petition', petitionId: 1, ctaFamilyCode: 'AA', platformCode: 'fb', seriesFlow: 'FB1', listCode: 'EN_GB', topicCode: 'FM', scopeCode: 'LO', campaignTitle: 'T' } }, 'chris')).error.includes('copilot:adopt'),
+    ], [false, true]);
     // The flow builder [gaps §5].
     const A = (x) => ({ active: true, keywords: ['sign'], ...x });
     const c = { kind: 'comment', platform: 'facebook', text: 'sign me up', thread_id: 't1' };
