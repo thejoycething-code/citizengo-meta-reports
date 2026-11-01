@@ -35,7 +35,8 @@ function engine() {
   return {
     db,
     async engineTeams() { return clone(db.teams); },
-    async engineMembers({ who }) { return clone(db.members.filter((m) => m.who === who)); },
+    async engineMembers({ who, team_id }) { return clone(db.members.filter((m) => (!who || m.who === who) && (!team_id || m.team_id === team_id))); },
+    async engineAllRights() { return clone(db.rights); },
     async engineRights({ who }) { return clone(db.rights.filter((r) => r.who === who)); },
     async engineConnectedTokens() { return clone(db.tokens); },
     async enginePageToken({ who, account_key }) { return clone(db.tokens.find((t) => t.who === who && t.account_key === account_key) || null); },
@@ -95,6 +96,7 @@ function fakeMeta() {
     if (path === 'c1/comments') return ok({ id: 'c1_reply' });
     if (path === 'c9' && params.is_hidden === 'true') return ok({ success: true });
     if (path === '105/messages') return ok({ recipient_id: 'psid7', message_id: 'mid.1' });
+    if (path === '105/blocked') return ok({ [params.user]: true });
     return { ok: false, status: 404, json: async () => ({ error: { message: `unexpected ${path}` } }) };
   };
   return { calls, fetchImpl };
@@ -122,7 +124,7 @@ function fakeMeta() {
   eq('collector: our own comments arrive done, the ad is marked, nothing is posted to Meta', [s.db.inbox.filter((r) => r.status === 'done').map((r) => r.id).sort(), s.db.inbox.find((r) => r.id === 'fbc_c9').is_ad, meta.calls.every((c) => c.method === 'GET')], [['fbc_c2', 'fbm_mm2', 'igc_i2'], true, true]);
 
   // People's columns survive a re-read.
-  eq('tool: an open inbox with counts', (await call(s, 'engine_inbox', { team: 'uk' }, 'sam')).counts, { open: 6, facebook: 4, instagram: 2, messages: 1, mentions: 2, mine: 0 });
+  eq('tool: an open inbox with counts', (await call(s, 'engine_inbox', { team: 'uk' }, 'sam')).counts, { open: 6, facebook: 4, instagram: 2, messages: 1, mentions: 2, mine: 0, fb_comments: 2, messenger: 1, ig_comments: 1, ig_dms: 0, flagged: 0 });
   await call(s, 'engine_inbox_act', { id: 'fbc_c1', action: 'assign', assign_to: 'sam' }, 'chris');
   await call(s, 'engine_inbox_act', { id: 'igc_i1', action: 'done' }, 'sam');
   await call(s, 'engine_inbox_act', { id: 'fbc_c9', action: 'label', labels: ['critic', 'critic', 'ad'] }, 'sam');
@@ -248,6 +250,20 @@ function fakeMeta() {
     eq('automations: the worker sends the private reply to the comment (Meta\'s one per comment)', [fm.calls.filter((c) => c.path === '105/messages').map((c) => JSON.parse(c.params.recipient).comment_id), w.sent >= 1], [['s1'], true]);
     const paused = await call(m, 'engine_automation', { action: 'pause', team: 'uk', id: 1 }, 'chris');
     eq('automations: pause, and the list shows the last 7 days', [paused.automations[0].active, typeof paused.automations[0].last_7_days.queued], [false, 'number']);
+  }
+
+  // Gaps §4: channel counts, people to assign to, ban, threats.
+  {
+    const g = engine();
+    await collect.run({ store: g, privateKey: keys.privateKey, live: true, now: NOW, log: () => {}, fetchImpl: fakeMeta().fetchImpl });
+    const r = await call(g, 'engine_inbox', { team: 'uk' }, 'chris');
+    eq('channel counts and the people who can reply', [r.counts.fb_comments, r.counts.messenger, r.counts.ig_comments, r.counts.ig_dms, r.people.map((p) => [p.who, p.accounts])], [2, 1, 1, 0, [['chris', ['uk-fb', 'uk-ig']], ['sam', []]]]);
+    eq('ban: Facebook only; never ourselves', [I.allowed({ kind: 'comment', platform: 'facebook', author_id: 'u9' }, 'ban').ok, I.allowed({ kind: 'comment', platform: 'instagram', author_id: 'u9' }, 'ban').ok, I.allowed({ kind: 'comment', platform: 'facebook', from_us: true, author_id: '105' }, 'ban').ok], [true, false, false]);
+    eq('threats are hidden, never deleted', [I.allowed({ kind: 'comment', platform: 'facebook', labels: ['threat'] }, 'delete', {}).ok, I.allowed({ kind: 'comment', platform: 'facebook', labels: ['threat'] }, 'hide', {}).ok], [false, true]);
+    const b = await call(g, 'engine_inbox_act', { id: 'fbc_c9', action: 'ban' }, 'chris');
+    const fm = fakeMeta();
+    await worker.run({ store: g, privateKey: keys.privateKey, live: true, now: Date.now() + 20_000, log: () => {}, fetchImpl: fm.fetchImpl });
+    eq('ban goes to the Page\'s blocked list for that author', [b.ok, fm.calls.filter((c) => c.path === '105/blocked').map((c) => c.params.user)], [true, ['u9']]);
   }
 
   console.log(`\n${passed} passed, ${failed} failed`);
