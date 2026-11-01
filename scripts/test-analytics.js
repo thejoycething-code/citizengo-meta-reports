@@ -24,7 +24,7 @@ stub(tools.TOOLS, 'page_growth', async () => ({ data: {
     { name: 'HazteOir.org', followers: 324249, reach: 7240000, views: 1, engagements: 1, newFollows: 14361, unfollows: 0, netFollows: 14361 }],
   instagram: [{ name: 'citizengo_uk', followers: 239, newFollowers: 90, unfollows: 3, net: null }, { name: 'hazteoir', followers: 214193, newFollowers: 10903, unfollows: null, net: null }],
 } }));
-const post = (page_id, page_name, views, msg) => ({ page_id, page_name, views_total: views, message: msg, permalink_url: `https://fb/${msg}`, created_time: '2026-10-20T10:00:00Z', beyond_followers_pct: 80, engagement_rate: 9 });
+const post = (page_id, page_name, views, msg) => ({ page_id, page_name, views_total: views, message: msg, permalink_url: `https://fb/${msg}`, created_time: '2026-10-20T10:00:00Z', beyond_followers_pct: 80, engagement_rate: 9, media_type: 'photo' });
 stub(tools.TOOLS, 'top_posts', async () => ({ data: { rows: [post('105', 'Citizen GO UK', 1000, 'a'), post('105', 'Citizen GO UK', 3000, 'b'), post('105', 'Citizen GO UK', 240000, 'court'), post('154', 'HazteOir.org', 543127, 'mercadona'), post('434', 'CitizenGO', 5000, 'g')] } }));
 stub(tools.TOOLS, 'instagram_posts', async (store, a) => ({ data: [{ ig_username: a.page_id ? 'citizengo_uk' : 'hazteoir', caption: 'Isabel', permalink: 'https://ig/1', reach: 175, saved: 3 }].concat(a.page_id ? [] : [{ ig_username: 'citizengo_uk', caption: 'Isabel', reach: 175 }]) }));
 xtools.enabled = () => true;
@@ -78,6 +78,12 @@ const callErr = async (args, who) => { try { await call(args, who); return null;
   const ib = (await call({ scope: 'team', team: 'uk' })).inbox;
   eq('team Analytics carries the Inbox figures: received, answered, how fast, hidden, auto-hidden, deleted', [ib.comments, ib.messages, ib.answered, ib.answered_pct, ib.median_reply_minutes, ib.replies, ib.hidden, ib.auto_hidden, ib.deleted, ib.on_ads], [3, 1, 2, 50, 40, 2, 1, 1, 1, 1]);
   eq('the CitizenGO-wide view has no Inbox figures', (await call({})).inbox, null);
+
+  // Platform pages.
+  {
+    const d = await call({ scope: 'team', team: 'uk' });
+    eq('team Analytics: a Facebook page (best post, formats, hours) and every Instagram post; none for the CitizenGO view', [d.facebook.best.text, d.facebook.formats.map((f) => [f.format, f.posts]), Array.isArray(d.facebook.hours), d.instagram_all.length, (await call({})).facebook], ['court', [['Photo', 3]], true, 2, null]);
+  }
 
   // Convergence.
   eq('story keys: hashtags, whole links and two-word names; no stop-word pairs', storyKeys('Prince Alois of Liechtenstein vetoes it. #ProLife Read righttolife.org.uk/news/alois?x=1 This Friday'), ['#prolife', 'link:righttolife.org.uk/news/alois', 'Prince Alois']);

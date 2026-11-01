@@ -564,9 +564,14 @@ async function engineAnalytics(store, args, { who }) {
   // biggest Pages (a team: all of its own), against the median CitizenGO Page.
   const trend = await weeklyTrend(store, { pagesAll, inScope, scope });
   const inbox = team ? await inboxFigures(store, team.id, days) : null;
+  const facebook = team ? facebookDetail(rows, med) : null;
+  const instagramAll = team ? igRows.slice(0, 60).map((r) => ({
+    account: r.ig_username, text: String(r.caption || '').slice(0, 140), url: r.permalink, created_time: r.timestamp, type: r.media_product_type || r.media_type,
+    reach: r.reach, views: r.views, saves: r.saved, saves_per_1k: r.saves_per_1k_reached, rate: r.interaction_rate_pct, watch_s: r.reels_avg_watch_seconds, follows: r.follows,
+  })) : null;
 
   return json({
-    scope, team: team ? team.id : null, days, to: new Date().toISOString().slice(0, 10), trend, inbox,
+    scope, team: team ? team.id : null, days, to: new Date().toISOString().slice(0, 10), trend, inbox, facebook, instagram_all: instagramAll,
     counts: { facebook_pages: pageIds.size, instagram: ig.length, x: x.length },
     kpis: {
       reach: sumOf(fb.map((r) => r.reach)), views: sumOf(fb.map((r) => r.views)), engagements: sumOf(fb.map((r) => r.engagements)),
@@ -622,6 +627,39 @@ async function engineListening(store, args, { who }) {
     converging = convergence(((all && all.rows) || []).map((r) => ({ who: r.label || `@${r.username}`, handle: r.username, text: r.caption, url: r.permalink, created_time: r.timestamp, x: r.vs_median })));
   }
   return json({ tab, days, min_multiple: minX, posts, ads, converging, note: out && !out.rows ? String(out.text || '').slice(0, 300) : null });
+}
+
+// Facebook page for a team's Analytics: the best post, formats compared and
+// the best hours to post (UK time), from the window's posts. Medians, not
+// averages, so one viral post doesn't make a format look better than it is.
+const FORMAT_NAMES = { photo: 'Photo', video: 'Video', link: 'Link', album: 'Album', status: 'Text', share: 'Shared', event: 'Event' };
+function fbFormat(r) {
+  const t = String(r.media_type || r.status_type || '').toLowerCase();
+  if (/reel/.test(t) || r.video_avg_seconds_watched != null) return 'Reel';
+  for (const [k, v] of Object.entries(FORMAT_NAMES)) if (t.includes(k)) return v;
+  return t ? t[0].toUpperCase() + t.slice(1) : 'Other';
+}
+function ukHour(iso) {
+  const parts = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', hour: '2-digit', hour12: false, weekday: 'short' }).formatToParts(new Date(iso));
+  const g = (k) => (parts.find((p) => p.type === k) || {}).value;
+  return { hour: Number(g('hour')) % 24, weekend: ['Sat', 'Sun'].includes(g('weekday')) };
+}
+function facebookDetail(rows, med) {
+  const scored = rows.filter((r) => typeof r.views_total === 'number');
+  if (!scored.length) return { posts: 0, formats: [], hours: [], best: null };
+  const best = scored.slice().sort((a, b) => b.views_total - a.views_total)[0];
+  const group = (keyOf) => { const g = {}; for (const r of scored) (g[keyOf(r)] = g[keyOf(r)] || []).push(r); return g; };
+  const formats = Object.entries(group(fbFormat)).map(([format, list]) => ({
+    format, posts: list.length, median_views: Math.round(median(list.map((r) => r.views_total))),
+    median_rate: median(list.map((r) => r.engagement_rate)), median_beyond_pct: median(list.map((r) => r.beyond_followers_pct)), median_shares: median(list.map((r) => r.shares_total)),
+  })).sort((a, b) => b.median_views - a.median_views);
+  const slot = (r) => { const h = ukHour(r.created_time); const b = Math.floor(h.hour / 3) * 3; return `${h.weekend ? 'Weekend' : 'Weekday'} ${String(b).padStart(2, '0')}:00–${String(b + 3).padStart(2, '0')}:00`; };
+  const hours = Object.entries(group(slot)).filter(([, list]) => list.length >= 2).map(([when, list]) => ({ when, posts: list.length, median_views: Math.round(median(list.map((r) => r.views_total))) }))
+    .sort((a, b) => b.median_views - a.median_views).slice(0, 6);
+  return {
+    posts: scored.length, formats, hours,
+    best: { page: best.page_name, text: String(best.message || '').slice(0, 200), url: best.permalink_url, created_time: best.created_time, views: best.views_total, beyond_pct: best.beyond_followers_pct, shares: best.shares_total, x_median: med[best.page_id] ? Math.round((best.views_total / med[best.page_id]) * 10) / 10 : null },
+  };
 }
 
 // The Inbox's own figures for a team's Analytics (Phase 2): what came in, how
