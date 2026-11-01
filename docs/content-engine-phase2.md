@@ -181,9 +181,19 @@ so they are added by hand. The publisher gives each Instagram destination a seco
 as its own `STORIES` container. If a frame fails after others are up, the slot stops for good with "N of M Story
 frames went up", so nothing is posted twice. Facebook Page Stories aren't published yet.
 
+### Instagram collabs (built 1 Nov)
+
+The Posting panel has "Instagram collab" for any post going to Instagram: up to three handles (`posting.collaborators`,
+no @), with the draft's suggested handles (`extras.collab.handles`) as one-tap chips. The snapshot copies them to
+`final.instagram.collaborators`; the publisher checks them (`P.collaboratorsOf`) and invites them on the feed post,
+the carousel itself (not its slides) or the Reel. Each collaborator still has to accept in Instagram. Stories
+can't have collaborators. Facebook collaborators are added in Meta Business Suite for now.
+
 ### Still to build
 
-  Instagram collab invites; Facebook collaborators added in Meta Business Suite for now.
+- Facebook Page Stories; a Reel cover image; clearing video pieces after publishing.
+- Going live: Connect Facebook switched on (Meta app + Vercel FB_* settings), Chris's OK to lift the Mini's
+  "never public posting" rule, then ENGINE_PUBLISH_LIVE=1 and the plist without --dry-run.
 
 ## Slice 3 onwards
 

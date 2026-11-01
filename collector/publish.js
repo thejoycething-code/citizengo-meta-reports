@@ -62,7 +62,7 @@ async function run({ store, privateKey, live, now = Date.now(), log = console.lo
     const content = P.contentFor(item.post.doc, item.platform, item.kind);
     if (!content.ok) { await fail(item, content.error, { final: true }); continue; }
 
-    if (!live) { tally.would++; log(`  → ${label}: would publish as ${who} (${content.story ? `Story, ${content.media.length} frame${content.media.length === 1 ? '' : 's'}` : content.video ? `video, ${Math.round(content.video.size / 1048576)} MB` : `${content.media.length} image${content.media.length === 1 ? '' : 's'}`}${content.comment ? ', first comment' : ''})`); continue; }
+    if (!live) { tally.would++; log(`  → ${label}: would publish as ${who} (${content.story ? `Story, ${content.media.length} frame${content.media.length === 1 ? '' : 's'}` : content.video ? `video, ${Math.round(content.video.size / 1048576)} MB` : `${content.media.length} image${content.media.length === 1 ? '' : 's'}`}${content.comment ? ', first comment' : ''}${(content.collaborators || []).length ? `, collab with ${content.collaborators.map((h) => '@' + h).join(' ')}` : ''})`); continue; }
 
     // Claim it, so a second run can't publish it too.
     await patchDoc(store, item.post.id, () => ({ publishing: { [item.slot]: { at: stamp() } } }));
@@ -77,13 +77,13 @@ async function run({ store, privateKey, live, now = Date.now(), log = console.lo
         const buffer = await P.assembleVideo(store, content.video);
         out = item.platform === 'facebook'
           ? await P.publishFacebookVideo({ pageId: tok.page_id, token, text: content.text, comment: content.comment, buffer, mime: content.video.mime, fetchImpl })
-          : await P.publishInstagramReel({ igId: tok.ig_id, token, text: content.text, comment: content.comment, buffer, fetchImpl, wait });
+          : await P.publishInstagramReel({ igId: tok.ig_id, token, text: content.text, comment: content.comment, buffer, collaborators: content.collaborators, fetchImpl, wait });
       } else {
         const urls = [];
         for (const m of content.media) { const u = await store.engineMediaUrl(m, 3600); if (!u) throw new Error(`image ${m} could not be found`); urls.push(u); }
         out = item.platform === 'facebook'
           ? await P.publishFacebook({ pageId: tok.page_id, token, text: content.text, comment: content.comment, urls, fetchImpl })
-          : await P.publishInstagram({ igId: tok.ig_id, token, text: content.text, comment: content.comment, urls, fetchImpl });
+          : await P.publishInstagram({ igId: tok.ig_id, token, text: content.text, comment: content.comment, urls, collaborators: content.collaborators, fetchImpl });
       }
       await patchDoc(store, item.post.id, () => ({ publishing: { [item.slot]: null }, publishErrors: { [item.slot]: null }, published: { [item.slot]: { ...out, at: stamp(), by: who } } }));
       await event(item, 'published', { id: out.id, url: out.url });
