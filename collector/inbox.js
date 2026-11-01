@@ -15,6 +15,7 @@ const { loadEnv } = require('../lib/graph');
 const { supabaseStore } = require('../lib/store');
 const xauth = require('../lib/xauth');
 const I = require('../lib/inbox');
+const E = require('../lib/engine');
 
 const WINDOW_DAYS = 7;
 
@@ -86,31 +87,62 @@ async function autoHide({ store, team, live, now, log }) {
   return hidden;
 }
 
-// Comment-to-DM: each new top-level Facebook comment checked once against the
-// team's active automations; a match queues a private reply (and the public
-// reply, if any) as the rule's maker, for the action worker to send.
+// Comment-to-DM: each new top-level Facebook or Instagram comment checked once
+// against the team's active automations (the most specific wins: this post,
+// then its post type, then every post), plus the "SIGN" set on the draft
+// itself. A match queues a private reply (and the public reply, taking turns)
+// as the rule's maker, for the action worker to send; someone who already got
+// this rule's message just gets a like. Paused accounts are left unchecked
+// until they resume.
 async function automations({ store, team, live, now, log }) {
   const autos = (await store.engineAutomations({ team_ids: [team] })).filter((a) => a.active);
   const fresh = await store.engineInboxAutomationUnchecked({ team_ids: [team], since: new Date(now - 2 * 24 * 3600_000).toISOString() });
   if (!fresh.length) return 0;
+  const held = E.pausedKeys(await store.enginePauses(), now);
+  // The engine's own posts, by the id Facebook or Instagram gave them.
+  const byThread = {};
+  for (const p of await store.enginePosts({ team_ids: [team], statuses: ['scheduled', 'posted'], limit: 500 })) {
+    for (const [slot, pub] of Object.entries((p.doc && p.doc.published) || {})) if (pub && pub.id) byThread[pub.id] = { post: p, by: pub.by, slot };
+  }
   const today = new Date(now).toISOString().slice(0, 10);
-  const sentToday = {};
-  if (autos.length) {
-    for (const a of await store.engineInboxActions({ team_ids: [team], limit: 1000 })) {
-      if (a.action === 'private_reply' && a.detail && a.detail.automation_id && String(a.created_at).slice(0, 10) === today && a.status !== 'cancelled') sentToday[a.detail.automation_id] = (sentToday[a.detail.automation_id] || 0) + 1;
+  const sentToday = {}, replies = {}, gotIt = {};
+  for (const a of await store.engineInboxActions({ team_ids: [team], limit: 1000 })) {
+    const id = a.detail && a.detail.automation_id;
+    if (!id || a.status === 'cancelled') continue;
+    if (a.action === 'private_reply') {
+      if (String(a.created_at).slice(0, 10) === today) sentToday[id] = (sentToday[id] || 0) + 1;
+      if (a.detail.author_id) (gotIt[id] = gotIt[id] || new Set()).add(a.detail.author_id);
     }
+    if (a.action === 'reply') replies[id] = (replies[id] || 0) + 1;
   }
   let n = 0;
   const at = new Date(now).toISOString();
   for (const item of fresh) {
-    const a = autos.length ? I.automationFor(item, autos) : null;
+    if (held['*'] || held[item.account_key]) continue;
+    const own = byThread[item.thread_id];
+    const sign = own && E.draftCommentDm(own.post.doc);
+    const fromDraft = sign && own.by ? [{ id: `post:${own.post.id}`, name: `${sign.keyword} on "${own.post.title || own.post.id}"`, active: true, thread_id: item.thread_id, keywords: [sign.keyword], dm_text: sign.dm, platforms: ['facebook', 'instagram'], skip_repeat: true, created_by: own.by }] : [];
+    const a = I.automationFor(item, [...fromDraft, ...autos], { postType: own ? E.postType(own.post.doc) : null });
     if (a && (sentToday[a.id] || 0) < I.AUTOMATION_DAILY_MAX) {
-      n++; sentToday[a.id] = (sentToday[a.id] || 0) + 1;
-      log(`  ✉ ${item.id}: ${live ? 'queued' : 'would queue'} "${a.name}"`);
+      const repeat = a.skip_repeat !== false && item.author_id && gotIt[a.id] && gotIt[a.id].has(item.author_id);
+      n++;
+      log(`  ✉ ${item.id}: ${live ? 'queued' : 'would queue'} "${a.name}"${repeat ? ' (already has the link: like only)' : ''}`);
       if (live) {
-        const base = { item_id: item.id, team_id: item.team_id, account_key: item.account_key, by: a.created_by, run_after: at, status: 'queued', detail: { automation_id: a.id, automation: a.name } };
-        await store.engineInboxInsertAction({ ...base, action: 'private_reply', text: a.dm_text });
-        if (a.reply_text) await store.engineInboxInsertAction({ ...base, action: 'reply', text: a.reply_text });
+        const base = { item_id: item.id, team_id: item.team_id, account_key: item.account_key, by: a.created_by, run_after: at, status: 'queued', detail: { automation_id: a.id, automation: a.name, author_id: item.author_id || null } };
+        if (repeat) {
+          if (item.platform === 'facebook') await store.engineInboxInsertAction({ ...base, action: 'like', detail: { ...base.detail, step: 'react' } });
+        } else {
+          sentToday[a.id] = (sentToday[a.id] || 0) + 1;
+          (gotIt[a.id] = gotIt[a.id] || new Set()).add(item.author_id);
+          await store.engineInboxInsertAction({ ...base, action: 'private_reply', text: a.dm_text, detail: { ...base.detail, step: 'dm' } });
+          const reply = I.automationReply(a, replies[a.id] || 0);
+          if (reply) { replies[a.id] = (replies[a.id] || 0) + 1; await store.engineInboxInsertAction({ ...base, action: 'reply', text: reply, detail: { ...base.detail, step: 'reply' } }); }
+        }
+        const fields = { automation_checked_at: at };
+        if (a.tag) fields.labels = [...new Set([...(item.labels || []), a.tag])];
+        if (a.hand_to && !item.assigned_to) fields.assigned_to = a.hand_to;
+        await store.engineInboxUpdate(item.id, fields);
+        continue;
       }
     }
     if (live) await store.engineInboxUpdate(item.id, { automation_checked_at: at });
