@@ -16,6 +16,7 @@ const { supabaseStore } = require('../lib/store');
 const xauth = require('../lib/xauth');
 const I = require('../lib/inbox');
 const E = require('../lib/engine');
+const T = require('../lib/tracked');
 
 const WINDOW_DAYS = 7;
 
@@ -94,7 +95,7 @@ async function autoHide({ store, team, live, now, log }) {
 // as the rule's maker, for the action worker to send; someone who already got
 // this rule's message just gets a like. Paused accounts are left unchecked
 // until they resume.
-async function automations({ store, team, live, now, log }) {
+async function automations({ store, team, live, now, log, fetchImpl }) {
   const autos = (await store.engineAutomations({ team_ids: [team] })).filter((a) => a.active);
   const fresh = await store.engineInboxAutomationUnchecked({ team_ids: [team], since: new Date(now - 2 * 24 * 3600_000).toISOString() });
   if (!fresh.length) return 0;
@@ -117,6 +118,11 @@ async function automations({ store, team, live, now, log }) {
   }
   let n = 0;
   const at = new Date(now).toISOString();
+  const memo = new Map();
+  const track = async (text, action, a, item) => {
+    const tr = await T.trackForItem(store, item, text, { action, who: a.created_by, automated: true, memo, now, fetchImpl });
+    return { text: tr.text, links: tr.links.map(({ to, code, via }) => ({ to, code, via })) };
+  };
   for (const item of fresh) {
     if (held['*'] || held[item.account_key]) continue;
     const own = byThread[item.thread_id];
@@ -134,9 +140,14 @@ async function automations({ store, team, live, now, log }) {
         } else {
           sentToday[a.id] = (sentToday[a.id] || 0) + 1;
           (gotIt[a.id] = gotIt[a.id] || new Set()).add(item.author_id);
-          await store.engineInboxInsertAction({ ...base, action: 'private_reply', text: a.dm_text, detail: { ...base.detail, step: 'dm' } });
+          const dm = await track(a.dm_text, 'private_reply', a, item);
+          await store.engineInboxInsertAction({ ...base, action: 'private_reply', text: dm.text, detail: { ...base.detail, step: 'dm', ...(dm.links.length ? { links: dm.links } : {}) } });
           const reply = I.automationReply(a, replies[a.id] || 0);
-          if (reply) { replies[a.id] = (replies[a.id] || 0) + 1; await store.engineInboxInsertAction({ ...base, action: 'reply', text: reply, detail: { ...base.detail, step: 'reply' } }); }
+          if (reply) {
+            replies[a.id] = (replies[a.id] || 0) + 1;
+            const rp = await track(reply, 'reply', a, item);
+            await store.engineInboxInsertAction({ ...base, action: 'reply', text: rp.text, detail: { ...base.detail, step: 'reply', ...(rp.links.length ? { links: rp.links } : {}) } });
+          }
         }
         const fields = { automation_checked_at: at };
         if (a.tag) fields.labels = [...new Set([...(item.labels || []), a.tag])];
@@ -215,7 +226,7 @@ async function run({ store, privateKey, live, now = Date.now(), log = console.lo
   }
   for (const t of teams) {
     try { tally.auto_hidden += await autoHide({ store, team: t.id, live, now, log }); } catch (e) { tally.failed++; log(`  ✗ auto-hide ${t.id}: ${e.message}`); }
-    try { tally.automations += await automations({ store, team: t.id, live, now, log }); } catch (e) { tally.failed++; log(`  ✗ automations ${t.id}: ${e.message}`); }
+    try { tally.automations += await automations({ store, team: t.id, live, now, log, fetchImpl }); } catch (e) { tally.failed++; log(`  ✗ automations ${t.id}: ${e.message}`); }
     try { tally.pile_ons += await pileOnAlerts({ store, team: t.id, live, now, log }); } catch (e) { tally.failed++; log(`  ✗ pile-on check ${t.id}: ${e.message}`); }
   }
   return tally;
