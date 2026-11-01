@@ -84,6 +84,44 @@ const quiet = () => {};
   const t0 = await run({ store: s0, privateKey: keys.privateKey, live: false, now: NOW, log: quiet, fetchImpl: fb0.fetchImpl });
   eq('dry run: says what it would publish, calls nothing, changes nothing', [t0.would, fb0.calls.length, s0.db.posts[0].version, s0.db.events.length], [1, 0, 1, 0]);
 
+  // Videos: pieces joined and checked on the Mini, then straight to Meta.
+  {
+    const crypto = require('crypto');
+    const file = Buffer.concat([Buffer.from([0, 0, 0, 24]), Buffer.from('ftypmp42'), crypto.randomBytes(5000)]);
+    const sha = crypto.createHash('sha256').update(file).digest('hex');
+    const video = { prefix: 'uk/pv/video-abcdefgh', parts: 3, size: file.length, sha256: sha, mime: 'video/mp4' };
+    const sv = engine();
+    const pieces = [file.slice(0, 2000), file.slice(2000, 4000), file.slice(4000)];
+    sv.engineMediaDownload = async (path) => { const i = Number(path.slice(-8, -5)); return path.startsWith(video.prefix) && pieces[i] ? Buffer.from(pieces[i]) : null; };
+    eq('content: a video post with no uploaded video is held with a clear reason', [P.contentFor({ final: { facebook: { text: 'x', video: true } } }, 'facebook').ok, /Video to publish/.test(P.contentFor({ final: { facebook: { text: 'x', video: true } } }, 'facebook').error)], [false, true]);
+    eq('assemble: the pieces join into exactly the file the desk sent', (await P.assembleVideo(sv, video)).equals(file), true);
+    let bad = null; try { await P.assembleVideo(sv, { ...video, sha256: 'a'.repeat(64) }); } catch (e) { bad = e.message; }
+    eq('assemble: a mismatch is refused', /doesn't match/.test(bad || ''), true);
+    const vfinal = { facebook: { text: 'Watch.', comment: 'Sign: https://cgo.ac/z', media: [], video }, instagram: { text: 'Watch. Link in bio', comment: '', media: [], video } };
+    addPost(sv, 'pv', { review: approved, final: vfinal, posting: { destinations: ['uk-fb', 'uk-ig'], at: '2026-11-03T14:00:00Z' } });
+    const calls = []; let polls = 0;
+    const fetchImpl = async (u, opts = {}) => {
+      const url = new URL(u); const ok = (b) => ({ ok: true, status: 200, json: async () => b });
+      const body = opts.body instanceof FormData ? Object.fromEntries([...opts.body.entries()].map(([k, v]) => [k, typeof v === 'string' ? v : `blob:${v.size}`])) : opts.body instanceof Buffer ? { bytes: opts.body.length } : Object.fromEntries(new URLSearchParams(opts.body || url.search));
+      calls.push({ host: url.hostname, path: url.pathname.replace(/^\/v[\d.]+\//, ''), body, headers: opts.headers || {} });
+      if (url.hostname === 'graph-video.facebook.com') return ok({ id: 'v777' });
+      if (url.hostname === 'rupload.facebook.com') return ok({ success: true });
+      if (url.pathname.endsWith('/178/media')) return ok({ id: 'c900', uri: 'https://rupload.facebook.com/ig-api-upload/c900' });
+      if (url.pathname.endsWith('/c900')) return ok({ status_code: ++polls < 2 ? 'IN_PROGRESS' : 'FINISHED' });
+      if (url.pathname.endsWith('/178/media_publish')) return ok({ id: 'ig42' });
+      if (url.pathname.endsWith('/ig42')) return ok({ permalink: 'https://www.instagram.com/reel/xyz/' });
+      if (url.pathname.endsWith('/comments')) return ok({ id: 'cm1' });
+      return { ok: false, status: 404, json: async () => ({ error: { message: 'unexpected ' + url.pathname } }) };
+    };
+    const tv = await run({ store: sv, privateKey: keys.privateKey, live: true, now: NOW, log: quiet, fetchImpl, wait: async () => {} });
+    const pv = sv.db.posts.find((x) => x.id === 'pv');
+    const fbUp = calls.find((c) => c.host === 'graph-video.facebook.com');
+    const igUp = calls.find((c) => c.host === 'rupload.facebook.com');
+    eq('video: Facebook gets the whole file as a Page video with the text, then the first comment', [tv.published, fbUp.path, fbUp.body.description, fbUp.body.source, calls.some((c) => c.path === 'v777/comments')], [2, '105/videos', 'Watch.', `blob:${file.length}`, true]);
+    eq('video: Instagram gets a resumable Reel, waits until it is processed, then publishes', [calls.find((c) => c.path === '178/media').body.media_type, igUp.body.bytes, igUp.headers.file_size, polls, pv.doc.published['uk-ig'].url], ['REELS', file.length, String(file.length), 2, 'https://www.instagram.com/reel/xyz/']);
+    eq('video: no public link to the file was ever made', calls.some((c) => JSON.stringify(c.body).includes('signed')), false);
+  }
+
   // Pause everything: held, nothing called, and a long pause never marks it late.
   {
     const sp = engine();
