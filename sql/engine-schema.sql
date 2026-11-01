@@ -160,7 +160,7 @@ alter table public.engine_requests drop constraint if exists engine_requests_sou
 alter table public.engine_requests add constraint engine_requests_source_check check (source in ('key_date', 'idea', 'evergreen'));
 
 -- Slice 2, "Connect Facebook": each person's Page tokens, SEALED to the
--- collector's public key (lib/xauth.js seal), so the hosted MCP can write them
+-- publishing public key (ENGINE_TOKEN_PUBLIC_KEY, lib/xauth.js seal), so the hosted MCP can write them
 -- but never read them back. Only the publisher on the Mini, which holds the
 -- private key, opens one, and only to publish a post that person approved.
 create table if not exists public.engine_page_tokens (
@@ -173,4 +173,4 @@ create table if not exists public.engine_page_tokens (
   primary key (who, account_key)
 );
 alter table public.engine_page_tokens enable row level security;
-comment on table public.engine_page_tokens is 'Content Engine: per-person Page tokens from Connect Facebook, sealed to the collector key. Never stored in the clear.';
+comment on table public.engine_page_tokens is 'Content Engine: per-person Page tokens from Connect Facebook, sealed to the publishing key (private half only on the Mini). Never stored in the clear.';
