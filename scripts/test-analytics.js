@@ -1,0 +1,51 @@
+#!/usr/bin/env node
+'use strict';
+// engine_analytics (the desk's Analytics) against stubbed reporting handlers:
+// scopes keep CitizenGO and HazteOir apart, a team sees only its own accounts,
+// and every post is measured against its own Page's median.
+// Usage: node scripts/test-analytics.js
+
+let passed = 0, failed = 0;
+function eq(name, actual, expected) {
+  const a = JSON.stringify(actual), e = JSON.stringify(expected);
+  if (a === e) { console.log(`  ok    ${name}`); passed++; } else { console.log(`  FAIL  ${name}\n          expected ${e}\n          got      ${a}`); failed++; }
+}
+const tools = require('../mcp/tools');
+const xtools = require('../mcp/x-tools');
+const { ENGINE_TOOLS } = require('../mcp/engine-tools');
+
+const pages = [{ page_id: '105', name: 'Citizen GO UK' }, { page_id: '120', name: 'Citizen GO Scotland' }, { page_id: '434', name: 'CitizenGO' }, { page_id: '154', name: 'HazteOir.org' }];
+const stub = (list, name, fn) => { list.find((t) => t.name === name).handler = fn; };
+stub(tools.TOOLS, 'page_growth', async () => ({ data: {
+  facebook: [{ name: 'Citizen GO UK', followers: 10775, reach: 496006, views: 8498, engagements: 112630, newFollows: 807, unfollows: 62, netFollows: 745 },
+    { name: 'CitizenGO', followers: 119756, reach: 900000, views: 20000, engagements: 50000, newFollows: 300, unfollows: 100, netFollows: 200 },
+    { name: 'HazteOir.org', followers: 324249, reach: 7240000, views: 1, engagements: 1, newFollows: 14361, unfollows: 0, netFollows: 14361 }],
+  instagram: [{ name: 'citizengo_uk', followers: 239, newFollowers: 90, unfollows: 3, net: null }, { name: 'hazteoir', followers: 214193, newFollowers: 10903, unfollows: null, net: null }],
+} }));
+const post = (page_id, page_name, views, msg) => ({ page_id, page_name, views_total: views, message: msg, permalink_url: `https://fb/${msg}`, created_time: '2026-10-20T10:00:00Z', beyond_followers_pct: 80, engagement_rate: 9 });
+stub(tools.TOOLS, 'top_posts', async () => ({ data: { rows: [post('105', 'Citizen GO UK', 1000, 'a'), post('105', 'Citizen GO UK', 3000, 'b'), post('105', 'Citizen GO UK', 240000, 'court'), post('154', 'HazteOir.org', 543127, 'mercadona'), post('434', 'CitizenGO', 5000, 'g')] } }));
+stub(tools.TOOLS, 'instagram_posts', async (store, a) => ({ data: [{ ig_username: a.page_id ? 'citizengo_uk' : 'hazteoir', caption: 'Isabel', permalink: 'https://ig/1', reach: 175, saved: 3 }].concat(a.page_id ? [] : [{ ig_username: 'citizengo_uk', caption: 'Isabel', reach: 175 }]) }));
+xtools.enabled = () => true;
+stub(xtools.X_TOOLS, 'x_period_summary', async () => ({ rows: [{ username: 'CitizenGO_GB', label: 'CitizenGO UK', posts: 40, impressions: 30000, engagements: 900, followers_first: 1296, followers_last: 1297, top_post_text: 'SNP', top_post_url: 'https://x/1' }, { username: 'HazteOir', posts: 1, impressions: 9 }] }));
+
+const store = {
+  async loadAll() { return { pages }; },
+  async engineTeams() { return [{ id: 'uk', name: 'United Kingdom', accounts: [{ key: 'uk-fb', platform: 'facebook', page_id: '105' }, { key: 'uk-ig', platform: 'instagram', handle: 'citizengo_uk' }, { key: 'uk-x', platform: 'x', handle: 'CitizenGO_GB' }, { key: 'sc-fb', platform: 'facebook', page_id: '120' }] }]; },
+  async engineMembers({ who }) { return who === 'chris' ? [{ team_id: 'uk', who: 'chris', role: 'admin' }] : []; },
+};
+const call = async (args, who = 'chris') => JSON.parse((await ENGINE_TOOLS.find((t) => t.name === 'engine_analytics').handler(store, args, { who })).text);
+const callErr = async (args, who) => { try { await call(args, who); return null; } catch (e) { return e.code; } };
+
+(async () => {
+  const cgo = await call({});
+  eq('CitizenGO scope: CitizenGO Pages only, HazteOir kept out of the totals', [cgo.scope, cgo.days, cgo.pages.map((p) => p.name), cgo.kpis.reach, cgo.kpis.net_follows], ['citizengo', 30, ['CitizenGO', 'Citizen GO UK'], 1396006, 945]);
+  eq('top posts: ranked by views, each against its own Page\'s median', cgo.top_posts.map((p) => [p.text, p.x_median]), [['court', 80], ['g', 1], ['b', 1], ['a', 0.3]]);
+  const hz = await call({ scope: 'hazteoir', days: 7 });
+  eq('HazteOir scope: shown on its own', [hz.pages.map((p) => p.name), hz.instagram.map((r) => r.name), hz.x.map((r) => r.account), hz.days], [['HazteOir.org'], ['hazteoir'], ['@HazteOir'], 7]);
+  const uk = await call({ scope: 'team', team: 'uk' });
+  eq('team scope: the UK team\'s Pages, Instagram and X only', [uk.pages.map((p) => p.name), uk.instagram.map((r) => r.name), uk.instagram_posts.map((r) => r.account), uk.x.map((r) => [r.account, r.follower_change])], [['Citizen GO UK'], ['citizengo_uk'], ['citizengo_uk', 'citizengo_uk'], [['CitizenGO UK', 1]]]);
+  eq('only team members see Analytics, and only their own team', [await callErr({}, 'stranger'), await callErr({ scope: 'team', team: 'de' })], ['ENGINE_NOT_MEMBER', 'ENGINE_NOT_MEMBER']);
+
+  console.log(`\n${passed} passed, ${failed} failed`);
+  process.exit(failed ? 1 : 0);
+})().catch((e) => { console.error(e); process.exit(1); });

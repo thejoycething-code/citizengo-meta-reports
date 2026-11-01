@@ -487,6 +487,94 @@ async function engineInboxHistory(store, args, { who }) {
   return json({ team, actions: await store.engineInboxActions({ team_ids: [team], limit: Math.min(500, Number(args.limit) || 200) }) });
 }
 
+// Analytics [slice 3, chosen 1 Nov]: the desk's dashboard as one structured
+// answer, built from the same handlers the reporting tools use (their `data`,
+// which the MCP text answers drop), so the figures match what Claude reports.
+// scope: citizengo (every CitizenGO Page, the default), hazteoir (shown
+// apart, never mixed into CitizenGO totals) or team (one of your teams).
+const IS_CGO = /citizen\s?go/i;
+const median = (xs) => { const v = xs.filter((x) => typeof x === 'number').sort((a, b) => a - b); return v.length ? (v.length % 2 ? v[(v.length - 1) / 2] : (v[v.length / 2 - 1] + v[v.length / 2]) / 2) : null; };
+const sumOf = (xs) => { const v = xs.filter((x) => typeof x === 'number'); return v.length ? v.reduce((a, b) => a + b, 0) : null; };
+async function engineAnalytics(store, args, { who }) {
+  const ctx = await context(store, who);
+  if (!ctx.maintainer && !Object.keys(ctx.myTeams).length) throw err('Join a Content Engine team to see Analytics.', 'ENGINE_NOT_MEMBER');
+  const scope = ['citizengo', 'hazteoir', 'team'].includes(args.scope) ? args.scope : 'citizengo';
+  const days = [7, 30, 90].includes(Number(args.days)) ? Number(args.days) : 30;
+  let team = null;
+  if (scope === 'team') {
+    team = teamById(ctx, String(args.team || ''));
+    if (!team || !E.canEditTeam(ctx, team.id)) throw err('You are not in that team.', 'ENGINE_NOT_MEMBER');
+  }
+  const { TOOLS } = require('./tools');
+  const xtools = require('./x-tools');
+  const run = (list, name, a) => list.find((t) => t.name === name).handler(store, a);
+  const acc = (team && team.accounts) || [];
+  const fbIds = acc.filter((a) => a.platform === 'facebook' && a.page_id).map((a) => a.page_id);
+  const igNames = acc.filter((a) => a.platform === 'instagram' && a.handle).map((a) => a.handle.toLowerCase());
+  const xHandles = acc.filter((a) => a.platform === 'x' && a.handle).map((a) => a.handle.toLowerCase());
+  const pagesAll = (await store.loadAll()).pages || [];
+  const inScope = (page) => (scope === 'team' ? fbIds.includes(page.page_id) : scope === 'citizengo' ? IS_CGO.test(page.name || '') : !IS_CGO.test(page.name || ''));
+  const pageIds = new Set(pagesAll.filter(inScope).map((p) => p.page_id));
+  const pageNames = new Set(pagesAll.filter(inScope).map((p) => p.name));
+
+  // Page-level growth (Facebook) and Instagram follower movement.
+  const growth = (await run(TOOLS, 'page_growth', { days })).data || { facebook: [], instagram: [] };
+  const fb = (growth.facebook || []).filter((r) => pageNames.has(r.name));
+  const ig = (growth.instagram || []).filter((r) => (scope === 'team' ? igNames.includes(String(r.name).toLowerCase()) : scope === 'citizengo' ? /citizengo/i.test(r.name) : !/citizengo/i.test(r.name)));
+
+  // Every post in the window, each against its own Page's median.
+  const tp = (await run(TOOLS, 'top_posts', { days, sort: 'views', compact: true, limit: 1000 })).data;
+  const rows = ((tp && tp.rows) || []).filter((r) => pageIds.has(r.page_id));
+  const med = {};
+  for (const id of pageIds) med[id] = median(rows.filter((r) => r.page_id === id).map((r) => r.views_total));
+  const top = rows.filter((r) => typeof r.views_total === 'number').sort((a, b) => b.views_total - a.views_total).slice(0, 10).map((r) => ({
+    page: r.page_name, text: String(r.message || '').slice(0, 140), url: r.permalink_url, created_time: r.created_time,
+    views: r.views_total, x_median: med[r.page_id] ? Math.round((r.views_total / med[r.page_id]) * 10) / 10 : null,
+    beyond_pct: r.beyond_followers_pct, engagement_rate: r.engagement_rate, shares: r.shares_total,
+  }));
+
+  // Instagram posts (team: its linked Pages; otherwise every account, filtered by name).
+  let igRows = [];
+  for (const pid of scope === 'team' ? fbIds : [null]) {
+    const d = (await run(TOOLS, 'instagram_posts', { days, sort: 'reach', limit: 100, ...(pid ? { page_id: pid } : {}) })).data;
+    igRows = igRows.concat(Array.isArray(d) ? d : []);
+  }
+  if (scope !== 'team') igRows = igRows.filter((r) => (scope === 'citizengo' ? /citizengo/i.test(r.ig_username || '') : !/citizengo/i.test(r.ig_username || '')));
+  const igTop = igRows.slice(0, 10).map((r) => ({
+    account: r.ig_username, text: String(r.caption || '').slice(0, 140), url: r.permalink, created_time: r.timestamp, type: r.media_product_type || r.media_type,
+    reach: r.reach, views: r.views, saves: r.saved, saves_per_1k: r.saves_per_1k_reached, rate: r.interaction_rate_pct, watch_s: r.reels_avg_watch_seconds,
+  }));
+
+  // X, if collected.
+  let x = [];
+  if (xtools.enabled()) {
+    const to = new Date().toISOString().slice(0, 10), from = new Date(Date.now() - (days - 1) * 864e5).toISOString().slice(0, 10);
+    const out = await run(xtools.X_TOOLS, 'x_period_summary', { from, to });
+    x = ((out && out.rows) || []).filter((r) => {
+      const u = String(r.username || '').toLowerCase();
+      return scope === 'team' ? xHandles.includes(u) : scope === 'citizengo' ? /citizengo/i.test(u) : !/citizengo/i.test(u);
+    }).map((r) => ({
+      account: r.label || `@${r.username}`, posts: Number(r.posts || 0), impressions: Number(r.impressions || 0), engagements: Number(r.engagements || 0),
+      rate: r.engagement_rate_pct, link_clicks: r.link_clicks, follower_change: r.followers_first === null || r.followers_first === undefined ? null : Number(r.followers_last) - Number(r.followers_first),
+      followers: r.followers_last, top_text: r.top_post_text ? String(r.top_post_text).slice(0, 140) : null, top_url: r.top_post_url || null, top_impressions: r.top_post_impressions,
+    }));
+  }
+
+  return json({
+    scope, team: team ? team.id : null, days, to: new Date().toISOString().slice(0, 10),
+    counts: { facebook_pages: pageIds.size, instagram: ig.length, x: x.length },
+    kpis: {
+      reach: sumOf(fb.map((r) => r.reach)), views: sumOf(fb.map((r) => r.views)), engagements: sumOf(fb.map((r) => r.engagements)),
+      net_follows: sumOf(fb.map((r) => r.netFollows)), followers: sumOf(fb.map((r) => r.followers)),
+      ig_followers: sumOf(ig.map((r) => r.followers)), ig_new: sumOf(ig.map((r) => r.newFollowers)),
+      x_impressions: sumOf(x.map((r) => r.impressions)), posts: rows.length,
+    },
+    pages: fb.map((r) => ({ name: r.name, followers: r.followers, reach: r.reach, views: r.views, engagements: r.engagements, net: r.netFollows, follows: r.newFollows, unfollows: r.unfollows })).sort((a, b) => (b.reach || 0) - (a.reach || 0)),
+    instagram: ig.map((r) => ({ name: r.name, followers: r.followers, new: r.newFollowers, unfollows: r.unfollows, net: r.net })),
+    top_posts: top, instagram_posts: igTop, x,
+  });
+}
+
 // Reels and videos [1 Nov]: a published page can't reach Storage, so the desk
 // sends the file here in pieces (action part), then asks for them to be
 // checked (action done), which returns what goes in the post's final snapshot.
@@ -583,6 +671,7 @@ const ENGINE_TOOLS = [
   { name: 'engine_inbox_rule', description: 'Content Engine Inbox: add to or remove from a team\'s auto-hide list (team admins). add: kind word (whole word), phrase (anywhere), links (any link that isn\'t citizengo.org or cgo.ac) or scams (the built-in scam phrases), with value for word and phrase. remove: id. New comments that match are hidden (never deleted) as you, and labelled auto-hidden.', inputSchema: obj({ action: { type: 'string', enum: ['add', 'remove'] }, team: { type: 'string' }, kind: { type: 'string', enum: ['word', 'phrase', 'links', 'scams'] }, value: { type: 'string' }, id: { type: 'number' } }, ['action', 'team']), handler: engineInboxRule },
   { name: 'engine_inbox_alert', description: 'Content Engine Inbox: mark a pile-on alert (from engine_inbox alerts) as seen, so it leaves the desk for everyone in the team.', inputSchema: obj({ team: { type: 'string' }, id: { type: 'number' } }, ['team', 'id']), handler: engineInboxAlert },
   { name: 'engine_inbox_history', description: 'Content Engine Inbox moderation history for one of your teams: every reply, hide, delete, like, assignment, label and done, by whom, newest first.', inputSchema: obj({ team: { type: 'string' }, limit: { type: 'number' } }, ['team']), handler: engineInboxHistory },
+  { name: 'engine_analytics', description: 'Content Engine Analytics for the desk, as data: page reach, views, engagements and net follows, Instagram follower movement, top Facebook posts against their own Page\'s median, top Instagram posts and X totals, for the last 7, 30 or 90 days. scope citizengo (every CitizenGO Page, default), hazteoir (kept apart) or team (with team).', inputSchema: obj({ scope: { type: 'string', enum: ['citizengo', 'hazteoir', 'team'] }, team: { type: 'string' }, days: { type: 'number', enum: [7, 30, 90] } }), handler: engineAnalytics },
   { name: 'engine_record', description: 'Content Engine: record bookkeeping on a post in any status, posted and rejected included: results, posted (the real post links and time), stale, and posting.asanaTaskGid / asanaUrl / syncedAt / removedAt. Nothing else; the post itself is saved with engine_save. version must be the one you read.', inputSchema: obj({ id: { type: 'string' }, version: { type: 'number' }, patch: { type: 'object' } }, ['id', 'version', 'patch']), handler: engineRecord },
   { name: 'engine_status', description: 'Content Engine: approve (schedules it; needs publishing rights for every Facebook and Instagram account), hold, changes (needs a note), reject, reopen, or mark as posted (it went out) a post.', inputSchema: obj({ id: { type: 'string' }, version: { type: 'number' }, action: { type: 'string', enum: ['approve', 'hold', 'changes', 'reject', 'reopen', 'posted'] }, note: { type: 'string' }, reasons: { type: 'array', items: { type: 'string' } } }, ['id', 'version', 'action']), handler: engineStatus },
   { name: 'engine_create', description: 'Content Engine: add a new post to Review in one of your teams (the daily engine, "Rework for…" and imports use this).', inputSchema: obj({ team: { type: 'string' }, doc: { type: 'object' }, id: { type: 'string' }, source_team: { type: 'string' }, source_post: { type: 'string' } }, ['team', 'doc']), handler: engineCreate },
