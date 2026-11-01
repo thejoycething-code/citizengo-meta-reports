@@ -1159,6 +1159,8 @@ const { LINK_TOOLS } = require('./link-tools');
 const { PEER_TOOLS } = require('./peer-tools');
 // One topic across Facebook, Instagram and X (30 Oct 2026). See mcp/topic-tools.js.
 const { TOPIC_TOOLS } = require('./topic-tools');
+// Daily UK monitoring digest (1 Nov 2026). See mcp/digest-tools.js.
+const { DIGEST_TOOLS } = require('./digest-tools');
 
 const TOOLS = [
   {
@@ -1322,6 +1324,7 @@ const TOOLS = [
   ...LINK_TOOLS,
   ...TOPIC_TOOLS,
   ...PEER_TOOLS,
+  ...DIGEST_TOOLS,
   ...INVITER_TOOLS,
 ];
 
