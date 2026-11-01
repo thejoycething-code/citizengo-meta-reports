@@ -573,6 +573,27 @@ async function engineCopilotLink(store, args, { who }) {
   }
 }
 
+// The desk's own documents (were the board artifact's collections): the morning
+// run reads feedback and video requests and appends results here.
+async function engineDeskDocs(store, args, { who }) {
+  const ctx = await context(store, who);
+  if (!ctx.maintainer && !Object.keys(ctx.myTeams).length) throw err('Join a Content Engine team first.', 'ENGINE_NOT_MEMBER');
+  const D = require('../lib/desk');
+  const collection = String(args.collection || '');
+  if (!['feedback', 'videoRequests', 'results'].includes(collection)) return json({ ok: false, error: 'collection is feedback, videoRequests or results.' });
+  if (!args.action || args.action === 'list') {
+    const rows = await D.docsList(collection, { since: args.since, limit: args.limit });
+    const docs = rows.map((r) => ({ id: r.id, created_at: r.created_at, updated_at: r.updated_at, ...r.data })).filter((d) => !args.status || d.status === args.status);
+    return json({ collection, docs });
+  }
+  if (args.action === 'put') {
+    if (!args.data || typeof args.data !== 'object') return json({ ok: false, error: 'data (an object) is required.' });
+    const out = await D.docsPut(collection, args.id, args.data, who, { merge: !!args.merge });
+    return json({ ok: true, id: out.id });
+  }
+  return json({ ok: false, error: 'action is list or put.' });
+}
+
 // Comment-to-DM automations: the team sees them; team admins change them.
 async function engineAutomationsList(store, args, { who }) {
   const ctx = await context(store, who);
@@ -1079,6 +1100,7 @@ const ENGINE_TOOLS = [
   { name: 'engine_inbox_alert', description: 'Content Engine Inbox: mark a pile-on alert (from engine_inbox alerts) as seen, so it leaves the desk for everyone in the team.', inputSchema: obj({ team: { type: 'string' }, id: { type: 'number' } }, ['team', 'id']), handler: engineInboxAlert },
   { name: 'engine_access', description: "Content Engine Settings › Team and access for one of your teams: each person's role, initials (used in tracked links) and, per Facebook and Instagram account, whether they can post, reply and DM, and moderate (from their own Facebook connection, or set up by hand), plus Analytics per team. Team admins narrow access (action limit: who, account_key or '*' for Analytics, post / reply / moderate / analytics true or false; turning one back on only restores what Facebook already allows, it never widens). Anyone sets their own initials, admins anyone's (action initials: who, initials).", inputSchema: obj({ action: { type: 'string', enum: ['list', 'limit', 'initials'] }, team: { type: 'string' }, who: { type: 'string' }, account_key: { type: 'string' }, post: { type: 'boolean' }, reply: { type: 'boolean' }, moderate: { type: 'boolean' }, analytics: { type: 'boolean' }, initials: { type: 'string' } }, ['team']), handler: engineAccess },
   { name: 'engine_copilot_link', description: "Content Engine: make one Campaign Copilot tracked link with the engine's Copilot sign-in. args = one copilotArgs object from make_links.py --dry-run (assetType petition, petitionId, ctaFamilyCode, platformCode, seriesFlow FB1-5/IG1-5/TW1-5, listCode, topicCode, scopeCode, campaignTitle). Returns link {short, long, campaign, linkId, via, at} to write into the post's links for that platform. Asking twice with the same args returns the same link.", inputSchema: obj({ args: { type: 'object' } }, ['args']), handler: engineCopilotLink },
+  { name: 'engine_desk_docs', description: "Content Engine desk documents (formerly the board artifact's collections): feedback (reviewers' decisions and notes), videoRequests (requested video cuts) and results (one row per checked post). action list: collection, optional since (ISO time; newer only), status, limit; newest first. action put: collection, id (omit to create), data, merge (true updates fields, e.g. a video request's status).", inputSchema: obj({ action: { type: 'string', enum: ['list', 'put'] }, collection: { type: 'string', enum: ['feedback', 'videoRequests', 'results'] }, since: { type: 'string' }, status: { type: 'string' }, limit: { type: 'number' }, id: { type: 'string' }, data: { type: 'object' }, merge: { type: 'boolean' } }, ['collection']), handler: engineDeskDocs },
   { name: 'engine_automations', description: 'Content Engine comment-to-DM automations for one of your teams: each rule\'s keywords, private message, public replies (taking turns), what it applies to (one post, a post type, or every post; the most specific wins), Facebook and/or Instagram, tag and hand-over, whether it is on, and its last 7 days (queued, sent, failed, and per step). paused: Pause everything is holding the team\'s accounts, so automations are held too.', inputSchema: obj({ team: { type: 'string' } }, ['team']), handler: engineAutomationsList },
   { name: 'engine_automation', description: 'Content Engine: add or update a comment-to-DM automation (team admins; name, keywords (whole words), dm_text with the real cgo.ac link, reply_texts (up to 5 public replies, taking turns), scope all / type (post_type petition, prayer, reel, wins, news) / post (thread_id), platforms facebook and/or instagram, skip_repeat (someone who already got the link just gets a like; default on), tag, hand_to (who to assign the comment to)), or pause, resume or remove one (id). A new comment with a keyword gets the private message (and a public reply) as you, through the Mini, at most one per comment and 200 per rule a day; Pause everything holds them too.', inputSchema: obj({ action: { type: 'string', enum: ['add', 'update', 'pause', 'resume', 'remove'] }, team: { type: 'string' }, id: { type: 'number' }, name: { type: 'string' }, keywords: { type: 'array', items: { type: 'string' } }, dm_text: { type: 'string' }, reply_text: { type: 'string' }, reply_texts: { type: 'array', items: { type: 'string' } }, scope: { type: 'string', enum: ['all', 'type', 'post'] }, post_type: { type: 'string', enum: ['petition', 'prayer', 'reel', 'wins', 'news'] }, thread_id: { type: 'string' }, platforms: { type: 'array', items: { type: 'string', enum: ['facebook', 'instagram'] } }, skip_repeat: { type: 'boolean' }, tag: { type: 'string' }, hand_to: { type: 'string' } }, ['action', 'team']), handler: engineAutomation },
   { name: 'engine_inbox_history', description: 'Content Engine Inbox moderation history for one of your teams: every reply, hide, delete, like, assignment, label and done, by whom, newest first.', inputSchema: obj({ team: { type: 'string' }, limit: { type: 'number' } }, ['team']), handler: engineInboxHistory },
