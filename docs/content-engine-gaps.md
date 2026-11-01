@@ -80,7 +80,7 @@ as far as that allows.
 - [x] Convergence "building" (one account twice) before the alert. Done 1 Nov: engine building[] (one account twice, or two accounts).
 - [x] Language tag and filter; HazteOir filter off by default; "Already reworked by"; landed drafts marked
       "From <Page>" with the original's numbers. Done 1 Nov: lang from common words (no paid AI); HazteOir Pages included but hidden by default; reworked[] from Plan requests; drafts show "From <Page>" with the original's numbers.
-- [ ] (needs Chris) Sentiment without paid AI; digest by Slack or email; opponent-watch data-protection sign-off.
+- [ ] (needs Chris) Sentiment without paid AI. Digest by Slack or email: not wanted (Chris, 1 Nov). Opponent-watch data protection: signed off by Chris 1 Nov (public information only).
 
 ## 9. Analytics
 - [x] Account picker: search, saved groups, platform filter, multi-select, compare side by side. Done 1 Nov: on the desk (search, platform, tick, compare side by side); saved groups in the artifact db (analyticsGroups).
@@ -89,7 +89,7 @@ as far as that allows.
 - [x] Overview: followers total with net, fastest growing, best post tiles; page growth chart; format and
       language tags in top posts. Done 1 Nov: followers with net, fastest growing, best post tiles, the 12-week chart (net follows metric), format and language tags.
 - [x] Phase 2 figures: comment-to-DM links sent, clicks on reply and DM links. Done 1 Nov except clicks: comment-to-DM links sent and tracked links in replies/DMs; clicks need shortener click data.
-- [ ] (needs Chris) Signatures from social (Looker on the Mini).
+- [x] Signatures from social (Looker on the Mini). Done 1 Nov: the nightly Looker pull (link_signatures) joined to each post's tracked links by campaign code, on team Analytics, plus signatures from reply and DM links by marker.
 
 ## 10. Tools
 - [x] Tools › Page Inviter: version, download, install steps, what's new, guide links, team usage. Done 1 Nov (test link v14): version, install and update steps, what's new, guide link (draft), team usage (page_inviter_usage, 7/30/90 days). Download button waits for the zip to be uploaded as an artifact asset (it carries the built-in token, so only with Chris's OK).
