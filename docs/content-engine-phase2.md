@@ -93,8 +93,8 @@ To switch it on (Chris, in Meta for Developers):
 
 ### Still to build
 
-- "Connect Facebook" flow per person (pattern: lib/igflow.js), storing the Pages they admin as publishing rights,
-  re-checked nightly.
+- Nightly re-check of connected rights on the Mini (open each sealed token, ask Facebook for the person's Page
+  tasks, drop rights they have lost).
 - Scheduled publishing to Facebook and Instagram with the person's own Page access; first comment; Stories;
   Instagram collab invites; Facebook collaborators added in Meta Business Suite for now.
 - Pause everything (A + B + C).
