@@ -263,8 +263,12 @@ handlers as page_growth, top_posts, instagram_posts and x_period_summary and ret
 text answers drop), so the desk shows the figures Claude reports: Facebook reach, views, engagements and net
 follows by Page, Instagram follower movement, the top 10 Facebook posts each against its own Page's median, top
 Instagram posts (saves per 1,000 reached) and X totals. Desk: Analytics tab (scope and window chips, headline
-figures, tables). Tests: `npm run test:analytics` (stubbed handlers). Not yet: the 12-week trend chart from the
-mock-ups (needs weekly series), per-platform pages, Phase 2 figures (comments answered, replies' link clicks).
+figures, tables). Tests: `npm run test:analytics` (stubbed handlers). 12-week trend (built 1 Nov, later): `trend` in the same
+answer gives the last 12 complete Monday weeks (a week in progress would read as a collapse) of reach (daily reach
+summed), net follows and engagements for the scope's four biggest Pages, and the median CitizenGO Page each week,
+from `store.pageGrowth`. Desk: one measure at a time (one axis), Pages in a validated fixed palette (--s1..--s4,
+light and dark), median dashed grey, end labels, week hover readout. Not yet: per-platform pages, Phase 2 figures
+(comments answered, replies' link clicks).
 
 ## Slice 3 onwards
 

@@ -28,7 +28,15 @@ stub(tools.TOOLS, 'instagram_posts', async (store, a) => ({ data: [{ ig_username
 xtools.enabled = () => true;
 stub(xtools.X_TOOLS, 'x_period_summary', async () => ({ rows: [{ username: 'CitizenGO_GB', label: 'CitizenGO UK', posts: 40, impressions: 30000, engagements: 900, followers_first: 1296, followers_last: 1297, top_post_text: 'SNP', top_post_url: 'https://x/1' }, { username: 'HazteOir', posts: 1, impressions: 9 }] }));
 
+const day = (n) => new Date(Date.now() - n * 864e5).toISOString().slice(0, 10);
+const growthRows = [];
+for (let n = 0; n < 84; n++) {
+  growthRows.push({ page_id: '105', metric_date: day(n), media_view_unique: 1000, post_engagements: 100, daily_follows: 3, daily_unfollows: 1 });
+  growthRows.push({ page_id: '434', metric_date: day(n), media_view_unique: 3000, post_engagements: 50, daily_follows: 1, daily_unfollows: 0 });
+  growthRows.push({ page_id: '154', metric_date: day(n), media_view_unique: 99999, post_engagements: 1, daily_follows: 0, daily_unfollows: 0 });
+}
 const store = {
+  async pageGrowth() { return growthRows; },
   async loadAll() { return { pages }; },
   async engineTeams() { return [{ id: 'uk', name: 'United Kingdom', accounts: [{ key: 'uk-fb', platform: 'facebook', page_id: '105' }, { key: 'uk-ig', platform: 'instagram', handle: 'citizengo_uk' }, { key: 'uk-x', platform: 'x', handle: 'CitizenGO_GB' }, { key: 'sc-fb', platform: 'facebook', page_id: '120' }] }]; },
   async engineMembers({ who }) { return who === 'chris' ? [{ team_id: 'uk', who: 'chris', role: 'admin' }] : []; },
@@ -45,6 +53,11 @@ const callErr = async (args, who) => { try { await call(args, who); return null;
   const uk = await call({ scope: 'team', team: 'uk' });
   eq('team scope: the UK team\'s Pages, Instagram and X only', [uk.pages.map((p) => p.name), uk.instagram.map((r) => r.name), uk.instagram_posts.map((r) => r.account), uk.x.map((r) => [r.account, r.follower_change])], [['Citizen GO UK'], ['citizengo_uk'], ['citizengo_uk', 'citizengo_uk'], [['CitizenGO UK', 1]]]);
   eq('only team members see Analytics, and only their own team', [await callErr({}, 'stranger'), await callErr({ scope: 'team', team: 'de' })], ['ENGINE_NOT_MEMBER', 'ENGINE_NOT_MEMBER']);
+
+  const tr = uk.trend;
+  const fullWeek = tr.series[0].reach[tr.weeks.length - 1];
+  eq('trend: 12 complete Monday weeks; the team\'s Page with weekly reach and net follows; the median is of CitizenGO Pages only', [tr.weeks.length, new Date(tr.weeks[0] + 'T00:00:00Z').getUTCDay(), tr.series.map((x) => x.name), fullWeek, tr.series[0].net[tr.weeks.length - 1], tr.median.reach[tr.weeks.length - 1], Date.parse(tr.weeks[11]) + 7 * 864e5 <= Date.now()], [12, 1, ['Citizen GO UK'], 7000, 14, 14000, true]);
+  eq('trend: the CitizenGO view shows its biggest Pages, HazteOir never', (await call({})).trend.series.map((x) => x.name), ['CitizenGO', 'Citizen GO UK']);
 
   console.log(`\n${passed} passed, ${failed} failed`);
   process.exit(failed ? 1 : 0);

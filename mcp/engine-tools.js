@@ -560,8 +560,12 @@ async function engineAnalytics(store, args, { who }) {
     }));
   }
 
+  // 12-week trend: weekly reach, net follows and engagements for the scope's
+  // biggest Pages (a team: all of its own), against the median CitizenGO Page.
+  const trend = await weeklyTrend(store, { pagesAll, inScope, scope });
+
   return json({
-    scope, team: team ? team.id : null, days, to: new Date().toISOString().slice(0, 10),
+    scope, team: team ? team.id : null, days, to: new Date().toISOString().slice(0, 10), trend,
     counts: { facebook_pages: pageIds.size, instagram: ig.length, x: x.length },
     kpis: {
       reach: sumOf(fb.map((r) => r.reach)), views: sumOf(fb.map((r) => r.views)), engagements: sumOf(fb.map((r) => r.engagements)),
@@ -573,6 +577,36 @@ async function engineAnalytics(store, args, { who }) {
     instagram: ig.map((r) => ({ name: r.name, followers: r.followers, new: r.newFollowers, unfollows: r.unfollows, net: r.net })),
     top_posts: top, instagram_posts: igTop, x,
   });
+}
+
+const WEEKS = 12;
+function weekStart(d) { const t = new Date(`${d}T00:00:00Z`); const wd = (t.getUTCDay() + 6) % 7; t.setUTCDate(t.getUTCDate() - wd); return t.toISOString().slice(0, 10); }
+async function weeklyTrend(store, { pagesAll, inScope, scope, now = Date.now() }) {
+  // The last 12 COMPLETE weeks: a week still in progress would read as a collapse.
+  const first = weekStart(new Date(now - WEEKS * 7 * 864e5).toISOString().slice(0, 10));
+  const weeks = Array.from({ length: WEEKS }, (_, i) => new Date(Date.parse(`${first}T00:00:00Z`) + i * 7 * 864e5).toISOString().slice(0, 10));
+  const rows = (await store.pageGrowth({ since: first })) || [];
+  const cell = () => ({ reach: null, net: null, engagements: null });
+  const add = (a, v) => (typeof v === 'number' ? (a || 0) + v : a);
+  const by = {};
+  for (const r of rows) {
+    const w = weekStart(String(r.metric_date).slice(0, 10)), i = weeks.indexOf(w);
+    if (i < 0) continue;
+    const s = by[r.page_id] || (by[r.page_id] = weeks.map(cell));
+    const c = s[i];
+    c.reach = add(c.reach, r.media_view_unique); c.engagements = add(c.engagements, r.post_engagements);
+    if (typeof r.daily_follows === 'number' || typeof r.daily_unfollows === 'number') c.net = (c.net || 0) + (r.daily_follows || 0) - (r.daily_unfollows || 0);
+  }
+  const name = Object.fromEntries(pagesAll.map((p) => [p.page_id, p.name]));
+  const cgo = pagesAll.filter((p) => IS_CGO.test(p.name || '') && by[p.page_id]).map((p) => p.page_id);
+  const metric = (ids, k) => weeks.map((_, i) => median(ids.map((id) => by[id][i][k])));
+  const total = (id) => by[id].reduce((n, c) => n + (c.reach || 0), 0);
+  const mine = pagesAll.filter((p) => inScope(p) && by[p.page_id]).map((p) => p.page_id).sort((a, b) => total(b) - total(a)).slice(0, 4);
+  return {
+    weeks,
+    series: mine.map((id) => ({ name: name[id], reach: by[id].map((c) => c.reach), net: by[id].map((c) => c.net), engagements: by[id].map((c) => c.engagements) })),
+    median: { name: 'CitizenGO median Page', reach: metric(cgo, 'reach'), net: metric(cgo, 'net'), engagements: metric(cgo, 'engagements') },
+  };
 }
 
 // Reels and videos [1 Nov]: a published page can't reach Storage, so the desk
