@@ -303,11 +303,12 @@ async function invitePosts(store, args) {
   const pageId = String(args.page_id || '');
   if (!/^\d{5,25}$/.test(pageId)) return { text: 'page_id must be a numeric Page ID (see inviter_pages).', raw: true, isError: true };
   const days = Math.min(365, Math.max(1, Math.floor(Number(args.days)) || 60));
-  const data = await store.loadAll();
+  const since = new Date(Date.now() - days * 86400000).toISOString();
+  // Only this Page's rows where the store can do that (Supabase); the whole dataset otherwise.
+  const data = store.loadPageFeed ? await store.loadPageFeed(pageId, since) : await store.loadAll();
   if (!data.pages.some((p) => p.page_id === pageId)) {
     return { text: JSON.stringify({ page_id: pageId, collected: false, posts: [] }), raw: true, structured: { page_id: pageId, collected: false, posts: [] } };
   }
-  const since = new Date(Date.now() - days * 86400000).toISOString();
   const posts = shapeFeed(data, { page_id: pageId, since, sort: 'recent', with_metrics_only: false }).rows
     .filter((r) => r.permalink_url)
     .map((r) => ({ post_id: r.post_id, permalink_url: r.permalink_url, created_time: r.created_time, reactions_total: r.reactions_total, collected_date: r.collected_date }));
