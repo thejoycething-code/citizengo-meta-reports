@@ -65,7 +65,7 @@ Decisions from Christopher Joyce are in brackets with the date._
    The desk's connector manifest: engine_me, engine_posts, engine_save, engine_status, engine_calendar,
    engine_requests, engine_request, engine_evergreen, engine_evergreen_update, engine_connect, engine_media,
    engine_pause, engine_video, engine_inbox, engine_inbox_act, engine_inbox_undo, engine_inbox_history, engine_inbox_person,
-   engine_inbox_posts, engine_inbox_rules, engine_inbox_rule, engine_inbox_alert.
+   engine_inbox_posts, engine_inbox_rules, engine_inbox_rule, engine_inbox_alert, engine_inbox_bulk.
 5. ⬜ Until Meta publishing works, "Approve" still hands UK posts to Asana as today.
 6. ◐ Cutover (prepared 1 Nov; nothing switched yet). The daily engine's instructions are ready in
    content-engine/DAILY.md, section "Engine mode", which only applies once the file content-engine/ENGINE_LIVE
@@ -79,7 +79,7 @@ Decisions from Christopher Joyce are in brackets with the date._
       `node scripts/engine-import-board.js <dump>/drafts --apply` with the service key in the shell. Posts nobody
       has edited in the engine are refreshed; ones edited there are left alone.
    3. Publish content-engine/desk.html onto the board URL (SxCXeQPMkaBMNiABjiiULw) from a session whose
-      connector list includes the engine tools, with the 22-tool manifest above.
+      connector list includes the engine tools, with the 23-tool manifest above.
    4. `touch content-engine/ENGINE_LIVE`. The next run works in the engine.
    5. Check the first run: new drafts appear on the desk in Review, nothing was written to the board's `drafts`.
    To go back: delete ENGINE_LIVE and republish review-board.html onto the board URL (its drafts are as they were
@@ -246,7 +246,14 @@ can't have collaborators. Facebook collaborators are added in Meta Business Suit
    hours. `engine_inbox` returns the last 24 hours' open alerts; the desk shows a red banner (See its comments,
    Open the post, Seen) and a red ! on the Inbox tab; `engine_inbox_alert` marks one seen for the team. Slack
    messages wait for Chris's OK and a webhook.
-3. ⬜ Later: automations (comment to DM), bulk by topic, X, pile-on alert to Slack.
+   Bulk by topic (built 1 Nov): "✨ Sort by topic" in Conversations sends the open comments (up to 150) to Claude on
+   the viewer's own allowance, which groups them (2-8 groups, every comment once; made-up ids dropped, left-overs
+   in "Other") with a suggested action and two or three replies in CitizenGO's voice. Each group has "Reply to all"
+   (wordings separated by a blank line, rotated; `[ACTION LINK]` must be replaced); ticked groups can be liked,
+   hidden, marked done, assigned or labelled with the group's name. `engine_inbox_bulk` applies the same rules as
+   one at a time (`actOn`), refusals are listed (DMs are answered one by one; Instagram likes refused), and
+   Facebook and Instagram actions wait 30 seconds so `engine_inbox_undo action_ids` can undo the whole batch.
+3. ⬜ Later: automations (comment to DM), X, pile-on alert to Slack.
 
 ## Slice 3 onwards
 

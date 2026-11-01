@@ -325,6 +325,12 @@ async function engineInbox(store, args, { who }) {
 async function engineInboxAct(store, args, { who }) {
   const ctx = await context(store, who);
   const item = await inboxItem(store, ctx, args.id);
+  return json(await actOn(store, ctx, item, args, who, I.UNDO_MS));
+}
+
+// One item, one action: desk-only ones apply at once, Meta ones are queued
+// for undoMs. Shared by the single and bulk tools so the rules can't drift.
+async function actOn(store, ctx, item, args, who, undoMs, rightsCache) {
   const action = String(args.action || '');
   const now = new Date();
   const base = { item_id: item.id, team_id: item.team_id, account_key: item.account_key, action, by: who };
@@ -334,35 +340,68 @@ async function engineInboxAct(store, args, { who }) {
     else if (action === 'assign') fields = { assigned_to: args.assign_to ? String(args.assign_to).slice(0, 120) : null };
     else {
       const labels = [...new Set([].concat(args.labels || []).map((l) => String(l).trim().slice(0, 30)).filter(Boolean))];
-      if (labels.length > 10) return json({ ok: false, error: 'At most 10 labels.' });
+      if (labels.length > 10) return { ok: false, error: 'At most 10 labels.' };
       fields = { labels };
     }
     const saved = await store.engineInboxUpdate(item.id, { ...fields, updated_at: now.toISOString(), updated_by: who });
     await store.engineInboxInsertAction({ ...base, detail: fields, status: 'done', run_after: now.toISOString(), done_at: now.toISOString() });
-    return json({ ok: true, item: saved });
+    return { ok: true, item: saved };
   }
-  const rights = (await store.engineRights({ who })).map((r) => r.account_key);
-  if (!rights.includes(item.account_key)) return json({ ok: false, error: `You can't act for ${item.account_key}: connect Facebook with a Page role on it, or leave it for someone who has one.` });
+  const rights = rightsCache || (await store.engineRights({ who })).map((r) => r.account_key);
+  if (!rights.includes(item.account_key)) return { ok: false, error: `You can't act for ${item.account_key}: connect Facebook with a Page role on it, or leave it for someone who has one.` };
   let lastIncomingAt, recipient;
   if (item.kind === 'message') {
     const thread = await store.engineInbox({ team_ids: [item.team_id], thread_id: item.thread_id, limit: 500 });
     const theirs = thread.filter((m) => !m.from_us);
     const last = theirs[theirs.length - 1] || item;
     lastIncomingAt = last.created_at; recipient = last.author_id;
-    if (!recipient) return json({ ok: false, error: "Can't tell who to reply to in this conversation." });
+    if (!recipient) return { ok: false, error: "Can't tell who to reply to in this conversation." };
   }
   const ok = I.allowed(item, action, { text: args.text, lastIncomingAt, now: now.getTime() });
-  if (!ok.ok) return json(ok);
+  if (!ok.ok) return ok;
   const row = await store.engineInboxInsertAction({
     ...base, text: args.text ? String(args.text).trim() : null, detail: recipient ? { recipient } : {},
-    run_after: new Date(now.getTime() + I.UNDO_MS).toISOString(), status: 'queued',
+    run_after: new Date(now.getTime() + undoMs).toISOString(), status: 'queued',
   });
-  return json({ ok: true, queued: row, undo_until: row.run_after });
+  return { ok: true, queued: row, undo_until: row.run_after };
+}
+
+// Bulk by topic: one action on up to 100 items. Replies rotate through the
+// texts given, so the account doesn't post the same words a hundred times.
+// Meta actions wait 30 seconds; anything a rule refuses is listed, not fatal.
+async function engineInboxBulk(store, args, { who }) {
+  const ctx = await context(store, who);
+  const ids = [...new Set([].concat(args.ids || []).map(String))];
+  if (!ids.length) return json({ ok: false, error: 'Pick some comments first.' });
+  if (ids.length > 100) return json({ ok: false, error: 'At most 100 at a time.' });
+  const texts = [].concat(args.texts || (args.text ? [args.text] : [])).map((t) => String(t).trim()).filter(Boolean).slice(0, 5);
+  if (['reply', 'private_reply'].includes(args.action) && !texts.length) return json({ ok: false, error: 'Write the reply first.' });
+  const rights = (await store.engineRights({ who })).map((r) => r.account_key);
+  const done = [], refused = [];
+  let n = 0;
+  for (const id of ids) {
+    const item = await store.engineInboxItem(id);
+    if (!item || !E.canEditTeam(ctx, item.team_id)) { refused.push({ id, error: 'Not in your teams.' }); continue; }
+    if (item.kind !== 'comment' && !['done', 'reopen', 'assign', 'label'].includes(args.action)) { refused.push({ id, error: 'Messages are answered one by one.' }); continue; }
+    const r = await actOn(store, ctx, item, { ...args, text: texts.length ? texts[n % texts.length] : args.text }, who, I.BULK_UNDO_MS, rights);
+    if (r.ok) { done.push(r.queued ? { id, action_id: r.queued.id } : { id }); if (r.queued) n++; } else refused.push({ id, error: r.error });
+  }
+  const queued = done.filter((d) => d.action_id);
+  return json({ ok: true, done: done.length, refused, action_ids: queued.map((d) => d.action_id), undo_until: queued.length ? new Date(Date.now() + I.BULK_UNDO_MS).toISOString() : null });
 }
 
 async function engineInboxUndo(store, args, { who }) {
   const ctx = await context(store, who);
   const rows = await store.engineInboxActions({ team_ids: Object.keys(ctx.myTeams).concat(ctx.maintainer ? ctx.teams.map((t) => t.id) : []), statuses: ['queued'], limit: 500 });
+  if (Array.isArray(args.action_ids)) {
+    const want = new Set(args.action_ids.map(Number));
+    let undone = 0;
+    for (const a of rows.filter((r) => want.has(Number(r.id)))) {
+      if (String(a.by).toLowerCase() !== String(who).toLowerCase() && !ctx.maintainer) continue;
+      if (await store.engineInboxUpdateAction(a.id, 'queued', { status: 'cancelled', done_at: new Date().toISOString() })) undone++;
+    }
+    return json({ ok: undone > 0, undone, of: want.size, ...(undone ? {} : { error: 'Too late to undo: they have already gone to Meta.' }) });
+  }
   const a = rows.find((r) => Number(r.id) === Number(args.action_id));
   if (!a) return json({ ok: false, error: 'Too late to undo: it has already gone to Meta, or was undone.' });
   if (String(a.by).toLowerCase() !== String(who).toLowerCase() && !ctx.maintainer) return json({ ok: false, error: 'Only the person who did it can undo it.' });
@@ -536,7 +575,8 @@ const ENGINE_TOOLS = [
   { name: 'engine_video', description: 'Content Engine: send a Reel or video for a post you can edit, in pieces of up to 2.5 MB (action part: id, upload (8-32 lowercase letters and digits, the same for every piece), index from 0, data base64), then check them (action done: id, upload, parts, size, sha256 hex, mime video/mp4 or video/quicktime, optional name). done returns the video to save in the post\'s final snapshot. Up to 150 MB.', inputSchema: obj({ action: { type: 'string', enum: ['part', 'done'] }, id: { type: 'string' }, upload: { type: 'string' }, index: { type: 'number' }, data: { type: 'string' }, parts: { type: 'number' }, size: { type: 'number' }, sha256: { type: 'string' }, mime: { type: 'string', enum: ['video/mp4', 'video/quicktime'] }, name: { type: 'string' } }, ['action', 'id', 'upload']), handler: engineVideo },
   { name: 'engine_inbox', description: 'Content Engine Inbox: comments and DMs on one of your teams\' Facebook Pages and Instagram accounts, newest first (status open by default, or done, or all; optional platform facebook/instagram, kind comment/message, before an ISO time), with open counts, actions still in their undo window and pile-on alerts from the last 24 hours. thread returns one post\'s comments or one conversation, oldest first.', inputSchema: obj({ team: { type: 'string' }, status: { type: 'string', enum: ['open', 'done', 'all'] }, platform: { type: 'string', enum: ['facebook', 'instagram'] }, kind: { type: 'string', enum: ['comment', 'message'] }, thread: { type: 'string' }, before: { type: 'string' }, limit: { type: 'number' } }, ['team']), handler: engineInbox },
   { name: 'engine_inbox_act', description: 'Content Engine Inbox: act on a comment or message. done, reopen, assign (assign_to, or empty to unassign) and label (labels) apply at once. reply, private_reply (Facebook comments, within 7 days), like (Facebook only), hide, unhide and delete go to Meta from the Mini with your own Page token after 10 seconds, so they can be undone; message replies only within 24 hours of their last message.', inputSchema: obj({ id: { type: 'string' }, action: { type: 'string', enum: ['reply', 'private_reply', 'like', 'hide', 'unhide', 'delete', 'done', 'reopen', 'assign', 'label'] }, text: { type: 'string' }, assign_to: { type: 'string' }, labels: { type: 'array', items: { type: 'string' } } }, ['id', 'action']), handler: engineInboxAct },
-  { name: 'engine_inbox_undo', description: 'Content Engine Inbox: undo a reply, like, hide, unhide or delete you did, while it is still in its 10-second window (action_id from engine_inbox_act).', inputSchema: obj({ action_id: { type: 'number' } }, ['action_id']), handler: engineInboxUndo },
+  { name: 'engine_inbox_undo', description: 'Content Engine Inbox: undo a reply, like, hide, unhide or delete you did while it is still in its window (action_id from engine_inbox_act), or a whole bulk action (action_ids from engine_inbox_bulk).', inputSchema: obj({ action_id: { type: 'number' }, action_ids: { type: 'array', items: { type: 'number' } } }), handler: engineInboxUndo },
+  { name: 'engine_inbox_bulk', description: 'Content Engine Inbox bulk by topic: one action on up to 100 comments (ids): reply (texts: up to 5 wordings, rotated), like, hide, unhide, delete, done, reopen, assign (assign_to) or label (labels). Same rules as one at a time; refusals are listed. Facebook and Instagram actions wait 30 seconds so the whole batch can be undone with engine_inbox_undo action_ids.', inputSchema: obj({ ids: { type: 'array', items: { type: 'string' } }, action: { type: 'string', enum: ['reply', 'like', 'hide', 'unhide', 'delete', 'done', 'reopen', 'assign', 'label'] }, text: { type: 'string' }, texts: { type: 'array', items: { type: 'string' } }, assign_to: { type: 'string' }, labels: { type: 'array', items: { type: 'string' } } }, ['ids', 'action']), handler: engineInboxBulk },
   { name: 'engine_inbox_person', description: 'Content Engine Inbox supporter history: one person\'s comments and messages on your team\'s accounts in the last 90 days (author_id from an inbox item), with counts (comments, messages, hidden, on ads), their labels and the most recent.', inputSchema: obj({ team: { type: 'string' }, author_id: { type: 'string' } }, ['team', 'author_id']), handler: engineInboxPerson },
   { name: 'engine_inbox_posts', description: 'Content Engine Inbox by post: the last days\' comments (7 by default, up to 30) grouped by the post or ad they\'re on, with comment, open, hidden and our-reply counts, most open first; ads: true for ads only. Open one with engine_inbox thread.', inputSchema: obj({ team: { type: 'string' }, days: { type: 'number' }, ads: { type: 'boolean' } }, ['team']), handler: engineInboxPosts },
   { name: 'engine_inbox_rules', description: 'Content Engine Inbox auto-hide list for one of your teams: banned words, phrases, "any link that isn\'t ours" and the built-in scam phrases (listed), and whether you can change it (team admins).', inputSchema: obj({ team: { type: 'string' } }, ['team']), handler: engineInboxRules },
