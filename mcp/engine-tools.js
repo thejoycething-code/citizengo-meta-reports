@@ -623,8 +623,8 @@ const IS_HO = /hazte\s?o[ií]r/i;
 // A post's language from its common words (no paid AI): en, es, pt, fr, it,
 // de, pl, hu, sk, nl, hr; null when it can't tell.
 const LANG_WORDS = {
-  en: 'the and to of is that for you this with are our we be have not', es: 'el la los las que de y en por para una con del es no se',
-  pt: 'o a os as que de e em para uma com do da não se é', fr: 'le la les des que de et en pour une avec du est pas ne',
+  en: 'the and to of is that for you this with are our we be have not', es: 'el la los las que y en por para una con del es se su hoy ahora aquí muy hasta',
+  pt: 'os as e em uma com do da não é você também está são muito pelo pela nos', fr: 'le la les des que de et en pour une avec du est pas ne',
   it: 'il la le che di e per una con del della non è sono', de: 'der die das und ist nicht mit für ein eine zu den von',
   pl: 'i w na nie się to że jest z do jak dla', hu: 'a az és hogy nem is egy meg már van', sk: 'a sa na je to že v do nie aj',
   nl: 'de het een en van is dat niet voor op met', hr: 'i je u na da se za ne su od',
@@ -634,7 +634,8 @@ function langOf(text) {
   const words = String(text || '').toLowerCase().split(/[^\p{L}]+/u).filter(Boolean);
   if (words.length < 4) return null;
   let best = null, top = 0;
-  for (const [k, set] of Object.entries(LANG_SETS)) { const n = words.filter((w) => set.has(w)).length; if (n > top) { top = n; best = k; } }
+  const uniq = [...new Set(words)];
+  for (const [k, set] of Object.entries(LANG_SETS)) { const n = uniq.filter((w) => set.has(w)).length; if (n > top) { top = n; best = k; } }
   return top >= 2 ? best : null;
 }
 const median = (xs) => { const v = xs.filter((x) => typeof x === 'number').sort((a, b) => a - b); return v.length ? (v.length % 2 ? v[(v.length - 1) / 2] : (v[v.length / 2 - 1] + v[v.length / 2]) / 2) : null; };
@@ -802,7 +803,7 @@ function topicsOf(posts) {
   const by = {};
   for (const p of posts || []) for (const k of storyKeys(p.text)) (by[k] = by[k] || []).push(p);
   return Object.entries(by).map(([key, list]) => ({ key: key.replace(/^link:/, ''), kind: key.startsWith('#') ? 'hashtag' : key.startsWith('link:') ? 'link' : 'story', posts: list.length, accounts: new Set(list.map((p) => p.handle || p.who)).size, best_x: Math.max(...list.map((p) => Number(p.x) || 0)) }))
-    .filter((t) => t.posts >= 2).sort((a, b) => b.accounts - a.accounts || b.posts - a.posts).slice(0, 15);
+    .filter((t) => t.posts >= 2 && t.accounts >= 2).sort((a, b) => b.accounts - a.accounts || b.posts - a.posts).slice(0, 15);
 }
 
 // Facebook page for a team's Analytics: the best post, formats compared and
