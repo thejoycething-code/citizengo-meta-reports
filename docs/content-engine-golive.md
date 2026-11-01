@@ -1,5 +1,8 @@
 # Content Engine: going live
 
+Chris's checklist for these steps is the Asana task "Content Engine go-live":
+https://app.asana.com/1/826488630492934/task/1220084771334351
+
 Everything is built and in dry run. This is the order to switch it on, with a
 rehearsal on a test Page before any real account posts. Run the preflight at
 each step; it reads only and never prints a token:
@@ -54,7 +57,7 @@ The Inbox fills within 5 minutes of the first connection (it reads only).
 ## 4. Cutover (the board → the desk)
 
 As in `docs/content-engine-phase2.md`, slice 1 step 6: fresh board dump and re-import, publish the desk onto the
-board URL with its 27 tools, `touch content-engine/ENGINE_LIVE`, check the first daily run.
+board URL with its 29 tools, `touch content-engine/ENGINE_LIVE`, check the first daily run.
 
 ## 5. Switches on the Mini (each with Chris's OK)
 
