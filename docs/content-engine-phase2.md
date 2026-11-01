@@ -280,7 +280,11 @@ Allies tab: ally_watch rows (likes + comments against each account's 120-day med
 Opponents tab: opponent_watch rows plus their Meta Ad Library issue ads with Meta's spend ranges. Desk: Listening
 tab; "Rework for <team>" on CitizenGO and ally posts files a Plan request for tomorrow (source idea, the original
 credited and linked in the angle), which the daily run drafts into Review (DAILY.md, Engine mode). Nothing is
-posted. Not yet: mentions, convergence alerts, sentiment, daily digest, "already reworked by".
+posted. Convergence (built 1 Nov, later): on the Allies tab, every watched ally post from the last 48 hours is
+read for hashtags, links and two-word names ("Prince Alois"); one used by 3+ different accounts is shown as
+converging, with "Rework for <team>" (a Plan request that asks for the facts to be checked first). Plain text
+matching, no paid AI (`convergence`, `storyKeys` in mcp/engine-tools.js). Not yet: mentions, sentiment, daily
+digest, "already reworked by".
 
 ## Slice 3 onwards
 

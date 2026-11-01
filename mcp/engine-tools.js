@@ -615,7 +615,13 @@ async function engineListening(store, args, { who }) {
   const posts = ((out && out.rows) || []).map((r) => ({ who: r.label || `@${r.username}`, handle: r.username, country: r.country || null, text: String(r.caption || '').slice(0, 300), url: r.permalink, created_time: r.timestamp,
     format: r.media_product_type || r.media_type || null, likes: r.like_count, comments: r.comments_count, x: r.vs_median === null || r.vs_median === undefined ? null : Number(r.vs_median), settled: !!r.settled }));
   const ads = tab === 'opponents' ? ((out && out.ads) || []).slice(0, 40).map((a) => ({ who: a.label || a.page_name, started: a.delivery_start, running: !a.delivery_stop, spend_lower: Number(a.spend_lower) || 0, spend_upper: Number(a.spend_upper) || Number(a.spend_lower) || 0, currency: a.currency || null, title: a.link_titles || a.bodies || null, url: a.snapshot_url || null })) : [];
-  return json({ tab, days, min_multiple: minX, posts, ads, note: out && !out.rows ? String(out.text || '').slice(0, 300) : null });
+  // Convergence reads every watched post from the last 48 hours, not only the breakouts.
+  let converging = [];
+  if (tab === 'allies') {
+    const all = await PEER_TOOLS.find((t) => t.name === 'ally_watch').handler(store, { days: 3, limit: 200, sort: 'recent' });
+    converging = convergence(((all && all.rows) || []).map((r) => ({ who: r.label || `@${r.username}`, handle: r.username, text: r.caption, url: r.permalink, created_time: r.timestamp, x: r.vs_median })));
+  }
+  return json({ tab, days, min_multiple: minX, posts, ads, converging, note: out && !out.rows ? String(out.text || '').slice(0, 300) : null });
 }
 
 // The Inbox's own figures for a team's Analytics (Phase 2): what came in, how
@@ -640,6 +646,44 @@ async function inboxFigures(store, teamId, days, now = Date.now()) {
     deleted: count((a) => a.action === 'delete'), on_ads: theirs.filter((i) => i.is_ad).length,
     capped: items.length >= 1000,
   };
+}
+
+// Convergence: the same hashtag, link or named story (two capitalised words
+// together, e.g. "Prince Alois") used by at least CONVERGE_MIN watched accounts
+// within 48 hours. Plain text matching, no paid AI.
+const CONVERGE_MIN = 3, CONVERGE_MS = 48 * 3600_000;
+const STOP_NAMES = new Set(['the', 'this', 'that', 'our', 'we', 'you', 'they', 'it', 'in', 'on', 'at', 'for', 'and', 'but', 'if', 'a', 'an', 'is', 'are', 'please', 'join', 'link', 'bio', 'click', 'read', 'watch', 'today', 'tonight', 'tomorrow', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']);
+function storyKeys(text) {
+  const t = String(text || '');
+  const keys = new Set();
+  for (const h of t.match(/#[\p{L}\p{N}_]{3,}/gu) || []) keys.add(h.toLowerCase());
+  for (const u of t.match(/\bhttps?:\/\/[^\s)]+|\b(?:[a-z0-9-]+\.)+[a-z]{2,}\/[^\s)]+/gi) || []) keys.add(`link:${u.replace(/^https?:\/\/(www\.)?/i, '').replace(/[?#].*$/, '').replace(/\/$/, '').toLowerCase()}`);
+  const words = t.split(/[^\p{L}\p{N}'-]+/u).filter(Boolean);
+  for (let i = 0; i + 1 < words.length; i++) {
+    const [a, b] = [words[i], words[i + 1]];
+    if (/^\p{Lu}[\p{Ll}'-]+$/u.test(a) && /^\p{Lu}[\p{Ll}'-]+$/u.test(b) && !STOP_NAMES.has(a.toLowerCase()) && !STOP_NAMES.has(b.toLowerCase())) keys.add(`${a} ${b}`);
+  }
+  return [...keys];
+}
+// rows: { who, handle, text, url, created_time }. Returns stories used by
+// CONVERGE_MIN+ different accounts within 48 hours, most accounts first.
+function convergence(rows, now = Date.now()) {
+  const by = {};
+  for (const r of rows) {
+    const at = Date.parse(r.created_time);
+    if (!(at >= now - CONVERGE_MS)) continue;
+    for (const k of storyKeys(r.text)) (by[k] = by[k] || []).push(r);
+  }
+  const out = [];
+  for (const [key, list] of Object.entries(by)) {
+    const accounts = [...new Set(list.map((r) => r.handle || r.who))];
+    if (accounts.length < CONVERGE_MIN) continue;
+    out.push({ key: key.replace(/^link:/, ''), kind: key.startsWith('#') ? 'hashtag' : key.startsWith('link:') ? 'link' : 'story', accounts: accounts.length,
+      posts: list.sort((a, b) => String(a.created_time).localeCompare(String(b.created_time))).map((r) => ({ who: r.who, url: r.url, created_time: r.created_time, x: r.x })) });
+  }
+  // A story and its hashtag often name the same thing; keep the biggest per set of accounts.
+  const seen = new Set();
+  return out.sort((a, b) => b.accounts - a.accounts || b.posts.length - a.posts.length).filter((c) => { const sig = [...new Set(c.posts.map((p) => p.who))].sort().join('|'); if (seen.has(sig)) return false; seen.add(sig); return true; }).slice(0, 10);
 }
 
 const WEEKS = 12;
@@ -783,4 +827,4 @@ const ENGINE_TOOLS = [
   { name: 'engine_calendar', description: 'Content Engine calendar: every team\'s scheduled and posted items (read-only for teams you are not in) plus your own teams\' drafts and holds, and the key dates (CitizenGO-wide and your teams\' own), between from and to (YYYY-MM-DD).', inputSchema: obj({ from: { type: 'string' }, to: { type: 'string' } }), handler: engineCalendar },
 ];
 
-module.exports = { ENGINE_TOOLS, context };
+module.exports = { convergence, storyKeys, ENGINE_TOOLS, context };
