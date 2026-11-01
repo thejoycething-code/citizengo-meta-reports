@@ -28,7 +28,7 @@ function engine() {
     members: [{ team_id: 'uk', who: 'chris', role: 'admin' }, { team_id: 'uk', who: 'sam', role: 'editor' }],
     rights: [{ who: 'chris', account_key: 'uk-fb', source: 'meta' }, { who: 'chris', account_key: 'uk-ig', source: 'meta' }],
     tokens: [{ who: 'chris', account_key: 'uk-fb', page_id: '105', ig_id: '178', connected_at: '2026-11-01', sealed: xauth.seal(keys.publicKey, 'PAGE-TOKEN') }, { who: 'chris', account_key: 'uk-ig', page_id: '105', ig_id: '178', connected_at: '2026-11-01', sealed: xauth.seal(keys.publicKey, 'PAGE-TOKEN') }],
-    inbox: [], actions: [], rules: [], alerts: [],
+    inbox: [], actions: [], rules: [], alerts: [], autos: [],
   };
   let aid = 0;
   const pick = (r, cols) => r;
@@ -56,6 +56,10 @@ function engine() {
     async engineInboxAlerts({ team_ids, statuses, since }) { return clone(db.alerts.filter((a) => team_ids.includes(a.team_id) && (!statuses || statuses.includes(a.status)) && (!since || a.at >= since))); },
     async engineInsertInboxAlert(row) { const a = { id: db.alerts.length + 1, status: 'open', ...row }; db.alerts.push(a); return clone(a); },
     async engineUpdateInboxAlert(id, team, fields) { const a = db.alerts.find((x) => x.id === id && x.team_id === team); if (!a) return null; Object.assign(a, fields); return clone(a); },
+    async engineAutomations({ team_ids }) { return clone(db.autos.filter((a) => team_ids.includes(a.team_id))); },
+    async engineInsertAutomation(row) { const a = { id: db.autos.length + 1, active: true, ...row }; db.autos.push(a); return clone(a); },
+    async engineUpdateAutomation(id, team, fields) { const i = db.autos.findIndex((a) => a.id === id && a.team_id === team); if (i < 0) return null; if (fields === null) return db.autos.splice(i, 1)[0]; Object.assign(db.autos[i], fields); return clone(db.autos[i]); },
+    async engineInboxAutomationUnchecked({ team_ids, since }) { return clone(db.inbox.filter((r) => team_ids.includes(r.team_id) && r.kind === 'comment' && r.platform === 'facebook' && !r.from_us && !r.automation_checked_at && r.created_at >= since)); },
     async engineInboxRules({ team_ids }) { return clone(db.rules.filter((r) => team_ids.includes(r.team_id))); },
     async engineInboxUnchecked({ team_ids, since }) { return clone(db.inbox.filter((r) => team_ids.includes(r.team_id) && r.kind === 'comment' && !r.from_us && !r.auto_checked_at && r.created_at >= since)); },
     async engineInsertInboxRule(row) { const r = { id: db.rules.length + 1, ...row }; db.rules.push(r); return clone(r); },
@@ -215,6 +219,35 @@ function fakeMeta() {
     eq('bulk: sam has no rights, so every Meta action is refused, none queued', [(await call(b, 'engine_inbox_bulk', { ids: ['fbc_c1', 'fbc_c9'], action: 'hide' }, 'sam')).refused.length, b.db.actions.filter((a) => a.action === 'hide').length], [2, 0]);
     const u = await call(b, 'engine_inbox_undo', { action_ids: rep.action_ids }, 'chris');
     eq('bulk undo: the whole batch is cancelled at once', [u.undone, b.db.actions.filter((a) => a.action === 'reply').every((a) => a.status === 'cancelled')], [3, true]);
+  }
+
+  // Comment-to-DM automations.
+  {
+    eq('automation keywords: whole words, any case or accent; not inside other words, not replies, not Instagram', [
+      I.automationFor({ kind: 'comment', platform: 'facebook', text: 'Where do I SIGN?' }, [{ active: true, keywords: ['sign'] }]) !== null,
+      I.automationFor({ kind: 'comment', platform: 'facebook', text: 'bad signal' }, [{ active: true, keywords: ['sign'] }]),
+      I.automationFor({ kind: 'comment', platform: 'facebook', text: 'sign', parent_id: 'x' }, [{ active: true, keywords: ['sign'] }]),
+      I.automationFor({ kind: 'comment', platform: 'instagram', text: 'sign' }, [{ active: true, keywords: ['sign'] }]),
+      I.automationFor({ kind: 'comment', platform: 'facebook', text: 'Pétition!' }, [{ active: true, keywords: ['petition'] }]) !== null,
+    ], [true, null, null, null, true]);
+    const m = engine();
+    eq('automations: editors cannot add; [ACTION LINK] refused; an admin with a Page right can', [
+      (await call(m, 'engine_automation', { action: 'add', team: 'uk', name: 'Sign', keywords: ['sign'], dm_text: 'Here: cgo.ac/x' }, 'sam')).ok,
+      (await call(m, 'engine_automation', { action: 'add', team: 'uk', name: 'Sign', keywords: ['sign'], dm_text: 'Here: [ACTION LINK]' }, 'chris')).ok,
+      (await call(m, 'engine_automation', { action: 'add', team: 'uk', name: 'Sign', keywords: ['SIGN', 'petition'], dm_text: 'Thank you! Sign here: cgo.ac/x', reply_text: 'Sent you the link 💌' }, 'chris')).automations.length,
+    ], [false, false, 1]);
+    const t = new Date(NOW - 3600e3).toISOString();
+    m.db.inbox.push({ id: 'fbc_s1', team_id: 'uk', account_key: 'uk-fb', platform: 'facebook', kind: 'comment', thread_id: '105_1', object_id: 's1', text: 'How do I sign?', created_at: t, from_us: false, status: 'open', labels: [] },
+      { id: 'fbc_s2', team_id: 'uk', account_key: 'uk-fb', platform: 'facebook', kind: 'comment', thread_id: '105_1', object_id: 's2', text: 'Great signal', created_at: t, from_us: false, status: 'open', labels: [] });
+    const quiet = async () => ({ ok: true, json: async () => ({ data: [] }) });
+    const r1 = await collect.run({ store: m, privateKey: keys.privateKey, live: true, now: NOW, log: () => {}, fetchImpl: quiet });
+    const r2 = await collect.run({ store: m, privateKey: keys.privateKey, live: true, now: NOW + 60e3, log: () => {}, fetchImpl: quiet });
+    eq('automations: "sign" gets the private message and the public reply as chris, once; "signal" gets nothing', [r1.automations, r2.automations, m.db.actions.map((a) => [a.item_id, a.action, a.by, a.status])], [1, 0, [['fbc_s1', 'private_reply', 'chris', 'queued'], ['fbc_s1', 'reply', 'chris', 'queued']]]);
+    const fm = fakeMeta();
+    const w = await worker.run({ store: m, privateKey: keys.privateKey, live: true, now: NOW + 1000, log: () => {}, fetchImpl: fm.fetchImpl });
+    eq('automations: the worker sends the private reply to the comment (Meta\'s one per comment)', [fm.calls.filter((c) => c.path === '105/messages').map((c) => JSON.parse(c.params.recipient).comment_id), w.sent >= 1], [['s1'], true]);
+    const paused = await call(m, 'engine_automation', { action: 'pause', team: 'uk', id: 1 }, 'chris');
+    eq('automations: pause, and the list shows the last 7 days', [paused.automations[0].active, typeof paused.automations[0].last_7_days.queued], [false, 'number']);
   }
 
   console.log(`\n${passed} passed, ${failed} failed`);

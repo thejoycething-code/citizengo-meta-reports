@@ -312,3 +312,28 @@ comment on table public.engine_inbox_alerts is 'Content Engine Inbox pile-on ale
 -- else's post, so the desk links to it instead.
 alter table public.engine_inbox drop constraint if exists engine_inbox_kind_check;
 alter table public.engine_inbox add constraint engine_inbox_kind_check check (kind in ('comment', 'message', 'mention'));
+
+-- Comment-to-DM automations [slice 3, 1 Nov]: a keyword (whole word) in a new
+-- Facebook comment queues a private reply with the petition link, and an
+-- optional public reply, as the person who made the rule, through the inbox
+-- action worker (so it stays in dry run with the rest until Chris's OK).
+-- Each comment is checked once (automation_checked_at); at most one private
+-- reply per comment (Meta's rule) and AUTOMATION_DAILY_MAX per rule a day.
+create table if not exists public.engine_automations (
+  id bigint generated always as identity primary key,
+  team_id text not null references public.engine_teams(id) on delete cascade,
+  name text not null,
+  keywords text[] not null,
+  dm_text text not null,
+  reply_text text,
+  thread_id text,                               -- one post only, or null for every post
+  active boolean not null default true,
+  created_by text not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz,
+  updated_by text
+);
+create index if not exists engine_automations_team on public.engine_automations (team_id, active);
+alter table public.engine_automations enable row level security;
+comment on table public.engine_automations is 'Content Engine comment-to-DM automations: a keyword in a new Facebook comment queues a private reply (and optional public reply) as the rule maker.';
+alter table public.engine_inbox add column if not exists automation_checked_at timestamptz;
