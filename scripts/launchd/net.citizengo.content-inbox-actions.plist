@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Content Engine Inbox actions on the Mini (slice 3). Every minute. DRY RUN: the dry-run argument means nothing is sent even if ENGINE_INBOX_LIVE=1. Going live = remove it and set ENGINE_INBOX_LIVE=1 in ~/runner/meta-reports/.env, with Chris's OK (public replies).
+     Install: cp to ~/Library/LaunchAgents/ and launchctl bootstrap gui/$(id -u) <plist> -->
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>net.citizengo.content-inbox-actions</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/zsh</string><string>-c</string>
+    <string>cd "$HOME/runner/meta-reports" &amp;&amp; node collector/inbox-actions.js --dry-run</string>
+  </array>
+  <key>EnvironmentVariables</key>
+  <dict><key>PATH</key><string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string></dict>
+  <key>StartInterval</key><integer>60</integer>
+  <key>RunAtLoad</key><true/>
+  <key>StandardOutPath</key><string>/tmp/content-inbox-actions.log</string>
+  <key>StandardErrorPath</key><string>/tmp/content-inbox-actions.log</string>
+</dict>
+</plist>

@@ -200,6 +200,31 @@ can't have collaborators. Facebook collaborators are added in Meta Business Suit
 - Going live: Connect Facebook switched on (Meta app + Vercel FB_* settings), Chris's OK to lift the Mini's
   "never public posting" rule, then ENGINE_PUBLISH_LIVE=1 and the plist without --dry-run.
 
+## Slice 3: Inbox [chosen 1 Nov]
+
+1. ✅ Engine (built 1 Nov). `engine_inbox` holds comments and DMs on the teams' Facebook Pages and Instagram
+   accounts; `engine_inbox_actions` holds every action and is the moderation history.
+   - Reading: `collector/inbox.js` on the Mini every 5 minutes (launchd `net.citizengo.content-inbox`, log
+     /tmp/content-inbox.log) with the most recently connected person's sealed token per account: comments on the
+     last 7 days of Facebook posts and ads (`/ads_posts`, marked `is_ad`), Instagram media comments and their
+     replies, and Messenger and Instagram conversations. Read-only on Meta. People's columns (status,
+     assigned_to, labels) are never in the collector's upsert, so a re-read can't undo them; our own comments and
+     messages arrive done.
+   - Acting: `engine_inbox_act`. done, reopen, assign and label apply at once. reply, private_reply (Facebook
+     comments, within 7 days), like (Facebook only), hide, unhide and delete need the person's own right on the
+     account and are queued with a 10-second undo window (`engine_inbox_undo`); DM replies only within 24 hours of
+     their last message (Meta's rule) and go to whoever wrote last. `collector/inbox-actions.js` (launchd
+     `net.citizengo.content-inbox-actions`, every minute, `--dry-run` hard-coded) sends them with that person's
+     token, records the result, and marks replied items done. Live needs ENGINE_INBOX_LIVE=1, the plist without
+     --dry-run, and Chris's OK: public replies are public posting.
+   - `engine_inbox_history`: the moderation history, newest first.
+   - Connect Facebook now also asks for pages_read_user_content, pages_manage_engagement, pages_messaging,
+     instagram_manage_comments and instagram_manage_messages, so anyone already connected connects again.
+   - Tests: `npm run test:inbox`.
+2. ⬜ Desk Inbox view: Conversations (filters, ad marker, supporter history), the reply box with its checks (option
+   A: one line beside Send), Assistant drafts in CitizenGO's voice, by post, bulk by topic, Moderation and history.
+3. ⬜ Later: auto-hide list, pile-on alert, automations (comment to DM), X.
+
 ## Slice 3 onwards
 
 Inbox (conversations, Assistant, bulk by topic, by post, moderation and history, automations flow builder, tracked

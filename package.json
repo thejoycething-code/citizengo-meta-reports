@@ -60,6 +60,7 @@
     "test:fb-connect": "node scripts/test-fb-connect.js",
     "test:publish": "node scripts/test-publish.js",
     "test:rights-check": "node scripts/test-rights-check.js",
+    "test:inbox": "node scripts/test-inbox.js",
     "publish": "node collector/publish.js",
     "publish:dry": "node collector/publish.js --dry-run"
   }
