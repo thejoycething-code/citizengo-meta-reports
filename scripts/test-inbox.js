@@ -283,7 +283,8 @@ function fakeMeta() {
       E.postType({ action: { url: 'https://citizengo.org/x' } }), E.postType({ card: { template: 'agenda' } }), E.postType({ card: { template: 'newsbox' } }), E.postType({ card: { template: 'reel' } }),
       E.draftCommentDm({ action: { url: 'https://citizengo.org/x' }, links: { facebook: { short: 'https://cgo.ac/abc' } } }).dm.includes('https://cgo.ac/abc'),
       E.draftCommentDm({ action: { url: 'https://citizengo.org/x' }, commentDm: { on: false } }),
-    ], ['petition', 'prayer', 'news', 'reel', true, null]);
+      E.draftCommentDm({ action: { url: 'https://citizengo.org/x' }, posting: { comment_dm: false } }),
+    ], ['petition', 'prayer', 'news', 'reel', true, null, null]);
     const paused = await call(m, 'engine_automation', { action: 'pause', team: 'uk', id: 1 }, 'chris');
     eq('automations: pause, and the list shows the last 7 days', [paused.automations[0].active, typeof paused.automations[0].last_7_days.queued], [false, 'number']);
   }
