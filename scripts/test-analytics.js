@@ -85,6 +85,16 @@ const callErr = async (args, who) => { try { await call(args, who); return null;
     eq('team Analytics: a Facebook page (best post, formats, hours) and every Instagram post; none for the CitizenGO view', [d.facebook.best.text, d.facebook.formats.map((f) => [f.format, f.posts]), Array.isArray(d.facebook.hours), d.instagram_all.length, (await call({})).facebook], ['court', [['Photo', 3]], true, 2, null]);
   }
 
+  {
+    const saved = tools.TOOLS.find((t) => t.name === 'top_posts').handler;
+    stub(tools.TOOLS, 'top_posts', async () => ({ data: { rows: [
+      { ...post('105', 'Citizen GO UK', 12859, 'library'), created_time: '2026-10-19T20:23:21Z', permalink_url: 'https://fb/lib' },
+      { ...post('120', 'Citizen GO Scotland', 12859, 'library'), created_time: '2026-10-19T21:12:32Z', permalink_url: 'https://fb/lib' },
+      post('105', 'Citizen GO UK', 900, 'x1') ] } }));
+    eq('a post shared to a second Page counts once, as the original', (await call({ scope: 'team', team: 'uk' })).top_posts.map((p) => [p.page, p.text]), [['Citizen GO UK', 'library'], ['Citizen GO UK', 'x1']]);
+    tools.TOOLS.find((t) => t.name === 'top_posts').handler = saved;
+  }
+
   // Convergence.
   eq('story keys: hashtags, whole links and two-word names; no stop-word pairs', storyKeys('Prince Alois of Liechtenstein vetoes it. #ProLife Read righttolife.org.uk/news/alois?x=1 This Friday'), ['#prolife', 'link:righttolife.org.uk/news/alois', 'Prince Alois']);
   {
