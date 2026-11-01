@@ -28,7 +28,7 @@ as far as that allows.
 - [x] Story view (in the preview); Instagram link in bio as a reminder (the API can't change the bio).
 - [x] Ready checks: "✓ Links tracked"; campaign label (auto).
 - [x] ✨ Rewrite on the first comment; "Stronger hook" chip (the free "Tell Claude what to change" box was already there).
-- [ ] Comment to DM ("SIGN") on the draft, on by default for petition posts, untickable. (Built with §5.)
+- [x] Comment to DM ("SIGN") on the draft, on by default for petition posts, untickable. (Built with §5.) Done 1 Nov: a tick box on the draft's Post tab, saved as posting.comment_dm. It DMs the post's own cgo.ac link; someone who already got it just gets a like.
 - [x] Instagram collab picker of CitizenGO accounts, alongside free handles (3 in all, Instagram's limit).
 
 ## 3. Calendar and Plan
@@ -58,12 +58,12 @@ as far as that allows.
 - [ ] (needs Chris) Pile-on and pause messages to Slack; X Inbox (paid API).
 
 ## 5. Automations (flow builder)
-- [ ] Applies to: this post / post type (petition, prayer, Reel, wins, news reaction) / all posts, with precedence.
-- [ ] Instagram comment-to-DM; account scope.
-- [ ] Steps: trigger words, rotated public replies, DM, optional wait (≤23 h, only if no click), condition
-      (already has the link → just react), tag and hand over.
-- [ ] Per-step stats; Test on my account; Rewrite in CitizenGO voice.
-- [ ] Pause everything also pauses automations.
+- [x] Applies to: this post / post type (petition, prayer, Reel, wins, news reaction) / all posts, with precedence.
+- [x] Instagram comment-to-DM; account scope.
+- [x] Steps: trigger words, rotated public replies, DM, optional wait (≤23 h, only if no click), condition
+      (already has the link → just react), tag and hand over. Done 1 Nov except the wait step, which needs click data and comes with §6.
+- [x] Per-step stats; Test on my account; Rewrite in CitizenGO voice. (Test it is a dry run on the desk: it shows which rule answers and what would be sent. A real send to your own account waits for Inbox live mode.)
+- [x] Pause everything also pauses automations.
 
 ## 6. Tracked links
 - [ ] Rewrite on send: citizengo.org links in replies and DMs become Copilot cgo.ac links (on the Mini),
