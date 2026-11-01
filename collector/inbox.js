@@ -86,11 +86,29 @@ async function autoHide({ store, team, live, now, log }) {
   return hidden;
 }
 
+// Pile-on alerts: at most one per post every 6 hours.
+async function pileOnAlerts({ store, team, live, now, log }) {
+  const [rows, rules, recent] = await Promise.all([
+    store.engineInbox({ team_ids: [team], kind: 'comment', since: new Date(now - 7 * 24 * 3600_000).toISOString(), limit: 1000 }),
+    store.engineInboxRules({ team_ids: [team] }),
+    store.engineInboxAlerts({ team_ids: [team], since: new Date(now - I.PILE_QUIET_MS).toISOString() }),
+  ]);
+  const quiet = new Set(recent.map((a) => a.thread_id));
+  let n = 0;
+  for (const a of I.pileOns(rows, rules, now)) {
+    if (quiet.has(a.thread_id)) continue;
+    n++;
+    log(`  ! pile-on on ${a.account_key} ${a.thread_id}: ${a.comments_hour} comments in an hour, ${a.hostile_hour} hostile (usual ${a.baseline})`);
+    if (live) await store.engineInsertInboxAlert({ ...a, at: new Date(now).toISOString() });
+  }
+  return n;
+}
+
 async function run({ store, privateKey, live, now = Date.now(), log = console.log, fetchImpl }) {
   const [teams, tokens] = await Promise.all([store.engineTeams(), store.engineConnectedTokens()]);
   const readers = readerTokens(tokens);
   const since = now - WINDOW_DAYS * 24 * 3600_000;
-  const tally = { accounts: 0, comments: 0, messages: 0, skipped: 0, failed: 0, auto_hidden: 0 };
+  const tally = { accounts: 0, comments: 0, messages: 0, skipped: 0, failed: 0, auto_hidden: 0, pile_ons: 0 };
   for (const t of teams) {
     for (const acc of t.accounts || []) {
       if (!['facebook', 'instagram'].includes(acc.platform)) continue;
@@ -123,6 +141,7 @@ async function run({ store, privateKey, live, now = Date.now(), log = console.lo
   }
   for (const t of teams) {
     try { tally.auto_hidden += await autoHide({ store, team: t.id, live, now, log }); } catch (e) { tally.failed++; log(`  ✗ auto-hide ${t.id}: ${e.message}`); }
+    try { tally.pile_ons += await pileOnAlerts({ store, team: t.id, live, now, log }); } catch (e) { tally.failed++; log(`  ✗ pile-on check ${t.id}: ${e.message}`); }
   }
   return tally;
 }

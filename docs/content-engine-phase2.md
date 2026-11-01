@@ -65,7 +65,7 @@ Decisions from Christopher Joyce are in brackets with the date._
    The desk's connector manifest: engine_me, engine_posts, engine_save, engine_status, engine_calendar,
    engine_requests, engine_request, engine_evergreen, engine_evergreen_update, engine_connect, engine_media,
    engine_pause, engine_video, engine_inbox, engine_inbox_act, engine_inbox_undo, engine_inbox_history, engine_inbox_person,
-   engine_inbox_posts, engine_inbox_rules, engine_inbox_rule.
+   engine_inbox_posts, engine_inbox_rules, engine_inbox_rule, engine_inbox_alert.
 5. ⬜ Until Meta publishing works, "Approve" still hands UK posts to Asana as today.
 6. ◐ Cutover (prepared 1 Nov; nothing switched yet). The daily engine's instructions are ready in
    content-engine/DAILY.md, section "Engine mode", which only applies once the file content-engine/ENGINE_LIVE
@@ -79,7 +79,7 @@ Decisions from Christopher Joyce are in brackets with the date._
       `node scripts/engine-import-board.js <dump>/drafts --apply` with the service key in the shell. Posts nobody
       has edited in the engine are refreshed; ones edited there are left alone.
    3. Publish content-engine/desk.html onto the board URL (SxCXeQPMkaBMNiABjiiULw) from a session whose
-      connector list includes the engine tools, with the 21-tool manifest above.
+      connector list includes the engine tools, with the 22-tool manifest above.
    4. `touch content-engine/ENGINE_LIVE`. The next run works in the engine.
    5. Check the first run: new drafts appear on the desk in Review, nothing was written to the board's `drafts`.
    To go back: delete ENGINE_LIVE and republish review-board.html onto the board URL (its drafts are as they were
@@ -240,7 +240,13 @@ can't have collaborators. Facebook collaborators are added in Meta Business Suit
    expressions from people). The inbox collector checks each new comment once (`auto_checked_at`, comments from the
    last 2 days) and queues a hide, never a delete, as the person who made the rule, labelled auto-hidden; the
    action worker sends it like any other (so it stays in dry run with the rest). History shows "Auto-hide: <why>".
-3. ⬜ Later: pile-on alert, automations (comment to DM), bulk by topic, X.
+   Pile-on alert (built 1 Nov): after each read the collector looks for a post with at least 10 comments in the
+   last hour, 3x its account's normal pace (comments per post per active hour, last 7 days) and at least 30%
+   hostile (`I.HOSTILE_WORDS` or the auto-hide rules; no paid AI). One `engine_inbox_alerts` row per post per 6
+   hours. `engine_inbox` returns the last 24 hours' open alerts; the desk shows a red banner (See its comments,
+   Open the post, Seen) and a red ! on the Inbox tab; `engine_inbox_alert` marks one seen for the team. Slack
+   messages wait for Chris's OK and a webhook.
+3. ⬜ Later: automations (comment to DM), bulk by topic, X, pile-on alert to Slack.
 
 ## Slice 3 onwards
 

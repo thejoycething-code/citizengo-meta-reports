@@ -282,3 +282,26 @@ create unique index if not exists engine_inbox_rules_unique on public.engine_inb
 alter table public.engine_inbox_rules enable row level security;
 comment on table public.engine_inbox_rules is 'Content Engine Inbox auto-hide list: words, phrases, links and scam phrases that hide new comments.';
 alter table public.engine_inbox add column if not exists auto_checked_at timestamptz;
+
+-- Pile-on alert [slice 3, 1 Nov]: a post getting at least 10 comments in an
+-- hour, 3x the account's normal pace, with at least 30% hostile (word list or
+-- the auto-hide rules). Shown on the desk; Slack waits for Chris's OK.
+create table if not exists public.engine_inbox_alerts (
+  id bigint generated always as identity primary key,
+  team_id text not null references public.engine_teams(id) on delete cascade,
+  account_key text not null,
+  thread_id text not null,
+  post_text text,
+  post_url text,
+  is_ad boolean not null default false,
+  at timestamptz not null default now(),
+  comments_hour integer not null,
+  hostile_hour integer not null,
+  baseline numeric not null,
+  status text not null default 'open' check (status in ('open', 'seen')),
+  seen_by text,
+  seen_at timestamptz
+);
+create index if not exists engine_inbox_alerts_team on public.engine_inbox_alerts (team_id, status, at desc);
+alter table public.engine_inbox_alerts enable row level security;
+comment on table public.engine_inbox_alerts is 'Content Engine Inbox pile-on alerts: a burst of mostly hostile comments on one post.';
