@@ -63,7 +63,7 @@ Decisions from Christopher Joyce are in brackets with the date._
    Restore and "It went out" use `engine_evergreen_update`, which also adds posts. Seeded with the UK refresh list
    from content-engine/evergreen-bank.md (the 3.5x post left out). Later: the monthly run adds new 5x winners.
    The desk's connector manifest: engine_me, engine_posts, engine_save, engine_status, engine_calendar,
-   engine_requests, engine_request, engine_evergreen, engine_evergreen_update, engine_connect.
+   engine_requests, engine_request, engine_evergreen, engine_evergreen_update, engine_connect, engine_media.
 5. ⬜ Until Meta publishing works, "Approve" still hands UK posts to Asana as today.
 
 ## Slice 2: Meta publishing
@@ -91,11 +91,32 @@ To switch it on (Chris, in Meta for Developers):
    `FB_REDIRECT_URI` = the URI above. `OAUTH_SIGNING_SECRET`, `X_TOKEN_PUBLIC_KEY` and `PUBLIC_ORIGIN` are already set.
    Until then the endpoints answer "Not available yet" and the desk says Connect Facebook isn't switched on.
 
+### Publisher (built 1 Nov, dry run until switched on)
+
+- On approve the desk saves the post's `final` snapshot: per platform the exact text with its tracked link, the first
+  comment, and the finished images (drawn in the browser, uploaded as JPEGs through `engine_media` into the private
+  `engine-media` Storage bucket). Any edit while scheduled refreshes it two seconds later. The publisher only ever
+  posts this snapshot.
+- `collector/publish.js` (on the Mini, which holds `X_TOKEN_PRIVATE_KEY`): for each scheduled post's Facebook and
+  Instagram destinations whose own time has come, it re-checks that the approver still holds the right, opens their
+  sealed Page token, signs one-hour links to the images, publishes (photo, multi-photo post, text post, Instagram
+  image or carousel), adds the first comment, and records `published[account]` with the link. X stays manual. When
+  every Meta destination is out and nothing is left for X, the post becomes Posted.
+- Never twice: each destination is claimed before the call; a claim older than 15 minutes with no answer is reported
+  ("check the Page"), never retried. A failed first comment is recorded on the published post, never retried.
+  Missed by over 6 hours, approver without the right or without a connected Facebook, no snapshot, video: reported
+  in the post's Publishing box for a person to act on. Facebook errors are retried up to 3 times.
+- Dry run unless `ENGINE_PUBLISH_LIVE=1` on the Mini; `npm run publish:dry` prints what it would do.
+- Tests: `npm run test:publish` (22, against an in-memory engine and a fake Facebook).
+
+To switch it on (after Connect Facebook works): install a launchd job on the Mini running `npm run publish` every
+5 minutes from ~/citizengo-meta-reports with the runner env, watch a few dry runs, then set `ENGINE_PUBLISH_LIVE=1`.
+
 ### Still to build
 
 - Nightly re-check of connected rights on the Mini (open each sealed token, ask Facebook for the person's Page
   tasks, drop rights they have lost).
-- Scheduled publishing to Facebook and Instagram with the person's own Page access; first comment; Stories;
+- Stories; Reels and videos;
   Instagram collab invites; Facebook collaborators added in Meta Business Suite for now.
 - Pause everything (A + B + C).
 
