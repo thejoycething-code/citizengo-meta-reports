@@ -37,6 +37,9 @@ async function main() {
       res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
       res.end('Signed the Content Engine in to Campaign Copilot. You can close this tab.');
       if (q.code || q.error) { srv.close(); process.stdin.pause(); resolve(q); }
+    }).on('error', (e) => {
+      console.error(e.code === 'EADDRINUSE' ? `Another sign-in is still waiting on port ${PORT}. Stop it (Ctrl+C in its terminal) and run this again.` : e.message);
+      process.exit(1);
     }).listen(PORT, '127.0.0.1');
     console.log('Opening Campaign Copilot to sign the engine in:\n' + url);
     console.log('\nIf you are not signed in to Copilot yet, sign in, then open the link above again.');
