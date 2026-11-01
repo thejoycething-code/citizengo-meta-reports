@@ -172,6 +172,30 @@ const callErr = async (store, name, args, who) => { try { await tool(name)(store
   const wo = await call(store, 'engine_evergreen_update', { action: 'went_out', id: eg.post.id, last_out: '2026-10-30' }, 'chris');
   eq('a fresh version went out: it rests, and the snooze is cleared', [wo.post.state, wo.post.snoozed_until], ['resting', null]);
 
+  // Slice 2: Connect Facebook.
+  const teamsFb = [{ id: 'uk', accounts: [{ key: 'uk-fb', platform: 'facebook', page_id: '105' }, { key: 'uk-ig', platform: 'instagram', ig_id: '178' }, { key: 'sc-fb', platform: 'facebook', page_id: '120' }, { key: 'sc-ig', platform: 'instagram', handle: 'citizengo_scotland' }, { key: 'uk-x', platform: 'x' }] }];
+  const pagesFb = [
+    { id: '105', name: 'Citizen GO UK', tasks: ['CREATE_CONTENT', 'MODERATE'], access_token: 'T1', instagram_business_account: { id: '178', username: 'citizengo_uk' } },
+    { id: '120', name: 'Citizen GO Scotland', tasks: ['ANALYZE'], access_token: 'T2', instagram_business_account: { id: '999', username: 'citizengo_scotland' } },
+    { id: '777', name: 'Somebody else', tasks: ['CREATE_CONTENT'], access_token: 'T3' },
+  ];
+  eq('connect: a Page you can post to gives its Facebook and linked Instagram; analyst-only Pages and other Pages give nothing',
+    E.rightsFromPages(teamsFb, pagesFb).map((r) => [r.account_key, r.token]), [['uk-fb', 'T1'], ['uk-ig', 'T1']]);
+  pagesFb[1].tasks.push('CREATE_CONTENT');
+  eq('connect: Instagram matched by handle when the team has no id', E.rightsFromPages(teamsFb, pagesFb).map((r) => r.account_key), ['uk-fb', 'uk-ig', 'sc-fb', 'sc-ig']);
+  {
+    const F = require('../lib/fbflow');
+    const t = F.signLink('s3cret', 'greg', 1000);
+    eq('connect link: names the person, ten minutes, tamper-proof', [F.verifyLink('s3cret', t, 2000).who, F.verifyLink('s3cret', t, 1000 + 11 * 60_000), F.verifyLink('other', t, 2000), F.verifyLink('s3cret', t.replace(/^./, 'x'), 2000)], ['greg', null, null, null]);
+    const before = { ...process.env };
+    Object.assign(process.env, { FB_APP_ID: '1', FB_APP_SECRET: '2', FB_REDIRECT_URI: 'https://x/api/fb/callback', OAUTH_SIGNING_SECRET: 's3cret', X_TOKEN_PUBLIC_KEY: 'k', PUBLIC_ORIGIN: 'https://meta.example' });
+    const link = await call(store, 'engine_connect', {}, 'greg');
+    eq('engine_connect: a link for the signed-in person', [link.ok, link.url.startsWith('https://meta.example/api/fb/authorize?t='), F.verifyLink('s3cret', decodeURIComponent(link.url.split('t=')[1])).who], [true, true, 'greg']);
+    for (const k of ['FB_APP_ID', 'FB_APP_SECRET', 'FB_REDIRECT_URI', 'OAUTH_SIGNING_SECRET', 'X_TOKEN_PUBLIC_KEY', 'PUBLIC_ORIGIN']) { if (k in before) process.env[k] = before[k]; else delete process.env[k]; }
+    eq('engine_connect: says plainly when it is not switched on', (await call(store, 'engine_connect', {}, 'greg')).configured, false);
+    eq('engine_connect: anonymous is turned away', await callErr(store, 'engine_connect', {}, 'anonymous'), 'ENGINE_SIGN_IN');
+  }
+
   // Copy an idea across teams.
   const cp = await call(store, 'engine_copy', { id: 'de-1', to_team: 'at' }, 'tamara@citizengo.net');
   eq('tamara copies the scheduled German post into Austria, without its posting plan', [cp.ok, cp.post.team_id, cp.post.status, cp.post.source_team, !!cp.post.doc.posting], [true, 'at', 'review', 'de', false]);

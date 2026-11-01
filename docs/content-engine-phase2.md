@@ -63,13 +63,38 @@ Decisions from Christopher Joyce are in brackets with the date._
    Restore and "It went out" use `engine_evergreen_update`, which also adds posts. Seeded with the UK refresh list
    from content-engine/evergreen-bank.md (the 3.5x post left out). Later: the monthly run adds new 5x winners.
    The desk's connector manifest: engine_me, engine_posts, engine_save, engine_status, engine_calendar,
-   engine_requests, engine_request, engine_evergreen, engine_evergreen_update.
+   engine_requests, engine_request, engine_evergreen, engine_evergreen_update, engine_connect.
 5. ⬜ Until Meta publishing works, "Approve" still hands UK posts to Asana as today.
 
 ## Slice 2: Meta publishing
 
-- "Connect Facebook" flow per person (pattern: lib/igflow.js), storing the Pages they admin as publishing rights,
-  re-checked nightly.
+### Connect Facebook (built 1 Nov, switched off until the Meta app is set up)
+
+- The desk's "Connect Facebook" button asks `engine_connect` for a ten-minute link naming the signed-in person, which
+  opens `api/fb/authorize.js` and then Facebook. `api/fb/callback.js` reads the Pages they manage (`/me/accounts`):
+  each Page where they have CREATE_CONTENT, and its linked Instagram account, that matches a team account becomes a
+  publishing right (`engine_publish_rights`, source `meta`; `lib/engine.js` `rightsFromPages`). Each Page token is
+  sealed to the collector's public key (`X_TOKEN_PUBLIC_KEY`, as for X) into `engine_page_tokens`; only the Mini,
+  with the private key, can open one. Reconnecting removes Facebook rights they no longer have; rights a maintainer
+  added by hand stay.
+- The desk locks Facebook and Instagram accounts you can't post to (🔒: can be unticked, not ticked).
+- Tests: `npm run test:engine`, `npm run test:fb-connect` (end to end against a fake Facebook and database).
+
+To switch it on (Chris, in Meta for Developers):
+1. In the CitizenGO Meta app (or a new Business app), add the Facebook Login product.
+2. Valid OAuth redirect URI: `https://meta-organic-reporting.vercel.app/api/fb/callback`.
+3. Permissions: pages_show_list, pages_read_engagement, pages_manage_posts, instagram_basic,
+   instagram_content_publish, business_management. With standard access only people who have a role on the app
+   (admin, developer, tester) can connect, which suits a small team; anyone else needs App Review and Business
+   Verification.
+4. In Vercel (meta-organic-reporting, production): `FB_APP_ID`, `FB_APP_SECRET`,
+   `FB_REDIRECT_URI` = the URI above. `OAUTH_SIGNING_SECRET`, `X_TOKEN_PUBLIC_KEY` and `PUBLIC_ORIGIN` are already set.
+   Until then the endpoints answer "Not available yet" and the desk says Connect Facebook isn't switched on.
+
+### Still to build
+
+- Nightly re-check of connected rights on the Mini (open each sealed token, ask Facebook for the person's Page
+  tasks, drop rights they have lost).
 - Scheduled publishing to Facebook and Instagram with the person's own Page access; first comment; Stories;
   Instagram collab invites; Facebook collaborators added in Meta Business Suite for now.
 - Pause everything (A + B + C).

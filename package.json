@@ -56,6 +56,7 @@
     "test:links": "node scripts/test-links.js",
     "collect:ig": "node collector/ig-connected.js",
     "test:ig": "node scripts/test-ig.js",
-    "test:engine": "node scripts/test-engine.js"
+    "test:engine": "node scripts/test-engine.js",
+    "test:fb-connect": "node scripts/test-fb-connect.js"
   }
 }
