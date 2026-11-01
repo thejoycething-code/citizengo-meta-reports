@@ -55,7 +55,7 @@ as far as that allows.
       (Facebook Page block); threats kept as a saved copy, never deleted. Ban is a new action value: claude.ai passes it once the connector is refreshed (one reconnect at the end of the build).
 - [x] By post: the post beside its comments, answered count, topics, sort, inline reply / hide, state tags.
 - [x] Presence and live updates (room); assignment notices.
-- [ ] (needs Chris) Pile-on and pause messages to Slack; X Inbox (paid API).
+- [ ] (needs Chris) Pile-on and pause messages to Slack. X Inbox: not for now (Chris, 1 Nov).
 
 ## 5. Automations (flow builder)
 - [x] Applies to: this post / post type (petition, prayer, Reel, wins, news reaction) / all posts, with precedence.
