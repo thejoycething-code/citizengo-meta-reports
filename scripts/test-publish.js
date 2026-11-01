@@ -152,6 +152,20 @@ const quiet = () => {};
     eq('stories: a failure after some frames are up says how many and is never retried', [!!pf.doc.published['uk-ig'], /2 of 3/.test(pf.doc.publishErrors['uk-ig:story'].message), pf.doc.publishErrors['uk-ig:story'].tries, P.plan([pf], sf.db.teams, NOW + 60_000).map((i) => i.action)], [true, true, P.MAX_TRIES, ['gave_up']]);
   }
 
+  // Instagram collabs.
+  {
+    eq('collabs: handles lose the @, duplicates go, at most three, and bad handles are refused',
+      [P.collaboratorsOf({ collaborators: ['@RightToLifeUK', 'righttolifeuk', 'cfam.org'] }).list, P.collaboratorsOf({ collaborators: ['a', 'b', 'c', 'd'] }).ok, P.collaboratorsOf({ collaborators: ['no spaces'] }).ok],
+      [['righttolifeuk', 'cfam.org'], false, false]);
+    eq('collabs: only on Instagram', P.contentFor({ final: { facebook: { text: 'x', media: [], collaborators: ['bad handle'] } } }, 'facebook').ok, true);
+    const sc = engine();
+    addPost(sc, 'pc', { review: approved, final: { instagram: { ...final.instagram, collaborators: ['@righttolifeuk'] } }, posting: { destinations: ['uk-ig'], at: '2026-11-03T14:00:00Z' } });
+    const fbc = fakeFacebook();
+    await run({ store: sc, privateKey: keys.privateKey, live: true, now: NOW, log: quiet, fetchImpl: fbc.fetchImpl });
+    const media = fbc.calls.filter((c) => c.path === '178/media');
+    eq('collabs: invited on the carousel itself, not on its slides', [media.filter((c) => c.params.collaborators).map((c) => [c.params.media_type, c.params.collaborators]), !!sc.db.posts[0].doc.published['uk-ig']], [[['CAROUSEL', '["righttolifeuk"]']], true]);
+  }
+
   // Pause everything: held, nothing called, and a long pause never marks it late.
   {
     const sp = engine();
