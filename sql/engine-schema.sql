@@ -337,3 +337,8 @@ create index if not exists engine_automations_team on public.engine_automations 
 alter table public.engine_automations enable row level security;
 comment on table public.engine_automations is 'Content Engine comment-to-DM automations: a keyword in a new Facebook comment queues a private reply (and optional public reply) as the rule maker.';
 alter table public.engine_inbox add column if not exists automation_checked_at timestamptz;
+
+-- Ban and unban [1 Nov, gaps §4]: block a comment's or message's author from a
+-- Facebook Page (POST/DELETE /{page}/blocked); Instagram has no ban API.
+alter table public.engine_inbox_actions drop constraint if exists engine_inbox_actions_action_check;
+alter table public.engine_inbox_actions add constraint engine_inbox_actions_action_check check (action in ('reply', 'private_reply', 'like', 'hide', 'unhide', 'delete', 'ban', 'unban', 'done', 'reopen', 'assign', 'label'));
