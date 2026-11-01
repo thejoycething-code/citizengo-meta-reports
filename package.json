@@ -55,6 +55,7 @@
     "load:link-signatures": "node scripts/load-link-signatures.js",
     "test:links": "node scripts/test-links.js",
     "collect:ig": "node collector/ig-connected.js",
-    "test:ig": "node scripts/test-ig.js"
+    "test:ig": "node scripts/test-ig.js",
+    "test:engine": "node scripts/test-engine.js"
   }
 }
