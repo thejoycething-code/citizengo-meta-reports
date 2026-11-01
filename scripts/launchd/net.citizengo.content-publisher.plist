@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Content Engine publisher on the Mini (docs/content-engine-phase2.md, slice 2).
+     Every 5 minutes. DRY RUN: the "dry-run" argument means it can't post even if
+     ENGINE_PUBLISH_LIVE=1 is set. Going live = remove that argument and set
+     ENGINE_PUBLISH_LIVE=1 in ~/runner/meta-reports/.env, with Chris's OK.
+     Install: cp to ~/Library/LaunchAgents/ and launchctl bootstrap gui/$(id -u) <plist> -->
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>net.citizengo.content-publisher</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/zsh</string><string>-c</string>
+    <string>cd "$HOME/runner/meta-reports" &amp;&amp; node collector/publish.js --dry-run</string>
+  </array>
+  <key>EnvironmentVariables</key>
+  <dict><key>PATH</key><string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string></dict>
+  <key>StartInterval</key><integer>300</integer>
+  <key>RunAtLoad</key><true/>
+  <key>StandardOutPath</key><string>/tmp/content-publisher.log</string>
+  <key>StandardErrorPath</key><string>/tmp/content-publisher.log</string>
+</dict>
+</plist>
