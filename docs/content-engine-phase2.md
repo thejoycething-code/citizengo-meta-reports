@@ -65,7 +65,7 @@ Decisions from Christopher Joyce are in brackets with the date._
    The desk's connector manifest: engine_me, engine_posts, engine_save, engine_status, engine_calendar,
    engine_requests, engine_request, engine_evergreen, engine_evergreen_update, engine_connect, engine_media,
    engine_pause, engine_video, engine_inbox, engine_inbox_act, engine_inbox_undo, engine_inbox_history, engine_inbox_person,
-   engine_inbox_posts, engine_inbox_rules, engine_inbox_rule, engine_inbox_alert, engine_inbox_bulk, engine_analytics.
+   engine_inbox_posts, engine_inbox_rules, engine_inbox_rule, engine_inbox_alert, engine_inbox_bulk, engine_analytics, engine_listening.
 5. ⬜ Until Meta publishing works, "Approve" still hands UK posts to Asana as today.
 6. ◐ Cutover (prepared 1 Nov; nothing switched yet). The daily engine's instructions are ready in
    content-engine/DAILY.md, section "Engine mode", which only applies once the file content-engine/ENGINE_LIVE
@@ -79,7 +79,7 @@ Decisions from Christopher Joyce are in brackets with the date._
       `node scripts/engine-import-board.js <dump>/drafts --apply` with the service key in the shell. Posts nobody
       has edited in the engine are refreshed; ones edited there are left alone.
    3. Publish content-engine/desk.html onto the board URL (SxCXeQPMkaBMNiABjiiULw) from a session whose
-      connector list includes the engine tools, with the 24-tool manifest above.
+      connector list includes the engine tools, with the 25-tool manifest above.
    4. `touch content-engine/ENGINE_LIVE`. The next run works in the engine.
    5. Check the first run: new drafts appear on the desk in Review, nothing was written to the board's `drafts`.
    To go back: delete ENGINE_LIVE and republish review-board.html onto the board URL (its drafts are as they were
@@ -269,6 +269,16 @@ summed), net follows and engagements for the scope's four biggest Pages, and the
 from `store.pageGrowth`. Desk: one measure at a time (one axis), Pages in a validated fixed palette (--s1..--s4,
 light and dark), median dashed grey, end labels, week hover readout. Not yet: per-platform pages, Phase 2 figures
 (comments answered, replies' link clicks).
+
+## Slice 3: Listening (built 1 Nov)
+
+`engine_listening`: posts beating their own normal (3x by default), as data. CitizenGO tab: other CitizenGO
+Pages' posts (not your team's) by views against that Page's 90-day median, last 30 days (from top_posts' data).
+Allies tab: ally_watch rows (likes + comments against each account's 120-day median; UK accounts on the desk).
+Opponents tab: opponent_watch rows plus their Meta Ad Library issue ads with Meta's spend ranges. Desk: Listening
+tab; "Rework for <team>" on CitizenGO and ally posts files a Plan request for tomorrow (source idea, the original
+credited and linked in the angle), which the daily run drafts into Review (DAILY.md, Engine mode). Nothing is
+posted. Not yet: mentions, convergence alerts, sentiment, daily digest, "already reworked by".
 
 ## Slice 3 onwards
 
