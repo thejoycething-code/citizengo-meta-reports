@@ -619,6 +619,24 @@ async function engineInboxHistory(store, args, { who }) {
 // scope: citizengo (every CitizenGO Page, the default), hazteoir (shown
 // apart, never mixed into CitizenGO totals) or team (one of your teams).
 const IS_CGO = /citizen\s?go/i;
+const IS_HO = /hazte\s?o[ií]r/i;
+// A post's language from its common words (no paid AI): en, es, pt, fr, it,
+// de, pl, hu, sk, nl, hr; null when it can't tell.
+const LANG_WORDS = {
+  en: 'the and to of is that for you this with are our we be have not', es: 'el la los las que de y en por para una con del es no se',
+  pt: 'o a os as que de e em para uma com do da não se é', fr: 'le la les des que de et en pour une avec du est pas ne',
+  it: 'il la le che di e per una con del della non è sono', de: 'der die das und ist nicht mit für ein eine zu den von',
+  pl: 'i w na nie się to że jest z do jak dla', hu: 'a az és hogy nem is egy meg már van', sk: 'a sa na je to že v do nie aj',
+  nl: 'de het een en van is dat niet voor op met', hr: 'i je u na da se za ne su od',
+};
+const LANG_SETS = Object.fromEntries(Object.entries(LANG_WORDS).map(([k, v]) => [k, new Set(v.split(' '))]));
+function langOf(text) {
+  const words = String(text || '').toLowerCase().split(/[^\p{L}]+/u).filter(Boolean);
+  if (words.length < 4) return null;
+  let best = null, top = 0;
+  for (const [k, set] of Object.entries(LANG_SETS)) { const n = words.filter((w) => set.has(w)).length; if (n > top) { top = n; best = k; } }
+  return top >= 2 ? best : null;
+}
 const median = (xs) => { const v = xs.filter((x) => typeof x === 'number').sort((a, b) => a - b); return v.length ? (v.length % 2 ? v[(v.length - 1) / 2] : (v[v.length / 2 - 1] + v[v.length / 2]) / 2) : null; };
 // One post shared to a second Page (UK to Scotland) comes back once per Page
 // with the same link: keep its first, original appearance.
@@ -628,7 +646,7 @@ async function engineAnalytics(store, args, { who }) {
   const ctx = await context(store, who);
   if (!ctx.maintainer && !Object.keys(ctx.myTeams).length) throw err('Join a Content Engine team to see Analytics.', 'ENGINE_NOT_MEMBER');
   if (!ctx.maintainer) {
-    const off = (await store.engineAccessLimits({ who })).filter((l) => l.account_key === '*' && l.can_analytics === false).map((l) => l.team_id);
+    const off = (store.engineAccessLimits ? await store.engineAccessLimits({ who }) : []).filter((l) => l.account_key === '*' && l.can_analytics === false).map((l) => l.team_id);
     if (Object.keys(ctx.myTeams).every((t) => off.includes(t))) throw err("A team admin has turned Analytics off for you.", 'ENGINE_NOT_ALLOWED');
   }
   const scope = ['citizengo', 'hazteoir', 'team'].includes(args.scope) ? args.scope : 'citizengo';
@@ -736,30 +754,55 @@ async function engineListening(store, args, { who }) {
     const { TOOLS } = require('./tools');
     const own = new Set(((team && team.accounts) || []).filter((a) => a.page_id).map((a) => a.page_id));
     const rows = ((await TOOLS.find((t) => t.name === 'top_posts').handler(store, { days: 90, sort: 'recent', compact: true, limit: 1000 })).data || {}).rows || [];
-    const cgo = rows.filter((r) => IS_CGO.test(r.page_name || '') && typeof r.views_total === 'number');
+    const cgo = rows.filter((r) => (IS_CGO.test(r.page_name || '') || IS_HO.test(r.page_name || '')) && typeof r.views_total === 'number');
     const med = {};
     for (const r of cgo) (med[r.page_id] = med[r.page_id] || []).push(r.views_total);
     for (const k of Object.keys(med)) med[k] = median(med[k]);
     const since = Date.now() - days * 864e5;
     const posts = oncePerLink(cgo.filter((r) => !own.has(r.page_id) && Date.parse(r.created_time) >= since && med[r.page_id] && r.views_total >= minX * med[r.page_id])
       .map((r) => ({ who: r.page_name, page_id: r.page_id, text: String(r.message || '').slice(0, 300), url: r.permalink_url, created_time: r.created_time, format: r.media_type || r.status_type || null,
-        views: r.views_total, x: Math.round((r.views_total / med[r.page_id]) * 10) / 10, beyond_pct: r.beyond_followers_pct }))
-      .sort((a, b) => b.x - a.x)).slice(0, 40);
-    return json({ tab, days, min_multiple: minX, posts });
+        views: r.views_total, x: Math.round((r.views_total / med[r.page_id]) * 10) / 10, beyond_pct: r.beyond_followers_pct, hazteoir: IS_HO.test(r.page_name || ''), lang: langOf(r.message) }))
+      .sort((a, b) => b.x - a.x)).slice(0, 60);
+    await markReworked(store, ctx, posts);
+    return json({ tab, days, min_multiple: minX, posts, topics: topicsOf(posts) });
   }
   const { PEER_TOOLS } = require('./peer-tools');
   const days = [7, 10, 30].includes(Number(args.days)) ? Number(args.days) : (tab === 'allies' ? 10 : 7);
   const out = await PEER_TOOLS.find((t) => t.name === (tab === 'allies' ? 'ally_watch' : 'opponent_watch')).handler(store, { days, min_multiple: minX, limit: 40, ...(tab === 'allies' && args.country ? { country: String(args.country) } : {}) });
   const posts = ((out && out.rows) || []).map((r) => ({ who: r.label || `@${r.username}`, handle: r.username, country: r.country || null, text: String(r.caption || '').slice(0, 300), url: r.permalink, created_time: r.timestamp,
-    format: r.media_product_type || r.media_type || null, likes: r.like_count, comments: r.comments_count, x: r.vs_median === null || r.vs_median === undefined ? null : Number(r.vs_median), settled: !!r.settled }));
+    format: r.media_product_type || r.media_type || null, likes: r.like_count, comments: r.comments_count, x: r.vs_median === null || r.vs_median === undefined ? null : Number(r.vs_median), settled: !!r.settled, lang: langOf(r.caption) }));
+  if (tab === 'allies') await markReworked(store, ctx, posts);
   const ads = tab === 'opponents' ? ((out && out.ads) || []).slice(0, 40).map((a) => ({ who: a.label || a.page_name, started: a.delivery_start, running: !a.delivery_stop, spend_lower: Number(a.spend_lower) || 0, spend_upper: Number(a.spend_upper) || Number(a.spend_lower) || 0, currency: a.currency || null, title: a.link_titles || a.bodies || null, url: a.snapshot_url || null })) : [];
   // Convergence reads every watched post from the last 48 hours, not only the breakouts.
-  let converging = [];
+  let converging = [], building = [];
   if (tab === 'allies') {
     const all = await PEER_TOOLS.find((t) => t.name === 'ally_watch').handler(store, { days: 3, limit: 200, sort: 'recent' });
-    converging = convergence(((all && all.rows) || []).map((r) => ({ who: r.label || `@${r.username}`, handle: r.username, text: r.caption, url: r.permalink, created_time: r.timestamp, x: r.vs_median })));
+    const recent = ((all && all.rows) || []).map((r) => ({ who: r.label || `@${r.username}`, handle: r.username, text: r.caption, url: r.permalink, created_time: r.timestamp, x: r.vs_median }));
+    converging = convergence(recent);
+    building = convergenceBuilding(recent, converging);
   }
-  return json({ tab, days, min_multiple: minX, posts, ads, converging, note: out && !out.rows ? String(out.text || '').slice(0, 300) : null });
+  return json({ tab, days, min_multiple: minX, posts, ads, converging, building, topics: topicsOf(posts), note: out && !out.rows ? String(out.text || '').slice(0, 300) : null });
+}
+
+// "Already reworked by": Plan requests (any team, last 60 days) that name the
+// post's link, as team and status only.
+async function markReworked(store, ctx, posts) {
+  if (!posts.length || !store.engineRequests) return;
+  const from = new Date(Date.now() - 60 * 864e5).toISOString().slice(0, 10);
+  const reqs = await store.engineRequests({ team_ids: ctx.teams.map((t) => t.id), from }).catch(() => []);
+  for (const p of posts) {
+    if (!p.url) continue;
+    const hits = reqs.filter((r) => String(r.angle || '').includes(p.url));
+    if (hits.length) p.reworked = hits.map((r) => { const t = teamById(ctx, r.team_id) || {}; return { team: r.team_id, name: t.name || r.team_id, flag: t.flag || '', status: r.status, post_id: r.post_id || null }; });
+  }
+}
+
+// Topics: hashtags, links and names used by two or more of the posts shown.
+function topicsOf(posts) {
+  const by = {};
+  for (const p of posts || []) for (const k of storyKeys(p.text)) (by[k] = by[k] || []).push(p);
+  return Object.entries(by).map(([key, list]) => ({ key: key.replace(/^link:/, ''), kind: key.startsWith('#') ? 'hashtag' : key.startsWith('link:') ? 'link' : 'story', posts: list.length, accounts: new Set(list.map((p) => p.handle || p.who)).size, best_x: Math.max(...list.map((p) => Number(p.x) || 0)) }))
+    .filter((t) => t.posts >= 2).sort((a, b) => b.accounts - a.accounts || b.posts - a.posts).slice(0, 15);
 }
 
 // Facebook page for a team's Analytics: the best post, formats compared and
@@ -855,6 +898,20 @@ function convergence(rows, now = Date.now()) {
   // A story and its hashtag often name the same thing; keep the biggest per set of accounts.
   const seen = new Set();
   return out.sort((a, b) => b.accounts - a.accounts || b.posts.length - a.posts.length).filter((c) => { const sig = [...new Set(c.posts.map((p) => p.who))].sort().join('|'); if (seen.has(sig)) return false; seen.add(sig); return true; }).slice(0, 10);
+}
+
+// Convergence "building": a story one account has posted twice, or that two
+// accounts share, in 48 hours: not an alert yet (that takes CONVERGE_MIN).
+function convergenceBuilding(rows, converging = [], now = Date.now()) {
+  const done = new Set(converging.map((c) => c.key));
+  const seen = new Set();
+  const by = {};
+  for (const r of rows) { if (!(Date.parse(r.created_time) >= now - CONVERGE_MS)) continue; for (const k of storyKeys(r.text)) (by[k] = by[k] || []).push(r); }
+  return Object.entries(by).map(([key, list]) => ({ key: key.replace(/^link:/, ''), raw: key, accounts: [...new Set(list.map((r) => r.handle || r.who))], list }))
+    .filter((b) => !done.has(b.key) && b.accounts.length < CONVERGE_MIN && (b.accounts.length === 2 || b.list.length >= 2))
+    .sort((a, b) => b.accounts.length - a.accounts.length || b.list.length - a.list.length)
+    .filter((b) => { const sig = b.list.map((r) => `${r.handle || r.who}@${r.created_time}`).sort().join('|'); if (seen.has(sig)) return false; seen.add(sig); return true; }).slice(0, 8)
+    .map((b) => ({ key: b.key, kind: b.raw.startsWith('#') ? 'hashtag' : b.raw.startsWith('link:') ? 'link' : 'story', accounts: b.accounts.length, posts: b.list.map((r) => ({ who: r.who, url: r.url, created_time: r.created_time })), needs: CONVERGE_MIN - b.accounts.length }));
 }
 
 const WEEKS = 12;
@@ -1001,4 +1058,4 @@ const ENGINE_TOOLS = [
   { name: 'engine_calendar', description: 'Content Engine calendar: every team\'s scheduled and posted items (read-only for teams you are not in) plus your own teams\' drafts and holds, and the key dates (CitizenGO-wide and your teams\' own), between from and to (YYYY-MM-DD).', inputSchema: obj({ from: { type: 'string' }, to: { type: 'string' } }), handler: engineCalendar },
 ];
 
-module.exports = { convergence, storyKeys, ENGINE_TOOLS, context };
+module.exports = { convergence, convergenceBuilding, topicsOf, langOf, storyKeys, ENGINE_TOOLS, context };
