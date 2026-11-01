@@ -11,6 +11,7 @@
 const xauth = require('../../lib/xauth');
 const E = require('../../lib/engine');
 const flow = require('../../lib/fbflow');
+const D = require('../../lib/desk');
 
 async function pg(method, pathAndQuery, body, prefer) {
   const base = String(process.env.SUPABASE_URL || '').trim().replace(/\/rest\/v1\/?$/, '').replace(/\/+$/, '');
@@ -63,6 +64,27 @@ module.exports = async (req, res) => {
       `<h1>Facebook did not complete the connection</h1><p class="err">${flow.esc(e.message)}</p><p>Try again from the posts desk. If it repeats, tell Chris.</p>`);
   }
 
+  // Signing in to the desk web app: which desk name is this Facebook account?
+  // Linked already, or linked now by an admin's invite; otherwise not let in.
+  const login = ticket.mode === 'login';
+  if (login) {
+    try {
+      let who = await D.whoForFacebook(person.id);
+      if (ticket.invite) {
+        const inv = await D.useInvite(ticket.invite, person.id);
+        if (inv) { who = inv.who; await D.linkFacebook(who, person.id, person.name); }
+        else if (!who) return flow.page(res, 400, 'Invite not valid', '<h1>This invite has been used or has expired</h1><p>Invites work once, for 7 days. Ask a team admin for a new one.</p>');
+      }
+      if (!who) {
+        return flow.page(res, 403, 'Not on the desk yet',
+          `<h1>Not on the desk yet</h1><p>Facebook account <strong>${flow.esc(person.name || person.id)}</strong> isn't linked to the Content Engine desk. Ask a team admin for an invite link (Settings › Team and access).</p>`);
+      }
+      ticket.who = who;
+    } catch (e) {
+      return flow.page(res, 500, 'Could not sign in', '<h1>Could not sign you in</h1><p>Try again in a minute. If it repeats, tell Chris.</p>');
+    }
+  }
+
   const now = new Date().toISOString();
   try {
     if (rights.length) {
@@ -79,8 +101,19 @@ module.exports = async (req, res) => {
     const not = keep.length ? `&account_key=not.in.${encodeURIComponent(inList(keep))}` : '';
     await pg('DELETE', `engine_page_tokens?who=eq.${encodeURIComponent(ticket.who)}${not}`, undefined, 'return=minimal');
     await pg('DELETE', `engine_publish_rights?who=eq.${encodeURIComponent(ticket.who)}&source=eq.meta${not}`, undefined, 'return=minimal');
+    // The Facebook account that connected is this person's sign-in from now on.
+    if (!login && person && person.id) await D.linkFacebook(ticket.who, person.id, person.name);
   } catch (e) {
     return flow.page(res, 500, 'Could not save', '<h1>Connected, but saving failed</h1><p>Nothing was changed. Try again from the posts desk in a minute.</p>');
+  }
+
+  if (login) {
+    const s = await D.createSession({ who: ticket.who, fbUserId: person.id, userAgent: req.headers['user-agent'] });
+    res.setHeader('Set-Cookie', ['fb_connect_flow=; Max-Age=0; Path=/api/fb; HttpOnly; Secure; SameSite=Lax', s.cookie]);
+    res.statusCode = 302;
+    res.setHeader('Location', '/desk/');
+    res.setHeader('Cache-Control', 'no-store');
+    return res.end();
   }
 
   const names = (key) => { for (const t of teams) for (const a of t.accounts || []) if (a.key === key) return `${a.name || key} (${t.name})`; return key; };

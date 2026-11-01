@@ -67,6 +67,7 @@
     "copilot:login": "node scripts/copilot-login.js",
     "copilot:adopt": "node scripts/copilot-adopt.js",
     "test:tracked": "node scripts/test-tracked.js",
+    "test:desk": "node scripts/test-desk.js",
     "publish": "node collector/publish.js",
     "publish:dry": "node collector/publish.js --dry-run"
   }
