@@ -85,6 +85,8 @@ Decisions from Christopher Joyce are in brackets with the date._
    To go back: delete ENGINE_LIVE and republish review-board.html onto the board URL (its drafts are as they were
    at step 2; anything created in the engine since then would need copying back by hand).
 
+**1 Nov 2026, later:** the desk moved to a web app at `/desk` (Facebook sign-in, `desk/index.html` in this repo). The board artifact (SxCXeQPMkaBMNiABjiiULw) and the test desk artifact were deleted; their documents and photos were copied into `engine_desk_docs` and the `desk-assets` bucket.
+
 ## Slice 2: Meta publishing
 
 ### Connect Facebook (built 1 Nov, switched off until the Meta app is set up)
