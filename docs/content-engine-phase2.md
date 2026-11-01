@@ -171,9 +171,18 @@ processing before publishing; longer and it tries again next run). No public lin
 "Use the attached video" sends a clip already on the post (`video.url`). Not yet: cleaning up pieces after
 publishing; a Reel cover image; posting the motion video made on the desk without saving it first.
 
+### Instagram Stories (built 1 Nov)
+
+On a post with Story frames going to Instagram, the desk's Posting panel has "Also post the Story to Instagram"
+(`posting.story`). The snapshot then renders each frame as a JPEG (`engine_media` platform `story`) into
+`final.story = {media, skipped}`. Poll frames are left out and the desk says so: the Graph API can't add stickers,
+so they are added by hand. The publisher gives each Instagram destination a second slot, `<account>:story`
+(`P.slotsOf`), at the same time as the post, with its own claim, errors and `published` entry; each frame goes out
+as its own `STORIES` container. If a frame fails after others are up, the slot stops for good with "N of M Story
+frames went up", so nothing is posted twice. Facebook Page Stories aren't published yet.
+
 ### Still to build
 
-- Stories;
   Instagram collab invites; Facebook collaborators added in Meta Business Suite for now.
 
 ## Slice 3 onwards
