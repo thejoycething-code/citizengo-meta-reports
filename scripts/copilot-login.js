@@ -36,10 +36,22 @@ async function main() {
       const q = Object.fromEntries(new URL(req.url, REDIRECT).searchParams);
       res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
       res.end('Signed the Content Engine in to Campaign Copilot. You can close this tab.');
-      if (q.code || q.error) { srv.close(); resolve(q); }
+      if (q.code || q.error) { srv.close(); process.stdin.pause(); resolve(q); }
     }).listen(PORT, '127.0.0.1');
     console.log('Opening Campaign Copilot to sign the engine in:\n' + url);
+    console.log('\nIf you are not signed in to Copilot yet, sign in, then open the link above again.');
+    console.log('If Allow does not finish, copy the whole address from the browser\'s address bar (or the address it was trying to load) and paste it here, then press Enter:');
     execFile('open', [url], () => {});
+    // Fallback: the pasted address (…/callback?code=…&state=…) or just the code.
+    process.stdin.setEncoding('utf8');
+    process.stdin.on('data', (line) => {
+      const t = String(line).trim();
+      if (!t) return;
+      let q;
+      try { q = Object.fromEntries(new URL(t).searchParams); } catch (e) { q = { code: t, state }; }
+      if (q.code || q.error) { srv.close(); process.stdin.pause(); resolve(q); }
+      else console.log('That address has no code in it. Paste the one with ?code=… in it.');
+    });
   });
   if (got.state !== state || !got.code) throw new Error(`Sign-in failed: ${got.error || 'no code'}`);
   const tok = await fetch(C.TOKEN_URL, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' },
