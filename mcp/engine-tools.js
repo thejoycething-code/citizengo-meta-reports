@@ -11,6 +11,7 @@
 
 const E = require('../lib/engine');
 const T = require('../lib/tracked');
+const copilot = require('../lib/copilot');
 
 const json = (obj) => ({ raw: true, text: JSON.stringify(obj) });
 const err = (message, code = 'ENGINE_REFUSED') => { const e = new Error(message); e.code = code; return e; };
@@ -552,6 +553,26 @@ async function engineAccess(store, args, { who }) {
   return json({ ok: true, ...(await engineAccessList(store, team, ctx)) });
 }
 
+// One Campaign Copilot link with the engine's sign-in (the laptop's morning
+// link run uses this since its own sign-in moved into the engine: Copilot
+// rotates refresh tokens, so there is one copy). args are make_links.py's
+// copilotArgs; the result is the link object it writes into a post's links.
+async function engineCopilotLink(store, args, { who }) {
+  const ctx = await context(store, who);
+  if (!ctx.maintainer && !Object.keys(ctx.myTeams).length) throw err('Join a Content Engine team to make links.', 'ENGINE_NOT_MEMBER');
+  const a = args.args && typeof args.args === 'object' ? args.args : null;
+  const need = ['assetType', 'petitionId', 'ctaFamilyCode', 'platformCode', 'seriesFlow', 'listCode', 'topicCode', 'scopeCode', 'campaignTitle'];
+  if (!a || need.some((k) => a[k] === undefined || a[k] === '') || a.assetType !== 'petition') return json({ ok: false, error: `args needs ${need.join(', ')} (make_links.py --dry-run gives them as copilotArgs).` });
+  if (!/^(FB|IG|TW)[1-5]$/.test(String(a.seriesFlow)) || String(a.campaignTitle).length > 60) return json({ ok: false, error: 'seriesFlow is FB1-5, IG1-5 or TW1-5; campaignTitle at most 60 characters.' });
+  try {
+    const r = await copilot.call(store, 'generate_social_url', { channel: 'social', trafficType: 'organic', ...a });
+    if (!r || !r.shortUrl) return json({ ok: false, error: 'Copilot gave no short link.' });
+    return json({ ok: true, reused: !!r.reused, link: { short: r.shortUrl, long: r.fullUrl, campaign: r.campaignName, linkId: r.linkId || null, via: 'copilot', at: new Date().toISOString().replace(/\.\d+Z$/, 'Z') } });
+  } catch (e) {
+    return json({ ok: false, error: e.code === 'COPILOT_SIGNED_OUT' ? 'The engine is not signed in to Campaign Copilot: Chris runs npm run copilot:adopt (or copilot:login).' : `Copilot: ${e.message}` });
+  }
+}
+
 // Comment-to-DM automations: the team sees them; team admins change them.
 async function engineAutomationsList(store, args, { who }) {
   const ctx = await context(store, who);
@@ -1041,6 +1062,7 @@ const ENGINE_TOOLS = [
   { name: 'engine_inbox_rule', description: 'Content Engine Inbox: add to or remove from a team\'s auto-hide list (team admins). add: kind word (whole word), phrase (anywhere), links (any link that isn\'t citizengo.org or cgo.ac) or scams (the built-in scam phrases), with value for word and phrase. remove: id. New comments that match are hidden (never deleted) as you, and labelled auto-hidden.', inputSchema: obj({ action: { type: 'string', enum: ['add', 'remove'] }, team: { type: 'string' }, kind: { type: 'string', enum: ['word', 'phrase', 'links', 'scams'] }, value: { type: 'string' }, id: { type: 'number' } }, ['action', 'team']), handler: engineInboxRule },
   { name: 'engine_inbox_alert', description: 'Content Engine Inbox: mark a pile-on alert (from engine_inbox alerts) as seen, so it leaves the desk for everyone in the team.', inputSchema: obj({ team: { type: 'string' }, id: { type: 'number' } }, ['team', 'id']), handler: engineInboxAlert },
   { name: 'engine_access', description: "Content Engine Settings › Team and access for one of your teams: each person's role, initials (used in tracked links) and, per Facebook and Instagram account, whether they can post, reply and DM, and moderate (from their own Facebook connection, or set up by hand), plus Analytics per team. Team admins narrow access (action limit: who, account_key or '*' for Analytics, post / reply / moderate / analytics true or false; turning one back on only restores what Facebook already allows, it never widens). Anyone sets their own initials, admins anyone's (action initials: who, initials).", inputSchema: obj({ action: { type: 'string', enum: ['list', 'limit', 'initials'] }, team: { type: 'string' }, who: { type: 'string' }, account_key: { type: 'string' }, post: { type: 'boolean' }, reply: { type: 'boolean' }, moderate: { type: 'boolean' }, analytics: { type: 'boolean' }, initials: { type: 'string' } }, ['team']), handler: engineAccess },
+  { name: 'engine_copilot_link', description: "Content Engine: make one Campaign Copilot tracked link with the engine's Copilot sign-in. args = one copilotArgs object from make_links.py --dry-run (assetType petition, petitionId, ctaFamilyCode, platformCode, seriesFlow FB1-5/IG1-5/TW1-5, listCode, topicCode, scopeCode, campaignTitle). Returns link {short, long, campaign, linkId, via, at} to write into the post's links for that platform. Asking twice with the same args returns the same link.", inputSchema: obj({ args: { type: 'object' } }, ['args']), handler: engineCopilotLink },
   { name: 'engine_automations', description: 'Content Engine comment-to-DM automations for one of your teams: each rule\'s keywords, private message, public replies (taking turns), what it applies to (one post, a post type, or every post; the most specific wins), Facebook and/or Instagram, tag and hand-over, whether it is on, and its last 7 days (queued, sent, failed, and per step). paused: Pause everything is holding the team\'s accounts, so automations are held too.', inputSchema: obj({ team: { type: 'string' } }, ['team']), handler: engineAutomationsList },
   { name: 'engine_automation', description: 'Content Engine: add or update a comment-to-DM automation (team admins; name, keywords (whole words), dm_text with the real cgo.ac link, reply_texts (up to 5 public replies, taking turns), scope all / type (post_type petition, prayer, reel, wins, news) / post (thread_id), platforms facebook and/or instagram, skip_repeat (someone who already got the link just gets a like; default on), tag, hand_to (who to assign the comment to)), or pause, resume or remove one (id). A new comment with a keyword gets the private message (and a public reply) as you, through the Mini, at most one per comment and 200 per rule a day; Pause everything holds them too.', inputSchema: obj({ action: { type: 'string', enum: ['add', 'update', 'pause', 'resume', 'remove'] }, team: { type: 'string' }, id: { type: 'number' }, name: { type: 'string' }, keywords: { type: 'array', items: { type: 'string' } }, dm_text: { type: 'string' }, reply_text: { type: 'string' }, reply_texts: { type: 'array', items: { type: 'string' } }, scope: { type: 'string', enum: ['all', 'type', 'post'] }, post_type: { type: 'string', enum: ['petition', 'prayer', 'reel', 'wins', 'news'] }, thread_id: { type: 'string' }, platforms: { type: 'array', items: { type: 'string', enum: ['facebook', 'instagram'] } }, skip_repeat: { type: 'boolean' }, tag: { type: 'string' }, hand_to: { type: 'string' } }, ['action', 'team']), handler: engineAutomation },
   { name: 'engine_inbox_history', description: 'Content Engine Inbox moderation history for one of your teams: every reply, hide, delete, like, assignment, label and done, by whom, newest first.', inputSchema: obj({ team: { type: 'string' }, limit: { type: 'number' } }, ['team']), handler: engineInboxHistory },
