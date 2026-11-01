@@ -704,6 +704,7 @@ async function engineAnalytics(store, args, { who }) {
     page: r.page_name, text: String(r.message || '').slice(0, 140), url: r.permalink_url, created_time: r.created_time,
     views: r.views_total, x_median: med[r.page_id] ? Math.round((r.views_total / med[r.page_id]) * 10) / 10 : null,
     beyond_pct: r.beyond_followers_pct, engagement_rate: r.engagement_rate, shares: r.shares_total,
+    engagements: r.engagement_total, format: fbFormat(r), lang: langOf(r.message),
   }));
 
   // Instagram posts (team: its linked Pages; otherwise every account, filtered by name).
@@ -728,7 +729,7 @@ async function engineAnalytics(store, args, { who }) {
       return scope === 'team' ? xHandles.includes(u) : scope === 'citizengo' ? /citizengo/i.test(u) : !/citizengo/i.test(u);
     }).map((r) => ({
       account: r.label || `@${r.username}`, posts: Number(r.posts || 0), impressions: Number(r.impressions || 0), engagements: Number(r.engagements || 0),
-      rate: r.engagement_rate_pct, link_clicks: r.link_clicks, follower_change: r.followers_first === null || r.followers_first === undefined ? null : Number(r.followers_last) - Number(r.followers_first),
+      rate: r.engagement_rate_pct, link_clicks: r.link_clicks, profile_clicks: r.profile_clicks ?? null, follower_change: r.followers_first === null || r.followers_first === undefined ? null : Number(r.followers_last) - Number(r.followers_first),
       followers: r.followers_last, top_text: r.top_post_text ? String(r.top_post_text).slice(0, 140) : null, top_url: r.top_post_url || null, top_impressions: r.top_post_impressions,
     }));
   }
@@ -854,8 +855,15 @@ function facebookDetail(rows, med) {
   const slot = (r) => { const h = ukHour(r.created_time); const b = Math.floor(h.hour / 3) * 3; return `${h.weekend ? 'Weekend' : 'Weekday'} ${String(b).padStart(2, '0')}:00–${String(b + 3).padStart(2, '0')}:00`; };
   const hours = Object.entries(group(slot)).filter(([, list]) => list.length >= 2).map(([when, list]) => ({ when, posts: list.length, median_views: Math.round(median(list.map((r) => r.views_total))) }))
     .sort((a, b) => b.median_views - a.median_views).slice(0, 6);
+  const ranked = scored.slice().sort((a, b) => b.views_total - a.views_total).slice(0, 200).map((r, i) => ({
+    rank: i + 1, page: r.page_name, text: String(r.message || '').slice(0, 140), url: r.permalink_url, created_time: r.created_time, format: fbFormat(r), lang: langOf(r.message),
+    views: r.views_total, engagements: r.engagement_total, rate: r.engagement_rate, beyond_pct: r.beyond_followers_pct, shares: r.shares_total,
+    x_median: med[r.page_id] ? Math.round((r.views_total / med[r.page_id]) * 10) / 10 : null,
+  }));
   return {
-    posts: scored.length, formats, hours,
+    posts: scored.length, formats, hours, ranked,
+    views: sumOf(scored.map((r) => r.views_total)), post_engagements: sumOf(scored.map((r) => r.engagement_total)),
+    median_engagements: median(scored.map((r) => r.engagement_total)), median_rate: median(scored.map((r) => r.engagement_rate)),
     best: { page: best.page_name, text: String(best.message || '').slice(0, 200), url: best.permalink_url, created_time: best.created_time, views: best.views_total, beyond_pct: best.beyond_followers_pct, shares: best.shares_total, x_median: med[best.page_id] ? Math.round((best.views_total / med[best.page_id]) * 10) / 10 : null },
   };
 }
@@ -880,6 +888,14 @@ async function inboxFigures(store, teamId, days, now = Date.now()) {
     replies: count((a) => a.action === 'reply'), private_replies: count((a) => a.action === 'private_reply'),
     hidden: count((a) => a.action === 'hide' && !(a.detail && a.detail.auto)), auto_hidden: count((a) => a.action === 'hide' && a.detail && a.detail.auto),
     deleted: count((a) => a.action === 'delete'), on_ads: theirs.filter((i) => i.is_ad).length,
+    // Phase 2: comment-to-DM links sent by automations, and tracked links in
+    // replies and DMs (Copilot or the long fallback). Clicks need click data
+    // from the shortener, not collected yet.
+    automation_dms: count((a) => a.action === 'private_reply' && a.detail && a.detail.automation_id),
+    automation_replies: count((a) => a.action === 'reply' && a.detail && a.detail.automation_id),
+    tracked_links: recent.reduce((n, a) => n + ((a.detail && a.detail.links) || []).length, 0),
+    tracked_links_long: recent.reduce((n, a) => n + ((a.detail && a.detail.links) || []).filter((l) => l.via === 'long').length, 0),
+    link_clicks: null,
     capped: items.length >= 1000,
   };
 }
