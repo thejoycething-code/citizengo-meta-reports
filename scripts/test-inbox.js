@@ -38,7 +38,13 @@ function engine() {
     async engineTeams() { return clone(db.teams); },
     async engineMembers({ who, team_id }) { return clone(db.members.filter((m) => (!who || m.who === who) && (!team_id || m.team_id === team_id))); },
     async engineAllRights() { return clone(db.rights); },
-    async engineRights({ who }) { return clone(db.rights.filter((r) => r.who === who)); },
+    async engineRights({ who, kind }) { const off = new Set((db.limits || []).filter((l) => l.who === who && kind && l[`can_${kind}`] === false).map((l) => l.account_key)); return clone(db.rights.filter((r) => r.who === who && !off.has(r.account_key))); },
+    async engineAllRightsFor({ whos }) { return clone(db.rights.filter((r) => whos.includes(r.who))); },
+    async engineAccessLimits({ team_id, who } = {}) { return clone((db.limits || []).filter((l) => (!team_id || l.team_id === team_id) && (!who || l.who === who))); },
+    async engineSetAccessLimit(row) { db.limits = (db.limits || []).filter((l) => !(l.team_id === row.team_id && l.who === row.who && l.account_key === row.account_key)); if (['can_post', 'can_reply', 'can_moderate', 'can_analytics'].some((k) => row[k] === false)) db.limits.push(row); },
+    async enginePeople() { return clone(db.people || []); },
+    async engineEvent(e) { (db.events = db.events || []).push(e); },
+    async engineSetInitials(who, initials) { db.people = (db.people || []).filter((p) => p.who !== who).concat([{ who, initials }]); },
     async engineConnectedTokens() { return clone(db.tokens); },
     async enginePageToken({ who, account_key }) { return clone(db.tokens.find((t) => t.who === who && t.account_key === account_key) || null); },
     async enginePauses() { return clone(db.pauses || []); },
@@ -264,6 +270,19 @@ function fakeMeta() {
     const w = await worker.run({ store: m, privateKey: keys.privateKey, live: true, now: NOW + 1000, log: () => {}, fetchImpl: fm.fetchImpl });
     eq('automations: the worker sends the private reply to the comment (Meta\'s one per comment)', [fm.calls.filter((c) => c.path === '105/messages').map((c) => JSON.parse(c.params.recipient).comment_id), w.sent >= 1], [['s1'], true]);
 
+    // Team and access [gaps §7].
+    const acc0 = await call(m, 'engine_access', { action: 'list', team: 'uk' }, 'chris');
+    const sam1 = await call(m, 'engine_access', { action: 'limit', team: 'uk', who: 'chris', account_key: 'uk-fb', reply: false }, 'sam');
+    const lim = await call(m, 'engine_access', { action: 'limit', team: 'uk', who: 'chris', account_key: 'uk-fb', reply: false }, 'chris');
+    const me = lim.people.find((p) => p.who === 'chris').accounts.find((a) => a.key === 'uk-fb');
+    const ini = [await call(m, 'engine_access', { action: 'initials', team: 'uk', initials: 'c' }, 'sam'), await call(m, 'engine_access', { action: 'initials', team: 'uk', initials: 'sjb' }, 'sam'), await call(m, 'engine_access', { action: 'initials', team: 'uk', who: 'chris', initials: 'CJO' }, 'sam')];
+    eq('access: editors cannot narrow; an admin narrows reply on one Page; initials are 2-3 letters, your own or (admins) anyone\'s', [
+      acc0.can_edit, sam1.ok, [me.post, me.reply, me.moderate, me.narrowed], ini.map((r) => r.ok), (m.db.people || []).find((p) => p.who === 'sam').initials,
+    ], [true, false, [true, false, true, ['reply']], [false, true, false], 'SJB']);
+    const firstFb = m.db.inbox.find((i) => i.account_key === 'uk-fb' && i.kind === 'comment' && !i.from_us);
+    const blocked = await call(m, 'engine_inbox_act', { id: firstFb.id, action: 'reply', text: 'Thanks' }, 'chris');
+    await call(m, 'engine_access', { action: 'limit', team: 'uk', who: 'chris', account_key: 'uk-fb', reply: true }, 'chris');
+    eq('access: a narrowed reply is refused; turning it back on restores what Facebook allows', [blocked.ok, (m.db.limits || []).length], [false, 0]);
     // The flow builder [gaps §5].
     const A = (x) => ({ active: true, keywords: ['sign'], ...x });
     const c = { kind: 'comment', platform: 'facebook', text: 'sign me up', thread_id: 't1' };

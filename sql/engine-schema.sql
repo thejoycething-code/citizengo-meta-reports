@@ -356,3 +356,40 @@ alter table public.engine_automations add column if not exists platforms text[] 
 alter table public.engine_automations add column if not exists skip_repeat boolean not null default true;
 alter table public.engine_automations add column if not exists tag text;
 alter table public.engine_automations add column if not exists hand_to text;
+
+-- Team and access [1 Nov, gaps §7]: a team admin narrows what someone can do
+-- on an account (post, reply and DM, moderate) or Analytics for the team
+-- (account_key '*'). Rights still come from Facebook; a row only turns
+-- things off, and a row with everything on is deleted.
+create table if not exists public.engine_access_limits (
+  team_id text not null references public.engine_teams(id) on delete cascade,
+  who text not null,
+  account_key text not null,
+  can_post boolean not null default true,
+  can_reply boolean not null default true,
+  can_moderate boolean not null default true,
+  can_analytics boolean not null default true,
+  set_by text,
+  set_at timestamptz not null default now(),
+  primary key (team_id, who, account_key)
+);
+alter table public.engine_access_limits enable row level security;
+
+-- Tracked links [1 Nov, gaps §6]: initials, links made, the engine's Copilot sign-in.
+create table if not exists public.engine_people (
+  who text primary key,
+  initials text check (initials ~ '^[A-Z]{2,3}$'),
+  updated_at timestamptz not null default now(),
+  updated_by text
+);
+alter table public.engine_people enable row level security;
+create table if not exists public.engine_tracked_links (
+  code text primary key, short_url text, long_url text not null, via text not null check (via in ('copilot', 'long')),
+  petition_id text, mark text, who text, link_id text, created_at timestamptz not null default now()
+);
+alter table public.engine_tracked_links enable row level security;
+create table if not exists public.engine_copilot_auth (
+  id int primary key default 1 check (id = 1), client_id text not null, access_token text, refresh_token text,
+  expires_at timestamptz, owner text, signed_in_by text, updated_at timestamptz not null default now()
+);
+alter table public.engine_copilot_auth enable row level security;

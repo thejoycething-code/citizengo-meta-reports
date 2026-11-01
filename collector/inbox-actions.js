@@ -36,7 +36,7 @@ async function run({ store, privateKey, live, now = Date.now(), log = console.lo
     if (!await store.engineInboxUpdateAction(a.id, 'queued', { status: 'running' })) continue; // undone, or another run took it
     const item = await store.engineInboxItem(a.item_id);
     if (!item) { await fail('The comment or message is no longer in the inbox.'); continue; }
-    const rights = (await store.engineRights({ who: a.by })).map((r) => r.account_key);
+    const rights = (await store.engineRights({ who: a.by, kind: ['reply', 'private_reply'].includes(a.action) ? 'reply' : 'moderate' })).map((r) => r.account_key);
     if (!rights.includes(a.account_key)) { await fail(`${a.by} can no longer act for ${a.account_key}.`); continue; }
     const tok = await store.enginePageToken({ who: a.by, account_key: a.account_key });
     if (!tok) { await fail(`${a.by} hasn't connected Facebook for ${a.account_key}.`); continue; }
