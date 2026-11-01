@@ -19,17 +19,17 @@ as far as that allows.
 - [x] Settings area: your access per account and Connect Facebook. Team and access for admins comes with §7.
 
 ## 2. Posts desk
-- [ ] Where and when per account: each destination its own time with its own ★, "Same time everywhere" toggle;
+- [x] Where and when per account: each destination its own time with its own ★, "Same time everywhere" toggle;
       "Approve · goes out at these times".
-- [ ] Approve ▾: Post now, Add to queue (next free best slot).
-- [ ] 📱 Feed preview in a phone frame per platform, first comment under it.
-- [ ] Previews per placement (FB feed 4:5, IG feed 4:5, IG grid 3:4, Reel cover 9:16, Story 9:16, X 16:9),
+- [x] Approve ▾: Post now, Add to queue (next free best slot).
+- [x] 📱 Feed preview in a phone frame per platform, first comment under it.
+- [x] Previews per placement (FB feed 4:5, IG feed 4:5, IG grid 3:4, Reel cover 9:16, Story 9:16, X 16:9),
       amber where something is cut off; "Preview every placement" link.
-- [ ] Story platform tab; Instagram link in bio control.
-- [ ] Ready checks: "✓ Links tracked"; campaign label (auto).
-- [ ] ✨ Rewrite on the first comment; "Stronger hook" and free "Ask Claude…" on the text.
-- [ ] Comment to DM ("SIGN") on the draft, on by default for petition posts, untickable.
-- [ ] Instagram collab picker of CitizenGO accounts (up to 2), alongside free handles.
+- [x] Story view (in the preview); Instagram link in bio as a reminder (the API can't change the bio).
+- [x] Ready checks: "✓ Links tracked"; campaign label (auto).
+- [x] ✨ Rewrite on the first comment; "Stronger hook" chip (the free "Tell Claude what to change" box was already there).
+- [ ] Comment to DM ("SIGN") on the draft, on by default for petition posts, untickable. (Built with §5.)
+- [x] Instagram collab picker of CitizenGO accounts, alongside free handles (3 in all, Instagram's limit).
 
 ## 3. Calendar and Plan
 - [ ] Drag a post or idea onto a day to schedule / request it.
