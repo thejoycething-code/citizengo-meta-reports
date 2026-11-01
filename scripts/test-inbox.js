@@ -28,7 +28,7 @@ function engine() {
     members: [{ team_id: 'uk', who: 'chris', role: 'admin' }, { team_id: 'uk', who: 'sam', role: 'editor' }],
     rights: [{ who: 'chris', account_key: 'uk-fb', source: 'meta' }, { who: 'chris', account_key: 'uk-ig', source: 'meta' }],
     tokens: [{ who: 'chris', account_key: 'uk-fb', page_id: '105', ig_id: '178', connected_at: '2026-11-01', sealed: xauth.seal(keys.publicKey, 'PAGE-TOKEN') }, { who: 'chris', account_key: 'uk-ig', page_id: '105', ig_id: '178', connected_at: '2026-11-01', sealed: xauth.seal(keys.publicKey, 'PAGE-TOKEN') }],
-    inbox: [], actions: [],
+    inbox: [], actions: [], rules: [],
   };
   let aid = 0;
   const pick = (r, cols) => r;
@@ -53,6 +53,10 @@ function engine() {
     async engineInboxActions({ team_ids, statuses, due_before }) {
       return clone(db.actions.filter((a) => (!team_ids || team_ids.includes(a.team_id)) && (!statuses || statuses.includes(a.status)) && (!due_before || a.run_after <= due_before)));
     },
+    async engineInboxRules({ team_ids }) { return clone(db.rules.filter((r) => team_ids.includes(r.team_id))); },
+    async engineInboxUnchecked({ team_ids, since }) { return clone(db.inbox.filter((r) => team_ids.includes(r.team_id) && r.kind === 'comment' && !r.from_us && !r.auto_checked_at && r.created_at >= since)); },
+    async engineInsertInboxRule(row) { const r = { id: db.rules.length + 1, ...row }; db.rules.push(r); return clone(r); },
+    async engineDeleteInboxRule(id, team) { const i = db.rules.findIndex((r) => r.id === id && r.team_id === team); if (i < 0) return null; return db.rules.splice(i, 1)[0]; },
     async engineInboxInsertAction(row) { const a = { id: ++aid, created_at: new Date().toISOString(), detail: {}, ...row }; db.actions.push(a); return clone(a); },
     async engineInboxUpdateAction(id, from, fields) { const a = db.actions.find((x) => x.id === id && x.status === from); if (!a) return null; Object.assign(a, fields); return clone(a); },
   };
@@ -151,6 +155,26 @@ function fakeMeta() {
   eq('by post: comments grouped by post or ad, ours counted apart, ads can be picked out', [bp.posts.map((p) => [p.thread_id, p.comments, p.open, p.ours, p.is_ad]), (await call(s, 'engine_inbox_posts', { team: 'uk', ads: true }, 'sam')).posts.map((p) => p.thread_id)],
     [[['105_9', 1, 1, 0, true], ['105_1', 1, 0, 1, false], ['m1', 1, 0, 1, false]], ['105_9']]);
   eq('by post: another team cannot look', await callErr(s, 'engine_inbox_posts', { team: 'uk' }, 'tamara'), 'ENGINE_NOT_MEMBER');
+
+  // Auto-hide list.
+  {
+    const R = [{ kind: 'scams' }, { kind: 'links' }, { kind: 'word', value: 'idiot' }];
+    eq('auto-hide matching: scams, outside links and whole words; our links and look-alike words pass',
+      ['WhatsApp me for profits', 'see cheap-pills.xyz', 'you idiot', 'idiotic take', 'Sign: cgo.ac/x and citizengo.org/a'].map((t) => !!I.matchRules(t, R)), [true, true, true, false, false]);
+    const a = engine();
+    a.db.members = [{ team_id: 'uk', who: 'chris', role: 'admin' }, { team_id: 'uk', who: 'sam', role: 'editor' }];
+    eq('rules: an editor cannot change the list; an admin can; duplicates refused', [(await call(a, 'engine_inbox_rule', { action: 'add', team: 'uk', kind: 'scams' }, 'sam')).ok, (await call(a, 'engine_inbox_rule', { action: 'add', team: 'uk', kind: 'scams' }, 'chris')).ok, (await call(a, 'engine_inbox_rule', { action: 'add', team: 'uk', kind: 'scams' }, 'chris')).ok], [false, true, false]);
+    await call(a, 'engine_inbox_rule', { action: 'add', team: 'uk', kind: 'word', value: 'Rubbish' }, 'chris');
+    eq('rules: everyone in the team sees the list', (await call(a, 'engine_inbox_rules', { team: 'uk' }, 'sam')).rules.map((r) => r.kind), ['scams', 'word']);
+    const meta2 = fakeMeta();
+    const t = await collect.run({ store: a, privateKey: keys.privateKey, live: true, now: NOW, log: () => {}, fetchImpl: meta2.fetchImpl });
+    const hides = a.db.actions.filter((x) => x.action === 'hide');
+    eq('auto-hide: "Rubbish" is queued to hide as chris (the rule\'s maker), labelled, at once; nothing else', [t.auto_hidden, hides.map((h) => [h.item_id, h.by, h.detail.auto, h.status]), a.db.inbox.find((r) => r.id === 'fbc_c9').labels], [1, [['fbc_c9', 'chris', true, 'queued']], ['auto-hidden']]);
+    const again = await collect.run({ store: a, privateKey: keys.privateKey, live: true, now: NOW + 60_000, log: () => {}, fetchImpl: meta2.fetchImpl });
+    eq('auto-hide: each comment is checked once', [again.auto_hidden, a.db.actions.filter((x) => x.action === 'hide').length], [0, 1]);
+    const w = await worker.run({ store: a, privateKey: keys.privateKey, live: true, now: NOW + 1000, log: () => {}, fetchImpl: meta2.fetchImpl });
+    eq('auto-hide: the worker hides it on Facebook', [w.sent, a.db.inbox.find((r) => r.id === 'fbc_c9').hidden], [1, true]);
+  }
 
   console.log(`\n${passed} passed, ${failed} failed`);
   process.exit(failed ? 1 : 0);
