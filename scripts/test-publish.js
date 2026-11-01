@@ -122,6 +122,36 @@ const quiet = () => {};
     eq('video: no public link to the file was ever made', calls.some((c) => JSON.stringify(c.body).includes('signed')), false);
   }
 
+  // Instagram Stories: their own slot, frame by frame, never twice.
+  {
+    const ss = engine();
+    const sfinal = { ...final, story: { media: ['uk/ps/story-0-a.jpg', 'uk/ps/story-1-b.jpg', 'uk/ps/story-2-c.jpg'], skipped: 1 } };
+    addPost(ss, 'ps', { review: approved, final: sfinal, posting: { destinations: ['uk-ig'], at: '2026-11-03T14:00:00Z', story: true } });
+    eq('stories: an Instagram post with story ticked has a post slot and a story slot', P.plan(await ss.enginePosts(), ss.db.teams, NOW).map((i) => i.slot), ['uk-ig', 'uk-ig:story']);
+    const noTick = engine(); addPost(noTick, 'pn', { review: approved, final: sfinal, posting: { destinations: ['uk-ig'], at: '2026-11-03T14:00:00Z' } });
+    eq('stories: not ticked, no story slot', P.plan(await noTick.enginePosts(), noTick.db.teams, NOW).map((i) => i.slot), ['uk-ig']);
+    let n = 0, failAt = 0; const sc = [];
+    const fetchImpl = async (u, opts = {}) => {
+      const url = new URL(u); const params = Object.fromEntries(new URLSearchParams(opts.body || url.search)); sc.push({ path: url.pathname.replace(/^\/v[\d.]+\//, ''), params });
+      const ok = (b) => ({ ok: true, status: 200, json: async () => b });
+      if (url.pathname.endsWith('/178/media')) { n++; if (failAt && n === failAt) return { ok: false, status: 400, json: async () => ({ error: { message: 'Rate limited' } }) }; return ok({ id: `c${n}` }); }
+      if (url.pathname.endsWith('/178/media_publish')) return ok({ id: `pub-${params.creation_id}` });
+      if (url.pathname.startsWith('/v') && /\/pub-/.test(url.pathname)) return ok({ permalink: 'https://www.instagram.com/p/post/' });
+      if (url.pathname.endsWith('/comments')) return ok({ id: 'cm' });
+      return ok({});
+    };
+    await run({ store: ss, privateKey: keys.privateKey, live: true, now: NOW, log: quiet, fetchImpl });
+    const ps = ss.db.posts[0];
+    eq('stories: three frames, each its own STORIES container, published in order', [sc.filter((c) => c.params.media_type === 'STORIES').map((c) => c.params.image_url.split('/').pop().split('?')[0]), ps.doc.published['uk-ig:story'].frames], [['story-0-a.jpg', 'story-1-b.jpg', 'story-2-c.jpg'], 3]);
+    eq('stories: once the post and its Story are out, it is Posted', ps.status, 'posted');
+
+    const sf = engine(); addPost(sf, 'pf', { review: approved, final: sfinal, posting: { destinations: ['uk-ig'], at: '2026-11-03T14:00:00Z', story: true } });
+    n = 0; failAt = 6; /* the carousel post makes containers 1-3, story frames are 4,5,6: the third frame fails */
+    await run({ store: sf, privateKey: keys.privateKey, live: true, now: NOW, log: quiet, fetchImpl });
+    const pf = sf.db.posts[0];
+    eq('stories: a failure after some frames are up says how many and is never retried', [!!pf.doc.published['uk-ig'], /2 of 3/.test(pf.doc.publishErrors['uk-ig:story'].message), pf.doc.publishErrors['uk-ig:story'].tries, P.plan([pf], sf.db.teams, NOW + 60_000).map((i) => i.action)], [true, true, P.MAX_TRIES, ['gave_up']]);
+  }
+
   // Pause everything: held, nothing called, and a long pause never marks it late.
   {
     const sp = engine();

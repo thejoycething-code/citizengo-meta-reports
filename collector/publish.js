@@ -34,20 +34,20 @@ async function run({ store, privateKey, live, now = Date.now(), log = console.lo
   const items = P.plan(posts, teams, now, pauses);
   const tally = { published: 0, held: 0, failed: 0, would: 0 };
   const stamp = () => new Date(now).toISOString();
-  const event = (item, action, detail) => store.engineEvent({ post_id: item.post.id, team_id: item.post.team_id, who: 'publisher', action, detail: { account: item.key, ...detail } });
+  const event = (item, action, detail) => store.engineEvent({ post_id: item.post.id, team_id: item.post.team_id, who: 'publisher', action, detail: { account: item.slot, ...detail } });
   const fail = async (item, message, { final = false } = {}) => {
     tally.failed++;
-    log(`  ✗ ${item.post.id} → ${item.key}: ${message}`);
+    log(`  ✗ ${item.post.id} → ${item.slot}: ${message}`);
     if (!live) return;
     await patchDoc(store, item.post.id, (cur) => {
-      const prev = ((cur.doc.publishErrors || {})[item.key]) || {};
-      return { publishing: { [item.key]: null }, publishErrors: { [item.key]: { at: stamp(), message, tries: final ? P.MAX_TRIES : (prev.tries || 0) + 1 } } };
+      const prev = ((cur.doc.publishErrors || {})[item.slot]) || {};
+      return { publishing: { [item.slot]: null }, publishErrors: { [item.slot]: { at: stamp(), message, tries: final ? P.MAX_TRIES : (prev.tries || 0) + 1 } } };
     });
     await event(item, 'publish_failed', { message });
   };
 
   for (const item of items) {
-    const label = `${item.post.id} → ${item.key}`;
+    const label = `${item.post.id} → ${item.slot}`;
     if (item.action === 'paused') { tally.held++; log(`  ‖ ${label}: paused by ${item.pause.paused_by} (${item.pause.reason})`); continue; }
     if (item.action === 'busy' || item.action === 'gave_up') { tally.held++; log(`  … ${label}: ${item.action === 'busy' ? 'being published by another run' : 'stopped after 3 tries; waiting for a person'}`); continue; }
     if (item.action === 'unsure') { await fail(item, 'Publishing started over 15 minutes ago with no answer. Check the Page before trying again: it may already be up.', { final: true }); continue; }
@@ -59,17 +59,21 @@ async function run({ store, privateKey, live, now = Date.now(), log = console.lo
     if (!rights.includes(item.key)) { await fail(item, `${who} can no longer post to ${item.key}. Someone who can should approve it again.`, { final: true }); continue; }
     const tok = await store.enginePageToken({ who, account_key: item.key });
     if (!tok) { await fail(item, `${who} hasn't connected Facebook for ${item.key}, so there is nothing to publish with. Connect Facebook on the desk, then approve again.`, { final: true }); continue; }
-    const content = P.contentFor(item.post.doc, item.platform);
+    const content = P.contentFor(item.post.doc, item.platform, item.kind);
     if (!content.ok) { await fail(item, content.error, { final: true }); continue; }
 
-    if (!live) { tally.would++; log(`  → ${label}: would publish as ${who} (${content.video ? `video, ${Math.round(content.video.size / 1048576)} MB` : `${content.media.length} image${content.media.length === 1 ? '' : 's'}`}${content.comment ? ', first comment' : ''})`); continue; }
+    if (!live) { tally.would++; log(`  → ${label}: would publish as ${who} (${content.story ? `Story, ${content.media.length} frame${content.media.length === 1 ? '' : 's'}` : content.video ? `video, ${Math.round(content.video.size / 1048576)} MB` : `${content.media.length} image${content.media.length === 1 ? '' : 's'}`}${content.comment ? ', first comment' : ''})`); continue; }
 
     // Claim it, so a second run can't publish it too.
-    await patchDoc(store, item.post.id, () => ({ publishing: { [item.key]: { at: stamp() } } }));
+    await patchDoc(store, item.post.id, () => ({ publishing: { [item.slot]: { at: stamp() } } }));
     try {
       const token = xauth.open(privateKey, tok.sealed);
       let out;
-      if (content.video) {
+      if (content.story) {
+        const urls = [];
+        for (const m of content.media) { const u = await store.engineMediaUrl(m, 3600); if (!u) throw new Error(`Story frame ${m} could not be found`); urls.push(u); }
+        out = await P.publishInstagramStory({ igId: tok.ig_id, token, urls, fetchImpl });
+      } else if (content.video) {
         const buffer = await P.assembleVideo(store, content.video);
         out = item.platform === 'facebook'
           ? await P.publishFacebookVideo({ pageId: tok.page_id, token, text: content.text, comment: content.comment, buffer, mime: content.video.mime, fetchImpl })
@@ -81,12 +85,12 @@ async function run({ store, privateKey, live, now = Date.now(), log = console.lo
           ? await P.publishFacebook({ pageId: tok.page_id, token, text: content.text, comment: content.comment, urls, fetchImpl })
           : await P.publishInstagram({ igId: tok.ig_id, token, text: content.text, comment: content.comment, urls, fetchImpl });
       }
-      await patchDoc(store, item.post.id, () => ({ publishing: { [item.key]: null }, publishErrors: { [item.key]: null }, published: { [item.key]: { ...out, at: stamp(), by: who } } }));
+      await patchDoc(store, item.post.id, () => ({ publishing: { [item.slot]: null }, publishErrors: { [item.slot]: null }, published: { [item.slot]: { ...out, at: stamp(), by: who } } }));
       await event(item, 'published', { id: out.id, url: out.url });
       tally.published++;
       log(`  ✓ ${label}: ${out.url || out.id}`);
     } catch (e) {
-      await fail(item, `Facebook refused it: ${e.message}`);
+      await fail(item, e.partial ? e.message : `Facebook refused it: ${e.message}`, { final: !!e.partial });
     }
   }
 
