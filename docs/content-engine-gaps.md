@@ -92,4 +92,4 @@ as far as that allows.
 - [ ] (needs Chris) Signatures from social (Looker on the Mini).
 
 ## 10. Tools
-- [ ] Tools › Page Inviter: version, download, install steps, what's new, guide links, team usage.
+- [x] Tools › Page Inviter: version, download, install steps, what's new, guide links, team usage. Done 1 Nov (test link v14): version, install and update steps, what's new, guide link (draft), team usage (page_inviter_usage, 7/30/90 days). Download button waits for the zip to be uploaded as an artifact asset (it carries the built-in token, so only with Chris's OK).
