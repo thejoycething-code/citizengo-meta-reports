@@ -42,19 +42,19 @@ as far as that allows.
 - [x] Images-only month view (grid planner).
 
 ## 4. Inbox
-- [ ] Channel tabs with counts: Facebook, Messenger, Instagram (comments), Instagram DMs, X · later.
-- [ ] Filters: Moderated (hidden, deleted); Organic and ads / Ads only; sort Newest / Supporters first.
-- [ ] Tick boxes on rows and a bulk bar (Like · Hide · Label · Assign · Done · Delete).
-- [ ] Ad banner: ad name, account, comment count, "Open all comments on this ad".
-- [ ] Assign to a named colleague (people with reply rights on that Page).
-- [ ] Assistant one-tap combos ("Thanks! We've sent you the link 💌 (+ DM)", "❤️ and done"); saved replies;
+- [x] Channel tabs with counts: Facebook, Messenger, Instagram (comments), Instagram DMs, X · later.
+- [x] Filters: Moderated (hidden, deleted); Organic and ads / Ads only; sort Newest / Supporters first.
+- [x] Tick boxes on rows and a bulk bar (Like · Hide · Label · Assign · Done · Delete).
+- [x] Ad banner: ad name, account, comment count, "Open all comments on this ad".
+- [x] Assign to a named colleague (people with reply rights on that Page).
+- [x] Assistant one-tap combos ("Thanks! We've sent you the link 💌 (+ DM)", "❤️ and done"); saved replies;
       live petition picker.
-- [ ] Reply checks: petition live (H12), house style.
-- [ ] Automatic "Supporter" and question tags by rule (no paid AI).
-- [ ] Moderation tabs Flagged / History / Banned / Rules; history filters; CSV export; ban and unban
-      (Facebook Page block); threats kept as a saved copy, never deleted.
-- [ ] By post: the post beside its comments, answered count, topics, sort, inline reply / hide, state tags.
-- [ ] Presence and live updates (room); assignment notices.
+- [x] Reply checks: petition live (H12), house style.
+- [x] Automatic "Supporter" and question tags by rule (no paid AI).
+- [x] Moderation tabs Flagged / History / Banned / Rules; history filters; CSV export; ban and unban
+      (Facebook Page block); threats kept as a saved copy, never deleted. Ban is a new action value: claude.ai passes it once the connector is refreshed (one reconnect at the end of the build).
+- [x] By post: the post beside its comments, answered count, topics, sort, inline reply / hide, state tags.
+- [x] Presence and live updates (room); assignment notices.
 - [ ] (needs Chris) Pile-on and pause messages to Slack; X Inbox (paid API).
 
 ## 5. Automations (flow builder)
