@@ -1,4 +1,7 @@
 {
+  "regions": [
+    "lhr1"
+  ],
   "rewrites": [
     {
       "source": "/.well-known/oauth-protected-resource/api/mcp",
