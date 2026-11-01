@@ -559,6 +559,7 @@ mark.new{background:var(--ok-soft);color:var(--fg);border-radius:3px}
 <div class="zoom" id="zoom" hidden role="dialog" aria-modal="true" aria-label="Graphic preview"></div>
 <div class="help" id="help" hidden role="dialog" aria-label="Keyboard shortcuts"><div class="helpbox"><b>Keyboard shortcuts</b><dl><dt>← →</dt><dd>Previous or next draft</dd><dt>A</dt><dd>Approve</dd><dt>C</dt><dd>Request changes</dd><dt>R</dt><dd>Reject</dd><dt>E</dt><dd>Edit the text</dd><dt>1–9</dt><dd>Pick a graphic option</dd><dt>Z</dt><dd>Zoom the graphic</dd><dt>Esc</dt><dd>Close</dd><dt>?</dt><dd>Show or hide this list</dd></dl><button class="btn small" data-act="help">Close</button></div></div>
 <input type="file" id="gfile" accept="image/jpeg,image/png,image/webp" hidden>
+<input type="file" id="gfiles" accept="image/jpeg,image/png,image/webp" multiple hidden>
 
 <script>
 const STATUS = [
@@ -1552,7 +1553,7 @@ function instantTools(d){if(!S.db)return"";const c=curCard(d);const ph=photoTarg
     S.sample?`<button class="btn small" data-act="moreOpts">3 more options</button>`:"",
     S.downloads?`<button class="btn small" data-act="animate" title="A short video of this graphic with a slow push-in">Make a motion video</button>`:"",
     S.assets&&php?`<button class="btn small" data-act="gphotorm">Remove photo</button>`:""].filter(Boolean).join("");
-  let h=`<div class="toolbar"><button class="btn small" data-act="gedit">${S.gedit?"Close editor":"Edit graphic"}</button>${ph?.url?`<button class="btn small" data-act="padj">${S.padj?"Done adjusting":"Adjust photo"}</button>`:""}${S.assets?`<button class="btn small" data-act="gphoto">${php?"Change photo":"Add photo"}</button>`:""}${more?`<details class="more"><summary class="btn small">More</summary><div class="menu">${more}</div></details>`:""}</div>`;
+  let h=`<div class="toolbar"><button class="btn small" data-act="gedit">${S.gedit?"Close editor":"Edit graphic"}</button>${ph?.url?`<button class="btn small" data-act="padj">${S.padj?"Done adjusting":"Adjust photo"}</button>`:""}${S.assets?`<button class="btn small" data-act="gphoto">${php?"Change photo":"Add photo"}</button><button class="btn small" data-act="gupload" title="Finished images: one becomes the graphic, several a carousel; on a carousel they're added as slides">Upload images</button>`:""}${more?`<details class="more"><summary class="btn small">More</summary><div class="menu">${more}</div></details>`:""}</div>`;
   if(S.padj&&ph?.url)h+=`<div class="padj"><span>Drag the picture to move it.</span><label>Zoom <input type="range" id="pzoom" min="1" max="2.5" step="0.05" value="${ph.z??1}"></label></div>`;
   return h+pvBar(d)}
 function plain(t){return String(t||"").replace(/\*/g,"")}
@@ -1921,6 +1922,18 @@ document.addEventListener("click",async ev=>{
     const target=T==="carousel"?(c.slides[S.slide]=c.slides[S.slide]||{}):c;
     (GFIELDS[T==="carousel"&&HOUSE_T.has(target.template)?target.template:T]||[]).forEach(k=>{const el=$("#g_"+k);if(el)target[k]=el.value});if(T==="carousel"&&$("#g_style"))c.style=$("#g_style").value;
     try{await S.db.doc("drafts/"+d.id).update({card:c});await logFeedback({draftId:d.id,action:"graphic-edit",slide:T==="carousel"?S.slide:null,before,after:c,type:d.type,issue:d.issue});S.gedit=false;toast("Graphic saved")}catch(e){failToast(e,"Couldn't save the graphic")}return}
+  /* Finished images as the graphic itself: one replaces it (full-bleed, 4:5), several make a carousel, and on a
+     carousel they're added as slides. The graphic it replaces stays in the options strip ("Before upload"). */
+  if(act==="gupload"){const inp=$("#gfiles");inp.value="";inp.onchange=async()=>{const fs=[...inp.files].slice(0,10);if(!fs.length)return;
+      try{const slides=[];for(let k=0;k<fs.length;k++){toast(`Uploading ${k+1} of ${fs.length}…`);const r=await S.assets.upload(fs[k]);
+          slides.push({template:"free",bg:"#000000",layers:[{type:"photo",x:0,y:0,w:100,h:125,fx:0.5,fy:0.5,id:r.id,url:r.url}]})}
+        const cur=d.card?JSON.parse(JSON.stringify(d.card)):null;const add=cur&&cur.template==="carousel";
+        const card=add?{...cur,slides:[...(cur.slides||[]),...slides]}:slides.length===1?slides[0]:{template:"carousel",slides};
+        const upd={card,cardChoice:null};if(cur&&!add)upd.cardOptions=[...(d.cardOptions||[]),{id:"prev-"+Date.now(),label:"Before upload",card:cur}];
+        await S.db.doc("drafts/"+d.id).update(upd);if(add)S.slide=(cur.slides||[]).length;
+        await logFeedback({draftId:d.id,action:"graphic-upload",images:slides.length,type:d.type,issue:d.issue});
+        toast(add?`${slides.length} slide${slides.length===1?"":"s"} added to the carousel`:slides.length===1?"Image uploaded: it's the graphic now (the old one is in the options)":`Carousel of ${slides.length} images made (the old graphic is in the options)`)}
+      catch(e){toast(e?.code==="too_large"?"An image is too large (20 MB max)":e?.code==="unsupported_type"?"Use JPG, PNG or WebP images":"Couldn't upload the images")}};inp.click();return}
   if(act==="gphoto"){const inp=$("#gfile");inp.value="";inp.onchange=async()=>{const f=inp.files[0];if(!f)return;toast("Uploading photo…");
       try{const r=await S.assets.upload(f);const c=JSON.parse(JSON.stringify(d.card||{}));
         if(c.template==="carousel"){c.slides[S.slide].photo={id:r.id,url:r.url}}else{if(!["photo","photosplit"].includes(c.template)){c.headline=c.headline||c.quote||"";c.template="photosplit"}c.photo={id:r.id,url:r.url}}
