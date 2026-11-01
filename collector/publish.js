@@ -72,12 +72,14 @@ async function run({ store, privateKey, live, now = Date.now(), log = console.lo
       if (content.story) {
         const urls = [];
         for (const m of content.media) { const u = await store.engineMediaUrl(m, 3600); if (!u) throw new Error(`Story frame ${m} could not be found`); urls.push(u); }
-        out = await P.publishInstagramStory({ igId: tok.ig_id, token, urls, fetchImpl });
+        out = item.platform === 'facebook'
+          ? await P.publishFacebookStory({ pageId: tok.page_id, token, urls, fetchImpl })
+          : await P.publishInstagramStory({ igId: tok.ig_id, token, urls, fetchImpl });
       } else if (content.video) {
         const buffer = await P.assembleVideo(store, content.video);
         out = item.platform === 'facebook'
           ? await P.publishFacebookVideo({ pageId: tok.page_id, token, text: content.text, comment: content.comment, buffer, mime: content.video.mime, fetchImpl })
-          : await P.publishInstagramReel({ igId: tok.ig_id, token, text: content.text, comment: content.comment, buffer, collaborators: content.collaborators, fetchImpl, wait });
+          : await P.publishInstagramReel({ igId: tok.ig_id, token, text: content.text, comment: content.comment, buffer, collaborators: content.collaborators, coverUrl: content.cover ? await store.engineMediaUrl(content.cover, 3600) : null, fetchImpl, wait });
       } else {
         const urls = [];
         for (const m of content.media) { const u = await store.engineMediaUrl(m, 3600); if (!u) throw new Error(`image ${m} could not be found`); urls.push(u); }
@@ -101,6 +103,13 @@ async function run({ store, privateKey, live, now = Date.now(), log = console.lo
       const cur = await store.enginePost(id);
       if (!cur || cur.status !== 'scheduled') continue;
       const { done, handOnly } = P.allOut(cur, teams);
+      if (done && !(cur.doc.videoPieces && cur.doc.videoPieces.clearedAt) && ['facebook', 'instagram'].some((p) => cur.doc.final && cur.doc.final[p] && cur.doc.final[p].video)) {
+        try {
+          const n = await P.clearVideoPieces(store, cur);
+          await patchDoc(store, id, () => ({ videoPieces: { clearedAt: stamp(), removed: n } }));
+          log(`  · ${id}: video is out, ${n} stored piece${n === 1 ? '' : 's'} removed`);
+        } catch (e) { log(`  ! ${id}: couldn't remove the video pieces (${e.message}); they stay in storage under ${cur.team_id}/${id}`); }
+      }
       if (!done || handOnly) continue;
       await patchDoc(store, id, () => ({ posted: { at: stamp(), by: 'publisher', linksPending: true } }), () => ({ status: 'posted' }));
       await store.engineEvent({ post_id: id, team_id: cur.team_id, who: 'publisher', action: 'posted', detail: {} });

@@ -168,8 +168,11 @@ Meta: Facebook as a Page video (`graph-video …/{page}/videos`, the text as its
 (resumable upload to rupload.facebook.com, then it waits up to about 4.5 minutes for Instagram to finish
 processing before publishing; longer and it tries again next run). No public link to the file is ever made. Up to
 150 MB; pieces live in the private `engine-media` bucket (which now also takes application/octet-stream).
-"Use the attached video" sends a clip already on the post (`video.url`). Not yet: cleaning up pieces after
-publishing; a Reel cover image; posting the motion video made on the desk without saving it first.
+"Use the attached video" sends a clip already on the post (`video.url`). The Reel's cover is the post's card,
+stored with the snapshot (`final.instagram.cover`) and sent as `cover_url`. Once every Facebook and Instagram
+destination is out, the publisher removes all the post's video pieces, replaced uploads included
+(`P.clearVideoPieces`, recorded as `videoPieces.clearedAt`). Not yet: posting the motion video made on the desk
+without saving it first.
 
 ### Instagram Stories (built 1 Nov)
 
@@ -179,7 +182,10 @@ On a post with Story frames going to Instagram, the desk's Posting panel has "Al
 so they are added by hand. The publisher gives each Instagram destination a second slot, `<account>:story`
 (`P.slotsOf`), at the same time as the post, with its own claim, errors and `published` entry; each frame goes out
 as its own `STORIES` container. If a frame fails after others are up, the slot stops for good with "N of M Story
-frames went up", so nothing is posted twice. Facebook Page Stories aren't published yet.
+frames went up", so nothing is posted twice. Facebook Pages get the same (built 1 Nov, later): a `<account>:story`
+slot, each frame uploaded as an unpublished photo then posted with `/{page}/photo_stories` (Page Stories API; needs
+the same CREATE_CONTENT task and pages_manage_posts as posts). The desk's tickbox names whichever of Instagram and
+Facebook the post goes to.
 
 ### Instagram collabs (built 1 Nov)
 
@@ -191,7 +197,6 @@ can't have collaborators. Facebook collaborators are added in Meta Business Suit
 
 ### Still to build
 
-- Facebook Page Stories; a Reel cover image; clearing video pieces after publishing.
 - Going live: Connect Facebook switched on (Meta app + Vercel FB_* settings), Chris's OK to lift the Mini's
   "never public posting" rule, then ENGINE_PUBLISH_LIVE=1 and the plist without --dry-run.
 
