@@ -57,8 +57,27 @@ const callErr = async (store, name, args, who) => { try { await tool(name)(store
   eq('board status: pending → review', E.fromBoardStatus('pending'), 'review');
   eq('board status: approved with a future time → scheduled', E.fromBoardStatus('approved', '2030-01-01T08:00:00Z'), 'scheduled');
   eq('board status: approved with no time → hold', E.fromBoardStatus('approved', null), 'hold');
+  eq('board status: archived (purged reject) → rejected', E.fromBoardStatus('archived'), 'rejected');
+  {
+    const { toRow, upsertSql } = require('./engine-import-board');
+    const now = Date.parse('2026-11-01T00:00:00Z');
+    const r = toRow('sc-20261012-x', { status: 'approved', title: "Scotland's vote", posting: { destinations: ['sc-fb'], at: '2026-11-04T18:00:00Z' } }, now).row;
+    eq('import: Scotland draft goes to the UK team, approved with a future time → scheduled, status not kept in doc', [r.team_id, r.status, r.post_at, 'status' in r.doc], ['uk', 'scheduled', '2026-11-04T18:00:00.000Z', false]);
+    eq('import: ids with no team are skipped', !!toRow('de-1', {}).skip, true);
+    const sql = upsertSql([r]);
+    eq('import SQL: quotes escaped, only untouched posts refreshed', [sql.includes("'Scotland''s vote'"), /where engine_posts\.updated_by = 'import'/.test(sql)], [true, true]);
+  }
   eq('merge: objects merge, arrays replace, null removes', E.mergeDoc({ a: { x: 1, y: 2 }, l: [1, 2], k: 1 }, { a: { y: 3 }, l: [9], k: null }), { a: { x: 1, y: 3 }, l: [9] });
   eq('post times: per-account time wins, earliest first', E.postAt({ posting: { destinations: ['uk-fb', 'uk-x'], at: '2026-11-03T14:00:00Z', times: { 'uk-x': '2026-11-03T10:00:00Z' } } }), '2026-11-03T10:00:00.000Z');
+
+  {
+    const { toRow, applyRows } = require('./engine-import-board');
+    const s2 = memoryStore();
+    const rows = [toRow('uk-a', { status: 'pending', title: 'A' }).row, toRow('uk-b', { status: 'pending', title: 'B' }).row];
+    eq('import apply: first run inserts', await applyRows(s2, rows), { inserted: 2, refreshed: 0, kept: 0 });
+    await s2.engineUpdatePost('uk-b', 1, { title: 'B edited', updated_by: 'chris' });
+    eq('import apply: re-run refreshes untouched posts, keeps ones edited in the engine', [await applyRows(s2, rows), s2.db.posts.find((p) => p.id === 'uk-b').title], [{ inserted: 0, refreshed: 1, kept: 1 }, 'B edited']);
+  }
 
   const store = memoryStore();
   const docDe = { title: 'Wahlrecht', posting: { destinations: ['de-fb', 'de-x'], at: '2026-11-05T14:00:00Z' } };
