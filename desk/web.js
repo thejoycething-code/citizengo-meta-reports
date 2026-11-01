@@ -10,7 +10,8 @@
    - sample ("ask Claude"): no paid AI. It shows the prompt, opens claude.ai
      with it filled in, and takes the answer pasted back, so every AI button
      still works with each person's own Claude.
-   - room (live presence) and assets (photo upload) are off for now. */
+   - room: presence and nudges by a 15-second sync; assets: signed upload
+     straight to Supabase storage. */
 (function () {
   const api = async (op, { method = 'GET', body, query = '' } = {}) => {
     const r = await fetch(`/api/desk?op=${op}${query}`, {
@@ -133,7 +134,28 @@
   };
   const invite = (body) => api('invite', { method: 'POST', body });
 
-  const caps = { mcp, user, db, downloads, sample, room: null, assets };
+  // Presence and nudges: one sync every 15 seconds while the desk is visible.
+  const room = (() => {
+    let state = {}, after = null, timer = null;
+    const peerFns = [], topicFns = {};
+    async function sync() {
+      try {
+        const j = await api('presence', { method: 'POST', body: { state, after } });
+        after = j.last_id;
+        peerFns.forEach((f) => { try { f(j.peers); } catch (e) {} });
+        for (const e of j.events) (topicFns[e.topic] || []).forEach((f) => { try { f(e.data, { by: e.by }); } catch (x) {} });
+      } catch (e) {}
+    }
+    function start() { if (!timer) { sync(); timer = setInterval(() => { if (document.visibilityState === 'visible') sync(); }, 15000); } }
+    return {
+      presence(patch) { state = { ...state, ...(patch || {}) }; start(); clearTimeout(room._t); room._t = setTimeout(sync, 400); },
+      onPeers(fn) { peerFns.push(fn); start(); return () => {}; },
+      on(topic, fn) { (topicFns[topic] = topicFns[topic] || []).push(fn); start(); return () => {}; },
+      emit(topic, data) { api('emit', { method: 'POST', body: { topic, data } }).catch(() => {}); },
+    };
+  })();
+
+  const caps = { mcp, user, db, downloads, sample, room, assets };
   window.claude = { use: async (name) => (name in caps ? caps[name] : null) };
   window.DESK_WEB = true;
   window.deskInvite = invite;
