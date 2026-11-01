@@ -66,8 +66,8 @@ as far as that allows.
 - [x] Pause everything also pauses automations.
 
 ## 6. Tracked links
-- [ ] Rewrite on send: citizengo.org links in replies and DMs become Copilot cgo.ac links (on the Mini),
-      owner = the sender's initials, series FBR / IGR / FBDM / IGDM; chip turns green before sending.
+- [x] Rewrite on send: citizengo.org links in replies and DMs become Copilot cgo.ac links (on the Mini),
+      owner = the sender's initials, series FBR / IGR / FBDM / IGDM; chip turns green before sending. Done 1 Nov, minted on Vercel at queue time (docs/tracked-links.md). Agreed with Chris: the series stays FB1/IG1, the marker (DM/RE/ADM/ARE) and sender initials go at the front of the title in utm_campaign, and Copilot being down means the long link with the same code. The chip shows once the link is made: the send toast says ✓ tracked.
 
 ## 7. Team, access and countries
 - [ ] Settings › Team and access: per person and Page, Post / Reply and DM / Moderate / Analytics, source

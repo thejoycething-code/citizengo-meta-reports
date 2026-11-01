@@ -64,6 +64,8 @@
     "test:analytics": "node scripts/test-analytics.js",
     "test:preflight": "node scripts/test-preflight.js",
     "engine:preflight": "node scripts/engine-preflight.js",
+    "copilot:login": "node scripts/copilot-login.js",
+    "test:tracked": "node scripts/test-tracked.js",
     "publish": "node collector/publish.js",
     "publish:dry": "node collector/publish.js --dry-run"
   }

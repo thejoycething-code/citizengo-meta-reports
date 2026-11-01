@@ -10,6 +10,7 @@
 // staleness banner would corrupt them.
 
 const E = require('../lib/engine');
+const T = require('../lib/tracked');
 
 const json = (obj) => ({ raw: true, text: JSON.stringify(obj) });
 const err = (message, code = 'ENGINE_REFUSED') => { const e = new Error(message); e.code = code; return e; };
@@ -368,11 +369,15 @@ async function actOn(store, ctx, item, args, who, undoMs, rightsCache) {
   }
   const ok = I.allowed(item, action, { text: args.text, lastIncomingAt, now: now.getTime() });
   if (!ok.ok) return ok;
+  // Petition links become tracked Copilot links (or the same code as a long
+  // link if Copilot can't be reached) before anything is queued.
+  const tr = args.text ? await T.trackForItem(store, item, String(args.text).trim(), { action, who }) : { text: null, links: [] };
+  const detail = { ...(recipient ? { recipient } : {}), ...(tr.links.length ? { links: tr.links.map(({ to, code, via }) => ({ to, code, via })) } : {}) };
   const row = await store.engineInboxInsertAction({
-    ...base, text: args.text ? String(args.text).trim() : null, detail: recipient ? { recipient } : {},
+    ...base, text: tr.text, detail,
     run_after: new Date(now.getTime() + undoMs).toISOString(), status: 'queued',
   });
-  return { ok: true, queued: row, undo_until: row.run_after };
+  return { ok: true, queued: row, undo_until: row.run_after, links: detail.links || [] };
 }
 
 // Bulk by topic: one action on up to 100 items. Replies rotate through the
