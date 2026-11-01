@@ -34,9 +34,14 @@ const post = (o) => ({ username: 'u', label: 'U', country: 'UK', stance: 'ally',
   const conv = buildDigest({ now, ads: [], posts: [
     tag('a', 'opponent', '2026-11-01T09:00:00Z'), tag('b', 'opponent', '2026-11-01T10:00:00Z'), tag('c', 'opponent', '2026-10-31T20:00:00Z'),
     tag('a', 'opponent', '2026-11-01T09:00:00Z', '#OldTag'), tag('b', 'opponent', '2026-11-01T09:00:00Z', '#OldTag'), tag('c', 'opponent', '2026-11-01T09:00:00Z', '#OldTag'),
-    tag('d', 'ally', '2026-10-15T09:00:00Z', 'Seen before #OldTag'),
+    tag('d', 'ally', '2026-10-04T09:00:00Z', 'Seen 29 days before the window #OldTag'),
   ] });
   eq('convergence: 3 accounts in 48h, new in 30 days', [conv.counts.converging, conv.text.includes('#killthebill'), conv.text.includes('#oldtag')], [1, true, false]);
+
+  const future = buildDigest({ now, ads: [], posts: [
+    tag('a', 'opponent', '2026-11-01T09:00:00Z', '#Later'), tag('b', 'opponent', '2026-11-01T10:00:00Z', '#Later'), tag('c', 'opponent', '2026-11-02T09:00:00Z', '#Later'),
+  ] });
+  eq('convergence: posts after the digest morning do not count', future.counts.converging, 0);
 
   const ads = buildDigest({ now, posts: [], ads: [
     { label: 'Dignity in Dying', spend_lower: 100, spend_upper: 199, currency: 'GBP', delivery_start: '2026-11-01', link_titles: 'Sign the letter', snapshot_url: 'https://www.facebook.com/ads/library/?id=1' },
@@ -48,8 +53,8 @@ const post = (o) => ({ username: 'u', label: 'U', country: 'UK', stance: 'ally',
   eq('ads: no token-bearing link', ads.text.includes('access_token'), false);
 
   const asked = {};
-  await ukDigest({ peerRecent: async (q) => { asked.posts = q.since; return []; }, opponentAdsSeen: async (q) => { asked.ads = [q.since, q.until]; return []; } }, { date: '2026-11-02' });
-  eq('windows: 30 days of posts, ads first seen in the last 24 hours', [asked.posts, asked.ads], ['2026-10-03T08:00:00.000Z', ['2026-11-01T08:00:00.000Z', '2026-11-02T08:00:00.000Z']]);
+  await ukDigest({ peerRecent: async (q) => { asked.posts = [q.since, q.until]; return []; }, opponentAdsSeen: async (q) => { asked.ads = [q.since, q.until]; return []; } }, { date: '2026-11-02' });
+  eq('windows: 32 days of posts up to that morning, ads first seen in the last 24 hours', [asked.posts, asked.ads], [['2026-10-01T08:00:00.000Z', '2026-11-02T08:00:00.000Z'], ['2026-11-01T08:00:00.000Z', '2026-11-02T08:00:00.000Z']]);
 
   console.log(`\n${passed} passed, ${failed} failed`);
   process.exit(failed ? 1 : 0);

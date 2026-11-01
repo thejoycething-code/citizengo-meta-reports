@@ -30,11 +30,14 @@ const ukDate = (t) => new Date(t).toLocaleDateString('en-CA', { timeZone: 'Europ
 const hashtags = (caption) => [...new Set((String(caption || '').match(/#[\p{L}\p{N}_]{3,}/gu) || []).map((h) => h.toLowerCase()))];
 const isUk = (p) => p.stance === 'opponent' || String(p.country || '').toUpperCase() === 'UK';
 
-// Pure, exported for the tests. posts: peer_ig_latest rows from the last 30
-// days; ads: opponent_ads rows first seen in the last 24 hours.
+// Pure, exported for the tests. posts: peer_ig_latest rows from the last 32
+// days (the 48-hour window plus a full 30 days before it); ads: opponent_ads
+// rows first seen in the last 24 hours.
 function buildDigest({ posts, ads, now = new Date() }) {
   const yesterday = ukDate(now.getTime() - 24 * HOUR);
-  const uk = posts.filter(isUk);
+  // Only what existed that morning: a digest rebuilt for a past date must not
+  // count posts published after it.
+  const uk = posts.filter((p) => isUk(p) && Date.parse(p.timestamp) <= now.getTime());
   const takingOff = (stance) => uk
     .filter((p) => p.stance === stance && ukDate(p.timestamp) === yesterday && Number(p.vs_median) >= BREAKOUT)
     .sort((a, b) => b.vs_median - a.vs_median).slice(0, 5);
@@ -98,7 +101,7 @@ function buildDigest({ posts, ads, now = new Date() }) {
 async function ukDigest(store, args = {}) {
   const now = args.date && /^\d{4}-\d{2}-\d{2}$/.test(args.date) ? new Date(`${args.date}T08:00:00Z`) : new Date();
   const [posts, ads] = await Promise.all([
-    store.peerRecent({ since: new Date(now.getTime() - 30 * 24 * HOUR).toISOString() }),
+    store.peerRecent({ since: new Date(now.getTime() - 32 * 24 * HOUR).toISOString(), until: now.toISOString() }),
     store.opponentAdsSeen({ since: new Date(now.getTime() - 24 * HOUR).toISOString(), until: now.toISOString() }),
   ]);
   const d = buildDigest({ posts, ads, now });
