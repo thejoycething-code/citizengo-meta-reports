@@ -86,6 +86,38 @@ async function autoHide({ store, team, live, now, log }) {
   return hidden;
 }
 
+// Comment-to-DM: each new top-level Facebook comment checked once against the
+// team's active automations; a match queues a private reply (and the public
+// reply, if any) as the rule's maker, for the action worker to send.
+async function automations({ store, team, live, now, log }) {
+  const autos = (await store.engineAutomations({ team_ids: [team] })).filter((a) => a.active);
+  const fresh = await store.engineInboxAutomationUnchecked({ team_ids: [team], since: new Date(now - 2 * 24 * 3600_000).toISOString() });
+  if (!fresh.length) return 0;
+  const today = new Date(now).toISOString().slice(0, 10);
+  const sentToday = {};
+  if (autos.length) {
+    for (const a of await store.engineInboxActions({ team_ids: [team], limit: 1000 })) {
+      if (a.action === 'private_reply' && a.detail && a.detail.automation_id && String(a.created_at).slice(0, 10) === today && a.status !== 'cancelled') sentToday[a.detail.automation_id] = (sentToday[a.detail.automation_id] || 0) + 1;
+    }
+  }
+  let n = 0;
+  const at = new Date(now).toISOString();
+  for (const item of fresh) {
+    const a = autos.length ? I.automationFor(item, autos) : null;
+    if (a && (sentToday[a.id] || 0) < I.AUTOMATION_DAILY_MAX) {
+      n++; sentToday[a.id] = (sentToday[a.id] || 0) + 1;
+      log(`  ✉ ${item.id}: ${live ? 'queued' : 'would queue'} "${a.name}"`);
+      if (live) {
+        const base = { item_id: item.id, team_id: item.team_id, account_key: item.account_key, by: a.created_by, run_after: at, status: 'queued', detail: { automation_id: a.id, automation: a.name } };
+        await store.engineInboxInsertAction({ ...base, action: 'private_reply', text: a.dm_text });
+        if (a.reply_text) await store.engineInboxInsertAction({ ...base, action: 'reply', text: a.reply_text });
+      }
+    }
+    if (live) await store.engineInboxUpdate(item.id, { automation_checked_at: at });
+  }
+  return n;
+}
+
 // Pile-on alerts: at most one per post every 6 hours.
 async function pileOnAlerts({ store, team, live, now, log }) {
   const [rows, rules, recent] = await Promise.all([
@@ -117,7 +149,7 @@ async function run({ store, privateKey, live, now = Date.now(), log = console.lo
   const [teams, tokens] = await Promise.all([store.engineTeams(), store.engineConnectedTokens()]);
   const readers = readerTokens(tokens);
   const since = now - WINDOW_DAYS * 24 * 3600_000;
-  const tally = { accounts: 0, comments: 0, messages: 0, mentions: 0, skipped: 0, failed: 0, auto_hidden: 0, pile_ons: 0 };
+  const tally = { accounts: 0, comments: 0, messages: 0, mentions: 0, skipped: 0, failed: 0, auto_hidden: 0, automations: 0, pile_ons: 0 };
   for (const t of teams) {
     for (const acc of t.accounts || []) {
       if (!['facebook', 'instagram'].includes(acc.platform)) continue;
@@ -151,6 +183,7 @@ async function run({ store, privateKey, live, now = Date.now(), log = console.lo
   }
   for (const t of teams) {
     try { tally.auto_hidden += await autoHide({ store, team: t.id, live, now, log }); } catch (e) { tally.failed++; log(`  ✗ auto-hide ${t.id}: ${e.message}`); }
+    try { tally.automations += await automations({ store, team: t.id, live, now, log }); } catch (e) { tally.failed++; log(`  ✗ automations ${t.id}: ${e.message}`); }
     try { tally.pile_ons += await pileOnAlerts({ store, team: t.id, live, now, log }); } catch (e) { tally.failed++; log(`  ✗ pile-on check ${t.id}: ${e.message}`); }
   }
   return tally;

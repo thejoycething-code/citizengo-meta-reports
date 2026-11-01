@@ -65,7 +65,7 @@ Decisions from Christopher Joyce are in brackets with the date._
    The desk's connector manifest: engine_me, engine_posts, engine_save, engine_status, engine_calendar,
    engine_requests, engine_request, engine_evergreen, engine_evergreen_update, engine_connect, engine_media,
    engine_pause, engine_video, engine_inbox, engine_inbox_act, engine_inbox_undo, engine_inbox_history, engine_inbox_person,
-   engine_inbox_posts, engine_inbox_rules, engine_inbox_rule, engine_inbox_alert, engine_inbox_bulk, engine_analytics, engine_listening.
+   engine_inbox_posts, engine_inbox_rules, engine_inbox_rule, engine_inbox_alert, engine_inbox_bulk, engine_analytics, engine_listening, engine_automations, engine_automation.
 5. ⬜ Until Meta publishing works, "Approve" still hands UK posts to Asana as today.
 6. ◐ Cutover (prepared 1 Nov; nothing switched yet). The daily engine's instructions are ready in
    content-engine/DAILY.md, section "Engine mode", which only applies once the file content-engine/ENGINE_LIVE
@@ -79,7 +79,7 @@ Decisions from Christopher Joyce are in brackets with the date._
       `node scripts/engine-import-board.js <dump>/drafts --apply` with the service key in the shell. Posts nobody
       has edited in the engine are refreshed; ones edited there are left alone.
    3. Publish content-engine/desk.html onto the board URL (SxCXeQPMkaBMNiABjiiULw) from a session whose
-      connector list includes the engine tools, with the 25-tool manifest above.
+      connector list includes the engine tools, with the 27-tool manifest above.
    4. `touch content-engine/ENGINE_LIVE`. The next run works in the engine.
    5. Check the first run: new drafts appear on the desk in Review, nothing was written to the board's `drafts`.
    To go back: delete ENGINE_LIVE and republish review-board.html onto the board URL (its drafts are as they were
@@ -253,7 +253,14 @@ can't have collaborators. Facebook collaborators are added in Meta Business Suit
    hidden, marked done, assigned or labelled with the group's name. `engine_inbox_bulk` applies the same rules as
    one at a time (`actOn`), refusals are listed (DMs are answered one by one; Instagram likes refused), and
    Facebook and Instagram actions wait 30 seconds so `engine_inbox_undo action_ids` can undo the whole batch.
-3. ⬜ Later: automations (comment to DM), X, pile-on alert to Slack.
+   Comment-to-DM automations (built 1 Nov, dry run): `engine_automations` (applied; team admins change them with
+   `engine_automation`, and need a publishing right on one of the team's Facebook Pages). Keywords match whole
+   words, any case or accent ("sign" matches "SIGN!", not "signal"); top-level Facebook comments only. The inbox
+   collector checks each new comment once (`automation_checked_at`) and queues a private reply with the link
+   (Meta's one per comment) and the optional public reply, as the rule's maker, at most 200 per rule a day; the
+   action worker sends them, so nothing goes out until ENGINE_INBOX_LIVE and Chris's OK. `[ACTION LINK]` is
+   refused. Desk: Moderation tab, under the auto-hide list. Not yet: Instagram, per-post rules from the desk.
+3. ⬜ Later: X, pile-on alert to Slack.
 
 ## Slice 3: Analytics [chosen 1 Nov]
 

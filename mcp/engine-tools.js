@@ -480,6 +480,42 @@ async function engineInboxAlert(store, args, { who }) {
   return json(done ? { ok: true, alert: done } : { ok: false, error: 'No such alert.' });
 }
 
+// Comment-to-DM automations: the team sees them; team admins change them.
+async function engineAutomationsList(store, args, { who }) {
+  const ctx = await context(store, who);
+  const team = String(args.team || '');
+  if (!E.canEditTeam(ctx, team)) throw err('You are not in that team.', 'ENGINE_NOT_MEMBER');
+  const autos = await store.engineAutomations({ team_ids: [team] });
+  const since = new Date(Date.now() - 7 * 864e5).toISOString();
+  const sent = {};
+  for (const a of await store.engineInboxActions({ team_ids: [team], limit: 1000 })) {
+    const id = a.detail && a.detail.automation_id;
+    if (id && a.action === 'private_reply' && a.created_at >= since) { sent[id] = sent[id] || { queued: 0, sent: 0, failed: 0 }; sent[id][a.status === 'done' ? 'sent' : a.status === 'failed' ? 'failed' : 'queued']++; }
+  }
+  return json({ team, automations: autos.map((a) => ({ ...a, last_7_days: sent[a.id] || { queued: 0, sent: 0, failed: 0 } })), can_edit: ctx.maintainer || ctx.myTeams[team] === 'admin', daily_max: I.AUTOMATION_DAILY_MAX });
+}
+async function engineAutomation(store, args, { who }) {
+  const ctx = await context(store, who);
+  const team = String(args.team || '');
+  if (!E.canEditTeam(ctx, team)) throw err('You are not in that team.', 'ENGINE_NOT_MEMBER');
+  if (!(ctx.maintainer || ctx.myTeams[team] === 'admin')) return json({ ok: false, error: "Only the team's admins can change automations." });
+  const now = new Date().toISOString();
+  if (args.action === 'add') {
+    const c = I.checkAutomation(args);
+    if (!c.ok) return json(c);
+    const rights = (await store.engineRights({ who })).map((r) => r.account_key);
+    const fbs = (teamById(ctx, team).accounts || []).filter((a) => a.platform === 'facebook').map((a) => a.key);
+    if (!fbs.some((k) => rights.includes(k))) return json({ ok: false, error: "Automations send as you, so you need a publishing right on at least one of the team's Facebook Pages." });
+    if ((await store.engineAutomations({ team_ids: [team] })).length >= 20) return json({ ok: false, error: 'At most 20 automations per team.' });
+    await store.engineInsertAutomation({ team_id: team, ...c.value, thread_id: args.thread_id ? String(args.thread_id) : null, created_by: who });
+  } else if (['pause', 'resume'].includes(args.action)) {
+    if (!await store.engineUpdateAutomation(args.id, team, { active: args.action === 'resume', updated_at: now, updated_by: who })) return json({ ok: false, error: 'No such automation.' });
+  } else if (args.action === 'remove') {
+    if (!await store.engineUpdateAutomation(args.id, team, null)) return json({ ok: false, error: 'No such automation.' });
+  } else return json({ ok: false, error: 'action is add, pause, resume or remove.' });
+  return engineAutomationsList(store, { team }, { who });
+}
+
 async function engineInboxHistory(store, args, { who }) {
   const ctx = await context(store, who);
   const team = String(args.team || '');
@@ -849,6 +885,8 @@ const ENGINE_TOOLS = [
   { name: 'engine_inbox_rules', description: 'Content Engine Inbox auto-hide list for one of your teams: banned words, phrases, "any link that isn\'t ours" and the built-in scam phrases (listed), and whether you can change it (team admins).', inputSchema: obj({ team: { type: 'string' } }, ['team']), handler: engineInboxRules },
   { name: 'engine_inbox_rule', description: 'Content Engine Inbox: add to or remove from a team\'s auto-hide list (team admins). add: kind word (whole word), phrase (anywhere), links (any link that isn\'t citizengo.org or cgo.ac) or scams (the built-in scam phrases), with value for word and phrase. remove: id. New comments that match are hidden (never deleted) as you, and labelled auto-hidden.', inputSchema: obj({ action: { type: 'string', enum: ['add', 'remove'] }, team: { type: 'string' }, kind: { type: 'string', enum: ['word', 'phrase', 'links', 'scams'] }, value: { type: 'string' }, id: { type: 'number' } }, ['action', 'team']), handler: engineInboxRule },
   { name: 'engine_inbox_alert', description: 'Content Engine Inbox: mark a pile-on alert (from engine_inbox alerts) as seen, so it leaves the desk for everyone in the team.', inputSchema: obj({ team: { type: 'string' }, id: { type: 'number' } }, ['team', 'id']), handler: engineInboxAlert },
+  { name: 'engine_automations', description: 'Content Engine comment-to-DM automations for one of your teams: each rule\'s keywords, private message, optional public reply, post (or every post), whether it is on, and its last 7 days (queued, sent, failed).', inputSchema: obj({ team: { type: 'string' } }, ['team']), handler: engineAutomationsList },
+  { name: 'engine_automation', description: 'Content Engine: add a comment-to-DM automation (team admins; action add: name, keywords (whole words), dm_text with the real cgo.ac link, optional reply_text, optional thread_id for one post), or pause, resume or remove one (id). A new Facebook comment with a keyword gets the private message (and public reply) as you, through the Mini, at most one per comment and 200 per rule a day.', inputSchema: obj({ action: { type: 'string', enum: ['add', 'pause', 'resume', 'remove'] }, team: { type: 'string' }, id: { type: 'number' }, name: { type: 'string' }, keywords: { type: 'array', items: { type: 'string' } }, dm_text: { type: 'string' }, reply_text: { type: 'string' }, thread_id: { type: 'string' } }, ['action', 'team']), handler: engineAutomation },
   { name: 'engine_inbox_history', description: 'Content Engine Inbox moderation history for one of your teams: every reply, hide, delete, like, assignment, label and done, by whom, newest first.', inputSchema: obj({ team: { type: 'string' }, limit: { type: 'number' } }, ['team']), handler: engineInboxHistory },
   { name: 'engine_analytics', description: 'Content Engine Analytics for the desk, as data: page reach, views, engagements and net follows, Instagram follower movement, top Facebook posts against their own Page\'s median, top Instagram posts and X totals, for the last 7, 30 or 90 days. scope citizengo (every CitizenGO Page, default), hazteoir (kept apart) or team (with team).', inputSchema: obj({ scope: { type: 'string', enum: ['citizengo', 'hazteoir', 'team'] }, team: { type: 'string' }, days: { type: 'number', enum: [7, 30, 90] } }), handler: engineAnalytics },
   { name: 'engine_listening', description: 'Content Engine Listening for the desk, as data: posts beating their own normal (min_multiple, default 3). tab citizengo: other CitizenGO Pages\' posts (not your team\'s, with team) by views against that Page\'s 90-day median, last 7 or 30 days. tab allies: watched ally Instagram accounts (optional country UK, US, IE, CA, AU), last 7, 10 or 30 days. tab opponents: watched opponent accounts plus their Meta Ad Library issue ads.', inputSchema: obj({ tab: { type: 'string', enum: ['citizengo', 'allies', 'opponents'] }, team: { type: 'string' }, country: { type: 'string' }, days: { type: 'number' }, min_multiple: { type: 'number' } }), handler: engineListening },
