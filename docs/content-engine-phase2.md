@@ -33,12 +33,21 @@ Decisions from Christopher Joyce are in brackets with the date._
 ## Slice 1: posts desk + calendar [chosen 1 Nov]
 
 1. ✅ Schema, rules, tools and tests (this branch).
-2. ⬜ Apply `sql/engine-schema.sql` to Supabase; seed the UK team (uk-fb, uk-ig, uk-x, sc-fb, sc-ig) and the
-   global team; set `ENGINE_ADMINS`; deploy.
-3. ⬜ Move the review board's drafts into `engine_posts` (statuses mapped by `fromBoardStatus`), and point the
+2. ✅ Schema applied; UK team (uk-fb, uk-ig, uk-x, sc-fb, sc-ig) and global team seeded with Chris as admin;
+   `ENGINE_ADMINS` set; deployed (1 Nov). Chris's publishing rights for UK, Scotland and global Facebook and
+   Instagram seeded with source `maintainer` until the connect flow exists.
+3. ◐ Move the review board's drafts into `engine_posts` (statuses mapped by `fromBoardStatus`), and point the
    daily engine (content-engine/DAILY.md) at `engine_create` / `engine_save` instead of the artifact's store.
-4. ⬜ Rewire the desk artifact to the engine tools (artifact `mcp` capability) and add Plan › Calendar and queue.
-   Keep every existing Claude tool.
+   `scripts/engine-import-board.js` is ready and tested; it runs at cutover, from a dump of the board's
+   `drafts` collection (ArtifactData list with out_dir), with the service key in the shell:
+   `node scripts/engine-import-board.js <dump>/drafts --apply`. Board "archived" (purged rejects) become
+   rejected. Re-running only refreshes posts nobody has edited in the engine yet.
+4. ◐ Rewire the desk artifact to the engine tools (artifact `mcp` capability) and add Plan › Calendar and queue.
+   Keep every existing Claude tool. Started 1 Nov as content-engine/desk.html (a fork of the board): posts come
+   from `engine_posts`, saves go through `engine_save`, status changes through `engine_status` (new `posted`
+   action; a scheduled post can be reopened). Approve schedules; the menu adds "Approve and hold". At cutover the
+   desk is published onto the board's own artifact URL, because card photos are `/_blob/<id>` assets of that
+   artifact and would not load anywhere else.
 5. ⬜ Until Meta publishing works, "Approve" still hands UK posts to Asana as today.
 
 ## Slice 2: Meta publishing
