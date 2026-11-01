@@ -64,7 +64,7 @@ Decisions from Christopher Joyce are in brackets with the date._
    from content-engine/evergreen-bank.md (the 3.5x post left out). Later: the monthly run adds new 5x winners.
    The desk's connector manifest: engine_me, engine_posts, engine_save, engine_status, engine_calendar,
    engine_requests, engine_request, engine_evergreen, engine_evergreen_update, engine_connect, engine_media,
-   engine_pause.
+   engine_pause, engine_video.
 5. ⬜ Until Meta publishing works, "Approve" still hands UK posts to Asana as today.
 6. ◐ Cutover (prepared 1 Nov; nothing switched yet). The daily engine's instructions are ready in
    content-engine/DAILY.md, section "Engine mode", which only applies once the file content-engine/ENGINE_LIVE
@@ -78,7 +78,7 @@ Decisions from Christopher Joyce are in brackets with the date._
       `node scripts/engine-import-board.js <dump>/drafts --apply` with the service key in the shell. Posts nobody
       has edited in the engine are refreshed; ones edited there are left alone.
    3. Publish content-engine/desk.html onto the board URL (SxCXeQPMkaBMNiABjiiULw) from a session whose
-      connector list includes the engine tools, with the 12-tool manifest above.
+      connector list includes the engine tools, with the 13-tool manifest above.
    4. `touch content-engine/ENGINE_LIVE`. The next run works in the engine.
    5. Check the first run: new drafts appear on the desk in Review, nothing was written to the board's `drafts`.
    To go back: delete ENGINE_LIVE and republish review-board.html onto the board URL (its drafts are as they were
@@ -157,9 +157,23 @@ a red line across the top while paused, with "‖ held" on held posts and in a p
 dialog with scope, reason and resume. Not yet: "Pause and tell Slack" (needs a Slack webhook and Chris's OK to
 post), and automations pausing too (none exist yet).
 
+### Reels and videos (built 1 Nov)
+
+A published page can't reach Storage, so the desk ("Video to publish" on any video post going to Facebook or
+Instagram) sends the MP4 or MOV through `engine_video` in 2 MB pieces (`part`), then `done`, which checks every
+piece is there and the sizes add up, and returns `{prefix, parts, size, sha256, mime, name}`. The desk saves it
+as `publishVideo` and the approved snapshot carries it as `final.<platform>.video`. The publisher joins the pieces
+on the Mini (`P.assembleVideo`: size, SHA-256 and the MP4/MOV header checked) and uploads the file straight to
+Meta: Facebook as a Page video (`graph-video …/{page}/videos`, the text as its description), Instagram as a Reel
+(resumable upload to rupload.facebook.com, then it waits up to about 4.5 minutes for Instagram to finish
+processing before publishing; longer and it tries again next run). No public link to the file is ever made. Up to
+150 MB; pieces live in the private `engine-media` bucket (which now also takes application/octet-stream).
+"Use the attached video" sends a clip already on the post (`video.url`). Not yet: cleaning up pieces after
+publishing; a Reel cover image; posting the motion video made on the desk without saving it first.
+
 ### Still to build
 
-- Stories; Reels and videos;
+- Stories;
   Instagram collab invites; Facebook collaborators added in Meta Business Suite for now.
 
 ## Slice 3 onwards

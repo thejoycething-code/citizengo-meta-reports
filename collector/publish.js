@@ -29,7 +29,7 @@ async function patchDoc(store, id, change, extra = () => ({})) {
   throw new Error(`post ${id} kept changing; try again next run`);
 }
 
-async function run({ store, privateKey, live, now = Date.now(), log = console.log, fetchImpl }) {
+async function run({ store, privateKey, live, now = Date.now(), log = console.log, fetchImpl, wait }) {
   const [teams, posts, pauses] = await Promise.all([store.engineTeams(), store.enginePosts({ statuses: ['scheduled'], limit: 500 }), store.enginePauses()]);
   const items = P.plan(posts, teams, now, pauses);
   const tally = { published: 0, held: 0, failed: 0, would: 0 };
@@ -62,17 +62,25 @@ async function run({ store, privateKey, live, now = Date.now(), log = console.lo
     const content = P.contentFor(item.post.doc, item.platform);
     if (!content.ok) { await fail(item, content.error, { final: true }); continue; }
 
-    if (!live) { tally.would++; log(`  → ${label}: would publish as ${who} (${content.media.length} image${content.media.length === 1 ? '' : 's'}${content.comment ? ', first comment' : ''})`); continue; }
+    if (!live) { tally.would++; log(`  → ${label}: would publish as ${who} (${content.video ? `video, ${Math.round(content.video.size / 1048576)} MB` : `${content.media.length} image${content.media.length === 1 ? '' : 's'}`}${content.comment ? ', first comment' : ''})`); continue; }
 
     // Claim it, so a second run can't publish it too.
     await patchDoc(store, item.post.id, () => ({ publishing: { [item.key]: { at: stamp() } } }));
     try {
-      const urls = [];
-      for (const m of content.media) { const u = await store.engineMediaUrl(m, 3600); if (!u) throw new Error(`image ${m} could not be found`); urls.push(u); }
       const token = xauth.open(privateKey, tok.sealed);
-      const out = item.platform === 'facebook'
-        ? await P.publishFacebook({ pageId: tok.page_id, token, text: content.text, comment: content.comment, urls, fetchImpl })
-        : await P.publishInstagram({ igId: tok.ig_id, token, text: content.text, comment: content.comment, urls, fetchImpl });
+      let out;
+      if (content.video) {
+        const buffer = await P.assembleVideo(store, content.video);
+        out = item.platform === 'facebook'
+          ? await P.publishFacebookVideo({ pageId: tok.page_id, token, text: content.text, comment: content.comment, buffer, mime: content.video.mime, fetchImpl })
+          : await P.publishInstagramReel({ igId: tok.ig_id, token, text: content.text, comment: content.comment, buffer, fetchImpl, wait });
+      } else {
+        const urls = [];
+        for (const m of content.media) { const u = await store.engineMediaUrl(m, 3600); if (!u) throw new Error(`image ${m} could not be found`); urls.push(u); }
+        out = item.platform === 'facebook'
+          ? await P.publishFacebook({ pageId: tok.page_id, token, text: content.text, comment: content.comment, urls, fetchImpl })
+          : await P.publishInstagram({ igId: tok.ig_id, token, text: content.text, comment: content.comment, urls, fetchImpl });
+      }
       await patchDoc(store, item.post.id, () => ({ publishing: { [item.key]: null }, publishErrors: { [item.key]: null }, published: { [item.key]: { ...out, at: stamp(), by: who } } }));
       await event(item, 'published', { id: out.id, url: out.url });
       tally.published++;

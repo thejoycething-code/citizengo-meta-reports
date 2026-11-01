@@ -196,3 +196,11 @@ create table if not exists public.engine_pauses (
 create index if not exists engine_pauses_open on public.engine_pauses (resumed_at) where resumed_at is null;
 alter table public.engine_pauses enable row level security;
 comment on table public.engine_pauses is 'Content Engine Pause everything: holds scheduled posts on the listed accounts (or all) until resumed or until.';
+
+-- Videos [1 Nov]: the desk sends a Reel or video to the engine in pieces of up
+-- to 2.5 MB (engine_video, through the connector, since a published page can't
+-- reach Storage itself) under <team>/<post>/video-<upload>/NNN.part; the
+-- publisher on the Mini joins them, checks size and SHA-256, and uploads the
+-- file straight to Facebook and Instagram. So engine-media also takes
+-- application/octet-stream pieces (still 3 MB per object).
+update storage.buckets set allowed_mime_types = array['image/jpeg', 'image/png', 'application/octet-stream'] where id = 'engine-media';

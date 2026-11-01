@@ -293,6 +293,50 @@ async function engineEvergreenUpdate(store, args, { who }) {
 // path in the post's `final` snapshot, and the publisher signs a short-lived
 // link for Facebook or Instagram to fetch.
 const MEDIA_MAX_BYTES = 3 * 1024 * 1024;
+// Reels and videos [1 Nov]: a published page can't reach Storage, so the desk
+// sends the file here in pieces (action part), then asks for them to be
+// checked (action done), which returns what goes in the post's final snapshot.
+// The publisher on the Mini joins the pieces and uploads to Meta itself.
+const VIDEO_PART_MAX = 2.5 * 1024 * 1024;
+const VIDEO_MAX_BYTES = 150 * 1024 * 1024;
+const VIDEO_MAX_PARTS = 64;
+const VIDEO_TYPES = ['video/mp4', 'video/quicktime'];
+async function engineVideo(store, args, { who }) {
+  const ctx = await context(store, who);
+  const post = await editablePost(store, ctx, args.id);
+  if (['posted', 'rejected'].includes(post.status)) return json({ ok: false, error: `A ${post.status} post can't take a new video.` });
+  const upload = String(args.upload || '');
+  if (!/^[a-z0-9]{8,32}$/.test(upload)) return json({ ok: false, error: 'upload must be 8-32 lowercase letters and digits.' });
+  const prefix = `${post.team_id}/${String(post.id).replace(/[^a-z0-9-]/gi, '-')}/video-${upload}`;
+  if (args.action === 'part') {
+    const index = Number(args.index);
+    if (!Number.isInteger(index) || index < 0 || index >= VIDEO_MAX_PARTS) return json({ ok: false, error: `A video is at most ${VIDEO_MAX_PARTS} pieces.` });
+    const buf = Buffer.from(String(args.data || ''), 'base64');
+    if (!buf.length) return json({ ok: false, error: 'No data received.' });
+    if (buf.length > VIDEO_PART_MAX) return json({ ok: false, error: 'Each piece is at most 2.5 MB.' });
+    await store.engineMediaUpload(`${prefix}/${String(index).padStart(3, '0')}.part`, buf, 'application/octet-stream');
+    return json({ ok: true, index, bytes: buf.length });
+  }
+  if (args.action === 'done') {
+    const parts = Number(args.parts), size = Number(args.size);
+    const mime = String(args.mime || '');
+    if (!VIDEO_TYPES.includes(mime)) return json({ ok: false, error: 'Videos must be MP4 or MOV.' });
+    if (!/^[a-f0-9]{64}$/.test(String(args.sha256 || ''))) return json({ ok: false, error: 'sha256 must be the file\'s SHA-256 in hex.' });
+    if (!(size > 0 && size <= VIDEO_MAX_BYTES)) return json({ ok: false, error: 'A video is at most 150 MB.' });
+    if (!Number.isInteger(parts) || parts < 1 || parts > VIDEO_MAX_PARTS) return json({ ok: false, error: 'Wrong number of pieces.' });
+    const have = await store.engineMediaList(prefix);
+    const want = Array.from({ length: parts }, (_, i) => `${String(i).padStart(3, '0')}.part`);
+    const missing = want.filter((n) => !have.some((h) => h.name === n));
+    if (missing.length) return json({ ok: false, error: `${missing.length} piece${missing.length === 1 ? ' is' : 's are'} missing; send ${missing.length === 1 ? 'it' : 'them'} again.`, missing: missing.map((n) => Number(n.slice(0, 3))) });
+    const total = have.filter((h) => want.includes(h.name)).reduce((n, h) => n + h.size, 0);
+    if (total !== size) return json({ ok: false, error: `The pieces add up to ${total} bytes, not ${size}. Upload the video again.` });
+    const video = { prefix, parts, size, sha256: String(args.sha256), mime, name: String(args.name || '').slice(0, 120) };
+    await store.engineEvent({ post_id: post.id, team_id: post.team_id, who, action: 'video', detail: { size, parts } });
+    return json({ ok: true, video });
+  }
+  return json({ ok: false, error: 'action is part or done.' });
+}
+
 async function engineMedia(store, args, { who }) {
   const ctx = await context(store, who);
   const post = await editablePost(store, ctx, args.id);
@@ -334,6 +378,7 @@ const ENGINE_TOOLS = [
   { name: 'engine_post', description: 'Content Engine: one whole post from your teams.', inputSchema: obj({ id: { type: 'string' } }, ['id']), handler: enginePost },
   { name: 'engine_save', description: 'Content Engine: save changes to a post (text, graphic, first comment, where and when). patch merges into the post; version must be the one you read, or the save is refused as a conflict.', inputSchema: obj({ id: { type: 'string' }, version: { type: 'number' }, patch: { type: 'object' } }, ['id', 'version', 'patch']), handler: engineSave },
   { name: 'engine_pause', description: 'Content Engine Pause everything: hold every scheduled post at once (action pause: scope mine = every account you can post to, team = one of your teams (team), all = every account, admins only; a reason the team sees; optional hours, otherwise until someone resumes), or resume a pause (action resume: id). Nothing is deleted or changed: the publisher just waits.', inputSchema: obj({ action: { type: 'string', enum: ['pause', 'resume'] }, scope: { type: 'string', enum: ['mine', 'team', 'all'] }, team: { type: 'string' }, reason: { type: 'string' }, hours: { type: 'number' }, id: { type: 'number' } }, ['action']), handler: enginePause },
+  { name: 'engine_video', description: 'Content Engine: send a Reel or video for a post you can edit, in pieces of up to 2.5 MB (action part: id, upload (8-32 lowercase letters and digits, the same for every piece), index from 0, data base64), then check them (action done: id, upload, parts, size, sha256 hex, mime video/mp4 or video/quicktime, optional name). done returns the video to save in the post\'s final snapshot. Up to 150 MB.', inputSchema: obj({ action: { type: 'string', enum: ['part', 'done'] }, id: { type: 'string' }, upload: { type: 'string' }, index: { type: 'number' }, data: { type: 'string' }, parts: { type: 'number' }, size: { type: 'number' }, sha256: { type: 'string' }, mime: { type: 'string', enum: ['video/mp4', 'video/quicktime'] }, name: { type: 'string' } }, ['action', 'id', 'upload']), handler: engineVideo },
   { name: 'engine_record', description: 'Content Engine: record bookkeeping on a post in any status, posted and rejected included: results, posted (the real post links and time), stale, and posting.asanaTaskGid / asanaUrl / syncedAt / removedAt. Nothing else; the post itself is saved with engine_save. version must be the one you read.', inputSchema: obj({ id: { type: 'string' }, version: { type: 'number' }, patch: { type: 'object' } }, ['id', 'version', 'patch']), handler: engineRecord },
   { name: 'engine_status', description: 'Content Engine: approve (schedules it; needs publishing rights for every Facebook and Instagram account), hold, changes (needs a note), reject, reopen, or mark as posted (it went out) a post.', inputSchema: obj({ id: { type: 'string' }, version: { type: 'number' }, action: { type: 'string', enum: ['approve', 'hold', 'changes', 'reject', 'reopen', 'posted'] }, note: { type: 'string' }, reasons: { type: 'array', items: { type: 'string' } } }, ['id', 'version', 'action']), handler: engineStatus },
   { name: 'engine_create', description: 'Content Engine: add a new post to Review in one of your teams (the daily engine, "Rework for…" and imports use this).', inputSchema: obj({ team: { type: 'string' }, doc: { type: 'object' }, id: { type: 'string' }, source_team: { type: 'string' }, source_post: { type: 'string' } }, ['team', 'doc']), handler: engineCreate },

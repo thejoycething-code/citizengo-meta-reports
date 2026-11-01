@@ -47,6 +47,8 @@ function memoryStore() {
       return clone(p);
     },
     async engineEvent(row) { db.events.push(row); },
+    async engineMediaUpload(path, buf) { db.media = db.media || {}; db.media[path] = buf.length; return path; },
+    async engineMediaList(prefix) { return Object.entries(db.media || {}).filter(([k]) => k.startsWith(prefix + '/')).map(([k, size]) => ({ name: k.slice(prefix.length + 1), size })); },
     async enginePauses() { return clone((db.pauses || []).filter((p) => !p.resumed_at)); },
     async engineInsertPause(row) { db.pauses = db.pauses || []; const p = { id: db.pauses.length + 1, paused_at: new Date().toISOString(), until: null, resumed_at: null, ...row }; db.pauses.push(p); return clone(p); },
     async engineResumePause(id, who) { const p = (db.pauses || []).find((x) => x.id === id && !x.resumed_at); if (!p) return null; Object.assign(p, { resumed_at: new Date().toISOString(), resumed_by: who }); return clone(p); },
@@ -255,6 +257,27 @@ const callErr = async (store, name, args, who) => { try { await tool(name)(store
     const r = await call(store, 'engine_pause', { action: 'resume', id: p.pause.id }, 'chris');
     eq('chris resumes it, and nothing is paused after', [r.ok, r.pauses.length, (await call(store, 'engine_pause', { action: 'resume', id: p.pause.id }, 'chris')).ok], [true, 0, false]);
     eq('engine_pause: a timed pause is at most a week', (await call(store, 'engine_pause', { action: 'pause', scope: 'mine', reason: 'x', hours: 500 }, 'chris')).ok, false);
+  }
+
+  // Videos in pieces.
+  {
+    const crypto = require('crypto');
+    const file = crypto.randomBytes(7000);
+    const sha = crypto.createHash('sha256').update(file).digest('hex');
+    await call(store, 'engine_create', { team: 'uk', id: 'uk-vid', doc: { title: 'Video' } }, 'chris');
+    const part = (i, b) => call(store, 'engine_video', { action: 'part', id: 'uk-vid', upload: 'up12345678', index: i, data: b.toString('base64') }, 'chris');
+    eq('engine_video: pieces are stored', [(await part(0, file.slice(0, 4000))).ok, (await part(1, file.slice(4000))).ok], [true, true]);
+    const done = await call(store, 'engine_video', { action: 'done', id: 'uk-vid', upload: 'up12345678', parts: 2, size: file.length, sha256: sha, mime: 'video/mp4', name: 'clip.mp4' }, 'chris');
+    eq('engine_video done: checks every piece and returns the video for the snapshot', [done.ok, done.video.prefix, done.video.parts, done.video.size], [true, 'uk/uk-vid/video-up12345678', 2, 7000]);
+    const short = await call(store, 'engine_video', { action: 'done', id: 'uk-vid', upload: 'up12345678', parts: 3, size: file.length, sha256: sha, mime: 'video/mp4' }, 'chris');
+    eq('engine_video done: a missing piece is named', [short.ok, short.missing], [false, [2]]);
+    eq('engine_video done: sizes that do not add up are refused', (await call(store, 'engine_video', { action: 'done', id: 'uk-vid', upload: 'up12345678', parts: 2, size: 9999, sha256: sha, mime: 'video/mp4' }, 'chris')).ok, false);
+    eq('engine_video: a bad upload id, a too-big piece, or a GIF are refused', [
+      (await call(store, 'engine_video', { action: 'part', id: 'uk-vid', upload: '../x', index: 0, data: 'AA==' }, 'chris')).ok,
+      (await part(2, Buffer.alloc(2.5 * 1024 * 1024 + 1))).ok,
+      (await call(store, 'engine_video', { action: 'done', id: 'uk-vid', upload: 'up12345678', parts: 2, size: file.length, sha256: sha, mime: 'image/gif' }, 'chris')).ok,
+    ], [false, false, false]);
+    eq('engine_video: another team cannot send a video for it', await callErr(store, 'engine_video', { action: 'part', id: 'uk-vid', upload: 'up12345678', index: 0, data: 'AA==' }, 'greg'), 'ENGINE_NOT_FOUND');
   }
 
   console.log(`\n${passed} passed, ${failed} failed`);
