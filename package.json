@@ -59,6 +59,7 @@
     "test:engine": "node scripts/test-engine.js",
     "test:fb-connect": "node scripts/test-fb-connect.js",
     "test:publish": "node scripts/test-publish.js",
+    "test:rights-check": "node scripts/test-rights-check.js",
     "publish": "node collector/publish.js",
     "publish:dry": "node collector/publish.js --dry-run"
   }
