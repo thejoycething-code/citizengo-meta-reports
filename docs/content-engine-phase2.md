@@ -283,8 +283,11 @@ credited and linked in the angle), which the daily run drafts into Review (DAILY
 posted. Convergence (built 1 Nov, later): on the Allies tab, every watched ally post from the last 48 hours is
 read for hashtags, links and two-word names ("Prince Alois"); one used by 3+ different accounts is shown as
 converging, with "Rework for <team>" (a Plan request that asks for the facts to be checked first). Plain text
-matching, no paid AI (`convergence`, `storyKeys` in mcp/engine-tools.js). Not yet: mentions, sentiment, daily
-digest, "already reworked by".
+matching, no paid AI (`convergence`, `storyKeys` in mcp/engine-tools.js). Digest (built 1 Nov, desk only, the
+Listening tab's first view): only what crossed a line in the last 48 hours, from the same tools: our pile-on
+alerts, converging ally stories, ally and other CitizenGO Pages' posts at 10x their normal, opponents at 5x and
+their new issue ads; each with who's moving it, the evidence and a suggested owner by country. Nothing is sent;
+a Slack or email digest waits for Chris's OK. Not yet: mentions, sentiment, "already reworked by".
 
 ## Slice 3 onwards
 
