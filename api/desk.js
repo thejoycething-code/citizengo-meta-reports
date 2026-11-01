@@ -84,6 +84,10 @@ module.exports = async (req, res) => {
         return send(res, 200, { ok: true, id: out.id });
       }
     }
+    if (op === 'file' && req.method === 'GET') {
+      try { return send(res, 200, await D.fileLink(String(url.searchParams.get('name') || ''))); }
+      catch (e) { return send(res, e.status || 500, { error: e.message }); }
+    }
     if (op === 'presence' && req.method === 'POST') {
       const body = (await readBody(req)) || {};
       return send(res, 200, await D.presenceSync({ idHash: session.idHash, who, name: body.state && body.state.name, state: body.state, after: body.after }));
