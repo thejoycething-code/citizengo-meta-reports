@@ -130,10 +130,20 @@ To switch it on (Chris, in Meta for Developers):
 To switch it on (after Connect Facebook works): install a launchd job on the Mini running `npm run publish` every
 5 minutes from ~/citizengo-meta-reports with the runner env, watch a few dry runs, then set `ENGINE_PUBLISH_LIVE=1`.
 
+### Nightly rights re-check (built 1 Nov)
+
+`collector/rights-check.js` (rules in `lib/rightscheck.js`, tests `npm run test:rights-check`) runs on the Mini
+at 03:30 (launchd `net.citizengo.content-rights-check`, log /tmp/content-rights-check.log). It opens each sealed
+Page token and asks Facebook for the Page (or the linked Instagram account). A token Facebook refuses (invalid or
+expired, permission gone, or now for another Page) loses its right and is deleted, so the person connects again
+from the desk; a right from Connect Facebook with no token behind it goes too. Rate limits, outages and tokens the
+key can't open are "couldn't check" and kept. If every token comes back refused at once (three or more), it looks
+like a problem with the Meta app, so nothing is removed. Rights the maintainer seeded are never touched.
+Limit: someone moved to a lesser Page role keeps a working token, so that case still shows only when the
+publisher's post is refused.
+
 ### Still to build
 
-- Nightly re-check of connected rights on the Mini (open each sealed token, ask Facebook for the person's Page
-  tasks, drop rights they have lost).
 - Stories; Reels and videos;
   Instagram collab invites; Facebook collaborators added in Meta Business Suite for now.
 - Pause everything (A + B + C).
