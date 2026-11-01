@@ -38,6 +38,20 @@ for (let n = 0; n < 84; n++) {
 }
 const store = {
   async pageGrowth() { return growthRows; },
+  async engineInbox({ team_ids }) {
+    const t = (m) => new Date(Date.now() - m * 60000).toISOString();
+    return team_ids[0] === 'uk' ? [
+      { kind: 'comment', from_us: false, created_at: t(300), replied_at: t(280), is_ad: true },
+      { kind: 'comment', from_us: false, created_at: t(200), replied_at: t(140), is_ad: false },
+      { kind: 'comment', from_us: false, created_at: t(100), replied_at: null, is_ad: false },
+      { kind: 'message', from_us: false, created_at: t(90), replied_at: null, is_ad: false },
+      { kind: 'comment', from_us: true, created_at: t(279), replied_at: null, is_ad: false },
+    ] : [];
+  },
+  async engineInboxActions() {
+    const at = new Date(Date.now() - 3600e3).toISOString();
+    return [{ action: 'reply', created_at: at }, { action: 'reply', created_at: at }, { action: 'hide', created_at: at, detail: { auto: true } }, { action: 'hide', created_at: at, detail: {} }, { action: 'delete', created_at: at }, { action: 'reply', created_at: '2020-01-01T00:00:00Z' }];
+  },
   async loadAll() { return { pages }; },
   async engineTeams() { return [{ id: 'uk', name: 'United Kingdom', accounts: [{ key: 'uk-fb', platform: 'facebook', page_id: '105' }, { key: 'uk-ig', platform: 'instagram', handle: 'citizengo_uk' }, { key: 'uk-x', platform: 'x', handle: 'CitizenGO_GB' }, { key: 'sc-fb', platform: 'facebook', page_id: '120' }] }]; },
   async engineMembers({ who }) { return who === 'chris' ? [{ team_id: 'uk', who: 'chris', role: 'admin' }] : []; },
@@ -59,6 +73,10 @@ const callErr = async (args, who) => { try { await call(args, who); return null;
   const fullWeek = tr.series[0].reach[tr.weeks.length - 1];
   eq('trend: 12 complete Monday weeks; the team\'s Page with weekly reach and net follows; the median is of CitizenGO Pages only', [tr.weeks.length, new Date(tr.weeks[0] + 'T00:00:00Z').getUTCDay(), tr.series.map((x) => x.name), fullWeek, tr.series[0].net[tr.weeks.length - 1], tr.median.reach[tr.weeks.length - 1], Date.parse(tr.weeks[11]) + 7 * 864e5 <= Date.now()], [12, 1, ['Citizen GO UK'], 7000, 14, 14000, true]);
   eq('trend: the CitizenGO view shows its biggest Pages, HazteOir never', (await call({})).trend.series.map((x) => x.name), ['CitizenGO', 'Citizen GO UK']);
+
+  const ib = (await call({ scope: 'team', team: 'uk' })).inbox;
+  eq('team Analytics carries the Inbox figures: received, answered, how fast, hidden, auto-hidden, deleted', [ib.comments, ib.messages, ib.answered, ib.answered_pct, ib.median_reply_minutes, ib.replies, ib.hidden, ib.auto_hidden, ib.deleted, ib.on_ads], [3, 1, 2, 50, 40, 2, 1, 1, 1, 1]);
+  eq('the CitizenGO-wide view has no Inbox figures', (await call({})).inbox, null);
 
   // Listening.
   {

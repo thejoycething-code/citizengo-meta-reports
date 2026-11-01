@@ -267,8 +267,10 @@ figures, tables). Tests: `npm run test:analytics` (stubbed handlers). 12-week tr
 answer gives the last 12 complete Monday weeks (a week in progress would read as a collapse) of reach (daily reach
 summed), net follows and engagements for the scope's four biggest Pages, and the median CitizenGO Page each week,
 from `store.pageGrowth`. Desk: one measure at a time (one axis), Pages in a validated fixed palette (--s1..--s4,
-light and dark), median dashed grey, end labels, week hover readout. Not yet: per-platform pages, Phase 2 figures
-(comments answered, replies' link clicks).
+light and dark), median dashed grey, end labels, week hover readout. Inbox figures (built 1 Nov, team view
+only): `inbox` in the same answer counts the window's comments and DMs in, the share answered and the median time
+to reply (`replied_at`), replies and private replies sent, hidden (by people and by the auto-hide list) and deleted,
+from engine_inbox and engine_inbox_actions. Not yet: per-platform pages, clicks on links sent in replies.
 
 ## Slice 3: Listening (built 1 Nov)
 
