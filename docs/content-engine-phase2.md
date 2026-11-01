@@ -65,6 +65,23 @@ Decisions from Christopher Joyce are in brackets with the date._
    The desk's connector manifest: engine_me, engine_posts, engine_save, engine_status, engine_calendar,
    engine_requests, engine_request, engine_evergreen, engine_evergreen_update, engine_connect, engine_media.
 5. ⬜ Until Meta publishing works, "Approve" still hands UK posts to Asana as today.
+6. ◐ Cutover (prepared 1 Nov; nothing switched yet). The daily engine's instructions are ready in
+   content-engine/DAILY.md, section "Engine mode", which only applies once the file content-engine/ENGINE_LIVE
+   exists. It reads the desk through `engine_posts` (each row carries `track`, the Asana / results / source fields
+   the run checks, so it never needs whole posts except for tracked links), writes new drafts with `engine_create`,
+   changes with `engine_save`, and its bookkeeping on posts in any status, posted and rejected included, with
+   `engine_record` (results, posted, stale and the Asana fields of posting only; anything else is refused).
+   `make_links.py` reads engine rows. On the day, in this order:
+   1. Pick a quiet time between runs (after the midday run, before the next morning's).
+   2. Dump the board's `drafts` collection (ArtifactData list, out_dir) and run
+      `node scripts/engine-import-board.js <dump>/drafts --apply` with the service key in the shell. Posts nobody
+      has edited in the engine are refreshed; ones edited there are left alone.
+   3. Publish content-engine/desk.html onto the board URL (SxCXeQPMkaBMNiABjiiULw) from a session whose
+      connector list includes the engine tools, with the 11-tool manifest above.
+   4. `touch content-engine/ENGINE_LIVE`. The next run works in the engine.
+   5. Check the first run: new drafts appear on the desk in Review, nothing was written to the board's `drafts`.
+   To go back: delete ENGINE_LIVE and republish review-board.html onto the board URL (its drafts are as they were
+   at step 2; anything created in the engine since then would need copying back by hand).
 
 ## Slice 2: Meta publishing
 

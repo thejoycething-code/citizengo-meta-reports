@@ -206,6 +206,30 @@ const callErr = async (store, name, args, who) => { try { await tool(name)(store
   const me = await call(store, 'engine_me', {}, 'chris');
   eq('engine_me: chris sees the UK team and his rights', [me.teams.map((t) => t.id), me.publish_rights], [['uk'], ['uk-fb']]);
 
+  // Bookkeeping on posted and rejected posts (the daily engine after cutover).
+  eq('record: results, posted, stale and the Asana fields are bookkeeping', [E.recordAllowed({ results: {}, posted: {}, stale: null }).ok, E.recordAllowed({ posting: { asanaTaskGid: '1', removedAt: 'x' } }).ok], [true, true]);
+  eq('record: the post text, the posting time or nothing at all are refused', [E.recordAllowed({ platforms: {} }).ok, E.recordAllowed({ posting: { at: 'x' } }).ok, E.recordAllowed({}).ok], [false, false, false]);
+  {
+    const p = store.db.posts.find((x) => x.team_id === 'uk');
+    p.status = 'posted';
+    const v0 = p.version;
+    const r = await call(store, 'engine_record', { id: p.id, version: v0, patch: { results: { verdict: 'Beat the playbook' }, posting: { asanaTaskGid: '42' } } }, 'chris');
+    eq('engine_record: writes results onto a posted post and keeps the posting plan', [r.ok, r.post.doc.results.verdict, r.post.doc.posting.asanaTaskGid, !!r.post.doc.posting.destinations], [true, 'Beat the playbook', '42', !!p.doc.posting?.destinations]);
+    const s = await call(store, 'engine_save', { id: p.id, version: r.post.version, patch: { title: 'x' } }, 'chris');
+    eq('engine_save still refuses a posted post', s.ok, false);
+    const bad = await call(store, 'engine_record', { id: p.id, version: r.post.version, patch: { platforms: { facebook: 'new' } } }, 'chris');
+    eq('engine_record refuses the post text', bad.ok, false);
+    const old = await call(store, 'engine_record', { id: p.id, version: v0, patch: { stale: null } }, 'chris');
+    eq('engine_record refuses an old version', old.conflict, true);
+    eq('engine_record: other teams cannot record on it', await callErr(store, 'engine_record', { id: p.id, version: r.post.version, patch: { stale: null } }, 'tamara@citizengo.net'), 'ENGINE_NOT_FOUND');
+  }
+
+  {
+    const list = await call(store, 'engine_posts', { team: 'uk', status: 'posted, review' }, 'chris');
+    const t = list.posts.find((x) => x.status === 'posted');
+    eq('engine_posts: several statuses, and track carries the Asana task and results check', [!!t, t && t.track.asanaTaskGid, t && t.track.resultsCheckedAt, list.posts.every((x) => ['posted', 'review'].includes(x.status))], [true, '42', null, true]);
+  }
+
   console.log(`\n${passed} passed, ${failed} failed`);
   process.exit(failed ? 1 : 0);
 })().catch((e) => { console.error(e); process.exit(1); });

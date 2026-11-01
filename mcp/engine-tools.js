@@ -34,7 +34,20 @@ const lite = (p) => ({
   version: p.version, updated_at: p.updated_at, updated_by: p.updated_by,
   destinations: E.destinations(p.doc), type: (p.doc && p.doc.type) || null,
   thumb: E.calendarItem(p, { editable: true }).thumb, source_team: p.source_team || null,
+  track: track(p.doc || {}),
 });
+
+// What the daily engine checks on every run, so it can list the desk without
+// reading each whole post (cards and options make those large).
+function track(d) {
+  const posting = d.posting || {}, posted = d.posted || {}, source = d.source || {};
+  return {
+    asanaTaskGid: posting.asanaTaskGid || null, syncedAt: posting.syncedAt || null, changedAt: posting.changedAt || null,
+    resultsCheckedAt: (d.results && d.results.checkedAt) || null, postedAt: posted.at || null, linksPending: !!posted.linksPending,
+    stale: !!d.stale, pack: source.pack || null, requestAt: (source.request && source.request.at) || null,
+    requestId: (source.request && source.request.id) || null, evergreenId: source.evergreen_id || null,
+  };
+}
 
 async function engineMe(store, args, { who }) {
   const ctx = await context(store, who);
@@ -52,7 +65,7 @@ async function enginePosts(store, args, { who }) {
   const ctx = await context(store, who);
   const team = String(args.team || '');
   if (!E.canEditTeam(ctx, team)) throw err('You are not in that team.', 'ENGINE_NOT_MEMBER');
-  const statuses = args.status ? [String(args.status)].filter((s) => E.STATUSES.includes(s)) : null;
+  const statuses = args.status ? String(args.status).split(',').map((s) => s.trim()).filter((s) => E.STATUSES.includes(s)) : null;
   const rows = await store.enginePosts({ team_ids: [team], statuses, limit: args.limit });
   return json({ team, posts: args.full ? rows : rows.map(lite) });
 }
@@ -77,6 +90,23 @@ async function engineSave(store, args, { who }) {
   });
   if (!saved) return json({ ok: false, conflict: true, error: 'Someone saved this post meanwhile. Reload it and redo your change.' });
   await store.engineEvent({ post_id: post.id, team_id: post.team_id, who, action: 'save', detail: { keys: Object.keys(args.patch || {}), status: post.status } });
+  return json({ ok: true, post: saved });
+}
+
+// Bookkeeping only (lib/engine.js recordAllowed): the post's content and
+// posting plan are untouched, so it works on posted and rejected posts too.
+async function engineRecord(store, args, { who }) {
+  const ctx = await context(store, who);
+  const post = await editablePost(store, ctx, args.id);
+  if (Number(args.version) !== Number(post.version)) {
+    return json({ ok: false, conflict: true, error: 'Someone saved this post meanwhile. Reload it and redo your change.', post });
+  }
+  const allowed = E.recordAllowed(args.patch);
+  if (!allowed.ok) return json({ ok: false, error: allowed.error });
+  const doc = E.mergeDoc(post.doc, args.patch);
+  const saved = await store.engineUpdatePost(post.id, post.version, { doc, title: post.title, post_at: post.post_at, updated_by: who });
+  if (!saved) return json({ ok: false, conflict: true, error: 'Someone saved this post meanwhile. Reload it and redo your change.' });
+  await store.engineEvent({ post_id: post.id, team_id: post.team_id, who, action: 'record', detail: { keys: Object.keys(args.patch) } });
   return json({ ok: true, post: saved });
 }
 
@@ -265,9 +295,10 @@ const obj = (properties, required = []) => ({ type: 'object', properties, requir
 
 const ENGINE_TOOLS = [
   { name: 'engine_me', description: 'Content Engine: who you are, your country teams and the accounts you can publish to. Used by the posts desk.', inputSchema: obj({}), handler: engineMe },
-  { name: 'engine_posts', description: 'Content Engine: the posts in one of your teams (the desk), optionally one status (review, changes, hold, scheduled, posted, rejected). full: true returns each whole post.', inputSchema: obj({ team: { type: 'string' }, status: { type: 'string' }, full: { type: 'boolean' }, limit: { type: 'number' } }, ['team']), handler: enginePosts },
+  { name: 'engine_posts', description: 'Content Engine: the posts in one of your teams (the desk), optionally by status (one, or several comma-separated: review, changes, hold, scheduled, posted, rejected). Each post comes with track (its Asana task, results check, posted time, stale flag and source); full: true returns each whole post instead.', inputSchema: obj({ team: { type: 'string' }, status: { type: 'string' }, full: { type: 'boolean' }, limit: { type: 'number' } }, ['team']), handler: enginePosts },
   { name: 'engine_post', description: 'Content Engine: one whole post from your teams.', inputSchema: obj({ id: { type: 'string' } }, ['id']), handler: enginePost },
   { name: 'engine_save', description: 'Content Engine: save changes to a post (text, graphic, first comment, where and when). patch merges into the post; version must be the one you read, or the save is refused as a conflict.', inputSchema: obj({ id: { type: 'string' }, version: { type: 'number' }, patch: { type: 'object' } }, ['id', 'version', 'patch']), handler: engineSave },
+  { name: 'engine_record', description: 'Content Engine: record bookkeeping on a post in any status, posted and rejected included: results, posted (the real post links and time), stale, and posting.asanaTaskGid / asanaUrl / syncedAt / removedAt. Nothing else; the post itself is saved with engine_save. version must be the one you read.', inputSchema: obj({ id: { type: 'string' }, version: { type: 'number' }, patch: { type: 'object' } }, ['id', 'version', 'patch']), handler: engineRecord },
   { name: 'engine_status', description: 'Content Engine: approve (schedules it; needs publishing rights for every Facebook and Instagram account), hold, changes (needs a note), reject, reopen, or mark as posted (it went out) a post.', inputSchema: obj({ id: { type: 'string' }, version: { type: 'number' }, action: { type: 'string', enum: ['approve', 'hold', 'changes', 'reject', 'reopen', 'posted'] }, note: { type: 'string' }, reasons: { type: 'array', items: { type: 'string' } } }, ['id', 'version', 'action']), handler: engineStatus },
   { name: 'engine_create', description: 'Content Engine: add a new post to Review in one of your teams (the daily engine, "Rework for…" and imports use this).', inputSchema: obj({ team: { type: 'string' }, doc: { type: 'object' }, id: { type: 'string' }, source_team: { type: 'string' }, source_post: { type: 'string' } }, ['team', 'doc']), handler: engineCreate },
   { name: 'engine_copy', description: 'Content Engine: copy a post you can see (yours, or another team\'s scheduled or posted one) into one of your teams as a new draft in Review.', inputSchema: obj({ id: { type: 'string' }, to_team: { type: 'string' } }, ['id', 'to_team']), handler: engineCopy },
