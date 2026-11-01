@@ -64,7 +64,8 @@ Decisions from Christopher Joyce are in brackets with the date._
    from content-engine/evergreen-bank.md (the 3.5x post left out). Later: the monthly run adds new 5x winners.
    The desk's connector manifest: engine_me, engine_posts, engine_save, engine_status, engine_calendar,
    engine_requests, engine_request, engine_evergreen, engine_evergreen_update, engine_connect, engine_media,
-   engine_pause, engine_video, engine_inbox, engine_inbox_act, engine_inbox_undo, engine_inbox_history.
+   engine_pause, engine_video, engine_inbox, engine_inbox_act, engine_inbox_undo, engine_inbox_history, engine_inbox_person,
+   engine_inbox_posts.
 5. ⬜ Until Meta publishing works, "Approve" still hands UK posts to Asana as today.
 6. ◐ Cutover (prepared 1 Nov; nothing switched yet). The daily engine's instructions are ready in
    content-engine/DAILY.md, section "Engine mode", which only applies once the file content-engine/ENGINE_LIVE
@@ -78,7 +79,7 @@ Decisions from Christopher Joyce are in brackets with the date._
       `node scripts/engine-import-board.js <dump>/drafts --apply` with the service key in the shell. Posts nobody
       has edited in the engine are refreshed; ones edited there are left alone.
    3. Publish content-engine/desk.html onto the board URL (SxCXeQPMkaBMNiABjiiULw) from a session whose
-      connector list includes the engine tools, with the 17-tool manifest above.
+      connector list includes the engine tools, with the 19-tool manifest above.
    4. `touch content-engine/ENGINE_LIVE`. The next run works in the engine.
    5. Check the first run: new drafts appear on the desk in Review, nothing was written to the board's `drafts`.
    To go back: delete ENGINE_LIVE and republish review-board.html onto the board URL (its drafts are as they were
@@ -228,7 +229,11 @@ can't have collaborators. Facebook collaborators are added in Meta Business Suit
    voice (the viewer's own allowance, `sample`), and `[ACTION LINK]` must be replaced before sending. Done, Assign
    to me, Label, Like (Facebook), Hide / Unhide, Delete (asks first), Send as private message (Facebook comments);
    Meta actions show "Sending…" with Undo for 10 seconds. Moderation history tab. Tested in a stubbed harness.
-   Not yet: supporter history panel, By post, bulk by topic.
+   By post (built 1 Nov, later): `engine_inbox_posts` groups the last 7 days' comments by post or ad (comments, open,
+   hidden, our replies; most open first; Ads filter); picking one lists its comments, and opening a comment goes to
+   it in Conversations. Supporter history: `engine_inbox_person` (90 days on the team's accounts: comments,
+   messages, on ads, hidden by us, labels, recent) shown above the comment. Tracked-link clicks per person aren't
+   possible (links aren't tied to a Facebook or Instagram user). Not yet: bulk by topic.
 3. ⬜ Later: auto-hide list, pile-on alert, automations (comment to DM), X.
 
 ## Slice 3 onwards

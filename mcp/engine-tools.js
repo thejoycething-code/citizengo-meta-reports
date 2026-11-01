@@ -369,6 +369,43 @@ async function engineInboxUndo(store, args, { who }) {
   return json(done ? { ok: true, cancelled: done } : { ok: false, error: 'Too late to undo: it has already gone to Meta.' });
 }
 
+// Supporter history: one person's comments and messages on the team's
+// accounts in the last 90 days (they're one author_id per platform).
+async function engineInboxPerson(store, args, { who }) {
+  const ctx = await context(store, who);
+  const team = String(args.team || '');
+  if (!E.canEditTeam(ctx, team)) throw err('You are not in that team.', 'ENGINE_NOT_MEMBER');
+  if (!args.author_id) return json({ ok: false, error: 'author_id is needed.' });
+  const since = new Date(Date.now() - 90 * 24 * 3600_000).toISOString();
+  const all = await store.engineInbox({ team_ids: [team], author_id: String(args.author_id), since, limit: 500 });
+  const rows = all.filter((r) => !r.from_us);
+  const labels = [...new Set(rows.flatMap((r) => r.labels || []))];
+  return json({
+    team, author_id: String(args.author_id), author_name: (rows[0] && rows[0].author_name) || null,
+    counts: { comments: rows.filter((r) => r.kind === 'comment').length, messages: rows.filter((r) => r.kind === 'message').length, hidden: rows.filter((r) => r.hidden).length, on_ads: rows.filter((r) => r.is_ad).length },
+    labels, recent: rows.slice(0, 8),
+  });
+}
+
+// By post: the last 7 days' comments grouped by the post or ad they're on,
+// busiest unanswered first.
+async function engineInboxPosts(store, args, { who }) {
+  const ctx = await context(store, who);
+  const team = String(args.team || '');
+  if (!E.canEditTeam(ctx, team)) throw err('You are not in that team.', 'ENGINE_NOT_MEMBER');
+  const days = Math.min(30, Math.max(1, Number(args.days) || 7));
+  const rows = await store.engineInbox({ team_ids: [team], kind: 'comment', since: new Date(Date.now() - days * 24 * 3600_000).toISOString(), limit: 1000 });
+  const by = {};
+  for (const r of rows) {
+    const p = by[r.thread_id] || (by[r.thread_id] = { thread_id: r.thread_id, account_key: r.account_key, platform: r.platform, post_text: r.post_text, post_url: r.post_url, is_ad: r.is_ad, comments: 0, open: 0, hidden: 0, ours: 0, last_at: r.created_at });
+    if (r.from_us) { p.ours++; continue; }
+    p.comments++; if (r.status === 'open') p.open++; if (r.hidden) p.hidden++;
+    if (r.created_at > p.last_at) p.last_at = r.created_at;
+  }
+  const posts = Object.values(by).filter((p) => p.comments).sort((a, b) => b.open - a.open || String(b.last_at).localeCompare(String(a.last_at)));
+  return json({ team, days, posts: args.ads ? posts.filter((p) => p.is_ad) : posts });
+}
+
 async function engineInboxHistory(store, args, { who }) {
   const ctx = await context(store, who);
   const team = String(args.team || '');
@@ -465,6 +502,8 @@ const ENGINE_TOOLS = [
   { name: 'engine_inbox', description: 'Content Engine Inbox: comments and DMs on one of your teams\' Facebook Pages and Instagram accounts, newest first (status open by default, or done, or all; optional platform facebook/instagram, kind comment/message, before an ISO time), with open counts and actions still in their undo window. thread returns one post\'s comments or one conversation, oldest first.', inputSchema: obj({ team: { type: 'string' }, status: { type: 'string', enum: ['open', 'done', 'all'] }, platform: { type: 'string', enum: ['facebook', 'instagram'] }, kind: { type: 'string', enum: ['comment', 'message'] }, thread: { type: 'string' }, before: { type: 'string' }, limit: { type: 'number' } }, ['team']), handler: engineInbox },
   { name: 'engine_inbox_act', description: 'Content Engine Inbox: act on a comment or message. done, reopen, assign (assign_to, or empty to unassign) and label (labels) apply at once. reply, private_reply (Facebook comments, within 7 days), like (Facebook only), hide, unhide and delete go to Meta from the Mini with your own Page token after 10 seconds, so they can be undone; message replies only within 24 hours of their last message.', inputSchema: obj({ id: { type: 'string' }, action: { type: 'string', enum: ['reply', 'private_reply', 'like', 'hide', 'unhide', 'delete', 'done', 'reopen', 'assign', 'label'] }, text: { type: 'string' }, assign_to: { type: 'string' }, labels: { type: 'array', items: { type: 'string' } } }, ['id', 'action']), handler: engineInboxAct },
   { name: 'engine_inbox_undo', description: 'Content Engine Inbox: undo a reply, like, hide, unhide or delete you did, while it is still in its 10-second window (action_id from engine_inbox_act).', inputSchema: obj({ action_id: { type: 'number' } }, ['action_id']), handler: engineInboxUndo },
+  { name: 'engine_inbox_person', description: 'Content Engine Inbox supporter history: one person\'s comments and messages on your team\'s accounts in the last 90 days (author_id from an inbox item), with counts (comments, messages, hidden, on ads), their labels and the most recent.', inputSchema: obj({ team: { type: 'string' }, author_id: { type: 'string' } }, ['team', 'author_id']), handler: engineInboxPerson },
+  { name: 'engine_inbox_posts', description: 'Content Engine Inbox by post: the last days\' comments (7 by default, up to 30) grouped by the post or ad they\'re on, with comment, open, hidden and our-reply counts, most open first; ads: true for ads only. Open one with engine_inbox thread.', inputSchema: obj({ team: { type: 'string' }, days: { type: 'number' }, ads: { type: 'boolean' } }, ['team']), handler: engineInboxPosts },
   { name: 'engine_inbox_history', description: 'Content Engine Inbox moderation history for one of your teams: every reply, hide, delete, like, assignment, label and done, by whom, newest first.', inputSchema: obj({ team: { type: 'string' }, limit: { type: 'number' } }, ['team']), handler: engineInboxHistory },
   { name: 'engine_record', description: 'Content Engine: record bookkeeping on a post in any status, posted and rejected included: results, posted (the real post links and time), stale, and posting.asanaTaskGid / asanaUrl / syncedAt / removedAt. Nothing else; the post itself is saved with engine_save. version must be the one you read.', inputSchema: obj({ id: { type: 'string' }, version: { type: 'number' }, patch: { type: 'object' } }, ['id', 'version', 'patch']), handler: engineRecord },
   { name: 'engine_status', description: 'Content Engine: approve (schedules it; needs publishing rights for every Facebook and Instagram account), hold, changes (needs a note), reject, reopen, or mark as posted (it went out) a post.', inputSchema: obj({ id: { type: 'string' }, version: { type: 'number' }, action: { type: 'string', enum: ['approve', 'hold', 'changes', 'reject', 'reopen', 'posted'] }, note: { type: 'string' }, reasons: { type: 'array', items: { type: 'string' } } }, ['id', 'version', 'action']), handler: engineStatus },
