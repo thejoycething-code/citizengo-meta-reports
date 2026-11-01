@@ -2159,7 +2159,9 @@ function renderAccess(){const el=$("#stAccess");if(!el)return;const A=ACC.data;
       ${p.accounts.map(a=>cell(p,a)).join("")}
       <td class="acx"><label class="ack"><input type="checkbox" data-acc-kind="analytics" data-who="${esc(p.who)}" data-key="*"${p.analytics?" checked":""}${edit?"":" disabled"}>On</label></td></tr>`}).join("");
   el.innerHTML=`<div class="ibd"><b>Team and access</b><p class="src" style="margin:0">What each person can do on each account. It starts from their own Facebook role (ⓕ); ✎ means it was set up by hand until they connect. ${edit?"As an admin you can turn things off for someone, and back on again, but never give more than Facebook allows.":"Only the team's admins can change access."} Initials go into tracked links in replies and DMs: use the ones Copilot shows for them (yours: ${esc(((A.people.find(p=>p.who.toLowerCase()===me)||{}).initials)||"not set")}).</p>
-    <div class="awrap"><table class="atbl acc">${head}${rows}</table></div></div>`}
+    <div class="awrap"><table class="atbl acc">${head}${rows}</table></div>
+    ${edit&&window.deskInvite?`<div class="aurow" style="margin-top:6px"><b>Invite someone</b><input type="text" id="invWho" maxlength="40" placeholder="Desk name, e.g. tobias" class="acini" style="width:12em;text-transform:none"><select id="invRole" class="calctry"><option value="editor">Editor</option><option value="admin">Admin</option></select><button class="btn small primary" data-acc-invite>Create invite link</button></div>
+    <p class="src" style="margin:0">The link works once, for 7 days. They sign in with Facebook and join ${esc(((S.teams||[]).find(t=>t.id===S.team)||{}).name||"this team")}. While the Meta app is in development mode, add them under App roles first.</p><div id="invOut"></div>`:""}</div>`}
 /* Tools › Page Inviter [gaps §10]: the Chrome extension that invites people
    who reacted to our posts to like the Page. Version, install, what's new,
    the guide, and who in the team uses it (page_inviter_usage). Update
@@ -2191,6 +2193,9 @@ function renderSettings(){const el=$("#stBody");if(!el)return;const rights=new S
   if(!$("#stAccess")){const d=document.createElement("div");d.id="stAccess";el.after(d)}
   if(!ACC.data||ACC.team!==S.team)loadAccess();else renderAccess();
   renderConnect()}
+document.addEventListener("click",async ev=>{if(!ev.target.closest("[data-acc-invite]"))return;const who=String($("#invWho")?.value||"").trim().toLowerCase();if(!who){toast("Give the desk name first");return}
+  try{const r=await window.deskInvite({who,team_id:S.team,role:$("#invRole")?.value||"editor"});const out=$("#invOut");if(out)out.innerHTML=`<div class="aurow"><input type="text" readonly value="${esc(r.link)}" class="acini" style="flex:1;min-width:200px;text-transform:none"><button class="btn small" data-inv-copy>Copy</button><span class="src">expires ${esc(new Date(r.expires_at).toLocaleDateString("en-GB",{day:"numeric",month:"short"}))}</span></div>`}catch(e){toast(e.message||"Couldn't create the invite")}});
+document.addEventListener("click",async ev=>{if(!ev.target.closest("[data-inv-copy]"))return;const i=$("#invOut input");try{await navigator.clipboard.writeText(i.value);toast("Invite link copied: send it to them directly")}catch(e){i.select()}});
 document.addEventListener("change",ev=>{const k=ev.target.closest("[data-acc-kind]");if(k){accessChange({action:"limit",who:k.dataset.who,account_key:k.dataset.key,[k.dataset.accKind]:k.checked});return}
   const i=ev.target.closest("[data-acc-ini]");if(i){const v=i.value.trim().toUpperCase();if(!/^[A-Z]{2,3}$/.test(v)){toast("Initials are 2 or 3 letters, e.g. CJO");return}accessChange({action:"initials",who:i.dataset.accIni,initials:v})}});
 document.addEventListener("click",ev=>{const n=ev.target.closest("[data-nav]");if(n){navGo(n.dataset.nav);return}

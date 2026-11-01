@@ -63,7 +63,9 @@ module.exports = async (req, res) => {
       const tool = body && String(body.tool || '');
       if (!DESK_TOOLS.has(tool)) return send(res, 400, { error: `The desk can't call ${tool || 'that'}.`, code: 'tool_error' });
       try {
+        const t0 = Date.now();
         const out = await callTool(store(), tool, (body && body.input) || {}, { who });
+        console.log(JSON.stringify({ at: new Date().toISOString(), who, tool, ms: Date.now() - t0, event: 'desk/call' }));
         let payload = out.text;
         if (out.raw) { try { payload = JSON.parse(out.text); } catch (e) { payload = out.text; } }
         return send(res, 200, { payload, isError: !!out.isError });
@@ -81,6 +83,11 @@ module.exports = async (req, res) => {
         const out = await D.docsPut(String(body.collection || ''), body.id, body.data, who, { merge: !!body.merge });
         return send(res, 200, { ok: true, id: out.id });
       }
+    }
+    if (op === 'upload' && req.method === 'POST') {
+      const body = (await readBody(req)) || {};
+      try { return send(res, 200, await D.signedUpload({ type: String(body.type || ''), size: Number(body.size) })); }
+      catch (e) { return send(res, e.status || 500, { error: e.message, code: e.code || null }); }
     }
     if (op === 'invite' && req.method === 'POST') {
       const body = (await readBody(req)) || {};

@@ -122,8 +122,20 @@
     async limits() { return { images: false }; },
   });
 
-  const caps = { mcp, user, db, downloads, sample, room: null, assets: null };
+  // Photo upload: a signed link from the desk API, then straight to storage.
+  const assets = {
+    async upload(file) {
+      const s = await api('upload', { method: 'POST', body: { type: file.type, size: file.size } });
+      const r = await fetch(s.upload_url, { method: 'PUT', headers: { 'Content-Type': file.type, 'x-upsert': 'false' }, body: file });
+      if (!r.ok) throw Object.assign(new Error('Upload failed'), { code: r.status === 413 ? 'too_large' : 'upload_failed' });
+      return { id: s.id, url: s.url, sizeBytes: file.size, contentType: file.type };
+    },
+  };
+  const invite = (body) => api('invite', { method: 'POST', body });
+
+  const caps = { mcp, user, db, downloads, sample, room: null, assets };
   window.claude = { use: async (name) => (name in caps ? caps[name] : null) };
   window.DESK_WEB = true;
+  window.deskInvite = invite;
   window.deskSignOut = async () => { try { await api('logout', { method: 'POST' }); } catch (e) {} location.href = '/desk/login'; };
 })();
