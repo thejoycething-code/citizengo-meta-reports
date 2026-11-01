@@ -2713,8 +2713,10 @@ setInterval(()=>{if(S.view==="inbox"&&!IB.topics&&document.visibilityState==="vi
    original credited; nothing here posts anything. */
 const LS={tab:"digest",data:null,err:null,loading:false,done:new Set(),lang:"",ho:false,to:null,shares:[],reqs:null,reqsTeam:null};
 const LS_LANG={en:"English",es:"Spanish",pt:"Portuguese",fr:"French",it:"Italian",de:"German",pl:"Polish",hu:"Hungarian",sk:"Slovak",nl:"Dutch",hr:"Croatian"};
-async function loadListening(){if(LS.loading)return;LS.loading=true;LS.err=null;renderListening();
-  try{if(LS.tab==="mentions"){const r=await eng("engine_inbox",{team:S.team,kind:"mention",status:"all",limit:100});LS.data={tab:"mentions",items:(r.items||[]).filter(i=>Date.now()-Date.parse(i.created_at)<=7*864e5)}}else if(LS.tab==="digest")LS.data=await loadDigest();else if(LS.tab==="topics")LS.data=await loadTopics();else LS.data=await eng("engine_listening",{tab:LS.tab,team:S.team,...(LS.tab==="allies"?{country:"UK"}:{})})}catch(e){LS.err=e;LS.data=null}finally{LS.loading=false;renderListening()}}
+async function loadListening(fresh){if(LS.loading)return;const key=`ls:${LS.tab}:${S.team}`;
+  if(!fresh&&!["mentions","digest"].includes(LS.tab)&&VIEW_MEMO[key]&&Date.now()-VIEW_MEMO[key].t<10*60e3){LS.data=VIEW_MEMO[key].d;LS.err=null;renderListening();return}
+  LS.loading=true;LS.err=null;renderListening();LS.fresh=!!fresh;
+  try{if(LS.tab==="mentions"){const r=await eng("engine_inbox",{team:S.team,kind:"mention",status:"all",limit:100});LS.data={tab:"mentions",items:(r.items||[]).filter(i=>Date.now()-Date.parse(i.created_at)<=7*864e5)}}else if(LS.tab==="digest")LS.data=await loadDigest();else if(LS.tab==="topics")LS.data=await loadTopics();else LS.data=await eng("engine_listening",{tab:LS.tab,team:S.team,...(LS.tab==="allies"?{country:"UK"}:{}),...(fresh?{fresh:true}:{})});if(LS.data&&!["mentions","digest"].includes(LS.tab))VIEW_MEMO[key]={d:LS.data,t:Date.now()}}catch(e){LS.err=e;LS.data=null}finally{LS.loading=false;LS.fresh=false;renderListening()}}
 /* Digest: only what crossed a line in the last 48 hours, from the same tools,
    with a suggested owner by country. Nothing is sent anywhere. */
 const DG_X=10,DG_OPP_X=5,DG_MS=48*3600e3;
@@ -2732,7 +2734,7 @@ async function loadDigest(){const [al,cg,op,ib]=await Promise.all([eng("engine_l
 /* Topics: the hashtags, links and names that two or more posts share, across
    allies, opponents and other CitizenGO Pages. */
 async function loadTopics(){const src=[["allies","Allies"],["opponents","Opponents"],["citizengo","CitizenGO"]];
-  const rs=await Promise.all(src.map(([k])=>eng("engine_listening",{tab:k,team:S.team}).catch(()=>null)));const by={};
+  const rs=await Promise.all(src.map(([k])=>eng("engine_listening",{tab:k,team:S.team,...(LS.fresh?{fresh:true}:{})}).catch(()=>null)));const by={};
   rs.forEach((r,i)=>{for(const t of (r&&r.topics)||[]){const o=by[t.key]=by[t.key]||{key:t.key,kind:t.kind,posts:0,accounts:0,best_x:0,from:[]};o.posts+=t.posts;o.accounts+=t.accounts;o.best_x=Math.max(o.best_x,t.best_x||0);o.from.push(src[i][1])}});
   return{tab:"topics",topics:Object.values(by).sort((a,b)=>b.from.length-a.from.length||b.accounts-a.accounts||b.posts-a.posts).slice(0,25)}}
 function lsTeamPick(){const ts=S.teams||[];if(ts.length<2)return"";const to=LS.to||S.team;return `<label class="src">Rework for <select data-ls-to class="calctry">${ts.map(x=>`<option value="${esc(x.id)}"${x.id===to?" selected":""}>${esc(((x.flag||"")+" "+x.name).trim())}</option>`).join("")}</select></label>`}
@@ -2741,7 +2743,7 @@ function lsShares(){const l=(LS.shares||[]).filter(x=>x.team===S.team&&Date.now(
 function renderListening(){const el=$("#lsView");if(!el||el.hidden)return;const D=LS.data,t=(S.teams||[]).find(x=>x.id===S.team);
   const tabs=["citizengo","allies","opponents","topics"].includes(LS.tab)?[["allies","Allies"],["opponents","Opponents"],["citizengo","Other CitizenGO Pages"],["topics","Topics"]]:[];
   const lede={mentions:"People and organisations tagging our Pages and Instagram accounts in their own posts, last 7 days. Thank them or share it from Facebook or Instagram; open one in the Inbox to assign or label it.",topics:"What's being talked about: hashtags, links and names that two or more posts share this week, across allies, opponents and other CitizenGO Pages. Seen in more than one place first.",digest:"Only what crossed a line in the last 48 hours: a pile-on on our Pages, allies converging on a story, breakouts at 10× their normal, opponents at 5× and their new ads. What's moving, who's moving it, the evidence and a suggested owner.",citizengo:"Other CitizenGO Pages' posts doing at least 3× their own normal views in the last 30 days. Good ideas worth reworking for your audience.",allies:"Allied organisations' Instagram posts at 3× their own normal (likes and comments) in the last 10 days, UK accounts first.",opponents:"Organisations campaigning against us: Instagram posts beating their own normal this week, and the issue ads they started (Meta Ad Library)."}[LS.tab];
-  const head=`<div><h2>Listening</h2><p class="lede">${esc(lede)}</p></div><div class="egbar"><span class="tabs">${tabs.map(([k,l])=>`<button class="tab" data-ls-tab="${k}" aria-pressed="${LS.tab===k}">${l}</button>`).join("")}</span><button class="btn small" data-ls="refresh">${LS.loading?"Loading…":"Refresh"}</button></div>`;
+  const head=`<div><h2>Listening</h2><p class="lede">${esc(lede)}</p></div><div class="egbar"><span class="tabs">${tabs.map(([k,l])=>`<button class="tab" data-ls-tab="${k}" aria-pressed="${LS.tab===k}">${l}</button>`).join("")}</span><button class="btn small" data-ls="refresh">${LS.loading?"Loading…":"Refresh"}</button>${!LS.loading&&LS.data&&LS.data.cached_at?`<span class="src">${updatedLine(LS.data.cached_at)}</span>`:""}</div>`;
   if(LS.err){el.innerHTML=head+`<p class="offline">Couldn't load Listening (${esc(whyFailed(LS.err))}).</p>`;return}
   if(!D){el.innerHTML=head+`<p class="src">${LS.loading?"Loading…":"Nothing yet."}</p>`;return}
   if(D.tab==="mentions"){el.innerHTML=head+(D.items.length?`<div class="lgrid">${D.items.map(i=>`<div class="lcard"><div class="top"><b>${esc(i.author_name||"Someone")}</b><span class="src">tagged ${esc(accLabel(i.account_key))} · ${esc(ibWhen(i.created_at))}${i.status==="done"?" · done":""}</span></div><p>${esc(i.text||"(no text)")}</p><div class="ibacts">${i.post_url?`<a class="btn small" href="${esc(i.post_url)}" target="_blank" rel="noopener">Open their post ↗</a>`:""}<button class="btn small" data-ls-mention="${esc(i.id)}">Open in the Inbox</button></div></div>`).join("")}</div>`:`<p class="src">No mentions in the last 7 days. They're read every few minutes once someone in the team has connected Facebook.</p>`);return}
@@ -2770,7 +2772,7 @@ document.addEventListener("click",async ev=>{const sh=ev.target.closest("[data-l
 });
 document.addEventListener("click",async ev=>{const mo=ev.target.closest("[data-ls-mention]");if(mo&&LS.data){const it=(LS.data.items||[]).find(x=>x.id===mo.dataset.lsMention);if(it){IB.tab="inbox";IB.filter="mention";IB.status=it.status==="done"?"done":"open";IB.open=it;IB.thread=[];setView("inbox")}return}
   const tb=ev.target.closest("[data-ls-tab]");if(tb){LS.tab=tb.dataset.lsTab;LS.data=null;loadListening();return}
-  if(ev.target.closest('[data-ls="refresh"]')){loadListening();return}
+  if(ev.target.closest('[data-ls="refresh"]')){loadListening(true);return}
   const cv=ev.target.closest("[data-ls-conv]");if(cv&&LS.data){const c=LS.data.converging[Number(cv.dataset.lsConv)];if(!c)return;const tm=new Date();tm.setDate(tm.getDate()+1);cv.disabled=true;
     try{const r=await eng("engine_request",{action:"create",team:S.team,for_date:tm.toISOString().slice(0,10),source:"idea",title:`Converging story: ${c.key}`,angle:`${c.accounts} allied accounts used "${c.key}" in the last 48 hours: ${c.posts.map(p=>`${p.who} ${p.url||""}`).join("; ")}. Check the facts against a primary source, then write our own post on it for our audience, with our live petition if one fits.`.slice(0,1000)});
       if(r&&r.ok!==false){LS.done.add("conv:"+c.key);toast("Requested: tomorrow's run drafts it into Review.");renderListening()}else{toast((r&&r.error)||"Couldn't request it");cv.disabled=false}}catch(e){failToast(e,"Couldn't request it");cv.disabled=false}return}
@@ -2815,8 +2817,15 @@ function trendBlock(D){const T=D.trend;if(!T||!T.series||!T.weeks)return"";
     <div class="alegend">${lines.map(([nm,c,d])=>`<span><i style="background:${d?"transparent":c};${d?`border-top:2px dashed ${c};height:0`:""}"></i>${esc(nm)}</span>`).join("")}</div>
     ${trendSvg(T,AN.metric)||'<p class="src" style="margin:0">No weekly figures for this window.</p>'}
     <p class="src" style="margin:0">${AN.metric==="reach"?"Reach is each day's reach added up across the week, so someone seen on two days counts twice.":AN.metric==="net"?"Follows minus unfollows, from Meta's daily figures.":"Reactions, comments, shares and clicks on the Page."} The grey dashed line is the median CitizenGO Page each week.</p><div class="atip" id="anTip" hidden></div></div>`}
-async function loadAnalytics(){if(AN.loading)return;AN.loading=true;AN.err=null;renderAnalytics();
-  try{AN.data=await eng("engine_analytics",{scope:AN.scope,days:AN.days,...(AN.scope==="team"?{team:S.team}:{})})}catch(e){AN.err=e;AN.data=null}finally{AN.loading=false;renderAnalytics()}}
+/* Analytics and Listening answers are kept on the server for 10 minutes and in
+   this page while it's open, so going back to a view is instant; Refresh asks
+   for fresh figures. */
+const VIEW_MEMO={};
+function updatedLine(at){if(!at)return"";const m=Math.round((Date.now()-Date.parse(at))/60000);return m<1?"updated just now":`updated ${m} min ago`}
+async function loadAnalytics(fresh){if(AN.loading)return;const key=`an:${AN.scope}:${AN.days}:${AN.scope==="team"?S.team:""}`;
+  if(!fresh&&VIEW_MEMO[key]&&Date.now()-VIEW_MEMO[key].t<10*60e3){AN.data=VIEW_MEMO[key].d;AN.err=null;renderAnalytics();return}
+  AN.loading=true;AN.err=null;renderAnalytics();
+  try{AN.data=await eng("engine_analytics",{scope:AN.scope,days:AN.days,...(AN.scope==="team"?{team:S.team}:{}),...(fresh?{fresh:true}:{})});VIEW_MEMO[key]={d:AN.data,t:Date.now()}}catch(e){AN.err=e;AN.data=null}finally{AN.loading=false;renderAnalytics()}}
 const anN=v=>v===null||v===undefined?"—":Number(v).toLocaleString("en-GB",{maximumFractionDigits:1});
 const anS=v=>v===null||v===undefined?"—":(v>0?"+":"")+anN(v);
 /* Account picker [gaps §9]: search, platform filter, tick accounts, compare
@@ -2852,7 +2861,7 @@ function renderAnalytics(){const el=$("#anView");if(!el||el.hidden)return;const 
   const k=D.kpis||{};
   const kp=(v,l,sub)=>`<div class="akpi"><b>${v}</b><span>${l}${sub?` · ${sub}`:""}</span></div>`;
   const kpis=`<div class="akpis">${kp(anN(k.reach),"Facebook reach","people who saw anything")}${kp(anN(k.views),"Page views")}${kp(anN(k.engagements),"Engagements")}${kp(anN(k.followers),"Facebook followers",k.net_follows!=null?anS(k.net_follows)+" net":"")}${kp(anS(k.net_follows),"Facebook net follows","follows minus unfollows")}${anGrowing(D)}${kp(anN(k.ig_followers),"Instagram followers",k.ig_new!=null?`+${anN(k.ig_new)} new`:"")}${D.x&&D.x.length?kp(anN(k.x_impressions),"X impressions"):""}</div>
-    <p class="src" style="margin:0">${D.counts.facebook_pages} Facebook Page${D.counts.facebook_pages===1?"":"s"} · ${D.counts.instagram} Instagram · ${D.counts.x} X · last ${D.days} days to ${esc(D.to)}${AN.loading?" · refreshing…":""}</p>`;
+    <p class="src" style="margin:0">${D.counts.facebook_pages} Facebook Page${D.counts.facebook_pages===1?"":"s"} · ${D.counts.instagram} Instagram · ${D.counts.x} X · last ${D.days} days to ${esc(D.to)}${AN.loading?" · refreshing…":D.cached_at?` · ${updatedLine(D.cached_at)} · <button class="btn small" data-an-refresh>Refresh</button>`:""}</p>`;
   const maxR=Math.max(1,...(D.pages||[]).map(p=>p.reach||0));
   const pagesT=(D.pages||[]).length?`<div class="awrap"><table class="atbl"><thead><tr><th>Page</th><th class="n">Reach</th><th style="width:30%"></th><th class="n">Followers</th><th class="n">Net follows</th></tr></thead><tbody>${D.pages.filter(p=>anPicked(D,"facebook",p.name)).map(p=>`<tr><td>${esc(p.name)}</td><td class="n">${anN(p.reach)}</td><td><div class="abar" style="width:${Math.round(100*(p.reach||0)/maxR)}%"></div></td><td class="n">${anN(p.followers)}</td><td class="n">${anS(p.net)}</td></tr>`).join("")}</tbody></table></div>`:"";
   const igT=(D.instagram||[]).length?`<div class="awrap"><table class="atbl"><thead><tr><th>Instagram</th><th class="n">Followers</th><th class="n">New</th><th class="n">Unfollows</th><th class="n">Net</th></tr></thead><tbody>${D.instagram.filter(r=>anPicked(D,"instagram",r.name)).map(r=>`<tr><td>@${esc(r.name)}</td><td class="n">${anN(r.followers)}</td><td class="n">${anN(r.new)}</td><td class="n">${anN(r.unfollows)}</td><td class="n">${r.net===null?"—":anS(r.net)}</td></tr>`).join("")}</tbody></table></div><p class="src" style="margin:0">Net shows only when unfollows were measured every day of the window.</p>`:"";
@@ -2900,7 +2909,7 @@ document.addEventListener("mousemove",ev=>{const r=ev.target.closest&&ev.target.
   const rows=T.series.map((sr,k)=>[sr.name,sr[m][i],`var(--s${k+1})`]).concat([[T.median.name,T.median[m][i],"var(--s-med)"]]);
   tip.innerHTML=`<b>Week of ${esc(new Date(T.weeks[i]+"T12:00:00Z").toLocaleDateString("en-GB",{day:"numeric",month:"short"}))}</b>${rows.map(([nm,v,c])=>`<div><i style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${c};margin-right:5px"></i>${esc(nm)}: ${v==null?"—":anN(v)}</div>`).join("")}`;
   tip.hidden=false;const bx=box.getBoundingClientRect();let left=ev.clientX-bx.left+12;if(left+tip.offsetWidth>bx.width)left=ev.clientX-bx.left-tip.offsetWidth-12;tip.style.left=Math.max(4,left)+"px";tip.style.top=(ev.clientY-bx.top+12)+"px"});
-document.addEventListener("click",ev=>{const pl=ev.target.closest("[data-an-plat]");if(pl){AN.platform=pl.dataset.anPlat;renderAnalytics();return}const mt=ev.target.closest("[data-an-metric]");if(mt){AN.metric=mt.dataset.anMetric;renderAnalytics();return}const a=ev.target.closest("[data-an-scope],[data-an-days]");if(!a)return;if(a.dataset.anScope)AN.scope=a.dataset.anScope;if(a.dataset.anDays)AN.days=Number(a.dataset.anDays);loadAnalytics()});
+document.addEventListener("click",ev=>{const pl=ev.target.closest("[data-an-plat]");if(pl){AN.platform=pl.dataset.anPlat;renderAnalytics();return}const mt=ev.target.closest("[data-an-metric]");if(mt){AN.metric=mt.dataset.anMetric;renderAnalytics();return}if(ev.target.closest("[data-an-refresh]")){loadAnalytics(true);return}const a=ev.target.closest("[data-an-scope],[data-an-days]");if(!a)return;if(a.dataset.anScope)AN.scope=a.dataset.anScope;if(a.dataset.anDays)AN.days=Number(a.dataset.anDays);loadAnalytics()});
 function renderEvergreen(){
   const el=$("#egView");if(!el||el.hidden)return;
   const by=k=>EG.posts.filter(p=>p.state===k);const tabs=[["due","Due now"],["coming","Coming up"],["resting","Resting"],["retired","Retired"]];
