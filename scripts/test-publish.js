@@ -92,12 +92,16 @@ const quiet = () => {};
     const video = { prefix: 'uk/pv/video-abcdefgh', parts: 3, size: file.length, sha256: sha, mime: 'video/mp4' };
     const sv = engine();
     const pieces = [file.slice(0, 2000), file.slice(2000, 4000), file.slice(4000)];
+    sv.removed = [];
+    sv.engineMediaFolders = async (prefix) => prefix === 'uk/pv' ? ['video-abcdefgh', 'video-old12345', 'notes'] : [];
+    sv.engineMediaList = async (prefix) => prefix.endsWith('video-abcdefgh') ? ['000.part', '001.part', '002.part'].map((name) => ({ name, size: 1 })) : prefix.endsWith('video-old12345') ? [{ name: '000.part', size: 1 }] : [];
+    sv.engineMediaRemove = async (paths) => { sv.removed.push(...paths); };
     sv.engineMediaDownload = async (path) => { const i = Number(path.slice(-8, -5)); return path.startsWith(video.prefix) && pieces[i] ? Buffer.from(pieces[i]) : null; };
     eq('content: a video post with no uploaded video is held with a clear reason', [P.contentFor({ final: { facebook: { text: 'x', video: true } } }, 'facebook').ok, /Video to publish/.test(P.contentFor({ final: { facebook: { text: 'x', video: true } } }, 'facebook').error)], [false, true]);
     eq('assemble: the pieces join into exactly the file the desk sent', (await P.assembleVideo(sv, video)).equals(file), true);
     let bad = null; try { await P.assembleVideo(sv, { ...video, sha256: 'a'.repeat(64) }); } catch (e) { bad = e.message; }
     eq('assemble: a mismatch is refused', /doesn't match/.test(bad || ''), true);
-    const vfinal = { facebook: { text: 'Watch.', comment: 'Sign: https://cgo.ac/z', media: [], video }, instagram: { text: 'Watch. Link in bio', comment: '', media: [], video } };
+    const vfinal = { facebook: { text: 'Watch.', comment: 'Sign: https://cgo.ac/z', media: [], video }, instagram: { text: 'Watch. Link in bio', comment: '', media: [], video, cover: 'uk/pv/instagram-0-cover.jpg' } };
     addPost(sv, 'pv', { review: approved, final: vfinal, posting: { destinations: ['uk-fb', 'uk-ig'], at: '2026-11-03T14:00:00Z' } });
     const calls = []; let polls = 0;
     const fetchImpl = async (u, opts = {}) => {
@@ -119,7 +123,9 @@ const quiet = () => {};
     const igUp = calls.find((c) => c.host === 'rupload.facebook.com');
     eq('video: Facebook gets the whole file as a Page video with the text, then the first comment', [tv.published, fbUp.path, fbUp.body.description, fbUp.body.source, calls.some((c) => c.path === 'v777/comments')], [2, '105/videos', 'Watch.', `blob:${file.length}`, true]);
     eq('video: Instagram gets a resumable Reel, waits until it is processed, then publishes', [calls.find((c) => c.path === '178/media').body.media_type, igUp.body.bytes, igUp.headers.file_size, polls, pv.doc.published['uk-ig'].url], ['REELS', file.length, String(file.length), 2, 'https://www.instagram.com/reel/xyz/']);
-    eq('video: no public link to the file was ever made', calls.some((c) => JSON.stringify(c.body).includes('signed')), false);
+    eq('video: no public link to the file was ever made', calls.some((c) => JSON.stringify(c.body).includes('signed') && !c.body.cover_url), false);
+    eq('video: once everything is out the stored pieces are removed, and it is Posted', [sv.removed, pv.doc.videoPieces.removed, pv.status], [['uk/pv/video-abcdefgh/000.part', 'uk/pv/video-abcdefgh/001.part', 'uk/pv/video-abcdefgh/002.part', 'uk/pv/video-old12345/000.part'], 4, 'posted']);
+    eq('video: the Reel cover goes as a short-lived link to the stored image', calls.find((c) => c.path === '178/media').body.cover_url, 'https://db.example/signed/uk/pv/instagram-0-cover.jpg?token=t');
   }
 
   // Instagram Stories: their own slot, frame by frame, never twice.
@@ -150,6 +156,25 @@ const quiet = () => {};
     await run({ store: sf, privateKey: keys.privateKey, live: true, now: NOW, log: quiet, fetchImpl });
     const pf = sf.db.posts[0];
     eq('stories: a failure after some frames are up says how many and is never retried', [!!pf.doc.published['uk-ig'], /2 of 3/.test(pf.doc.publishErrors['uk-ig:story'].message), pf.doc.publishErrors['uk-ig:story'].tries, P.plan([pf], sf.db.teams, NOW + 60_000).map((i) => i.action)], [true, true, P.MAX_TRIES, ['gave_up']]);
+  }
+
+  // Facebook Page Stories.
+  {
+    const sfb = engine();
+    addPost(sfb, 'pfs', { review: approved, final: { facebook: final.facebook, story: { media: ['uk/pfs/story-0-a.jpg', 'uk/pfs/story-1-b.jpg'], skipped: 0 } }, posting: { destinations: ['uk-fb'], at: '2026-11-03T14:00:00Z', story: true } });
+    eq('fb stories: a Facebook destination with story ticked gets a story slot too', P.plan(await sfb.enginePosts(), sfb.db.teams, NOW).map((i) => i.slot), ['uk-fb', 'uk-fb:story']);
+    const fc = []; let ph = 0;
+    const fetchImpl = async (u, opts = {}) => {
+      const url = new URL(u); const params = Object.fromEntries(new URLSearchParams(opts.body || url.search)); fc.push({ path: url.pathname.replace(/^\/v[\d.]+\//, ''), params });
+      const ok = (b) => ({ ok: true, status: 200, json: async () => b });
+      if (url.pathname.endsWith('/105/photos')) return ok(params.published === 'false' ? { id: `ph${++ph}` } : { id: 'ph0', post_id: '105_900' });
+      if (url.pathname.endsWith('/105/photo_stories')) return ok({ success: true, post_id: `st-${params.photo_id}` });
+      if (url.pathname.endsWith('/comments')) return ok({ id: 'cm' });
+      return ok({});
+    };
+    await run({ store: sfb, privateKey: keys.privateKey, live: true, now: NOW, log: quiet, fetchImpl });
+    const pfs = sfb.db.posts[0];
+    eq('fb stories: each frame is an unpublished photo, then a photo story, in order; then Posted', [fc.filter((c) => c.path === '105/photo_stories').map((c) => c.params.photo_id), pfs.doc.published['uk-fb:story'].frames, pfs.status], [['ph1', 'ph2'], 2, 'posted']);
   }
 
   // Instagram collabs.
