@@ -563,9 +563,10 @@ async function engineAnalytics(store, args, { who }) {
   // 12-week trend: weekly reach, net follows and engagements for the scope's
   // biggest Pages (a team: all of its own), against the median CitizenGO Page.
   const trend = await weeklyTrend(store, { pagesAll, inScope, scope });
+  const inbox = team ? await inboxFigures(store, team.id, days) : null;
 
   return json({
-    scope, team: team ? team.id : null, days, to: new Date().toISOString().slice(0, 10), trend,
+    scope, team: team ? team.id : null, days, to: new Date().toISOString().slice(0, 10), trend, inbox,
     counts: { facebook_pages: pageIds.size, instagram: ig.length, x: x.length },
     kpis: {
       reach: sumOf(fb.map((r) => r.reach)), views: sumOf(fb.map((r) => r.views)), engagements: sumOf(fb.map((r) => r.engagements)),
@@ -615,6 +616,30 @@ async function engineListening(store, args, { who }) {
     format: r.media_product_type || r.media_type || null, likes: r.like_count, comments: r.comments_count, x: r.vs_median === null || r.vs_median === undefined ? null : Number(r.vs_median), settled: !!r.settled }));
   const ads = tab === 'opponents' ? ((out && out.ads) || []).slice(0, 40).map((a) => ({ who: a.label || a.page_name, started: a.delivery_start, running: !a.delivery_stop, spend_lower: Number(a.spend_lower) || 0, spend_upper: Number(a.spend_upper) || Number(a.spend_lower) || 0, currency: a.currency || null, title: a.link_titles || a.bodies || null, url: a.snapshot_url || null })) : [];
   return json({ tab, days, min_multiple: minX, posts, ads, note: out && !out.rows ? String(out.text || '').slice(0, 300) : null });
+}
+
+// The Inbox's own figures for a team's Analytics (Phase 2): what came in, how
+// much we answered and how fast, and what was hidden or deleted, in the window.
+async function inboxFigures(store, teamId, days, now = Date.now()) {
+  const since = new Date(now - days * 864e5).toISOString();
+  const [items, actions] = await Promise.all([
+    store.engineInbox({ team_ids: [teamId], since, limit: 1000 }),
+    store.engineInboxActions({ team_ids: [teamId], statuses: ['done'], limit: 1000 }),
+  ]);
+  const theirs = items.filter((i) => !i.from_us);
+  const answered = theirs.filter((i) => i.replied_at);
+  const mins = answered.map((i) => (Date.parse(i.replied_at) - Date.parse(i.created_at)) / 60000).filter((m) => m >= 0);
+  const recent = actions.filter((a) => a.created_at >= since);
+  const count = (pred) => recent.filter(pred).length;
+  return {
+    comments: theirs.filter((i) => i.kind === 'comment').length, messages: theirs.filter((i) => i.kind === 'message').length,
+    answered: answered.length, answered_pct: theirs.length ? Math.round((100 * answered.length) / theirs.length) : null,
+    median_reply_minutes: mins.length ? Math.round(median(mins)) : null,
+    replies: count((a) => a.action === 'reply'), private_replies: count((a) => a.action === 'private_reply'),
+    hidden: count((a) => a.action === 'hide' && !(a.detail && a.detail.auto)), auto_hidden: count((a) => a.action === 'hide' && a.detail && a.detail.auto),
+    deleted: count((a) => a.action === 'delete'), on_ads: theirs.filter((i) => i.is_ad).length,
+    capped: items.length >= 1000,
+  };
 }
 
 const WEEKS = 12;
