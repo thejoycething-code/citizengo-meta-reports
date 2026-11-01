@@ -44,6 +44,7 @@ async function engineMe(store, args, { who }) {
     teams: ctx.teams.filter((t) => E.canEditTeam(ctx, t.id)).map((t) => ({ ...t, role: ctx.myTeams[t.id] || 'maintainer' })),
     all_teams: ctx.teams.map((t) => ({ id: t.id, name: t.name, flag: t.flag })),
     publish_rights: rights.map((r) => r.account_key),
+    connected_rights: rights.filter((r) => r.source === 'meta').map((r) => r.account_key),
   });
 }
 
@@ -222,6 +223,18 @@ async function engineEvergreenUpdate(store, args, { who }) {
   return json({ ok: true, post: row ? { ...row, ...E.evergreenState(row, today) } : null });
 }
 
+// Slice 2: the "Connect Facebook" link for the signed-in person. The link
+// names them, lasts ten minutes, and starts api/fb/authorize.js.
+async function engineConnect(store, args, { who }) {
+  await context(store, who);
+  const fbflow = require('../lib/fbflow');
+  const cfg = fbflow.config();
+  if (!cfg.ok) return json({ ok: false, configured: false, error: 'Connecting Facebook is not switched on yet.' });
+  const origin = String(process.env.PUBLIC_ORIGIN || '').replace(/\/+$/, '');
+  if (!origin) return json({ ok: false, configured: false, error: 'Connecting Facebook is not switched on yet.' });
+  return json({ ok: true, configured: true, url: `${origin}/api/fb/authorize?t=${encodeURIComponent(fbflow.signLink(cfg.secret, who))}`, expires_in: 600 });
+}
+
 const obj = (properties, required = []) => ({ type: 'object', properties, required, additionalProperties: false });
 
 const ENGINE_TOOLS = [
@@ -236,6 +249,7 @@ const ENGINE_TOOLS = [
   { name: 'engine_request', description: 'Content Engine Plan: ask the daily engine to draft a post for a date (action create: team, for_date YYYY-MM-DD, title, optional angle, source key_date or idea), cancel an open request (action cancel: id), or record that it was drafted (action drafted: id, post_id).', inputSchema: obj({ action: { type: 'string', enum: ['create', 'cancel', 'drafted'] }, id: { type: 'number' }, team: { type: 'string' }, for_date: { type: 'string' }, title: { type: 'string' }, angle: { type: 'string' }, source: { type: 'string', enum: ['key_date', 'idea', 'evergreen'] }, evergreen_id: { type: 'number' }, post_id: { type: 'string' } }, ['action']), handler: engineRequest },
   { name: 'engine_evergreen', description: 'Content Engine evergreen bank for one of your teams: past winners with their state (due, coming, resting, retired), due date and any open fresh-draft request. Due 10 weeks after a post last went out.', inputSchema: obj({ team: { type: 'string' } }, ['team']), handler: engineEvergreen },
   { name: 'engine_evergreen_update', description: 'Content Engine evergreen bank: add a past winner (action add: team, title, last_out YYYY-MM-DD, optional url, format, account_key, result, why), or snooze it 4 weeks, retire, restore, or record that a fresh version went out (went_out, optional last_out) by id.', inputSchema: obj({ action: { type: 'string', enum: ['add', 'snooze', 'retire', 'restore', 'went_out'] }, id: { type: 'number' }, team: { type: 'string' }, title: { type: 'string' }, last_out: { type: 'string' }, url: { type: 'string' }, format: { type: 'string' }, account_key: { type: 'string' }, result: { type: 'string' }, why: { type: 'string' }, source_post: { type: 'string' } }, ['action']), handler: engineEvergreenUpdate },
+  { name: 'engine_connect', description: 'Content Engine: a ten-minute link that connects your own Facebook account, so the Pages you can post to become your publishing rights.', inputSchema: obj({}), handler: engineConnect },
   { name: 'engine_calendar', description: 'Content Engine calendar: every team\'s scheduled and posted items (read-only for teams you are not in) plus your own teams\' drafts and holds, and the key dates (CitizenGO-wide and your teams\' own), between from and to (YYYY-MM-DD).', inputSchema: obj({ from: { type: 'string' }, to: { type: 'string' } }), handler: engineCalendar },
 ];
 
