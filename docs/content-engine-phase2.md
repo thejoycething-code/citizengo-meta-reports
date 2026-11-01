@@ -291,7 +291,11 @@ matching, no paid AI (`convergence`, `storyKeys` in mcp/engine-tools.js). Digest
 Listening tab's first view): only what crossed a line in the last 48 hours, from the same tools: our pile-on
 alerts, converging ally stories, ally and other CitizenGO Pages' posts at 10x their normal, opponents at 5x and
 their new issue ads; each with who's moving it, the evidence and a suggested owner by country. Nothing is sent;
-a Slack or email digest waits for Chris's OK. Not yet: mentions, sentiment, "already reworked by".
+a Slack or email digest waits for Chris's OK. Mentions (built 1 Nov): the inbox collector also reads other
+people's posts that tag our Pages (`/{page}/tagged`) or Instagram accounts (`/{ig}/tags`) from the last 7 days,
+as `engine_inbox` rows of kind `mention` (applied: the kind check now allows it). Desk actions only (done, assign,
+label); replying would mean commenting on someone else's post, so the desk links to it. Inbox filter "Mentions"
+and a Listening Mentions tab. Not yet: sentiment, "already reworked by".
 
 ## Slice 3 onwards
 

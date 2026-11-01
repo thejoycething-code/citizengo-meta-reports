@@ -86,6 +86,8 @@ function fakeMeta() {
     if (path === '178/media') return ok({ data: [{ id: 'm1', caption: 'Reel', timestamp: '2026-11-02T18:00:00+0000', permalink: 'https://ig/1' }, { id: 'm0', caption: 'old', timestamp: '2026-10-01T18:00:00+0000' }] });
     if (path === 'm1/comments') return ok({ data: [{ id: 'i1', text: '🙏', username: 'anna', timestamp: '2026-11-03T09:00:00+0000', from: { id: 'ua' }, replies: { data: [{ id: 'i2', text: 'Thank you Anna', username: 'citizengo_uk', timestamp: '2026-11-03T09:10:00+0000', from: { id: '178' } }] } }] });
     if (path === '105/conversations') return ok({ data: params.platform === 'instagram' ? [] : [{ id: 't1', messages: { data: [{ id: 'mm2', message: 'Thanks!', from: { id: '105', name: 'Citizen GO UK' }, created_time: '2026-11-03T11:00:00+0000' }, { id: 'mm1', message: 'Is there a petition?', from: { id: 'psid7', name: 'Journalist' }, created_time: '2026-11-03T10:00:00+0000' }] } }] });
+    if (path === '105/tagged') return ok({ data: [{ id: '999_1', message: 'Proud to stand with @Citizen GO UK today', from: { id: 'p9', name: 'St Mary\'s Parish' }, created_time: '2026-11-03T08:00:00+0000', permalink_url: 'https://fb/999_1' }, { id: '999_0', message: 'old', from: { id: 'p8' }, created_time: '2026-09-01T08:00:00+0000' }] });
+    if (path === '178/tags') return ok({ data: [{ id: 'igt1', caption: 'With @citizengo_uk at the vigil', username: 'anna_prays', timestamp: '2026-11-02T20:00:00+0000', permalink: 'https://ig/t1' }] });
     if (path === 'c1/comments') return ok({ id: 'c1_reply' });
     if (path === 'c9' && params.is_hidden === 'true') return ok({ success: true });
     if (path === '105/messages') return ok({ recipient_id: 'psid7', message_id: 'mid.1' });
@@ -110,11 +112,13 @@ function fakeMeta() {
   const dry = await collect.run({ store: s, privateKey: keys.privateKey, live: false, now: NOW, log: () => {}, fetchImpl: meta.fetchImpl });
   eq('collector dry run: reads but saves nothing', [dry.comments, dry.messages, s.db.inbox.length], [5, 2, 0]);
   const t1 = await collect.run({ store: s, privateKey: keys.privateKey, live: true, now: NOW, log: () => {}, fetchImpl: meta.fetchImpl });
-  eq('collector: Facebook posts and ads, Instagram comments and replies within 7 days, Messenger', [t1.accounts, t1.skipped, s.db.inbox.map((r) => r.id).sort()], [2, 0, ['fbc_c1', 'fbc_c2', 'fbc_c9', 'fbm_mm1', 'fbm_mm2', 'igc_i1', 'igc_i2'].sort()]);
+  eq('collector: Facebook posts and ads, Instagram comments and replies, Messenger, and mentions, within 7 days', [t1.accounts, t1.skipped, t1.mentions, s.db.inbox.map((r) => r.id).sort()], [2, 0, 2, ['fbc_c1', 'fbc_c2', 'fbc_c9', 'fbm_mm1', 'fbm_mm2', 'fbt_999_1', 'igc_i1', 'igc_i2', 'igt_igt1'].sort()]);
+  eq('mentions: who tagged us, where, and a link to their post', ['fbt_999_1', 'igt_igt1'].map((id) => { const r = s.db.inbox.find((x) => x.id === id); return [r.kind, r.author_name, r.post_url]; }), [['mention', "St Mary's Parish", 'https://fb/999_1'], ['mention', 'anna_prays', 'https://ig/t1']]);
+  eq('mentions: no replying on someone else\'s post; done and labels work', [I.allowed({ kind: 'mention', platform: 'facebook' }, 'reply', { text: 'hi' }).ok, I.allowed({ kind: 'mention', platform: 'facebook' }, 'done').ok], [false, true]);
   eq('collector: our own comments arrive done, the ad is marked, nothing is posted to Meta', [s.db.inbox.filter((r) => r.status === 'done').map((r) => r.id).sort(), s.db.inbox.find((r) => r.id === 'fbc_c9').is_ad, meta.calls.every((c) => c.method === 'GET')], [['fbc_c2', 'fbm_mm2', 'igc_i2'], true, true]);
 
   // People's columns survive a re-read.
-  eq('tool: an open inbox with counts', (await call(s, 'engine_inbox', { team: 'uk' }, 'sam')).counts, { open: 4, facebook: 3, instagram: 1, messages: 1, mine: 0 });
+  eq('tool: an open inbox with counts', (await call(s, 'engine_inbox', { team: 'uk' }, 'sam')).counts, { open: 6, facebook: 4, instagram: 2, messages: 1, mentions: 2, mine: 0 });
   await call(s, 'engine_inbox_act', { id: 'fbc_c1', action: 'assign', assign_to: 'sam' }, 'chris');
   await call(s, 'engine_inbox_act', { id: 'igc_i1', action: 'done' }, 'sam');
   await call(s, 'engine_inbox_act', { id: 'fbc_c9', action: 'label', labels: ['critic', 'critic', 'ad'] }, 'sam');
