@@ -30,8 +30,8 @@ async function patchDoc(store, id, change, extra = () => ({})) {
 }
 
 async function run({ store, privateKey, live, now = Date.now(), log = console.log, fetchImpl }) {
-  const [teams, posts] = await Promise.all([store.engineTeams(), store.enginePosts({ statuses: ['scheduled'], limit: 500 })]);
-  const items = P.plan(posts, teams, now);
+  const [teams, posts, pauses] = await Promise.all([store.engineTeams(), store.enginePosts({ statuses: ['scheduled'], limit: 500 }), store.enginePauses()]);
+  const items = P.plan(posts, teams, now, pauses);
   const tally = { published: 0, held: 0, failed: 0, would: 0 };
   const stamp = () => new Date(now).toISOString();
   const event = (item, action, detail) => store.engineEvent({ post_id: item.post.id, team_id: item.post.team_id, who: 'publisher', action, detail: { account: item.key, ...detail } });
@@ -48,6 +48,7 @@ async function run({ store, privateKey, live, now = Date.now(), log = console.lo
 
   for (const item of items) {
     const label = `${item.post.id} → ${item.key}`;
+    if (item.action === 'paused') { tally.held++; log(`  ‖ ${label}: paused by ${item.pause.paused_by} (${item.pause.reason})`); continue; }
     if (item.action === 'busy' || item.action === 'gave_up') { tally.held++; log(`  … ${label}: ${item.action === 'busy' ? 'being published by another run' : 'stopped after 3 tries; waiting for a person'}`); continue; }
     if (item.action === 'unsure') { await fail(item, 'Publishing started over 15 minutes ago with no answer. Check the Page before trying again: it may already be up.', { final: true }); continue; }
     if (item.action === 'late') { await fail(item, 'Missed its time by more than 6 hours. Pick a new time on the desk.', { final: true }); continue; }

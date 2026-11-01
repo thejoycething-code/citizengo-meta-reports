@@ -47,6 +47,9 @@ function memoryStore() {
       return clone(p);
     },
     async engineEvent(row) { db.events.push(row); },
+    async enginePauses() { return clone((db.pauses || []).filter((p) => !p.resumed_at)); },
+    async engineInsertPause(row) { db.pauses = db.pauses || []; const p = { id: db.pauses.length + 1, paused_at: new Date().toISOString(), until: null, resumed_at: null, ...row }; db.pauses.push(p); return clone(p); },
+    async engineResumePause(id, who) { const p = (db.pauses || []).find((x) => x.id === id && !x.resumed_at); if (!p) return null; Object.assign(p, { resumed_at: new Date().toISOString(), resumed_by: who }); return clone(p); },
     async engineRequests({ team_ids, statuses }) {
       return clone((db.requests || []).filter((r) => team_ids.includes(r.team_id) && (!statuses || statuses.includes(r.status))));
     },
@@ -228,6 +231,30 @@ const callErr = async (store, name, args, who) => { try { await tool(name)(store
     const list = await call(store, 'engine_posts', { team: 'uk', status: 'posted, review' }, 'chris');
     const t = list.posts.find((x) => x.status === 'posted');
     eq('engine_posts: several statuses, and track carries the Asana task and results check', [!!t, t && t.track.asanaTaskGid, t && t.track.resultsCheckedAt, list.posts.every((x) => ['posted', 'review'].includes(x.status))], [true, '42', null, true]);
+  }
+
+  // Pause everything.
+  {
+    const ctxOf = (who, maintainer = false) => ({ who, maintainer, myTeams: { uk: 'admin' } });
+    const teams = store.db.teams, rights = [{ account_key: 'uk-fb' }];
+    eq('pause scope: my accounts = the ones I can post to, plus my teams\' X', E.pauseAccounts({ scope: 'mine', ctx: ctxOf('chris'), teams, rights }).account_keys, ['uk-fb', 'uk-x']);
+    eq('pause scope: a team I am not in, or everything without being an admin, is refused',
+      [E.pauseAccounts({ scope: 'team', team: 'de', ctx: ctxOf('chris'), teams, rights }).ok, E.pauseAccounts({ scope: 'all', ctx: ctxOf('chris'), teams, rights }).ok, E.pauseAccounts({ scope: 'all', ctx: ctxOf('chris', true), teams, rights }).ok], [false, false, true]);
+    const t0 = Date.parse('2026-11-02T09:00:00Z');
+    const ps = [{ id: 1, scope: 'mine', account_keys: ['uk-fb'], until: '2026-11-02T10:00:00Z' }, { id: 2, scope: 'all', account_keys: [], resumed_at: 'x' }];
+    eq('pause: active until its time, resumed ones are off, all covers every key',
+      [!!E.pauseFor(E.pausedKeys(ps, t0), 'uk-fb'), !!E.pauseFor(E.pausedKeys(ps, t0 + 2 * 3600e3), 'uk-fb'), !!E.pauseFor(E.pausedKeys([{ scope: 'all', account_keys: [] }], t0), 'zz-ig')], [true, false, true]);
+
+    eq('engine_pause: a reason is required', (await call(store, 'engine_pause', { action: 'pause', scope: 'mine' }, 'chris')).ok, false);
+    eq('engine_pause: greg cannot pause everything', (await call(store, 'engine_pause', { action: 'pause', scope: 'all', reason: 'x' }, 'greg')).ok, false);
+    const p = await call(store, 'engine_pause', { action: 'pause', scope: 'mine', reason: 'National tragedy', hours: 24 }, 'chris');
+    eq('engine_pause: chris pauses his accounts for 24 hours', [p.ok, p.pause.account_keys, !!p.pause.until, p.pauses.length, p.pauses[0].can_resume], [true, ['uk-fb', 'uk-x'], true, 1, true]);
+    eq('the pause shows on the desk (engine_posts) and engine_me', [(await call(store, 'engine_posts', { team: 'uk' }, 'chris')).pauses.length, (await call(store, 'engine_me', {}, 'chris')).pauses.length], [1, 1]);
+    eq('the German team does not see a UK pause', (await call(store, 'engine_me', {}, 'greg')).pauses.length, 0);
+    eq('greg cannot resume it', (await call(store, 'engine_pause', { action: 'resume', id: p.pause.id }, 'greg')).ok, false);
+    const r = await call(store, 'engine_pause', { action: 'resume', id: p.pause.id }, 'chris');
+    eq('chris resumes it, and nothing is paused after', [r.ok, r.pauses.length, (await call(store, 'engine_pause', { action: 'resume', id: p.pause.id }, 'chris')).ok], [true, 0, false]);
+    eq('engine_pause: a timed pause is at most a week', (await call(store, 'engine_pause', { action: 'pause', scope: 'mine', reason: 'x', hours: 500 }, 'chris')).ok, false);
   }
 
   console.log(`\n${passed} passed, ${failed} failed`);

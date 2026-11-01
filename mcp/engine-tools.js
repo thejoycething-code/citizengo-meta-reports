@@ -58,7 +58,42 @@ async function engineMe(store, args, { who }) {
     all_teams: ctx.teams.map((t) => ({ id: t.id, name: t.name, flag: t.flag })),
     publish_rights: rights.map((r) => r.account_key),
     connected_rights: rights.filter((r) => r.source === 'meta').map((r) => r.account_key),
+    pauses: await pausesFor(store, ctx, rights),
   });
+}
+
+// Active pauses this person sees, each with whether they may resume it.
+async function pausesFor(store, ctx, rights) {
+  const open = E.pausesVisible(await store.enginePauses(), { ctx, teams: ctx.teams });
+  if (!open.length) return [];
+  rights = rights || await store.engineRights({ who: ctx.who });
+  return open.map((p) => ({ ...p, can_resume: E.canResume(p, { ctx, teams: ctx.teams, rights }) }));
+}
+
+async function enginePause(store, args, { who }) {
+  const ctx = await context(store, who);
+  const rights = await store.engineRights({ who });
+  if (args.action === 'resume') {
+    const p = (await store.enginePauses()).find((x) => Number(x.id) === Number(args.id));
+    if (!p || !E.pauseActive(p) || !E.pausesVisible([p], { ctx, teams: ctx.teams }).length) return json({ ok: false, error: 'That pause is not on any more.' });
+    if (!E.canResume(p, { ctx, teams: ctx.teams, rights })) return json({ ok: false, error: `Only ${p.paused_by}, or someone who can post to all of its accounts, can resume this pause.` });
+    const done = await store.engineResumePause(p.id, who);
+    if (!done) return json({ ok: false, error: 'That pause is not on any more.' });
+    return json({ ok: true, resumed: done, pauses: await pausesFor(store, ctx, rights) });
+  }
+  if (args.action !== 'pause') return json({ ok: false, error: 'action is pause or resume.' });
+  const reason = String(args.reason || '').trim().slice(0, 300);
+  if (!reason) return json({ ok: false, error: 'Give a reason: the team sees it.' });
+  const hours = args.hours == null ? null : Number(args.hours);
+  if (hours != null && !(hours > 0 && hours <= E.PAUSE_MAX_HOURS)) return json({ ok: false, error: `A timed pause is between 1 hour and ${E.PAUSE_MAX_HOURS / 24} days.` });
+  const scope = String(args.scope || 'mine');
+  const acc = E.pauseAccounts({ scope, team: args.team, ctx, teams: ctx.teams, rights });
+  if (!acc.ok) return json({ ok: false, error: acc.error });
+  const row = await store.engineInsertPause({
+    scope, team_id: scope === 'team' ? String(args.team) : null, account_keys: acc.account_keys, reason, paused_by: who,
+    until: hours ? new Date(Date.now() + hours * 3600_000).toISOString() : null,
+  });
+  return json({ ok: true, pause: row, pauses: await pausesFor(store, ctx, rights) });
 }
 
 async function enginePosts(store, args, { who }) {
@@ -67,7 +102,7 @@ async function enginePosts(store, args, { who }) {
   if (!E.canEditTeam(ctx, team)) throw err('You are not in that team.', 'ENGINE_NOT_MEMBER');
   const statuses = args.status ? String(args.status).split(',').map((s) => s.trim()).filter((s) => E.STATUSES.includes(s)) : null;
   const rows = await store.enginePosts({ team_ids: [team], statuses, limit: args.limit });
-  return json({ team, posts: args.full ? rows : rows.map(lite) });
+  return json({ team, posts: args.full ? rows : rows.map(lite), pauses: await pausesFor(store, ctx) });
 }
 
 async function enginePost(store, args, { who }) {
@@ -298,6 +333,7 @@ const ENGINE_TOOLS = [
   { name: 'engine_posts', description: 'Content Engine: the posts in one of your teams (the desk), optionally by status (one, or several comma-separated: review, changes, hold, scheduled, posted, rejected). Each post comes with track (its Asana task, results check, posted time, stale flag and source); full: true returns each whole post instead.', inputSchema: obj({ team: { type: 'string' }, status: { type: 'string' }, full: { type: 'boolean' }, limit: { type: 'number' } }, ['team']), handler: enginePosts },
   { name: 'engine_post', description: 'Content Engine: one whole post from your teams.', inputSchema: obj({ id: { type: 'string' } }, ['id']), handler: enginePost },
   { name: 'engine_save', description: 'Content Engine: save changes to a post (text, graphic, first comment, where and when). patch merges into the post; version must be the one you read, or the save is refused as a conflict.', inputSchema: obj({ id: { type: 'string' }, version: { type: 'number' }, patch: { type: 'object' } }, ['id', 'version', 'patch']), handler: engineSave },
+  { name: 'engine_pause', description: 'Content Engine Pause everything: hold every scheduled post at once (action pause: scope mine = every account you can post to, team = one of your teams (team), all = every account, admins only; a reason the team sees; optional hours, otherwise until someone resumes), or resume a pause (action resume: id). Nothing is deleted or changed: the publisher just waits.', inputSchema: obj({ action: { type: 'string', enum: ['pause', 'resume'] }, scope: { type: 'string', enum: ['mine', 'team', 'all'] }, team: { type: 'string' }, reason: { type: 'string' }, hours: { type: 'number' }, id: { type: 'number' } }, ['action']), handler: enginePause },
   { name: 'engine_record', description: 'Content Engine: record bookkeeping on a post in any status, posted and rejected included: results, posted (the real post links and time), stale, and posting.asanaTaskGid / asanaUrl / syncedAt / removedAt. Nothing else; the post itself is saved with engine_save. version must be the one you read.', inputSchema: obj({ id: { type: 'string' }, version: { type: 'number' }, patch: { type: 'object' } }, ['id', 'version', 'patch']), handler: engineRecord },
   { name: 'engine_status', description: 'Content Engine: approve (schedules it; needs publishing rights for every Facebook and Instagram account), hold, changes (needs a note), reject, reopen, or mark as posted (it went out) a post.', inputSchema: obj({ id: { type: 'string' }, version: { type: 'number' }, action: { type: 'string', enum: ['approve', 'hold', 'changes', 'reject', 'reopen', 'posted'] }, note: { type: 'string' }, reasons: { type: 'array', items: { type: 'string' } } }, ['id', 'version', 'action']), handler: engineStatus },
   { name: 'engine_create', description: 'Content Engine: add a new post to Review in one of your teams (the daily engine, "Rework for…" and imports use this).', inputSchema: obj({ team: { type: 'string' }, doc: { type: 'object' }, id: { type: 'string' }, source_team: { type: 'string' }, source_post: { type: 'string' } }, ['team', 'doc']), handler: engineCreate },
