@@ -53,6 +53,12 @@ Decisions from Christopher Joyce are in brackets with the date._
    dates dashed; the queue alongside lists On hold posts and key dates in the next four weeks with nothing drafted.
    Key dates live in `engine_key_dates` (CitizenGO-wide rows have no team; each team has its own, including its
    Mother's Day; no parliament days), seeded by `scripts/engine-key-dates.js` from content-engine/evergreen-calendar.md.
+   Plan view added 1 Nov (Plan C): the month with an ideas tray (key dates with nothing planned, posts on hold, your
+   own idea). Picking one stores a request in `engine_requests` (`engine_request` create / cancel); it shows on its
+   day as "Requested". At cutover the daily run reads open requests (`engine_requests`, status open), drafts each
+   into Review for its date with `engine_create`, then calls `engine_request` drafted with the new post id.
+   The desk's connector manifest: engine_me, engine_posts, engine_save, engine_status, engine_calendar,
+   engine_requests, engine_request.
 5. ⬜ Until Meta publishing works, "Approve" still hands UK posts to Asana as today.
 
 ## Slice 2: Meta publishing

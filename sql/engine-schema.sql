@@ -105,3 +105,25 @@ create unique index if not exists engine_key_dates_unique on public.engine_key_d
 create index if not exists engine_key_dates_starts on public.engine_key_dates (starts);
 alter table public.engine_key_dates enable row level security;
 comment on table public.engine_key_dates is 'Content Engine key dates for the calendar: CitizenGO-wide (team_id null) and per team. No parliament days.';
+
+-- Plan [1 Nov]: "draft this for that date" requests from the Plan page's ideas
+-- tray (a key date, a post on hold, or a person's own idea). The daily engine
+-- reads the open ones, drafts each into Review for its date and marks it
+-- drafted with the new post's id.
+create table if not exists public.engine_requests (
+  id bigint generated always as identity primary key,
+  team_id text not null references public.engine_teams(id) on delete cascade,
+  for_date date not null,
+  title text not null,
+  angle text,
+  source text not null default 'idea' check (source in ('key_date', 'idea')),
+  status text not null default 'open' check (status in ('open', 'drafted', 'cancelled')),
+  post_id text,
+  requested_by text not null,
+  requested_at timestamptz not null default now(),
+  done_at timestamptz,
+  done_by text
+);
+create index if not exists engine_requests_team_date on public.engine_requests (team_id, for_date);
+alter table public.engine_requests enable row level security;
+comment on table public.engine_requests is 'Content Engine Plan: requests to draft a post for a date. The daily engine drafts open ones into Review.';

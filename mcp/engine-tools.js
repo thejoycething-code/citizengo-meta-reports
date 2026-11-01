@@ -147,6 +147,35 @@ async function engineCalendar(store, args, { who }) {
   });
 }
 
+// Plan: "draft this for that date". Anyone in the team can ask; the daily
+// engine drafts open requests into Review and marks them drafted.
+async function engineRequests(store, args, { who }) {
+  const ctx = await context(store, who);
+  const team = String(args.team || '');
+  if (!E.canEditTeam(ctx, team)) throw err('You are not in that team.', 'ENGINE_NOT_MEMBER');
+  const statuses = args.status ? [String(args.status)] : ['open', 'drafted'];
+  return json({ team, requests: await store.engineRequests({ team_ids: [team], statuses, from: args.from, to: args.to }) });
+}
+
+async function engineRequest(store, args, { who }) {
+  const ctx = await context(store, who);
+  if (args.action === 'cancel' || args.action === 'drafted') {
+    const [cur] = (await store.engineRequests({ team_ids: Object.keys(ctx.myTeams).concat(ctx.maintainer ? ctx.teams.map((t) => t.id) : []), statuses: ['open'] }))
+      .filter((r) => Number(r.id) === Number(args.id));
+    if (!cur) return json({ ok: false, error: 'No open request with that id in your teams.' });
+    const fields = { status: args.action === 'cancel' ? 'cancelled' : 'drafted', done_at: new Date().toISOString(), done_by: who };
+    if (args.action === 'drafted') fields.post_id = String(args.post_id || '') || null;
+    const row = await store.engineUpdateRequest(cur.id, fields);
+    return row ? json({ ok: true, request: row }) : json({ ok: false, error: 'That request was already handled.' });
+  }
+  const team = String(args.team || '');
+  if (!E.canEditTeam(ctx, team)) throw err('You can only plan for your own teams.', 'ENGINE_NOT_MEMBER');
+  const v = E.checkRequest(args);
+  if (!v.ok) return json({ ok: false, error: v.error });
+  const row = await store.engineInsertRequest({ team_id: team, ...v.request, requested_by: who });
+  return json({ ok: true, request: row });
+}
+
 const obj = (properties, required = []) => ({ type: 'object', properties, required, additionalProperties: false });
 
 const ENGINE_TOOLS = [
@@ -157,6 +186,8 @@ const ENGINE_TOOLS = [
   { name: 'engine_status', description: 'Content Engine: approve (schedules it; needs publishing rights for every Facebook and Instagram account), hold, changes (needs a note), reject, reopen, or mark as posted (it went out) a post.', inputSchema: obj({ id: { type: 'string' }, version: { type: 'number' }, action: { type: 'string', enum: ['approve', 'hold', 'changes', 'reject', 'reopen', 'posted'] }, note: { type: 'string' }, reasons: { type: 'array', items: { type: 'string' } } }, ['id', 'version', 'action']), handler: engineStatus },
   { name: 'engine_create', description: 'Content Engine: add a new post to Review in one of your teams (the daily engine, "Rework for…" and imports use this).', inputSchema: obj({ team: { type: 'string' }, doc: { type: 'object' }, id: { type: 'string' }, source_team: { type: 'string' }, source_post: { type: 'string' } }, ['team', 'doc']), handler: engineCreate },
   { name: 'engine_copy', description: 'Content Engine: copy a post you can see (yours, or another team\'s scheduled or posted one) into one of your teams as a new draft in Review.', inputSchema: obj({ id: { type: 'string' }, to_team: { type: 'string' } }, ['id', 'to_team']), handler: engineCopy },
+  { name: 'engine_requests', description: 'Content Engine Plan: the "draft this for that date" requests for one of your teams (open and drafted by default), optionally between from and to (YYYY-MM-DD).', inputSchema: obj({ team: { type: 'string' }, status: { type: 'string', enum: ['open', 'drafted', 'cancelled'] }, from: { type: 'string' }, to: { type: 'string' } }, ['team']), handler: engineRequests },
+  { name: 'engine_request', description: 'Content Engine Plan: ask the daily engine to draft a post for a date (action create: team, for_date YYYY-MM-DD, title, optional angle, source key_date or idea), cancel an open request (action cancel: id), or record that it was drafted (action drafted: id, post_id).', inputSchema: obj({ action: { type: 'string', enum: ['create', 'cancel', 'drafted'] }, id: { type: 'number' }, team: { type: 'string' }, for_date: { type: 'string' }, title: { type: 'string' }, angle: { type: 'string' }, source: { type: 'string', enum: ['key_date', 'idea'] }, post_id: { type: 'string' } }, ['action']), handler: engineRequest },
   { name: 'engine_calendar', description: 'Content Engine calendar: every team\'s scheduled and posted items (read-only for teams you are not in) plus your own teams\' drafts and holds, and the key dates (CitizenGO-wide and your teams\' own), between from and to (YYYY-MM-DD).', inputSchema: obj({ from: { type: 'string' }, to: { type: 'string' } }), handler: engineCalendar },
 ];
 
