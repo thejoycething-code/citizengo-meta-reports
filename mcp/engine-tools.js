@@ -172,8 +172,54 @@ async function engineRequest(store, args, { who }) {
   if (!E.canEditTeam(ctx, team)) throw err('You can only plan for your own teams.', 'ENGINE_NOT_MEMBER');
   const v = E.checkRequest(args);
   if (!v.ok) return json({ ok: false, error: v.error });
+  if (v.request.source === 'evergreen') {
+    const eg = (await store.engineEvergreen({ team_ids: [team] })).find((r) => Number(r.id) === Number(args.evergreen_id));
+    if (!eg) return json({ ok: false, error: 'No such post in your evergreen bank.' });
+    v.request.evergreen_id = eg.id;
+  }
   const row = await store.engineInsertRequest({ team_id: team, ...v.request, requested_by: who });
   return json({ ok: true, request: row });
+}
+
+// Evergreen bank (A): past winners, due a fresh version 10 weeks after they
+// last went out. Suggest only: a fresh draft is a Plan request.
+async function engineEvergreen(store, args, { who }) {
+  const ctx = await context(store, who);
+  const team = String(args.team || '');
+  if (!E.canEditTeam(ctx, team)) throw err('You are not in that team.', 'ENGINE_NOT_MEMBER');
+  const [rows, reqs] = await Promise.all([store.engineEvergreen({ team_ids: [team] }), store.engineRequests({ team_ids: [team], statuses: ['open'] })]);
+  const now = new Date();
+  return json({
+    team, due_weeks: E.EVERGREEN_DUE_WEEKS,
+    posts: rows.map((r) => {
+      const open = reqs.find((q) => Number(q.evergreen_id) === Number(r.id));
+      return { ...r, ...E.evergreenState(r, now), requested: open ? { id: open.id, for_date: open.for_date } : null };
+    }),
+  });
+}
+
+async function engineEvergreenUpdate(store, args, { who }) {
+  const ctx = await context(store, who);
+  if (args.action === 'add') {
+    const team = String(args.team || '');
+    if (!E.canEditTeam(ctx, team)) throw err('You can only add to your own teams\' bank.', 'ENGINE_NOT_MEMBER');
+    const v = E.checkEvergreen(args);
+    if (!v.ok) return json({ ok: false, error: v.error });
+    const row = await store.engineInsertEvergreen({ team_id: team, ...v.row, source_post: args.source_post ? String(args.source_post) : null, added_by: who, updated_by: who });
+    return json({ ok: true, post: row });
+  }
+  const mine = Object.keys(ctx.myTeams).concat(ctx.maintainer ? ctx.teams.map((t) => t.id) : []);
+  const cur = (await store.engineEvergreen({ team_ids: mine })).find((r) => Number(r.id) === Number(args.id));
+  if (!cur) return json({ ok: false, error: 'No such post in your teams\' banks.' });
+  const today = new Date();
+  const fields = args.action === 'snooze' ? { snoozed_until: new Date(today.getTime() + 28 * 864e5).toISOString().slice(0, 10) }
+    : args.action === 'retire' ? { status: 'retired' }
+    : args.action === 'restore' ? { status: 'active', snoozed_until: null }
+    : args.action === 'went_out' ? { last_out: String(args.last_out || today.toISOString().slice(0, 10)).slice(0, 10), snoozed_until: null }
+    : null;
+  if (!fields) return json({ ok: false, error: `Unknown action: ${args.action}.` });
+  const row = await store.engineUpdateEvergreen(cur.id, { ...fields, updated_by: who });
+  return json({ ok: true, post: row ? { ...row, ...E.evergreenState(row, today) } : null });
 }
 
 const obj = (properties, required = []) => ({ type: 'object', properties, required, additionalProperties: false });
@@ -187,7 +233,9 @@ const ENGINE_TOOLS = [
   { name: 'engine_create', description: 'Content Engine: add a new post to Review in one of your teams (the daily engine, "Rework for…" and imports use this).', inputSchema: obj({ team: { type: 'string' }, doc: { type: 'object' }, id: { type: 'string' }, source_team: { type: 'string' }, source_post: { type: 'string' } }, ['team', 'doc']), handler: engineCreate },
   { name: 'engine_copy', description: 'Content Engine: copy a post you can see (yours, or another team\'s scheduled or posted one) into one of your teams as a new draft in Review.', inputSchema: obj({ id: { type: 'string' }, to_team: { type: 'string' } }, ['id', 'to_team']), handler: engineCopy },
   { name: 'engine_requests', description: 'Content Engine Plan: the "draft this for that date" requests for one of your teams (open and drafted by default), optionally between from and to (YYYY-MM-DD).', inputSchema: obj({ team: { type: 'string' }, status: { type: 'string', enum: ['open', 'drafted', 'cancelled'] }, from: { type: 'string' }, to: { type: 'string' } }, ['team']), handler: engineRequests },
-  { name: 'engine_request', description: 'Content Engine Plan: ask the daily engine to draft a post for a date (action create: team, for_date YYYY-MM-DD, title, optional angle, source key_date or idea), cancel an open request (action cancel: id), or record that it was drafted (action drafted: id, post_id).', inputSchema: obj({ action: { type: 'string', enum: ['create', 'cancel', 'drafted'] }, id: { type: 'number' }, team: { type: 'string' }, for_date: { type: 'string' }, title: { type: 'string' }, angle: { type: 'string' }, source: { type: 'string', enum: ['key_date', 'idea'] }, post_id: { type: 'string' } }, ['action']), handler: engineRequest },
+  { name: 'engine_request', description: 'Content Engine Plan: ask the daily engine to draft a post for a date (action create: team, for_date YYYY-MM-DD, title, optional angle, source key_date or idea), cancel an open request (action cancel: id), or record that it was drafted (action drafted: id, post_id).', inputSchema: obj({ action: { type: 'string', enum: ['create', 'cancel', 'drafted'] }, id: { type: 'number' }, team: { type: 'string' }, for_date: { type: 'string' }, title: { type: 'string' }, angle: { type: 'string' }, source: { type: 'string', enum: ['key_date', 'idea', 'evergreen'] }, evergreen_id: { type: 'number' }, post_id: { type: 'string' } }, ['action']), handler: engineRequest },
+  { name: 'engine_evergreen', description: 'Content Engine evergreen bank for one of your teams: past winners with their state (due, coming, resting, retired), due date and any open fresh-draft request. Due 10 weeks after a post last went out.', inputSchema: obj({ team: { type: 'string' } }, ['team']), handler: engineEvergreen },
+  { name: 'engine_evergreen_update', description: 'Content Engine evergreen bank: add a past winner (action add: team, title, last_out YYYY-MM-DD, optional url, format, account_key, result, why), or snooze it 4 weeks, retire, restore, or record that a fresh version went out (went_out, optional last_out) by id.', inputSchema: obj({ action: { type: 'string', enum: ['add', 'snooze', 'retire', 'restore', 'went_out'] }, id: { type: 'number' }, team: { type: 'string' }, title: { type: 'string' }, last_out: { type: 'string' }, url: { type: 'string' }, format: { type: 'string' }, account_key: { type: 'string' }, result: { type: 'string' }, why: { type: 'string' }, source_post: { type: 'string' } }, ['action']), handler: engineEvergreenUpdate },
   { name: 'engine_calendar', description: 'Content Engine calendar: every team\'s scheduled and posted items (read-only for teams you are not in) plus your own teams\' drafts and holds, and the key dates (CitizenGO-wide and your teams\' own), between from and to (YYYY-MM-DD).', inputSchema: obj({ from: { type: 'string' }, to: { type: 'string' } }), handler: engineCalendar },
 ];
 
