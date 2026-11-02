@@ -2,7 +2,7 @@
 'use strict';
 // Listening › Beyond our list: UK news headlines for each campaign topic,
 // from Google News's public RSS search (en-GB). Headline, source, link and
-// time only, newest 48 hours; rows deleted after 30 days. Free, no key.
+// time only, newest three days; rows deleted after 30 days. Free, no key.
 //
 // Usage: node collector/listen-news.js [--dry-run]
 // Env: SUPABASE_URL, SUPABASE_SERVICE_KEY.
@@ -22,11 +22,14 @@ const QUERIES = {
   family: 'surrogacy OR "family policy" OR "two-child limit"',
 };
 const KEEP_DAYS = 30;
+// Google News's UK edition still returns US and Indian stories, so each search
+// (hospices aside: those are mostly UK local news already) asks for a UK word.
+const UK = ' (UK OR Britain OR British OR England OR Scotland OR Wales OR Westminster OR Lords OR MPs)';
 
 const decode = (s) => String(s || '').replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'").replace(/&#(\d+);/g, (m, n) => String.fromCharCode(Number(n))).trim();
 const tag = (xml, t) => { const m = xml.match(new RegExp(`<${t}[^>]*>([\\s\\S]*?)</${t}>`)); return m ? decode(m[1]) : ''; };
 
-// Pure: RSS text -> rows for one topic, newest 48 hours.
+// Pure: RSS text -> rows for one topic, newest three days.
 function parseFeed(xml, topic, now = Date.now()) {
   const out = [];
   for (const m of String(xml).match(/<item>[\s\S]*?<\/item>/g) || []) {
@@ -34,7 +37,7 @@ function parseFeed(xml, topic, now = Date.now()) {
     let title = tag(m, 'title');
     if (source && title.endsWith(` - ${source}`)) title = title.slice(0, -(source.length + 3));
     const at = Date.parse(tag(m, 'pubDate'));
-    if (!url || !/^https:\/\//.test(url) || !title || !(at > now - 48 * 3600e3)) continue;
+    if (!url || !/^https:\/\//.test(url) || !title || !(at > now - 72 * 3600e3)) continue;
     // Keep a headline only when its own words put it in the topic (searches
     // also return pet "euthanasia" and stray matches).
     if (!topicsOf(title).includes(topic) || /\b(dog|cat|horse|pet|vet|animal|otter|zoo)s?\b/i.test(title)) continue;
@@ -49,7 +52,7 @@ async function main() {
   const pg = dryRun ? null : makePg();
   let stored = 0;
   for (const [topic, q] of Object.entries(QUERIES)) {
-    const u = `https://news.google.com/rss/search?q=${encodeURIComponent(q + ' when:2d')}&hl=en-GB&gl=GB&ceid=GB:en`;
+    const u = `https://news.google.com/rss/search?q=${encodeURIComponent(`(${q})${topic === 'hospices' ? '' : UK} when:3d`)}&hl=en-GB&gl=GB&ceid=GB:en`;
     const r = await fetch(u, { headers: { 'User-Agent': 'CitizenGO-ContentDesk/1.0 (+https://meta-organic-reporting.vercel.app)' } }).catch((e) => ({ ok: false, status: e.message }));
     if (!r.ok) { console.log(`  ${topic}: HTTP ${r.status}`); continue; }
     const rows = parseFeed(await r.text(), topic);

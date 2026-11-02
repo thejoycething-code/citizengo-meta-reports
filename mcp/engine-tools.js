@@ -671,11 +671,16 @@ async function engineListening(store, args, ctx0) {
   if (team && !E.canEditTeam(ctx, team)) throw err('You are not in that team.', 'ENGINE_NOT_MEMBER');
   if (args.tab === 'overview') return cached(store, 'listening:overview:v2', args, () => topicsOverview(store));
   if (args.tab === 'beyond') {
-    return cached(store, 'listening:beyond:v1', args, async () => {
+    return cached(store, 'listening:beyond:v2', args, async () => {
       const now = Date.now(), since = new Date(now - 14 * 864e5).toISOString();
       const [media, news, posts, accounts] = await Promise.all([store.listenHashtagMedia ? store.listenHashtagMedia({ since }).catch(() => []) : [], store.listenNews ? store.listenNews({ since: new Date(now - 3 * 864e5).toISOString() }).catch(() => []) : [], listeningCorpus(store, now), store.peerAccounts ? store.peerAccounts().catch(() => []) : []]);
       const tags = require('../config/listen-hashtags.json').map((t) => ({ tag: String(t.tag).toLowerCase(), topic: t.topic }));
-      return json({ tab: 'beyond', ...require('../lib/listen-topics').beyond({ tags, media, news, posts, known: (accounts || []).map((a) => a.username) }, { now }), hashtag_rows: media.length, news_rows: news.length });
+      // A hashtag post counts only when it's in English and its own words fit
+      // the hashtag's topic: hashtags travel (cars on #rse, pets on #euthanasia).
+      const T = require('../lib/listen-topics');
+      const tagTopic = Object.fromEntries(tags.map((t) => [t.tag, t.topic]));
+      const fit = (media || []).filter((m) => tagTopic[m.hashtag] && langOf(m.caption) === 'en' && T.topicsOf(m.caption).includes(tagTopic[m.hashtag]));
+      return json({ tab: 'beyond', ...require('../lib/listen-topics').beyond({ tags, media: fit, news, posts, known: (accounts || []).map((a) => a.username) }, { now }), hashtag_rows: fit.length, news_rows: news.length });
     });
   }
   if (args.tab === 'opponents_mix') {

@@ -8,7 +8,9 @@
 // account like collector/peers-ig.js. Meta allows 30 different hashtags in any
 // 7 days per account, so the list stays at 25 or fewer. Hashtag results carry
 // no usernames; we keep the caption, link, time and like/comment counts, and
-// delete rows after 30 days.
+// delete rows after 30 days. Tags whose posts were mostly off-topic or
+// private grief (#rse, #silentprayer, #euthanasia, #hospice,
+// #palliativecare) were dropped after the first run on 2 Nov 2026.
 //
 // Usage: node collector/listen-hashtags.js [--dry-run] [--only tag1,tag2]
 // Env: META_TOKENS, PEER_IG_VIA / PEER_IG_VIA_ID (as peers-ig), SUPABASE_URL,
