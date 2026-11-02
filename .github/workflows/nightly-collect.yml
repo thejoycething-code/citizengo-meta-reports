@@ -53,6 +53,8 @@ concurrency:
 
 jobs:
   collect:
+    # Stands down while the Mac Mini runs this on schedule (scripts/mini-collect.sh).
+    if: github.event_name != 'schedule' || vars.MINI_COLLECTS != 'true'
     runs-on: ubuntu-latest
     # 180 covers the nightly 14-day window several times over. The higher cap
     # is for the manual 90-day backfills: ~2,700 posts at 9-12 calls each runs

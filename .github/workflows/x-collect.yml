@@ -55,7 +55,8 @@ concurrency:
 
 jobs:
   collect:
-    if: github.event_name == 'workflow_dispatch' || vars.X_COLLECT_ENABLED == 'true'
+    # Stands down while the Mac Mini runs this on schedule (scripts/mini-collect.sh).
+    if: github.event_name == 'workflow_dispatch' || (vars.X_COLLECT_ENABLED == 'true' && vars.MINI_COLLECTS != 'true')
     runs-on: ubuntu-latest
     # Thirty accounts at ~8 posts a day is under 3,000 resources: minutes, not
     # hours. A long timeout here would only let a loop spend more.

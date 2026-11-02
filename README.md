@@ -626,6 +626,25 @@ or a tester role on our app, and neither was wanted. Instead:
 
 ---
 
+## Scheduled collection runs on the Mac Mini — 2 Nov 2026
+
+GitHub started the 04:30 nightly collection six to eight hours late, every day.
+Since 2 Nov the Mac Mini runs the scheduled collections on time from
+`~/runner/meta-reports`: `scripts/mini-collect.sh <job>` mirrors each workflow's
+scheduled steps, and `scripts/launchd/net.citizengo.meta.<job>.plist` starts it
+(nightly 04:30, x 05:15, peers 06:10, ig-connected 06:15, links 06:40,
+listen 06:45, watchdog 09:00, London time). Logs are in
+`~/runner/logs/meta-<job>.log`, and a failed run posts to `ALERT_WEBHOOK_URL`.
+
+The secrets live in that checkout's `.env`: `META_TOKENS`, `ALERT_WEBHOOK_URL`,
+`X_CLIENT_ID`, `X_CLIENT_SECRET`, `X_TOKEN_PRIVATE_KEY` and the Supabase pair.
+A new token goes in BOTH places: that `.env` and the GitHub secret.
+
+While the repository variable `MINI_COLLECTS` is `true`, the six collection
+workflows skip their schedules (manual runs still work). Delete the variable to
+hand the schedule back to GitHub. The watchdog, weekly digest and heartbeat
+stay scheduled on GitHub, so a Mini that stops is still noticed.
+
 ## Why the connector can hold a service key
 
 The reporting tables are the **only** things PostgREST exposes on this project.

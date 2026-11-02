@@ -50,7 +50,8 @@ concurrency:
 
 jobs:
   collect:
-    if: github.event_name == 'workflow_dispatch' || vars.PEER_IG_ENABLED == 'true'
+    # Stands down while the Mac Mini runs this on schedule (scripts/mini-collect.sh).
+    if: github.event_name == 'workflow_dispatch' || (vars.PEER_IG_ENABLED == 'true' && vars.MINI_COLLECTS != 'true')
     runs-on: ubuntu-latest
     # ~60 calls; anything near this limit means something is looping.
     timeout-minutes: 15

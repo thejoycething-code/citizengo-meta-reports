@@ -30,6 +30,8 @@ concurrency:
 
 jobs:
   build:
+    # Stands down while the Mac Mini runs this on schedule (scripts/mini-collect.sh).
+    if: github.event_name != 'schedule' || vars.MINI_COLLECTS != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
