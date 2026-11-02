@@ -926,7 +926,8 @@ async function listeningCompute(store, args, { who }) {
   const days = [7, 10, 30].includes(Number(args.days)) ? Number(args.days) : (tab === 'allies' ? 10 : 7);
   const out = await PEER_TOOLS.find((t) => t.name === (tab === 'allies' ? 'ally_watch' : 'opponent_watch')).handler(store, { days, min_multiple: minX, limit: 40, ...(tab === 'allies' && args.country ? { country: String(args.country) } : {}) });
   const posts = ((out && out.rows) || []).map((r) => ({ who: r.label || `@${r.username}`, handle: r.username, country: r.country || null, text: String(r.caption || '').slice(0, 300), url: r.permalink, created_time: r.timestamp,
-    format: r.media_product_type || r.media_type || null, likes: r.like_count, comments: r.comments_count, x: r.vs_median === null || r.vs_median === undefined ? null : Number(r.vs_median), settled: !!r.settled, lang: langOf(r.caption) }));
+    format: r.media_product_type || r.media_type || null, likes: r.like_count, comments: r.comments_count, x: r.vs_median === null || r.vs_median === undefined ? null : Number(r.vs_median), settled: !!r.settled, lang: langOf(r.caption), media_id: r.media_id }));
+  await addDayGain(store, posts);
   if (tab === 'allies') await markReworked(store, ctx, posts);
   const ads = tab === 'opponents' ? ((out && out.ads) || []).slice(0, 40).map((a) => ({ who: a.label || a.page_name, started: a.delivery_start, running: !a.delivery_stop, spend_lower: Number(a.spend_lower) || 0, spend_upper: Number(a.spend_upper) || Number(a.spend_lower) || 0, currency: a.currency || null, title: a.link_titles || a.bodies || null, url: a.snapshot_url || null })) : [];
   // Convergence reads every watched post from the last 48 hours, not only the breakouts.
@@ -938,6 +939,19 @@ async function listeningCompute(store, args, { who }) {
     building = convergenceBuilding(recent, converging);
   }
   return json({ tab, days, min_multiple: minX, posts, ads, converging, building, topics: topicsOf(posts), note: out && !out.rows ? String(out.text || '').slice(0, 300) : null });
+}
+
+// What each watched post gained (likes + comments) between its last two daily
+// reads: the "still moving" signal on Rising now. Missing when only one read.
+async function addDayGain(store, posts) {
+  const rows = posts.length && store.peerDayMetrics ? await store.peerDayMetrics(posts.map((p) => p.media_id).filter(Boolean)).catch(() => []) : [];
+  const by = {};
+  for (const r of rows) (by[r.media_id] = by[r.media_id] || []).push((Number(r.like_count) || 0) + (Number(r.comments_count) || 0));
+  for (const p of posts) {
+    const l = by[p.media_id];
+    if (l && l.length >= 2) p.gain_day = Math.max(0, l[l.length - 1] - l[l.length - 2]);
+    delete p.media_id;
+  }
 }
 
 // "Already reworked by": Plan requests (any team, last 60 days) that name the
@@ -1279,4 +1293,4 @@ const ENGINE_TOOLS = [
   { name: 'engine_calendar', description: 'Content Engine calendar: every team\'s scheduled and posted items (read-only for teams you are not in) plus your own teams\' drafts and holds, and the key dates (CitizenGO-wide and your teams\' own), between from and to (YYYY-MM-DD).', inputSchema: obj({ from: { type: 'string' }, to: { type: 'string' } }), handler: engineCalendar },
 ];
 
-module.exports = { cached, CACHE_MS, convergence, convergenceBuilding, topicsOf, langOf, storyKeys, ENGINE_TOOLS, context };
+module.exports = { cached, CACHE_MS, addDayGain, convergence, convergenceBuilding, topicsOf, langOf, storyKeys, ENGINE_TOOLS, context };

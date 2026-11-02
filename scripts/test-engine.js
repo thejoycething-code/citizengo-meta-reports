@@ -316,6 +316,16 @@ const callErr = async (store, name, args, who) => { try { await tool(name)(store
 
   eq('calendar items carry live post links, https only', JSON.stringify(E.calendarItem({ id: 'x', team_id: 'ie', status: 'posted', doc: { published: { 'ie-fb': { url: 'https://facebook.com/p/1' }, 'ie-ig': { url: 'javascript:alert(1)' } }, results: { x: { url: 'https://x.com/s/2' } } } }, { editable: false }).links), JSON.stringify([{ account: 'ie-fb', url: 'https://facebook.com/p/1' }, { account: 'x', url: 'https://x.com/s/2' }]));
 
+  {
+    const { addDayGain } = require('../mcp/engine-tools');
+    const posts = [{ media_id: 'a' }, { media_id: 'b' }, { media_id: 'c' }];
+    await addDayGain({ peerDayMetrics: async () => [{ media_id: 'a', like_count: 100, comments_count: 10 }, { media_id: 'a', like_count: 160, comments_count: 30 }, { media_id: 'b', like_count: 5, comments_count: 0 }] }, posts);
+    eq('listening: gain since the day before, only with two reads, ids not sent', JSON.stringify(posts), JSON.stringify([{ gain_day: 80 }, {}, {}]));
+    const bare = [{ media_id: 'z' }];
+    await addDayGain({}, bare);
+    eq('listening: no metrics store still drops the id', JSON.stringify(bare), '[{}]');
+  }
+
   console.log(`\n${passed} passed, ${failed} failed`);
   process.exit(failed ? 1 : 0);
 })().catch((e) => { console.error(e); process.exit(1); });
