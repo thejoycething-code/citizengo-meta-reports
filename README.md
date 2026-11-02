@@ -299,7 +299,7 @@ across 23 pages, because an everyday word in a minority language looks rare in a
 Spanish-dominated corpus. The dedup key is then the story **and the media type**,
 so a video of Olivia and a photo of Olivia both surface. A same-format copy is
 suppressed until 35 days after the story's first post, then announced as a
-revival. HazteOir is excluded (`BREAKOUT_EXCLUDE_PAGES`): its median post is
+revival. HazteOir is excluded (`BREAKOUT_EXCLUDE_PAGES`, and on X `BREAKOUT_X_EXCLUDE_ACCOUNTS`): its median post is
 ~25,000 views, so 100,000 is routine there and including it produced 26 of 37
 alerts in testing. One way to post: `--json` emits the decisions and the
 ready-to-send text, the scheduled task in `skills/breakout-alerts/SKILL.md`

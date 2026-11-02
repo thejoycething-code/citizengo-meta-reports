@@ -81,7 +81,9 @@ const CLUSTER_DAYS = Number(process.env.BREAKOUT_CLUSTER_DAYS || 75);
 // X thresholds; see "X POSTS" above. Either one qualifies.
 const X_IMPRESSIONS = Number(process.env.BREAKOUT_X_IMPRESSIONS || 10000);
 const X_INTERACTIONS = Number(process.env.BREAKOUT_X_INTERACTIONS || 250);
-const X_EXCLUDE = String(process.env.BREAKOUT_X_EXCLUDE_ACCOUNTS || '')
+// HazteOir (15528561) is excluded on X for the same reason as on Facebook: its
+// routine posts clear 250 interactions, and on 30 Oct 2026 it was 28 of 30 alerts.
+const X_EXCLUDE = String(process.env.BREAKOUT_X_EXCLUDE_ACCOUNTS || '15528561')
   .split(',').map((s) => s.trim()).filter(Boolean);
 
 const ALL = process.argv.includes('--all');
