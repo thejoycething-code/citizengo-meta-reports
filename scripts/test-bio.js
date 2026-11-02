@@ -22,6 +22,7 @@ const rows = [
   { platform: 'facebook', account_id: '105', account_label: 'Citizen GO UK', full_url: 'https://citizengo.org/en-gb/fr/100-old', petition_id: '100', posted_at: '2026-09-01T10:00:00Z' },
   { platform: 'facebook', account_id: '105', account_label: 'Citizen GO UK', full_url: 'https://example.com/x', petition_id: '5', posted_at: '2026-11-01T10:00:00Z' },
 ];
+eq('cleanItem: a hand-added petition link gets its petition id (so it goes out tracked)', [B.cleanItem({ title: 'Help', url: 'https://citizengo.org/en-gb/fr/19691-sacked?x=1' }).petition_id, B.cleanItem({ title: 'Donate', url: 'https://example.com/give/12345' }).petition_id, B.cleanItem({ url: 'https://citizengo.org/en-gb/fr/1', petition_id: '777' }).petition_id], ['19691', null, '777']);
 const auto = B.autoItems(rows, { accounts, titles: { 19389: 'Crimes against humanity' }, now });
 eq('auto: the team\'s petitions only, one each, newest first, last 30 days', auto.map((a) => [a.id, a.url, a.posts]), [['p19691', 'https://citizengo.org/en-gb/fr/19691', 2], ['p19389', 'https://citizengo.org/en-gb/lf/19389', 1]]);
 eq('auto: titles from the posts, else from the link', auto.map((a) => a.title), ['Sacked for being pro life send anita your support', 'Crimes against humanity']);

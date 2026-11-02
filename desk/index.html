@@ -2757,7 +2757,8 @@ async function tlLoad(k,fn){if(TL.loading[k]||!S.mcp)return;TL.loading[k]=true;T
 function loadTools(){renderTools();const t=TL.tab;
   if((t==="home"||t==="inviter")&&!TL.inv)tlLoad("inv",()=>eng("engine_inviter",{days:TL.days}));
   if((t==="home"||t==="links")&&(!TL.links||TL.links.team!==S.team))tlLoad("links",()=>eng("engine_links",{team:S.team}));
-  if((t==="home"||t==="bio")&&(!TL.bio||TL.bio.team!==S.team))tlLoad("bio",()=>eng("engine_bio",{team:S.team}));
+  if(TL.bio&&TL.bio.team!==S.team){TL.bio=null;TL.bioDirty=false}
+  if((t==="home"||t==="bio")&&!TL.bio)tlLoad("bio",()=>eng("engine_bio",{team:S.team}));
   if((t==="home"||t==="health")&&(!TL.health||TL.health.team!==S.team))tlLoad("health",()=>eng("engine_health",{team:S.team}));
   if(t==="health"&&(!TL.acc||TL.acc.team!==S.team))tlLoad("acc",()=>eng("engine_access",{action:"list",team:S.team}).then(r=>({...r,team:S.team})))}
 function tlCard(icon,title,desc,status,go,dim){return `<article class="tlcard${dim?" dim":""}"><span class="tlicon" aria-hidden="true">${icon}</span><b>${esc(title)}</b><span class="src">${esc(desc)}</span><span class="tlst">${status}</span>${go?`<button class="btn small${dim?"":" primary"}" data-tl-tab="${go}">Open</button>`:`<span class="src">Phase 3</span>`}</article>`}
@@ -2776,7 +2777,7 @@ function tlHome(){const I=TL.inv,L=TL.links,H=TL.health;const bad=H?H.checks.fil
    feature, hide, retitle, end-date or add links here, then Save. Every
    petition button is a Copilot link marked BIO, so Looker counts its
    signatures. */
-function tlBio(){const B=TL.bio;if(!B)return TL.err.bio?`<p class="offline">Couldn't load it (${esc(whyFailed(TL.err.bio))}).</p>`:'<p class="src">Loading…</p>';
+function tlBio(){if(TL.bio&&TL.bio.team!==S.team){TL.bio=null;TL.bioDirty=false;setTimeout(()=>tlLoad("bio",()=>eng("engine_bio",{team:S.team})),0)}const B=TL.bio;if(!B)return TL.err.bio?`<p class="offline">Couldn't load it (${esc(whyFailed(TL.err.bio))}).</p>`:'<p class="src">Loading…</p>';
   const url=location.origin+B.path;const dirty=!!TL.bioDirty;
   const ago=t=>{if(!t)return"";const d=Math.round((Date.now()-Date.parse(t))/864e5);return d<1?"today":d===1?"yesterday":`${d} days ago`};
   const row=(i,k)=>`<div class="biorow${i.shown?"":" off"}"><div class="biomain"><input type="text" class="biot" data-bio-title="${k}" value="${esc(i.title)}" maxlength="80" aria-label="Button title">
@@ -2795,7 +2796,7 @@ function tlBio(){const B=TL.bio;if(!B)return TL.err.bio?`<p class="offline">Coul
     ${phone}</div>`}
 function bioEdit(k,f){const i=TL.bio.items[Number(k)];if(!i)return;f(i);i.touched=true;TL.bioDirty=true;renderTools()}
 async function bioSave(){const B=TL.bio;const items=B.items.filter(i=>!i.auto||i.saved||i.touched||i.pinned||i.hidden||i.featured||i.ends).map(({id,title,url,petition_id,pinned,featured,hidden,starts,ends,auto})=>({id,title,url,petition_id,pinned,featured,hidden,starts,ends,auto}));
-  try{const r=await eng("engine_bio",{team:S.team,action:"save",slug:B.bio.slug,title:B.bio.title,intro:B.bio.intro,auto:B.bio.auto,items});TL.bio=r;TL.bioDirty=false;toast("Link in bio saved.");renderTools()}catch(e){failToast(e,"Couldn't save the page")}}
+  try{const r=await eng("engine_bio",{team:B.team,action:"save",slug:B.bio.slug,title:B.bio.title,intro:B.bio.intro,auto:B.bio.auto,items});TL.bio=r;TL.bioDirty=false;toast("Link in bio saved.");renderTools()}catch(e){failToast(e,"Couldn't save the page")}}
 document.addEventListener("click",ev=>{if(!TL.bio)return;
   const f=ev.target.closest("[data-bio-flag]");if(f){bioEdit(f.dataset.k,i=>{i[f.dataset.bioFlag]=!i[f.dataset.bioFlag];if(f.dataset.bioFlag==="hidden")i.shown=!i.hidden});return}
   const d=ev.target.closest("[data-bio-del]");if(d){TL.bio.items.splice(Number(d.dataset.bioDel),1);TL.bioDirty=true;renderTools();return}
@@ -3082,7 +3083,8 @@ function calGrid(){const G=CAL.ig;const head=`<div class="calbar"><h2>Instagram 
   const acc=accs.find(a=>a.key===CAL.igKey)||accs.find(a=>a.media.length)||accs[0];
   const pick=accs.length>1?`<select class="calctry" data-cal-ig aria-label="Instagram account">${accs.map(a=>`<option value="${esc(a.key)}"${a.key===acc.key?" selected":""}>${esc(a.handle?"@"+a.handle:a.name)}</option>`).join("")}</select>`:`<span class="src">${esc(acc.handle?"@"+acc.handle:acc.name)}</span>`;
   const now=new Date().toISOString();
-  const plan=ownItems().filter(i=>i.status!=="posted"&&(i.dests||[]).includes(acc.key)&&i.at>=now.slice(0,10)).sort((a,b)=>String(b.at).localeCompare(String(a.at)));
+  const igAt=i=>{const t=otherTimes(S.drafts.find(x=>x.id===i.id)||{},acc.key);return t?t.toISOString():i.at};
+  const plan=ownItems().filter(i=>i.status!=="posted"&&(i.dests||[]).includes(acc.key)).map(i=>({...i,at:igAt(i)})).filter(i=>i.at>=now.slice(0,10)).sort((a,b)=>String(b.at).localeCompare(String(a.at)));
   const live=acc.media.slice(0,Math.max(0,15-plan.length));
   const when=t=>new Date(t).toLocaleDateString("en-GB",{weekday:"short",day:"numeric"});
   const tiles=plan.map(i=>{const st=["pending","changes"].includes(i.status)?"Review":"Scheduled";return `<button class="iggt plan${st==="Review"?" draft":""}" data-cal-peek="${esc(i.id)}" title="${esc(i.title)}"><canvas class="cthumb" data-cthumb="${esc(i.id)}" width="10" height="10" aria-hidden="true"></canvas><span class="igtag">${st} · ${esc(when(i.at))}</span></button>`}).join("")

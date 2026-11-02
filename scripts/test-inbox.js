@@ -375,6 +375,7 @@ function fakeMeta() {
     eq('team: people, busiest first, names matched without case', T.people.map((p) => [p.who, p.replies, p.assigned_open, p.done, p.median_reply_min]), [['Chris', 2, 1, 0, 30], ['Tobias', 1, 0, 1, 120], ['Sam', 0, 0, 0, null]]);
     eq('team: unassigned and waiting', [T.unassigned, T.waiting, T.open], [{ count: 1, oldest_at: '2026-11-02T14:30:00Z' }, { over_2h: 1, hostile_unassigned: 1 }, 2]);
     eq('team: first reply only, cancelled ignored', T.median_reply_min, 75);
+    eq('team: newest-first actions (as the store gives them) still time the first reply', I.teamStats({ items, actions: actions.slice().reverse(), people: ['Chris', 'Tobias', 'Sam'], now, tz: 'UTC' }).median_reply_min, 75);
     eq('team: arrivals by hour skip our own', [T.hours[9].arrived, T.hours[9].median_reply_min, T.hours[14].arrived], [1, 30, 1]);
   }
 
