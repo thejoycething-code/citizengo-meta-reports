@@ -399,3 +399,33 @@ alter table public.engine_copilot_auth enable row level security;
 -- only gets a 1-hour signed link (engine_preview). The app keeps its own limits
 -- (images 3 MB, video pieces 2.5 MB); the bucket ceiling is for previews.
 update storage.buckets set allowed_mime_types = array['image/jpeg', 'image/png', 'application/octet-stream', 'video/mp4'], file_size_limit = 26214400 where id = 'engine-media';
+
+-- Link in bio [Phase 3, 2 Nov]: one public page per team (/links/<slug>),
+-- filled with the team's recent campaigns (lib/bio.js) plus links people pin.
+-- Clicks are counted per button per day by the page's redirect (api/bio.js).
+create table if not exists public.engine_bio (
+  team_id text primary key references public.engine_teams(id) on delete cascade,
+  slug text not null unique check (slug ~ '^[a-z0-9][a-z0-9-]{1,30}$'),
+  title text not null default 'CitizenGO',
+  intro text,
+  auto boolean not null default true,
+  items jsonb not null default '[]'::jsonb,
+  updated_at timestamptz not null default now(),
+  updated_by text
+);
+alter table public.engine_bio enable row level security;
+comment on table public.engine_bio is 'Content Engine Link in bio: one public page per team. items = saved buttons (pinned, retitled, hidden, dated, added by hand, or auto ones with their BIO tracked link).';
+create table if not exists public.engine_bio_clicks (
+  slug text not null,
+  item_id text not null,
+  day date not null,
+  clicks integer not null default 0,
+  primary key (slug, item_id, day)
+);
+alter table public.engine_bio_clicks enable row level security;
+create or replace function public.engine_bio_click(p_slug text, p_item text) returns void
+language sql security definer set search_path = public as $$
+  insert into public.engine_bio_clicks (slug, item_id, day, clicks) values (p_slug, left(p_item, 40), (now() at time zone 'Europe/London')::date, 1)
+  on conflict (slug, item_id, day) do update set clicks = engine_bio_clicks.clicks + 1;
+$$;
+revoke all on function public.engine_bio_click(text, text) from public, anon, authenticated;

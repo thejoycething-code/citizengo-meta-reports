@@ -70,6 +70,9 @@ function engine() {
     async engineInsertAutomation(row) { const a = { id: db.autos.length + 1, active: true, ...row }; db.autos.push(a); return clone(a); },
     async engineUpdateAutomation(id, team, fields) { const i = db.autos.findIndex((a) => a.id === id && a.team_id === team); if (i < 0) return null; if (fields === null) return db.autos.splice(i, 1)[0]; Object.assign(db.autos[i], fields); return clone(db.autos[i]); },
     async engineInboxAutomationUnchecked({ team_ids, since }) { return clone(db.inbox.filter((r) => team_ids.includes(r.team_id) && r.kind === 'comment' && r.platform === 'facebook' && !r.from_us && !r.automation_checked_at && r.created_at >= since)); },
+    async engineBio() { return null; },
+    async engineBioClicks() { return []; },
+    async linkPostsSince() { return []; },
     async engineInboxRules({ team_ids }) { return clone(db.rules.filter((r) => team_ids.includes(r.team_id))); },
     async engineInboxUnchecked({ team_ids, since }) { return clone(db.inbox.filter((r) => team_ids.includes(r.team_id) && r.kind === 'comment' && !r.from_us && !r.auto_checked_at && r.created_at >= since)); },
     async engineInsertInboxRule(row) { const r = { id: db.rules.length + 1, ...row }; db.rules.push(r); return clone(r); },
@@ -345,6 +348,35 @@ function fakeMeta() {
     eq('open items\' tone', r.tone, { positive: 2, negative: 1, mixed: 0 });
     const ps = await call(g, 'engine_inbox_posts', { team: 'uk', days: 30 }, 'chris');
     eq('by post: the comments\' tone', ps.posts.find((p) => p.thread_id === '105_9').tone, { positive: 0, negative: 1, mixed: 0, neutral: 0 });
+    const tm = await call(g, 'engine_inbox_team', { team: 'uk' }, 'chris');
+    eq('team tool: answers with people, hours and waiting', [Array.isArray(tm.people), tm.hours.length, typeof tm.waiting.over_2h, tm.days], [true, 24, 'number', 7]);
+    const bio = await call(g, 'engine_bio', { team: 'uk' }, 'chris');
+    eq('bio tool: an unsaved page defaults to the team id', [bio.path, bio.bio.saved, Array.isArray(bio.items)], ['/links/uk', false, true]);
+  }
+
+  // Inbox › Team [Phase 3]: who has what, first-reply times, arrivals by hour.
+  {
+    const now = Date.parse('2026-11-02T15:00:00Z');
+    const items = [
+      { id: 'a', status: 'open', created_at: '2026-11-02T08:00:00Z', assigned_to: 'Chris', text: 'hi' },
+      { id: 'b', status: 'open', created_at: '2026-11-02T14:30:00Z', assigned_to: null, text: 'you idiots' },
+      { id: 'c', status: 'done', created_at: '2026-11-02T09:00:00Z', text: 'q' },
+      { id: 'd', status: 'done', created_at: '2026-11-02T10:00:00Z', text: 'q2' },
+      { id: 'e', status: 'open', created_at: '2026-11-02T09:30:00Z', from_us: true, text: 'ours' },
+    ];
+    const actions = [
+      { item_id: 'c', action: 'reply', by: 'Chris', created_at: '2026-11-02T09:30:00Z', status: 'done' },
+      { item_id: 'c', action: 'reply', by: 'Chris', created_at: '2026-11-02T11:00:00Z', status: 'done' },
+      { item_id: 'd', action: 'private_reply', by: 'tobias', created_at: '2026-11-02T12:00:00Z', status: 'done' },
+      { item_id: 'd', action: 'done', by: 'tobias', created_at: '2026-11-02T12:01:00Z', status: 'done' },
+      { item_id: 'b', action: 'reply', by: 'tobias', created_at: '2026-11-02T14:40:00Z', status: 'cancelled' },
+    ];
+    const T = I.teamStats({ items, actions, people: ['Chris', 'Tobias', 'Sam'], now, tz: 'UTC', hostile: (i) => /idiot/.test(i.text) });
+    eq('team: people, busiest first, names matched without case', T.people.map((p) => [p.who, p.replies, p.assigned_open, p.done, p.median_reply_min]), [['Chris', 2, 1, 0, 30], ['Tobias', 1, 0, 1, 120], ['Sam', 0, 0, 0, null]]);
+    eq('team: unassigned and waiting', [T.unassigned, T.waiting, T.open], [{ count: 1, oldest_at: '2026-11-02T14:30:00Z' }, { over_2h: 1, hostile_unassigned: 1 }, 2]);
+    eq('team: first reply only, cancelled ignored', T.median_reply_min, 75);
+    eq('team: newest-first actions (as the store gives them) still time the first reply', I.teamStats({ items, actions: actions.slice().reverse(), people: ['Chris', 'Tobias', 'Sam'], now, tz: 'UTC' }).median_reply_min, 75);
+    eq('team: arrivals by hour skip our own', [T.hours[9].arrived, T.hours[9].median_reply_min, T.hours[14].arrived], [1, 30, 1]);
   }
 
   console.log(`\n${passed} passed, ${failed} failed`);
