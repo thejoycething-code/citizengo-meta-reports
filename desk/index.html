@@ -335,6 +335,10 @@ header.top .filters{padding-block:0;margin-left:auto}
   .queue{top:calc(env(safe-area-inset-top,0px) + 64px);max-height:calc(100vh - 80px)}}
 .desk{margin-top:14px}
 /* calendar (Calendar B): week or month on the left, the queue alongside */
+.calpins{display:flex;flex-wrap:wrap;gap:5px;align-items:center;margin:-2px 0 6px;font-size:12px}.calpins .tab{font-size:12px;padding:3px 8px}
+.cchip.ghost{background:transparent;border:1px dashed var(--line);border-left:1px dashed var(--line);opacity:.8}.cchip.ghost b{font-weight:500}
+.cbadge{align-self:flex-start;font:inherit;font-size:11px;border:1px solid var(--line);background:var(--sunk);color:var(--fg);border-radius:999px;padding:1px 7px;cursor:pointer;white-space:nowrap}.cbadge.gold{background:#fdf0d9;border-color:#e3b55a}
+.cpother{display:flex;gap:8px;align-items:flex-start;border-top:1px solid var(--line);padding-top:8px}.cpother>div{display:flex;flex-direction:column;gap:2px;min-width:0}.cpother .kdask{margin-left:4px}
 .camprow{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 8px}.camp{font-size:12px;font-weight:700;border-left:4px solid var(--cc);background:var(--surface);border-radius:6px;padding:3px 8px}
 .calf{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-left:auto;font-size:12.5px}.calf select,.calf input[type=search]{font:inherit;font-size:12.5px;padding:4px 7px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--fg)}.calf input[type=search]{width:130px}
 .cchip{display:flex;gap:6px;align-items:center;width:100%;text-align:left;background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--cc,var(--line));border-radius:7px;padding:3px;font-size:11.5px;line-height:1.25;color:var(--fg);min-width:0;cursor:pointer}
@@ -2591,10 +2595,17 @@ function ownItems(){
   return S.drafts.filter(d=>d.status!=="rejected"&&d.status!=="hold").map(d=>{
     const p=d.posting||{};const times=Object.values(p.times||{}).concat(p.at?[p.at]:[]).sort();
     const at=(d.status==="posted"&&d.posted&&d.posted.at)||times[0]||p.suggestedAt||(d.timing&&d.timing.date?d.timing.date+"T12:00:00":null);
+    if(at&&["pending","changes"].includes(d.status||"pending")&&dayKey(new Date(at))<dayKey(new Date()))return null; // a suggestion whose day has passed unposted
     return at?{id:d.id,at,status:d.status,title:d.title||"",dests:p.destinations||defaultDests(d),mine:true,guess:!times.length&&d.status!=="posted"}:null;
   }).filter(Boolean);
 }
-function otherItems(){const c=CAL.country||"";if(!CAL.data||!c||c===S.team)return[];const flag=id=>(CAL.data.teams||[]).find(t=>t.id===id)?.flag||"";
+/* Other countries (2 Nov): pinned teams show as faint chips in my own views (F); every other team as one
+   badge per day that opens that day's list (G). Choosing one team or "All countries" works as before. */
+function calPins(){if(!CAL.pins){try{CAL.pins=JSON.parse(localStorage.getItem("calPins")||"[]")}catch(e){CAL.pins=[]}}return CAL.pins}
+function savePins(){try{localStorage.setItem("calPins",JSON.stringify(CAL.pins||[]))}catch(e){}}
+function otherAll(){if(!CAL.data)return[];const flag=id=>(CAL.data.teams||[]).find(t=>t.id===id)?.flag||"";
+  return (CAL.data.items||[]).filter(i=>i.team_id!==S.team&&i.at&&["scheduled","posted"].includes(i.status)).map(i=>({id:i.id,at:i.at,status:i.status,title:`${flag(i.team_id)} ${i.title}`.trim(),raw:i.title,team:i.team_id,day:dayKey(new Date(i.at)),dests:i.destinations||[],mine:false,thumb:i.thumb||null,links:i.links||[]}))}
+function otherItems(){const c=CAL.country||"";if(!CAL.data)return[];if(!c||c===S.team){const pins=calPins();return otherAll().filter(i=>pins.includes(i.team)).map(i=>({...i,ghost:true}))}const flag=id=>(CAL.data.teams||[]).find(t=>t.id===id)?.flag||"";
   return (CAL.data.items||[]).filter(i=>i.team_id!==S.team&&i.at&&(c==="all"||i.team_id===c)).map(i=>({id:i.id,at:i.at,status:i.status,title:`${flag(i.team_id)} ${i.title}`.trim(),raw:i.title,team:i.team_id,day:dayKey(new Date(i.at)),dests:i.destinations||[],mine:false}))}
 function calTeamName(id){const t=(CAL.data?.teams||[]).find(x=>x.id===id)||(S.teams||[]).find(x=>x.id===id);return t?`${t.flag||""} ${t.name}`.trim():id}
 /* Another country's post as an idea in my team's Plan, for the same day (or tomorrow if that has passed). */
@@ -2638,6 +2649,9 @@ function campOf(d){return (d&&(d.action&&d.action.title||d.issue))||""}
 function campColor(name){const all=[...new Set(S.drafts.map(campOf).filter(Boolean))].sort();const i=all.indexOf(name);return i<0?"":CAMP_COLORS[i%CAMP_COLORS.length]}
 function liveLinks(d){const out=[];const pub=d.published||{};for(const [k,v] of Object.entries(pub))if(v&&v.url)out.push([accLabel(k),v.url]);
   const r=d.results||{};for(const [k,l] of [["facebook","FB"],["instagram","IG"],["x","X"]])if(r[k]&&r[k].url&&!out.some(o=>o[1]===r[k].url))out.push([l,r[k].url]);return out}
+function badgeItems(){const c=CAL.country||"";if(c&&c!==S.team)return[];const pins=calPins();return otherAll().filter(i=>!pins.includes(i.team))}
+function badgeHtml(k){const l=(CAL.badges||{})[k];if(!l||!l.length)return"";const flags=[...new Set(l.map(i=>i.title.split(" ")[0]))];const shared=new Set(l.map(i=>i.team)).size>=3;
+  return `<button class="cbadge${shared?" gold":""}" data-cal-others="${k}" title="${l.length} post${l.length===1?"":"s"} from other countries${shared?": a shared moment":""}">🌍 ${esc(flags.slice(0,4).join(" "))}${flags.length>4?" …":""} <b>${l.length}</b></button>`}
 function calItems(){const ctry=CAL.country||"";const foreign=ctry&&ctry!=="all"&&ctry!==S.team;let items=(foreign?[]:ownItems()).concat(otherItems());
   const f=CAL.filter||{};
   if(f.net&&f.net.length)items=items.filter(i=>(i.dests||[]).some(k=>f.net.includes(leadOf(k))));
@@ -2650,7 +2664,7 @@ function calChip(i,mode){const d=i.mine?S.drafts.find(x=>x.id===i.id):null;const
   const drag=i.mine&&i.status!=="posted"?` draggable="true" data-drag="${esc(i.id)}"`:"";
   const thumb=i.mine?`<canvas class="cthumb" data-cthumb="${esc(i.id)}" width="10" height="10" aria-hidden="true"></canvas>`:"";
   const meta=`${i.status==="posted"?"✓ ":cls==="draft"?"Review · ":""}${hhmm(i.at)} · ${calNets(i)}`;
-  if(!i.mine)return `<div class="cchip other${mode?" "+mode:""}"><span class="cbody"><b>${esc(i.title)}</b><small>${esc(meta)}</small><button class="kdask" data-cal-copy="${esc(i.id)}" data-team="${esc(i.team||"")}" data-day="${esc(i.day||"")}" data-title="${esc(i.raw||i.title)}">→ copy as an idea</button></span></div>`;
+  if(!i.mine)return `<button class="cchip other${i.ghost?" ghost":""}${mode?" "+mode:""}" data-cal-others="${esc(i.day)}" data-only="${esc(i.id)}" title="${esc(i.title)}">${i.thumb&&/^https:/.test(i.thumb)?`<img class="cthumb" src="${esc(i.thumb)}" alt="" loading="lazy">`:""}<span class="cbody"><b>${esc(i.title)}</b><small>${esc(meta)}</small></span></button>`;
   return `<button class="cchip ${cls}${mode?" "+mode:""}" data-cal-peek="${esc(i.id)}"${drag}${cc?` style="--cc:${cc}"`:""} title="${esc(i.title)}">${thumb}<span class="cbody"><b>${esc(i.title)}</b><small>${esc(meta)}</small></span></button>`}
 function calHeader(label,count){const v=CAL.view;const f=CAL.filter||{};const nets=["fb","ig","x"];
   return `<div class="calbar"><h2>${esc(label)}</h2>
@@ -2661,16 +2675,17 @@ function calHeader(label,count){const v=CAL.view;const f=CAL.filter||{};const ne
     <select data-cal-status aria-label="Status"><option value="">All statuses</option>${[["scheduled","Scheduled"],["review","In review"],["posted","Posted"]].map(([x,l])=>`<option value="${x}"${f.status===x?" selected":""}>${l}</option>`).join("")}</select>
     <input type="search" data-cal-q placeholder="Search" value="${esc(f.q||"")}" aria-label="Search posts">
     <label class="lg"><input type="checkbox" data-cal-best${CAL.best!==false?" checked":""}> Best slots</label></span></div>
+    ${!CAL.country||CAL.country===S.team?`<div class="calpins"><span class="src">Also show:</span>${((CAL.data&&CAL.data.teams)||[]).filter(t=>t.id!==S.team).map(t=>`<button class="tab small" data-cal-pin="${esc(t.id)}" aria-pressed="${calPins().includes(t.id)}">${esc(`${t.flag||""} ${t.name}`.trim())}</button>`).join("")}<span class="src">Pinned countries show faintly in your calendar; the rest as 🌍 badges.</span></div>`:""}
     <div class="calnote">${CAL.loading?"Loading the calendar…":CAL.err?esc("Couldn't load key dates and other teams: "+whyFailed(CAL.err)):esc(count)}</div>`}
 /* ---- month ---- */
 function calMonth(days,month,byDay){const today=dayKey(new Date());const reqOn=k=>(PLAN.reqs||[]).filter(r=>r.for_date===k);
   return `<div class="month cmonth">${["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map(x=>`<div class="dow">${x}</div>`).join("")}${days.map(d=>{const k=dayKey(d);const list=byDay[k]||[];const rq=reqOn(k);
     const quiet=k>=today&&!list.some(i=>i.mine)&&!rq.length;
     const best=CAL.best!==false&&k>=today?bestChip(d,list):"";
-    return `<div class="mcell${d.getMonth()!==month?" out":""}${k===today?" today":""}${quiet?" quiet":""}" data-day="${k}"><span class="n">${d.getDate()}</span>${keyDatesOn(k).filter(x=>x.starts===k||d.getDay()===1).map(x=>kdHtml(x,k)).join("")}${rq.map(rqHtml).join("")}${list.map(i=>calChip(i)).join("")}${best&&list.filter(i=>i.mine).length<2?`<span class="qhint" title="Our best slot that day is free">${best} free</span>`:""}</div>`}).join("")}</div>`}
+    return `<div class="mcell${d.getMonth()!==month?" out":""}${k===today?" today":""}${quiet?" quiet":""}" data-day="${k}"><span class="n">${d.getDate()}</span>${keyDatesOn(k).filter(x=>x.starts===k||d.getDay()===1).map(x=>kdHtml(x,k)).join("")}${rq.map(rqHtml).join("")}${list.map(i=>calChip(i)).join("")}${badgeHtml(k)}${best&&list.filter(i=>i.mine).length<2?`<span class="qhint" title="Our best slot that day is free">${best} free</span>`:""}</div>`}).join("")}</div>`}
 function bestChip(d,list){const t=(S.teams||[]).find(x=>x.id===S.team);const lead=((t&&t.accounts)||[]).some(a=>a.platform==="facebook")?"fb":"ig";const we=[0,6].includes(d.getDay());const [h,m]=BEST[lead][we?"we":"wd"];const c=new Date(d);c.setHours(h,m,0,0);
   if(c.getTime()<Date.now()+30*60e3||list.some(i=>i.mine&&Math.abs(Date.parse(i.at)-c.getTime())<90*60e3))return"";return `★ ${hhmm(c)}`}
-function rqHtml(r){return r.status==="drafted"?`<div class="rq done" title="${esc(r.angle||"")}">✎ Drafted: ${esc(r.title)}</div>`:`<div class="rq" title="${esc(r.angle||"")}"><span>✎ Asked: ${esc(r.title)}</span><button data-plan-cancel="${esc(r.id)}" aria-label="Cancel the request for ${esc(r.title)}">Cancel</button></div>`}
+function rqHtml(r){if(r.status!=="drafted"&&r.for_date<dayKey(new Date()))return"";return r.status==="drafted"?`<div class="rq done" title="${esc(r.angle||"")}">✎ Drafted: ${esc(r.title)}</div>`:`<div class="rq" title="${esc(r.angle||"")}"><span>✎ Asked: ${esc(r.title)}</span><button data-plan-cancel="${esc(r.id)}" aria-label="Cancel the request for ${esc(r.title)}">Cancel</button></div>`}
 /* ---- week by the hour ---- */
 const CW_FROM=6,CW_TO=23;
 function calWeek(days,byDay){const today=dayKey(new Date());const pct=t=>((t.getHours()+t.getMinutes()/60)-CW_FROM)/(CW_TO-CW_FROM)*100;
@@ -2680,15 +2695,15 @@ function calWeek(days,byDay){const today=dayKey(new Date());const pct=t=>((t.get
     const list=(byDay[k]||[]);const now=new Date();
     const blocks=list.map(i=>`<div class="cwblock" style="top:${Math.max(0,Math.min(96,pct(new Date(i.at))))}%">${calChip(i,"wk")}</div>`).join("");
     const head=keyDatesOn(k).filter(x=>x.starts===k).map(x=>`<span class="cwkd kc-${kdCat(x)}">${esc(x.title)}</span>`).join("")+(PLAN.reqs||[]).filter(r=>r.for_date===k).map(r=>`<span class="cwkd rqk">✎ ${esc(r.title)}</span>`).join("");
-    return `<div class="cwcol${k===today?" today":""}"><div class="cwhead"><b>${esc(d.toLocaleDateString("en-GB",{weekday:"short",day:"numeric"}))}</b>${head}</div>
+    return `<div class="cwcol${k===today?" today":""}"><div class="cwhead"><b>${esc(d.toLocaleDateString("en-GB",{weekday:"short",day:"numeric"}))}</b>${head}${badgeHtml(k)}</div>
       <div class="cwtrack" data-day="${k}" data-week="1">${CAL.best!==false&&k>=today?`<span class="cwbest" style="top:${pct(b0)}%;height:${pct(b1)-pct(b0)}%" title="Our best window"></span>`:""}${k===today?`<span class="cwnow" style="top:${pct(now)}%"></span>`:""}${blocks}</div></div>`}).join("");
   return `<div class="cweek"><div class="cwruler"><div class="cwhead"></div><div class="cwtrack">${ruler.join("")}</div></div>${cols}</div>`}
 /* ---- list ---- */
 function calList(days,byDay){const today=dayKey(new Date());
   return `<div class="clist">${days.map(d=>{const k=dayKey(d);const list=(byDay[k]||[]);const kd=keyDatesOn(k).filter(x=>x.starts===k).map(x=>x.title).join(" · ");
     if(!list.length&&k<today)return"";
-    return `<div class="clday${k===today?" today":""}" data-day="${k}"><div class="cldh"><b>${esc(d.toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"}))}</b>${kd?`<span class="src">${esc(kd)}</span>`:""}${list.length?"":`<span class="src">Nothing booked${CAL.best!==false&&bestChip(d,list)?" · "+bestChip(d,list)+" free":""}</span>`}</div>
-      ${list.map(i=>{const dd=i.mine?S.drafts.find(x=>x.id===i.id):null;const links=dd?liveLinks(dd):[];const st=i.status==="posted"?"Posted":["pending","changes"].includes(i.status)?"In review":i.mine?"Scheduled":calTeamName(i.team);
+    return `<div class="clday${k===today?" today":""}" data-day="${k}"><div class="cldh"><b>${esc(d.toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"}))}</b>${kd?`<span class="src">${esc(kd)}</span>`:""}${badgeHtml(k)}${list.length?"":`<span class="src">Nothing booked${CAL.best!==false&&bestChip(d,list)?" · "+bestChip(d,list)+" free":""}</span>`}</div>
+      ${list.map(i=>{const dd=i.mine?S.drafts.find(x=>x.id===i.id):null;const links=dd?liveLinks(dd):(i.links||[]).map(x=>[accLabel(x.account),x.url]);const st=i.status==="posted"?"Posted":["pending","changes"].includes(i.status)?"In review":i.mine?"Scheduled":calTeamName(i.team);
         return `<div class="clrow"><b class="clt">${esc(hhmm(i.at))}</b>${calChip(i,"ls")}<span class="src">${esc(calNets(i))}</span><span class="clst ${i.status}">${esc(st)}</span><span class="src">${esc(dd?campOf(dd):"")}</span><span class="cllinks">${links.map(([l,u])=>`<a href="${esc(u)}" target="_blank" rel="noopener">${esc(l)} ↗</a>`).join(" ")}</span></div>`}).join("")}</div>`}).join("")}</div>`}
 function renderCal(){
   const el=$("#calView");if(!el||el.hidden)return;
@@ -2696,6 +2711,7 @@ function renderCal(){
   const {s,e,month}=calRange();
   const items=calItems();const byDay={};items.forEach(i=>{const k=dayKey(new Date(i.at));(byDay[k]=byDay[k]||[]).push(i)});
   Object.values(byDay).forEach(l=>l.sort((a,b)=>String(a.at).localeCompare(String(b.at))));
+  CAL.badges={};badgeItems().forEach(i=>{(CAL.badges[i.day]=CAL.badges[i.day]||[]).push(i)});
   const days=[];for(const d=new Date(s);d<e;d.setDate(d.getDate()+1))days.push(new Date(d));
   const inRange=CAL.view==="week"?days:days.filter(d=>d.getMonth()===month);
   const count=inRange.reduce((n,d)=>n+(byDay[dayKey(d)]||[]).filter(i=>i.mine&&i.status!=="posted").length,0);
@@ -2724,7 +2740,11 @@ function calSide(days,items){const today=dayKey(new Date());const reqOn=k=>(PLAN
   else body=`<form id="planIdea"><label>Date<input type="date" name="for_date" min="${today}" required></label><label>What's it about?<input type="text" name="title" maxlength="200" placeholder="e.g. Thank supporters for 20,000 signatures" required></label><label>Angle or notes (optional)<textarea name="angle" rows="3" maxlength="1000" placeholder="Sources, tone, a photo you have in mind"></textarea></label><button class="btn primary" type="submit"${PLAN.busy?" disabled":""}>Ask for a draft</button></form>`;
   return `<aside class="qside tray">${pauseSwitchHtml()}<h3>Ideas to place</h3><span class="tabs">${tab("key","Key dates",ideas.length)}${tab("eg","Evergreen",eg.length)}${tab("hold","On hold",held.length)}${tab("own","Own idea")}${tab("year","Year")}</span><p class="src" style="margin:0">Drag onto a day: the morning run drafts it into Review for that date.</p>${body}</aside>`}
 /* ---- the small card: peek at a post, or confirm a move after a drag ---- */
-function calPeekHtml(){const P=CAL.peek;if(!P)return"";const d=S.drafts.find(x=>x.id===P.id);if(!d){CAL.peek=null;return""}
+function calOthersPeek(P){const all=otherAll().filter(i=>i.day===P.day&&(!P.only||i.id===P.only));if(!all.length){CAL.peek=null;return""}
+  const day=new Date(P.day+"T12:00:00").toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"});
+  return `<div class="cpeek" id="calPeek" role="dialog" aria-label="Other countries on ${esc(day)}" style="left:${P.x}px;top:${P.y}px"><div class="cprow"><div><b>${esc(day)} · ${P.only?esc(calTeamName(all[0].team)):`${new Set(all.map(i=>i.team)).size} other countr${new Set(all.map(i=>i.team)).size===1?"y":"ies"}`}</b><small>Read-only. Copy one as an idea for your own calendar.</small></div><button class="btn small" data-cal-peekclose aria-label="Close">✕</button></div>
+    ${all.map(i=>`<div class="cpother">${i.thumb&&/^https:/.test(i.thumb)?`<img class="cthumb big" src="${esc(i.thumb)}" alt="" loading="lazy">`:`<span class="cthumb big"></span>`}<div><b>${esc(i.title)}</b><small>${esc(hhmm(i.at))} · ${esc(calNets(i))} · ${i.status==="posted"?"posted":"scheduled"}</small><span class="cplinks">${(i.links||[]).map(x=>`<a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(accLabel(x.account))} ↗</a>`).join(" ")}<button class="kdask" data-cal-copy="${esc(i.id)}" data-team="${esc(i.team||"")}" data-day="${esc(i.day||"")}" data-title="${esc(i.raw||i.title)}">→ copy as an idea</button></span></div></div>`).join("")}</div>`}
+function calPeekHtml(){const P=CAL.peek;if(!P)return"";if(P.others)return calOthersPeek(P);const d=S.drafts.find(x=>x.id===P.id);if(!d){CAL.peek=null;return""}
   const it=ownItems().find(i=>i.id===d.id);const at=it?new Date(it.at):null;const links=liveLinks(d);const st=STATUS.find(x=>x.key===(d.status||"pending"));
   const times=[];for(let h=6;h<24;h++)for(let m=0;m<60;m+=15)times.push(`${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`);
   const to=P.to?new Date(P.to):null;const tt=to?`${String(to.getHours()).padStart(2,"0")}:${String(to.getMinutes()).padStart(2,"0")}`:"";if(to&&!times.includes(tt)){times.push(tt);times.sort()}
@@ -2831,6 +2851,9 @@ document.addEventListener("submit",async ev=>{if(ev.target.id!=="planIdea")retur
   await askDraft(input);});
 /* Calendar v2 handlers: peek, move, filters. */
 document.addEventListener("click",async ev=>{
+  const ob=ev.target.closest("[data-cal-others]");if(ob){ev.preventDefault();const box=$("#calView").getBoundingClientRect();CAL.peek={others:true,day:ob.dataset.calOthers,only:ob.dataset.only||null,x:Math.max(8,Math.min(ev.clientX-box.left,box.width-348)),y:Math.max(8,ev.clientY-box.top+8)};renderCal();return}
+  const pn=ev.target.closest("[data-cal-pin]");if(pn){const k=pn.dataset.calPin;const pins=calPins();CAL.pins=pins.includes(k)?pins.filter(x=>x!==k):pins.concat(k);savePins();renderCal();return}
+  if(ev.target.closest("[data-cal-copy]")&&CAL.peek){return}
   const pk=ev.target.closest("[data-cal-peek]");if(pk){ev.preventDefault();openPeek(pk.dataset.calPeek,ev.clientX,ev.clientY);return}
   if(ev.target.closest("[data-cal-peekclose]")){CAL.peek=null;renderCal();return}
   const mv=ev.target.closest("[data-cal-move]");if(mv&&CAL.peek&&CAL.peek.to){const t=new Date(CAL.peek.to);const [h,m]=($("#cpTime")?.value||"12:00").split(":").map(Number);t.setHours(h,m,0,0);mv.disabled=true;const id=CAL.peek.id;await dropPost(id,dayKey(t),null,t);if(S.view==="calendar"){CAL.peek=null;renderCal()}return}
