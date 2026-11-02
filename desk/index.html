@@ -515,6 +515,21 @@ mark.new{background:var(--ok-soft);color:var(--fg);border-radius:3px}
 .askc{position:fixed;inset:0;z-index:60;background:rgba(10,12,18,.55);display:grid;place-items:center;padding:16px}
 .askcbox{background:var(--surface);color:var(--fg);border-radius:14px;padding:16px 18px;display:flex;flex-direction:column;gap:8px;width:min(640px,100%);max-height:92vh;overflow:auto}
 .askcbox textarea{width:100%;min-height:0;font:inherit;font-size:13.5px;border:1px solid var(--line);border-radius:8px;padding:8px;background:var(--bg);color:var(--fg)}
+/* graphic selector: strip (A) + where it goes / per platform (B) */
+.gkind{font-size:12px;font-weight:700;border-radius:999px;padding:2px 10px;background:var(--sunk);color:var(--fg)}.gkind.car{background:var(--accent-soft);color:var(--accent)}
+.othumb.on .opick canvas{outline:3px solid var(--accent);outline-offset:2px}
+.oin{position:absolute;right:4px;top:4px;width:22px;height:22px;border-radius:50%;background:var(--accent);color:var(--accent-fg);font:700 13px/22px var(--body);text-align:center}
+.ocar{position:absolute;left:4px;bottom:4px;background:rgba(0,0,0,.7);color:#fff;font:600 10px/1.6 var(--mono);border-radius:4px;padding:0 5px}
+.oinlab{font-size:12px;font-weight:700;color:var(--accent)}.ouse{padding:2px 8px;font-size:12px}
+.oup{width:100%;aspect-ratio:4/5;border:2px dashed var(--line);border-radius:7px;background:var(--surface);color:var(--accent);font:700 13px var(--body);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:6px;text-align:center}
+.oup small{font-weight:400;font-size:10.5px;color:var(--muted)}.oup:hover{border-color:var(--accent)}
+.wig{display:flex;flex-direction:column;gap:8px;border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--surface)}
+.wigh{display:flex;align-items:center;gap:10px;justify-content:space-between;flex-wrap:wrap}
+.wigrow{display:flex;flex-wrap:wrap;gap:6px}.wigp{font-size:12.5px;padding:5px 9px;border-radius:8px;background:var(--accent-soft);color:var(--fg)}.wigp.st{background:var(--warn-soft);color:var(--warn)}
+.wigcols{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}@media (max-width:640px){.wigcols{grid-template-columns:minmax(0,1fr)}}
+.wigcol{display:flex;flex-direction:column;gap:6px;min-width:0}.wigt{display:flex;gap:6px;align-items:baseline;flex-wrap:wrap}
+.wigcol canvas{width:100%;height:auto;border-radius:7px;background:var(--sunk)}
+.wown{font-size:12px;font-weight:700;color:var(--accent)}.wmain{font-size:12px;color:var(--muted)}
 </style>
 
 <div class="shell">
@@ -954,10 +969,31 @@ function graphicTools(d){const opts=d.cardOptions||[];const ph=photoOf(d);
   let h=`<div class="gtools">`;
   if(S.gedit)h+=graphicForm(d);
   const c0=d.card||{};const po=(c0.template==="carousel"?c0.slides?.[S.slide]?.photoOptions:c0.photoOptions)||[];
-  if(opts.length)h+=`<div class="opts-h"><span class="eyebrow">Graphic options · ${opts.length}</span><span class="src">Click to use · ⇆ to compare</span></div><div class="ostrip">${opts.map((o,i)=>{const on=d.cardChoice===o.id;const k=optKind(o);return `<div class="othumb${on?" on":""}"><button class="opick" data-act="gpick" data-opt="${esc(o.id)}" aria-pressed="${on}" title="${esc(o.why||o.label||"")}"${S.db?"":" disabled"}><canvas data-opt="${esc(o.id)}" width="10" height="10"></canvas>${i<9?`<span class="onum">${i+1}</span>`:""}</button><span class="okind ${k[1]}">${on?"In use":k[0]}</span><span class="olab">${esc(String(o.label).replace(/^(AI|Set|Previous) · /,""))}</span>${on?"":`<button class="cmp" data-act="cmp" data-opt="${esc(o.id)}" title="Compare with the one in use" aria-label="Compare ${esc(o.label||"")} with the one in use">⇆</button>`}</div>`}).join("")}</div>`;
+  {const main=d.card||{};const isCar=main.template==="carousel";const nS=isCar?(main.slides||[]).length:1;
+   const inUse=o=>d.cardChoice===o.id||JSON.stringify(o.card)===JSON.stringify(main);
+   h+=`<div class="opts-h"><span class="eyebrow">Graphics for this post · ${opts.length}</span><span class="gkind${isCar?" car":""}">${isCar?`▤ Carousel · ${nS} slides`:"▣ Single image"}</span></div>
+   <div class="ostrip">${opts.map((o,i)=>{const on=inUse(o);const k=optKind(o);return `<div class="othumb${on?" on":""}"><button class="opick" data-act="gpick" data-opt="${esc(o.id)}" aria-pressed="${on}" title="${esc(o.why||o.label||"")}"${S.db?"":" disabled"}><canvas data-opt="${esc(o.id)}" width="10" height="10"></canvas>${on?`<span class="oin">✓</span>`:i<9?`<span class="onum">${i+1}</span>`:""}${o.card&&o.card.template==="carousel"?`<span class="ocar">▤ ${(o.card.slides||[]).length}</span>`:""}</button>${on?`<span class="oinlab">✓ In use</span>`:S.db?`<button class="btn small ouse" data-act="gpick" data-opt="${esc(o.id)}">Use this</button>`:""}<span class="okind ${k[1]}">${k[0]}</span><span class="olab">${esc(String(o.label).replace(/^(AI|Set|Previous) · /,""))}</span>${on?"":`<button class="cmp" data-act="cmp" data-opt="${esc(o.id)}" title="Compare with the one in use" aria-label="Compare ${esc(o.label||"")} with the one in use">⇆</button>`}</div>`}).join("")}${S.assets&&S.db?`<div class="othumb"><button class="oup" data-act="gupload" data-drop="main" title="Upload finished images: one = the graphic, several = a carousel">⇪<span>Upload images</span><small>one = the graphic · several = a carousel</small></button></div>`:""}</div>`;
+   h+=whereItGoes(d);}
   if(po.length)h+=`<div class="opts-h"><span class="eyebrow">Image options${c0.template==="carousel"?` for slide ${S.slide+1}`:""}</span></div><div class="opts pho">${po.map((o,i)=>{const on=ph&&ph.url===o.url;return `<div class="opt${on?" on":""}">${o.url?`<img src="${esc(o.url)}" alt="${esc(o.label||"")}" loading="lazy" style="object-position:${Math.round((o.fx??0.5)*100)}% ${Math.round((o.fy??0.3)*100)}%">`:`<div class="nophoto">Type only</div>`}<b>${esc(o.label||"")}</b><small>${esc(o.why||"")}</small>${S.db?`<button class="btn small" data-act="gpo" data-i="${i}"${on||(!o.url&&!ph)?" disabled":""}>${on||(!o.url&&!ph)?"In use":"Use this"}</button>`:""}</div>`}).join("")}</div>`;
   return h+`</div>`}
-function drawThumbs(d){document.querySelectorAll("canvas[data-opt]").forEach(cv=>{const o=(d.cardOptions||[]).find(x=>x.id===cv.dataset.opt);if(o)drawCard(d,cv,o.card)});document.querySelectorAll("canvas[data-story]").forEach(cv=>{const s=(d.story||[])[+cv.dataset.story];if(s)drawCard(d,cv,s)});document.querySelectorAll("canvas[data-prev]").forEach(cv=>{const h=(d.history||[]).slice(-1)[0];const c=cv.dataset.prev==="1"?h?.card:curCard(d);if(c)try{drawCard(d,cv,c)}catch(e){}})}
+/* Where it goes (A), opening into one column per platform (B) when "Same graphic everywhere" is unticked. */
+function whereItGoes(d){const same=samePlatforms(d)&&!S.perPlat;const dests=(d.posting||{}).destinations||[];const story=!!(d.posting||{}).story;
+  const label=o=>String(o.label||o.id).replace(/^(AI|Set|Previous) · /,"");
+  const opts=d.cardOptions||[];
+  if(same)return `<div class="wig"><div class="wigh"><span class="eyebrow">Where it goes</span><label class="dest"><input type="checkbox" data-wig-same checked${S.db?"":" disabled"}> Same graphic everywhere</label></div>
+    <div class="wigrow">${GPLATS.map(([p,l])=>`<span class="wigp"><b>${l}</b> ✓ in use</span>`).join("")}${story?`<span class="wigp st"><b>Story</b> 9:16 · own frames</span>`:""}</div></div>`;
+  return `<div class="wig"><div class="wigh"><span class="eyebrow">Per platform</span><label class="dest"><input type="checkbox" data-wig-same${S.db?"":" disabled"}> Same graphic everywhere</label></div>
+    <div class="wigcols">${GPLATS.map(([p,l])=>{const own=!!(d.cards&&d.cards[p]);const c=cardFor(d,p);const car=c.template==="carousel";return `<div class="wigcol"><div class="wigt"><b>${l}</b><span class="src">${car?`carousel · ${(c.slides||[]).length}`:"single image"}</span></div>
+      <canvas data-plat="${p}" width="10" height="10" aria-label="${l} graphic"></canvas>
+      <span class="${own?"wown":"wmain"}">${own?"✓ Its own graphic":"✓ The main graphic"}</span>
+      <label class="gf">Use<select data-wig-pick="${p}"${S.db?"":" disabled"}><option value="">The main graphic</option>${opts.map(o=>`<option value="${esc(o.id)}"${own&&JSON.stringify(d.cards[p])===JSON.stringify(o.card)?" selected":""}>${esc(label(o))}</option>`).join("")}</select></label>
+      ${S.assets&&S.db?`<button class="btn small" data-act="gupload" data-drop="${p}">⇪ Upload for ${l}</button>`:""}</div>`}).join("")}</div>
+    ${story?`<span class="src">The Story keeps its own 9:16 frames (Story section below).</span>`:""}</div>`}
+document.addEventListener("change",async ev=>{const t=ev.target;const d=S.drafts.find(x=>x.id===S.openId);if(!d||!S.db)return;
+  if(t.matches&&t.matches("[data-wig-same]")){if(t.checked){S.perPlat=false;if(!samePlatforms(d)){try{await S.db.doc("drafts/"+d.id).update({cards:null});toast("Same graphic everywhere again")}catch(e){failToast(e,"Couldn't change it")}}}else S.perPlat=true;renderDetail();return}
+  if(t.matches&&t.matches("[data-wig-pick]")){const p=t.dataset.wigPick;const o=(d.cardOptions||[]).find(x=>x.id===t.value);
+    try{await S.db.doc("drafts/"+d.id).update({cards:{[p]:o?JSON.parse(JSON.stringify(o.card)):null}});toast(o?`${p}: “${String(o.label||"").replace(/^(AI|Set|Previous) · /,"")}”`:`${p}: the main graphic`)}catch(e){failToast(e,"Couldn't change it")}renderDetail()}});
+function drawThumbs(d){document.querySelectorAll("canvas[data-plat]").forEach(cv=>{try{drawCard(d,cv,cardFor(d,cv.dataset.plat))}catch(e){}});document.querySelectorAll("canvas[data-opt]").forEach(cv=>{const o=(d.cardOptions||[]).find(x=>x.id===cv.dataset.opt);if(o)drawCard(d,cv,o.card)});document.querySelectorAll("canvas[data-story]").forEach(cv=>{const s=(d.story||[])[+cv.dataset.story];if(s)drawCard(d,cv,s)});document.querySelectorAll("canvas[data-prev]").forEach(cv=>{const h=(d.history||[]).slice(-1)[0];const c=cv.dataset.prev==="1"?h?.card:curCard(d);if(c)try{drawCard(d,cv,c)}catch(e){}})}
 function commentBox(d){
   if(S.platform!=="facebook")return"";
   const c=textFor(d,"facebookComment");if(!c)return"";
@@ -1059,8 +1095,11 @@ async function snapshotFinal(d){
   try{items.forEach(draw);await document.fonts.ready;
     const pend=Object.values(PHOTOS).filter(im=>!im.complete);
     await Promise.race([Promise.all(pend.map(im=>new Promise(r=>{im.addEventListener("load",r,{once:true});im.addEventListener("error",r,{once:true})}))),new Promise(r=>setTimeout(r,10000))]);
-    for(const p of plats){const mine=items.filter(it=>!PLATFORMS.some(x=>it.name.endsWith(`-${x.key}.png`))||it.platform===p);
-      blobs[p]=[];for(const it of mine){const cv=draw({...it,platform:p});blobs[p].push(await new Promise(r=>cv.toBlob(r,"image/jpeg",0.9)))}}
+    for(const p of plats){const dp={...d,card:cardFor(d,p)};const its=dp.card===d.card?items:exportList(dp);
+      const drawP=it=>{S.slide=it.slide;S.platform=it.platform;const cv=document.createElement("canvas");drawCard(dp,cv,dp.card);return cv};
+      if(dp.card!==d.card){its.forEach(drawP);await new Promise(r=>setTimeout(r,50))}
+      const mine=its.filter(it=>!PLATFORMS.some(x=>it.name.endsWith(`-${x.key}.png`))||it.platform===p);
+      blobs[p]=[];for(const it of mine){const cv=drawP({...it,platform:p});blobs[p].push(await new Promise(r=>cv.toBlob(r,"image/jpeg",0.9)))}}
   }finally{S.slide=keep.slide;S.platform=keep.platform}
   for(const p of plats){
     const media=[];if(!video)for(let i=0;i<blobs[p].length&&i<10;i++){const r=await eng("engine_media",{id:d.id,platform:p,index:i,mime:"image/jpeg",data:await b64(blobs[p][i])});if(!r||!r.ok)throw Object.assign(new Error((r&&r.error)||"Couldn't store the image"),{code:"engine_refused"});media.push(r.path)}
@@ -1141,7 +1180,7 @@ function drawPhoto(ctx,url,x,y,w,h,fx=0.5,fy=0.3,z=1){const im=photo(url);
   const sc=Math.max(w/im.naturalWidth,h/im.naturalHeight)*Math.max(1,z||1),sw=w/sc,sh=h/sc;ctx.drawImage(im,(im.naturalWidth-sw)*fx,(im.naturalHeight-sh)*fy,sw,sh,x,y,w,h);return true}
 function fitBlockMeasure(ctx,text,w,max,min,lh,maxH,family="Roboto",upper=false){let size=max,lines;for(;size>=min;size-=2){ctx.font=`${family==="Roboto"?700:400} ${size}px ${family}`;lines=layout(ctx,upper?String(text??"").toUpperCase():text,w);const sp=ctx.measureText(" ").width;const fits=lines.every(l=>l.reduce((a,t,i)=>a+ctx.measureText(t.w).width+(i?sp:0),0)<=w);if(fits&&lines.length*size*lh<=maxH)break}return{size,h:lines.length*size*lh}}
 function drawCard(d,cv0,card0){
-  const cv=cv0||$("#card");if(!cv)return;const c=card0||d.card||{};
+  const cv=cv0||$("#card");if(!cv)return;const c=card0||(cv0?null:(d.cards&&d.cards[S.platform]))||d.card||{};
   if(c.template==="carousel"){const hs=c.slides?.[S.slide]||c.slides?.[0];if(hs&&HOUSE_T.has(hs.template))return drawCard(d,cv,hs)}/* house-style slides draw as their own template */const [W,H]=cardSize({card:c});if(cv.width!==W||cv.height!==H){cv.width=W;cv.height=H}
   const ctx=cv.getContext("2d");const T=c.template;const u=Math.min(W,H)/1080;const wide=W/H>1.4;
   const ground=(blue)=>{ctx.fillStyle=blue?C.blue:C.white;ctx.fillRect(0,0,W,H)};
@@ -1544,7 +1583,12 @@ function graphicAIBox(d){if(!S.sample||!S.db)return"";
   return `<details class="fold" id="aiFold"${S.aiOpen?" open":""}><summary>Ask Claude to change the graphic</summary><div class="gai"><div class="editrow"><input type="text" id="gNote" placeholder="Tell Claude how to change the graphic, e.g. punchier headline, move her face up"><button class="btn small" data-act="gai">Change graphic</button></div>${chipRow(GRAPHIC_CHIPS,"gaiChip")}</div></details>`}
 /* ---------- instant tools (12 Oct): photo adjust, design switch, more options, rewrite all platforms ---------- */
 const SWITCH_T=[["ig1d","1D · Everyday"],["duo","2 · Duotone"],["reel","3 · Reel cover"],["bignum","4 · Big number"],["placard","5-3 · Placard"],["vigil","6 · Vigil (no logo)"],["phone","7E · Phone notification"],["tick","8C · Tick box"],["newscaps","K8 · Condensed news headline"],["newsbox","K7 · News headline box"],["torn","T · Torn paper (news)"]];
-function curCard(d){return S.gPreview?.id===d.id?S.gPreview.card:(d.card||{})}
+/* Per-platform graphics: d.cards.facebook / instagram / x override d.card for that platform; a platform without one
+   posts the main graphic. "Same graphic everywhere" = no overrides. */
+const GPLATS=[["facebook","Facebook"],["instagram","Instagram"],["x","X"]];
+function cardFor(d,p){return (d.cards&&p&&d.cards[p])||d.card||{}}
+function samePlatforms(d){return !d.cards||!GPLATS.some(([p])=>d.cards[p])}
+function curCard(d){return S.gPreview?.id===d.id?S.gPreview.card:cardFor(d,S.platform)}
 function photoTarget(c){return c.template==="carousel"?(c.slides?.[S.slide]||{}):c}
 function setPreview(d,card,why){S.gPreview={id:d.id,card,note:why,why}}
 function pvBar(d){const pv=S.gPreview&&S.gPreview.id===d.id;return pv?`<div class="gpv"><span>Preview${S.gPreview.why?": "+esc(S.gPreview.why):""}</span><button class="btn small primary" data-act="gaiKeep">Keep it</button><button class="btn small" data-act="gaiUndo">Undo</button></div>`:""}
@@ -1924,9 +1968,13 @@ document.addEventListener("click",async ev=>{
     try{await S.db.doc("drafts/"+d.id).update({card:c});await logFeedback({draftId:d.id,action:"graphic-edit",slide:T==="carousel"?S.slide:null,before,after:c,type:d.type,issue:d.issue});S.gedit=false;toast("Graphic saved")}catch(e){failToast(e,"Couldn't save the graphic")}return}
   /* Finished images as the graphic itself: one replaces it (full-bleed, 4:5), several make a carousel, and on a
      carousel they're added as slides. The graphic it replaces stays in the options strip ("Before upload"). */
-  if(act==="gupload"){const inp=$("#gfiles");inp.value="";inp.onchange=async()=>{const fs=[...inp.files].slice(0,10);if(!fs.length)return;
+  if(act==="gupload"){const plat=b.dataset.drop&&b.dataset.drop!=="main"?b.dataset.drop:null;const inp=$("#gfiles");inp.value="";inp.onchange=async()=>{const fs=[...inp.files].slice(0,10);if(!fs.length)return;
       try{const slides=[];for(let k=0;k<fs.length;k++){toast(`Uploading ${k+1} of ${fs.length}…`);const r=await S.assets.upload(fs[k]);
           slides.push({template:"free",bg:"#000000",layers:[{type:"photo",x:0,y:0,w:100,h:125,fx:0.5,fy:0.5,id:r.id,url:r.url}]})}
+        if(plat){/* one platform's own graphic: one image, or a carousel of several; also kept as an option */
+          const card=slides.length===1?slides[0]:{template:"carousel",slides};const opt={id:"upload-"+Date.now(),label:`Uploaded for ${plat}`,card};
+          await S.db.doc("drafts/"+d.id).update({cards:{[plat]:card},cardOptions:[...(d.cardOptions||[]),opt]});S.perPlat=true;renderDetail();
+          toast(`${slides.length===1?"Image":"Carousel"} uploaded for ${plat}`);return}
         const cur=d.card?JSON.parse(JSON.stringify(d.card)):null;const add=cur&&cur.template==="carousel";
         const card=add?{...cur,slides:[...(cur.slides||[]),...slides]}:slides.length===1?slides[0]:{template:"carousel",slides};
         /* The upload is an option too (and the one chosen), so it stays in the strip whatever is picked next; any open
