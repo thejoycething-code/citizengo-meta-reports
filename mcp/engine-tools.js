@@ -98,13 +98,24 @@ async function enginePause(store, args, { who }) {
   return json({ ok: true, pause: row, pauses: await pausesFor(store, ctx, rights) });
 }
 
+// When each publisher last checked for due posts (the Mac Mini every 5
+// minutes, the cloud backup every 15), for the desk's "Publishing live" chip.
+async function publisherCheckins(store) {
+  if (typeof store.engineCacheGet !== 'function') return null;
+  const out = {};
+  for (const r of ['mini', 'cloud']) {
+    try { const row = await store.engineCacheGet(`publisher:${r}`); out[r] = row ? { at: row.value && row.value.at || row.computed_at, live: !!(row.value && row.value.live), error: (row.value && row.value.error) || null } : null; } catch (e) { out[r] = null; }
+  }
+  return out;
+}
+
 async function enginePosts(store, args, { who }) {
   const ctx = await context(store, who);
   const team = String(args.team || '');
   if (!E.canEditTeam(ctx, team)) throw err('You are not in that team.', 'ENGINE_NOT_MEMBER');
   const statuses = args.status ? String(args.status).split(',').map((s) => s.trim()).filter((s) => E.STATUSES.includes(s)) : null;
   const rows = await store.enginePosts({ team_ids: [team], statuses, limit: args.limit });
-  return json({ team, posts: args.full ? rows : rows.map(lite), pauses: await pausesFor(store, ctx) });
+  return json({ team, posts: args.full ? rows : rows.map(lite), pauses: await pausesFor(store, ctx), publishers: await publisherCheckins(store) });
 }
 
 async function enginePost(store, args, { who }) {
