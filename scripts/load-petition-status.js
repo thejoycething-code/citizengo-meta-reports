@@ -11,8 +11,9 @@
 //    (petitions_signatures_3_0), signatures per petition id: all time, then
 //    the last 14 days. The petition id field is found by its name.
 //  - asana.jsonl: Claude's final reply, a JSON array of the campaign
-//    projects ({name, completed, archived, evaluated, status_updated}),
-//    read-only through the Asana connector. A project is named
+//    projects with something to report ({name, completed, archived,
+//    evaluated, status_updated}), read-only through the Asana connector
+//    (two task searches and one project list, not a lookup per project). A project is named
 //    "EN_GB - <petition title> - MM/YYYY"; it is matched to the petitions our
 //    posts linked to by its list and the words of the title.
 //
@@ -58,17 +59,19 @@ function finalText(text) {
 }
 
 const keyLike = (row, re) => Object.keys(row || {}).find((k) => re.test(k));
+// The petition id dimension: petitions_signatures_3_0.nid in the Bluebook.
+const PID = /\.nid$|petition[^.]*_?id$|petition\.id$/i;
 
 // {petition_id: {total, last14}} from the two Bluebook queries.
 function totalsFrom(queries) {
   const [all, recent] = queries;
   if (!all || !all.length) return {};
-  const pk = keyLike(all[0], /petition[^.]*_?id$|petition\.id$/i), sk = keyLike(all[0], /sum_signatures$|signatures$/i);
+  const pk = keyLike(all[0], PID), sk = keyLike(all[0], /sum_signatures$|signatures$/i);
   if (!pk || !sk) throw new Error(`can't find the petition id and signatures fields in ${Object.keys(all[0]).join(', ')}`);
   const out = {};
   for (const r of all) { const id = String(r[pk] || '').replace(/\D/g, ''); if (id) out[id] = { total: Number(r[sk]) || 0, last14: recent ? 0 : null }; }
   if (recent && recent.length) {
-    const pk2 = keyLike(recent[0], /petition[^.]*_?id$|petition\.id$/i), sk2 = keyLike(recent[0], /sum_signatures$|signatures$/i);
+    const pk2 = keyLike(recent[0], PID), sk2 = keyLike(recent[0], /sum_signatures$|signatures$/i);
     for (const r of recent) { const id = String(r[pk2] || '').replace(/\D/g, ''); if (id) out[id] = { ...(out[id] || { total: null }), last14: Number(r[sk2]) || 0 }; }
   }
   return out;
