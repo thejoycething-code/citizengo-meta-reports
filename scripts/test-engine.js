@@ -367,6 +367,11 @@ const callErr = async (store, name, args, who) => { try { await tool(name)(store
     eq('engine_listening watches: matched through the tool', [r.tab, r.watches.length, r.watches[0].id, r.watches[0].total], ['watches', 1, 'h', 1]);
   }
 
+  {
+    const { wellFormed } = require('../mcp/engine-tools');
+    const cut = '🙏 pray'.slice(0, 1);
+    eq('cache: half an emoji is dropped, whole ones kept', JSON.stringify(wellFormed({ a: [cut + 'x', '🙏 ok'] })), JSON.stringify({ a: ['x', '🙏 ok'] }));
+  }
   console.log(`\n${passed} passed, ${failed} failed`);
   process.exit(failed ? 1 : 0);
 })().catch((e) => { console.error(e); process.exit(1); });
