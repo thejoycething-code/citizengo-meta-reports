@@ -326,6 +326,26 @@ const callErr = async (store, name, args, who) => { try { await tool(name)(store
     eq('listening: no metrics store still drops the id', JSON.stringify(bare), '[{}]');
   }
 
+  {
+    const LT = require('../lib/listen-topics');
+    const { storyKeys } = require('../mcp/engine-tools');
+    const now = Date.parse('2026-11-02T12:00:00Z'), d = (n) => new Date(now - n * 864e5).toISOString();
+    eq('listen topics: keywords put a post in one or more topics', [LT.topicsOf('Peers debate the assisted suicide bill and hospice funding').join(','), LT.topicsOf('Nice weather').join(',')], ['assisted-dying,hospices', '']);
+    const P = [
+      { src: 'opponents', who: 'DiD', text: 'Assisted dying: safeguards poll #choice', created_time: d(1), x: 8 },
+      { src: 'opponents', who: 'HUK', text: 'Assisted dying now, safeguards work #choice', created_time: d(2), x: 5 },
+      { src: 'opponents', who: 'DiD', text: 'Assisted dying is compassion', created_time: d(3), x: 2 },
+      { src: 'allies', who: 'RTL', text: 'Assisted suicide: safeguards fail the disabled #choice', created_time: d(4), x: 6 },
+      { src: 'citizengo', who: 'CGO UK', text: 'Assisted suicide bill: write to peers', created_time: d(20), x: 2 },
+    ];
+    const o = LT.overview(P, { now, storyKeys });
+    const a = o.topics[0];
+    eq('listen topics: counts, change, share and gap', [a.key, a.posts, a.before, a.change_pct, a.share.opponents, a.gap && a.gap.kind], ['assisted-dying', 4, 1, 300, 75, 'opponents']);
+    eq('listen topics: shared words leave out the topic words', a.words.map((w) => w.w).slice(0, 2).join(','), '#choice,safeguards');
+    eq('listen topics: best post per side', a.top.map((p) => p.src + ':' + p.x).join(','), 'allies:6,opponents:8');
+    eq('listen topics: #choice trends with 3 accounts this week', o.trending.map((t) => t.key + ':' + t.accounts).join(','), '#choice:3');
+  }
+
   console.log(`\n${passed} passed, ${failed} failed`);
   process.exit(failed ? 1 : 0);
 })().catch((e) => { console.error(e); process.exit(1); });
