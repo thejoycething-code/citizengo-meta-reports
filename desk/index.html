@@ -1447,8 +1447,8 @@ function editBox(d){
 }
 function fmtN(n){return n==null?"—":Number(n).toLocaleString("en-GB")}
 /* Posted tab (2 Nov): results first. A verdict line, then one tile per network with its post link, reach and × normal. */
-function xTone(x){const n=parseFloat(x);return !isFinite(n)?"":n>=1.2?"up":n<0.8?"down":"mid"}
-function bestX(r){const xs=["facebook","instagram","x"].map(k=>r&&r[k]&&parseFloat(r[k].xMedian)).filter(n=>isFinite(n));return xs.length?Math.max(...xs):null}
+function xTone(x){const n=parseFloat(x);return !Number.isFinite(n)?"":n>=1.2?"up":n<0.8?"down":"mid"}
+function bestX(r){const xs=["facebook","instagram","x"].map(k=>r&&r[k]&&parseFloat(r[k].xMedian)).filter(Number.isFinite);return xs.length?Math.max(...xs):null}
 function resultsBox(d){
   if(d.status!=="posted"&&!d.results)return"";
   const r=d.results;const p=d.posted||{};
