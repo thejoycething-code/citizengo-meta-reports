@@ -220,6 +220,7 @@ textarea{width:100%;min-height:220px;font:inherit;font-size:14px;line-height:1.5
 .pchip{font:600 12px/1 var(--body,inherit);padding:6px 10px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--fg);cursor:pointer}
 .pchip:hover,.pchip:focus-visible{border-color:var(--accent);color:var(--accent);outline:none}
 .pchip.late{background:var(--bad-soft);border-color:var(--bad);color:var(--bad)}
+.pchip.warn{background:var(--warn-soft);border-color:var(--warn);color:var(--warn)}
 .gai{margin-top:10px;padding-top:10px;border-top:1px dashed var(--line)}
 .gpv{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:8px;font-size:13px;background:var(--sunk);padding:8px 10px;border-radius:8px}
 .lint{border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:13px;display:flex;flex-direction:column;gap:4px}
@@ -1541,11 +1542,17 @@ function lateSlots(){const now=Date.now();const out=[];
     for(const k of p.destinations||[]){const pl=platOfKey(k);if(pl!=="facebook"&&pl!=="instagram")continue;if((d.published||{})[k])continue;if(isHeld&&isHeld(d))continue;
       const t=Date.parse((p.times&&p.times[k])||p.at||d.post_at||"");if(t&&now-t>LATE_MS)out.push({d,k,t})}}
   return out}
-function renderPause(){const on=(S.pauses||[]).length;const chip=$("#pauseChip");const late=on?[]:lateSlots();
+/* Check-ins: the Mini publishes every 5 minutes, the cloud backup every 15. */
+function pubAgo(t){const m=Math.round((Date.now()-Date.parse(t))/60e3);return m<1?"just now":m<60?`${m} min ago`:m<1440?`${Math.round(m/60)} h ago`:`${Math.round(m/1440)} d ago`}
+function pubState(){const P=S.publishers;if(!P)return null;const fresh=(x,mins)=>x&&x.at&&Date.now()-Date.parse(x.at)<mins*60e3&&!x.error;
+  const mini=fresh(P.mini,15),cloud=fresh(P.cloud,40);
+  const tip=`Mac Mini: ${P.mini&&P.mini.at?"checked "+pubAgo(P.mini.at):"no check-in yet"}. Cloud backup: ${P.cloud&&P.cloud.at?(P.cloud.error?P.cloud.error:"checked "+pubAgo(P.cloud.at)):"no check-in yet"}.`;
+  return {mini,cloud,tip,ago:P.mini&&P.mini.at?pubAgo(P.mini.at):null}}
+function renderPause(){const on=(S.pauses||[]).length;const chip=$("#pauseChip");const late=on?[]:lateSlots();const ps=pubState();
   const atOf=d=>d.post_at||(d.posting&&d.posting.at)||null;
   const sch=S.drafts.filter(d=>d.status==="scheduled"&&atOf(d)&&Date.parse(atOf(d))>Date.now()).sort((a,b)=>String(atOf(a)).localeCompare(String(atOf(b))));
   const nx=sch[0]?new Date(atOf(sch[0])):null;const nxt=nx?(nx.toDateString()===new Date().toDateString()?nx.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"}):nx.toLocaleString("en-GB",{weekday:"short",hour:"2-digit",minute:"2-digit"})):"";
-  if(chip)chip.innerHTML=!S.mcp||!S.teams?"":on?`<button class="pchip on" data-pause="where" title="${esc(S.pauses.map(p=>`${p.reason} (${p.paused_by})`).join("; "))}">‖ Paused · ${S.drafts.filter(isHeld).length} held</button>`:late.length?`<button class="pchip late" data-late="${esc(late[0].d.id)}" title="Not out 20 minutes after its time. The Mac Mini and the cloud backup may both be down, or Facebook refused it: open it to see why, or post it by hand.">⚠ ${late.length} late · not posted yet</button>`:`<button class="pchip" data-pause="where" title="Pause it from the Calendar.">● Publishing live · ${sch.length} scheduled${nxt?` · next at ${esc(nxt)}`:""}</button>`;
+  if(chip)chip.innerHTML=!S.mcp||!S.teams?"":on?`<button class="pchip on" data-pause="where" title="${esc(S.pauses.map(p=>`${p.reason} (${p.paused_by})`).join("; "))}">‖ Paused · ${S.drafts.filter(isHeld).length} held</button>`:late.length?`<button class="pchip late" data-late="${esc(late[0].d.id)}" title="Not out 20 minutes after its time. The Mac Mini and the cloud backup may both be down, or Facebook refused it: open it to see why, or post it by hand.">⚠ ${late.length} late · not posted yet</button>`:ps&&!ps.mini&&!ps.cloud?`<button class="pchip late" data-pause="where" title="${esc(ps.tip)}">⚠ Publishers not checking in · ${sch.length} scheduled</button>`:`<button class="pchip${ps&&!ps.mini?" warn":""}" data-pause="where" title="${esc((ps?ps.tip+" ":"")+"Pause it from the Calendar.")}">● Publishing live · ${sch.length} scheduled${nxt?` · next at ${esc(nxt)}`:""}${ps&&!ps.mini?" · Mini quiet, cloud backup covering":ps&&ps.ago?` · checked ${esc(ps.ago)}`:""}</button>`;
   if(typeof renderSide==="function")renderSide();
   $("#pauseLine").hidden=!on}
 function pauseSwitchHtml(){const ps=S.pauses||[];
@@ -2190,7 +2197,7 @@ function engineDown(e,loaded){
 }
 async function refreshPosts(){
   if(!S.team)return;
-  try{const r=await eng("engine_posts",{team:S.team,full:true,limit:500});S.drafts=(r&&r.posts||[]).map(fromEngine);S.pauses=(r&&r.pauses)||[];$("#offline").hidden=true;renderPause();await redraw();if(S.view==="calendar")renderCal();if(S.view==="plan")renderPlan()}
+  try{const r=await eng("engine_posts",{team:S.team,full:true,limit:500});S.drafts=(r&&r.posts||[]).map(fromEngine);S.pauses=(r&&r.pauses)||[];S.publishers=(r&&r.publishers)||null;$("#offline").hidden=true;renderPause();await redraw();if(S.view==="calendar")renderCal();if(S.view==="plan")renderPlan()}
   catch(e){engineDown(e,S.drafts.length>0);if(["needs_reauth","server_not_connected","not_in_manifest","not_granted"].includes(e?.code)){S.drafts=[];renderAll()}}
 }
 function teamPref(v){try{if(v===undefined)return localStorage.getItem("desk.team");localStorage.setItem("desk.team",v)}catch(e){return null}}
