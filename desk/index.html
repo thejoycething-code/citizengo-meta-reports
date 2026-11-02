@@ -760,10 +760,14 @@ function readyItems(d){const it=[];const cf=checkFacts(d);const ticked=cf.filter
   return it}
 function readyBox(d){const it=readyItems(d);const ok=it.filter(x=>x[1][0]===true).length,req=it.filter(x=>x[1][0]!==null).length,okReq=it.filter(x=>x[1][0]===true).length;
   return `<div class="ready" id="ready"><div class="rhead"><b>Ready to approve</b><span class="src">${okReq} of ${req} · <a href="#" data-act="previewAll">Preview every placement</a></span></div><div class="rbar"><i style="width:${Math.round(100*okReq/Math.max(1,req))}%"></i></div>${it.map(([k,[v,t]])=>`<div class="ritem"><span>${k}</span><span class="${v===true?"y":v===false?"n":"o"}">${v===true?"✓ ":v===false?"• ":""}${esc(t)}</span></div>`).join("")}</div>`}
-function refreshReady(){const d=S.drafts.find(x=>x.id===S.openId);const r=$("#ready");if(d&&r)r.outerHTML=readyBox(d);const w=$("#apWhen");const t=pickerWhen();const pt=perTimes();
+/* A day/time picked but not yet approved survives the desk's background refreshes. */
+function rememberPick(){const ds=$("#postDay"),ts=$("#postTime");const per=[...document.querySelectorAll("input[data-time]")];
+  if(!S.openId||(!ds&&!per.length))return;S.pick={id:S.openId,day:ds?.value||null,time:ts?.value||null,times:per.length?Object.fromEntries(per.filter(i=>i.value).map(i=>[i.dataset.time,i.value])):null}}
+const pickFor=()=>S.pick&&S.pick.id===S.openId?S.pick:null;
+function refreshReady(){rememberPick();const d=S.drafts.find(x=>x.id===S.openId);const r=$("#ready");if(d&&r)r.outerHTML=readyBox(d);const w=$("#apWhen");const t=pickerWhen();const pt=perTimes();
   if(w&&pt&&pt.length>1)w.textContent="goes out at these times";else if(w&&t)w.textContent=t.toLocaleString("en-GB",{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"});
   const tl=$("#apTimes");if(tl)tl.innerHTML=pt&&pt.length>1?pt.map(([k,t2])=>`${esc((Object.fromEntries(teamDests()))[k]||k)} ${esc(t2.toLocaleString("en-GB",{weekday:"short",hour:"2-digit",minute:"2-digit"}))}`).join(" · "):""}
-function approveSplit(d,checks){const t=(()=>{const p=d.posting||{};const v=p.at||p.suggestedAt;const x=v?new Date(v):null;return x&&x.getTime()>Date.now()?x:bestSlot(p.destinations||defaultDests(d))})();
+function approveSplit(d,checks){const t=(()=>{const pk=pickFor();if(pk){const pt=pk.times&&Object.values(pk.times).sort()[0];const x=pt?new Date(pt):pk.day&&pk.time?new Date(`${pk.day}T${pk.time}:00`):null;if(x&&!isNaN(x))return x}const p=d.posting||{};const v=p.at||p.suggestedAt;const x=v?new Date(v):null;return x&&x.getTime()>Date.now()?x:bestSlot(p.destinations||defaultDests(d))})();
   const dis=checks&&!S.factsOk?" disabled":"";const dests=(d.posting||{}).destinations||defaultDests(d);
   const slots=[["fb","Facebook"],["ig","Instagram"],["x","X"]].filter(([k])=>dests.some(x=>x.endsWith(k))).map(([k,l])=>[bestFor(k),l]).filter(x=>x[0]).sort((a,b)=>a[0]-b[0]);
   return `<div class="apsplit"><button class="btn primary apmain" data-act="approve"${dis}>Approve · <span id="apWhen">${esc(t.toLocaleString("en-GB",{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}))}</span></button><button class="btn primary apmore" data-act="apMenu" aria-label="Approve at another time" aria-expanded="${!!S.apMenu}"${dis}>▾</button></div>
@@ -798,6 +802,7 @@ function failToast(e,msg){const why=whyFailed(e);S.lastErr={at:new Date().toISOS
 /* don't redraw the page under someone who is typing or choosing */
 let lastTyped=0;document.addEventListener("input",ev=>{if(/^(INPUT|TEXTAREA)$/.test(ev.target.tagName)&&ev.target.type!=="checkbox"&&ev.target.type!=="radio")lastTyped=Date.now()},true);
 function busy(){if(S.vidUp)return true;const a=document.activeElement;const typing=a&&$("#detail")?.contains(a)&&(a.tagName==="TEXTAREA"||(a.tagName==="INPUT"&&/^(text|search|url|)$/.test(a.type)))&&Date.now()-lastTyped<30000;
+  const picking=a&&$("#detail")?.contains(a)&&(a.tagName==="SELECT"||a.type==="datetime-local");if(picking)return true;
   const noteOpen=S.mode&&($("#decNote")?.value||"").trim();return !!(typing||noteOpen||S.gPreview||S.capPreview)}
 setInterval(()=>{if(S.renderWaiting&&!busy()){S.renderWaiting=false;renderAll()}},2000);
 document.addEventListener("focusout",()=>{setTimeout(()=>{if(S.renderWaiting&&!busy()){S.renderWaiting=false;renderAll()}},150)});
@@ -1142,7 +1147,7 @@ function makeZip(files){const enc=new TextEncoder();const parts=[],central=[];le
   return new Blob([...parts,...central,e.buffer],{type:"application/zip"})}
 
 function renderAll(){renderTabs();renderFilters();renderQueue();renderDetail()}
-function resetDraftUi(){S.inline=null;S.inlineVal=null;S.apMenu=false;S.factTicks=new Set();S.cmpPrev=false;closeZoom&&closeZoom();S.gPreview=null;S.capPreview=null;S.padj=false;S.slide=0;S.editing=null;S.mode=null;S.picked=new Set();S.factsOk=false}
+function resetDraftUi(){S.inline=null;S.inlineVal=null;S.apMenu=false;S.factTicks=new Set();S.cmpPrev=false;closeZoom&&closeZoom();S.gPreview=null;S.capPreview=null;S.padj=false;S.slide=0;S.editing=null;S.mode=null;S.picked=new Set();S.factsOk=false;S.pick=null}
 
 /* ---------- card art: CitizenGO brand guidelines Q3 2026 ---------- */
 /* Roboto only; white grounds with Brand Blue, or blue grounds where white dominates; official logo top-left with one N-height clear space. */
@@ -1685,7 +1690,7 @@ function bestSlot(dests){const ds=dests||[];const lead=ds.some(k=>/fb$/.test(k))
   for(let i=0;i<9;i++){const c=new Date();c.setDate(c.getDate()+i);const we=[0,6].includes(c.getDay());const [h,m]=BEST[lead][we?"we":"wd"];c.setHours(h,m,0,0);if(c.getTime()>now+30*60e3)return c}
   const t=new Date();t.setDate(t.getDate()+1);t.setHours(14,0,0,0);return t}
 function dayKey(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`}
-function ukPicker(at,dests){const t=at?new Date(at):bestSlot(dests);const base=new Date();base.setHours(0,0,0,0);const days=[];
+function ukPicker(at,dests){const pk=pickFor();const t=pk&&pk.day&&pk.time?new Date(`${pk.day}T${pk.time}:00`):at?new Date(at):bestSlot(dests);const base=new Date();base.setHours(0,0,0,0);const days=[];
   for(let i=-1;i<35;i++){const d=new Date(base);d.setDate(base.getDate()+i);days.push(d)}
   const tk=dayKey(t);if(!days.some(d=>dayKey(d)===tk))days.unshift(new Date(t.getFullYear(),t.getMonth(),t.getDate()));
   const times=[];for(let h=6;h<24;h++)for(let m=0;m<60;m+=15)times.push(`${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`);
@@ -1845,7 +1850,7 @@ function perAcctRow(d,dests,at){const p=d.posting||{};const per=S.perAcct!=null?
   const toggle=`<label class="dest"><input type="checkbox" id="sameTime"${per?"":" checked"}> Same time everywhere</label>`;
   if(!per)return `<div class="row">${toggle}</div><div class="row"><span class="src">Post at</span>${ukPicker(at,dests)}</div>${slotChips(dests)}`;
   const names=Object.fromEntries(teamDests());
-  return `<div class="row">${toggle}</div>${dests.map(k=>{const best=bestFor(leadOf(k));const cur=(p.times&&p.times[k])?new Date(p.times[k]):(best||(at?new Date(at):new Date()));
+  return `<div class="row">${toggle}</div>${dests.map(k=>{const best=bestFor(leadOf(k));const pt=pickFor()?.times;const cur=pt&&pt[k]?new Date(pt[k]):(p.times&&p.times[k])?new Date(p.times[k]):(best||(at?new Date(at):new Date()));
     return `<div class="row"><span class="src" style="min-width:130px">${esc(names[k]||k)}</span><input type="datetime-local" data-time="${k}" aria-label="${esc(names[k]||k)} time" value="${localVal(cur)}" style="font:inherit;font-size:13px;padding:4px 6px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--fg)">${best?`<button class="btn small" data-best="${k}" data-at="${best.toISOString()}">★ ${esc(best.toLocaleString("en-GB",{weekday:"short",hour:"2-digit",minute:"2-digit"}))}</button>`:""}</div>`}).join("")}`}
 function perTimes(){const per=[...document.querySelectorAll("input[data-time]")];if(!per.length)return null;const dests=new Set([...document.querySelectorAll("input[data-dest]")].filter(x=>x.checked).map(x=>x.dataset.dest));return per.filter(i=>dests.has(i.dataset.time)&&i.value).map(i=>[i.dataset.time,new Date(i.value)]).sort((a,b)=>a[1]-b[1])}
 document.addEventListener("change",ev=>{if(ev.target.id==="sameTime"){S.perAcct=!ev.target.checked;renderDetail()}else if(ev.target.dataset&&ev.target.dataset.time)refreshReady()});
