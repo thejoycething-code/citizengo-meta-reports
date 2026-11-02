@@ -372,6 +372,16 @@ const callErr = async (store, name, args, who) => { try { await tool(name)(store
     const cut = '🙏 pray'.slice(0, 1);
     eq('cache: half an emoji is dropped, whole ones kept', JSON.stringify(wellFormed({ a: [cut + 'x', '🙏 ok'] })), JSON.stringify({ a: ['x', '🙏 ok'] }));
   }
+  {
+    const st = memoryStore();
+    const at = new Date(Date.now() - 2 * 864e5).toISOString();
+    st.enginePosts = async () => [{ id: 'sp', team_id: 'uk', status: 'posted', title: 'Isabel', post_at: at, doc: { posted: { at }, action: { url: 'https://citizengo.org/en-gb/isabel', title: 'Free Isabel' }, links: { facebook: { campaign: 'UK-FB-ISA' } }, published: { 'uk-fb': { url: 'https://www.facebook.com/1/posts/123456789012' } } } }];
+    st.engineSignatures = async () => [{ campaign_code: 'uk-fb-isa', signatures: 7, new_members: 2, pulled_at: at }];
+    const { signaturesFor } = require('../mcp/engine-tools');
+    const r = await signaturesFor(st, 'uk', 30);
+    const c = require('../lib/analytics-extra').campaigns(r.linked, {});
+    eq('analytics: signatures per linked post, with its petition and live link', [r.total, r.linked[0].action_title, r.linked[0].urls[0], c[0].title, c[0].signatures], [7, 'Free Isabel', 'https://www.facebook.com/1/posts/123456789012', 'Free Isabel', 7]);
+  }
   console.log(`\n${passed} passed, ${failed} failed`);
   process.exit(failed ? 1 : 0);
 })().catch((e) => { console.error(e); process.exit(1); });

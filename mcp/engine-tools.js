@@ -1435,4 +1435,4 @@ const ENGINE_TOOLS = [
   { name: 'engine_calendar', description: 'Content Engine calendar: every team\'s scheduled and posted items (read-only for teams you are not in) plus your own teams\' drafts and holds, and the key dates (CitizenGO-wide and your teams\' own), between from and to (YYYY-MM-DD).', inputSchema: obj({ from: { type: 'string' }, to: { type: 'string' } }), handler: engineCalendar },
 ];
 
-module.exports = { cached, wellFormed, CACHE_MS, addDayGain, convergence, convergenceBuilding, topicsOf, langOf, storyKeys, ENGINE_TOOLS, context };
+module.exports = { cached, wellFormed, signaturesFor, CACHE_MS, addDayGain, convergence, convergenceBuilding, topicsOf, langOf, storyKeys, ENGINE_TOOLS, context };
