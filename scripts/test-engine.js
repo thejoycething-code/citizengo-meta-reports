@@ -344,6 +344,10 @@ const callErr = async (store, name, args, who) => { try { await tool(name)(store
     eq('listen topics: shared words leave out the topic words', a.words.map((w) => w.w).slice(0, 2).join(','), '#choice,safeguards');
     eq('listen topics: best post per side', a.top.map((p) => p.src + ':' + p.x).join(','), 'allies:6,opponents:8');
     eq('listen topics: #choice trends with 3 accounts this week', o.trending.map((t) => t.key + ':' + t.accounts).join(','), '#choice:3');
+    eq('listen topics: topic page data by side', [a.by_before.citizengo, a.d28.opponents.reduce((x, y) => x + y, 0), a.voices[0].who, a.sides.opponents[0].w, a.sides.opponents[0].posts, !!a.sides.opponents[0].example], [1, 3, 'DiD', '#choice', 2, true]);
+    const m = LT.watchMatches(P, [{ id: 'w1', words: ['Safeguards'], not: ['disabled'] }, { id: 'w2', words: ['peers'], sources: ['allies'] }, { id: 'w3', words: [] }], { now });
+    eq('watches: any word, none of the not-words, chosen sides, 14 days', m.map((w) => w.id + ':' + w.total).join(','), 'w1:2,w2:0,w3:0');
+    eq('watches: newest first', m[0].matches.map((p) => p.who).join(','), 'DiD,HUK');
   }
 
   console.log(`\n${passed} passed, ${failed} failed`);
