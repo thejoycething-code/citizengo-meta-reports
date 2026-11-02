@@ -188,6 +188,16 @@ setTimeout(() => { console.error(`FAIL  still waiting after 30 seconds (${pass} 
   const none = helperPage('https://claude.ai/artifact/XrdkfXNRYiSoCQtFghpaai', { claude: async () => 'x' });
   await until(() => none.state().startsWith('No request'), 'nothing waiting');
   eq('with nothing waiting it says so', none.asked.length, 0);
+  // Opened without an id, failed, then a newer request arrives: Try again stays on the first.
+  const idA = (await (await apiCall(chris, '/api/desk?op=aijob', { method: 'POST', headers: { 'x-desk': '1' }, body: JSON.stringify({ prompt: 'First' }) })).json()).id;
+  let busyA = true;
+  const bareA = helperPage('https://claude.ai/artifact/XrdkfXNRYiSoCQtFghpaai', { claude: async (p) => { if (busyA) throw new Error('busy'); return `answer to ${p}`; } });
+  await until(() => db.engine_ai_jobs.find((j) => j.id === idA).status === 'failed', 'first request failed');
+  const idB = (await (await apiCall(chris, '/api/desk?op=aijob', { method: 'POST', headers: { 'x-desk': '1' }, body: JSON.stringify({ prompt: 'Second' }) })).json()).id;
+  busyA = false; bareA.retry();
+  await until(() => db.engine_ai_jobs.find((j) => j.id === idA).status === 'done', 'first request answered');
+  eq('Try again answers the request the page picked, not a newer one', [db.engine_ai_jobs.find((j) => j.id === idA).text, db.engine_ai_jobs.find((j) => j.id === idB).status], ['answer to First', 'queued']);
+  db.engine_ai_jobs.find((j) => j.id === idB).status = 'done';
   eq('an answered request is not answered twice', JSON.parse((await callTool(null, 'engine_ai_job', { action: 'complete', id: id2, text: 'again' }, { who: 'chris' })).text).error, 'This request is already done.');
 
   // 4. Claude fails (out of messages), the desk shows why, then Try again works.

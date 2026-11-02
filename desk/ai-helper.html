@@ -33,18 +33,19 @@ button{font:inherit;font-weight:600;border:1px solid var(--line);background:var(
 const SERVER="CitizenGO Organic Meta";
 const $=s=>document.querySelector(s);
 const state=(t,cls="")=>{const e=$("#state");e.textContent=t;e.className="state "+cls};
-let mcp=null,sample=null;
+let mcp=null,sample=null,picked="";
 async function call(input){const r=await mcp.callTool(SERVER,"engine_ai_job",input);return r&&r.payload}
 async function run(){
   $("#retry").hidden=true;
-  let id=(location.hash||"").slice(1);
+  // Try again stays on the request this page picked, even when it came by next.
+  let id=picked||(location.hash||"").slice(1);
   if(id&&!/^[0-9a-f]{24}$/.test(id)){state("Open this page from the desk: that request id isn't right.","bad");return}
   if(!mcp){state("This page needs the CitizenGO Organic Meta connector in your claude.ai, and permission to use it. Ask Chris for a connector token.","bad");return}
   if(!sample){state("This page needs permission to ask Claude. Reload it and allow Claude when asked.","bad");return}
   let job;
   try{job=await call(id?{action:"get",id}:{action:"next"})}catch(e){state("Couldn't reach the desk through your connector: "+(e.message||e),"bad");$("#retry").hidden=false;return}
   if(!job||job.ok===false){state((job&&job.error)||"That request wasn't found.","bad");return}
-  id=job.id||id;
+  id=picked=job.id||id;
   if(job.status==="done"){state("This request was already answered. Go back to the desk.","ok");return}
   $("#prompt").textContent=job.prompt;$("#ask").hidden=false;
   state("Asking your Claude… (usually under a minute)");
