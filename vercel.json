@@ -80,5 +80,16 @@
         }
       ]
     }
-  ]
+  ],
+  "crons": [
+    {
+      "path": "/api/cron/publish",
+      "schedule": "*/15 * * * *"
+    }
+  ],
+  "functions": {
+    "api/cron/publish.js": {
+      "maxDuration": 300
+    }
+  }
 }

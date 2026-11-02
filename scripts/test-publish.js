@@ -219,6 +219,23 @@ const quiet = () => {};
   eq('Instagram at its own time: a carousel of two, published, permalink kept', [fb1c.calls.map((c) => c.path), s1.db.posts[0].doc.published['uk-ig'].url], [['178/media', '178/media', '178/media', '178/media_publish', 'ig555'], 'https://www.instagram.com/p/abc/']);
   eq('with X still to post by hand, it stays Scheduled', s1.db.posts[0].status, 'scheduled');
 
+  // Cloud backup: only steps in 10 minutes after the time, and never on a destination another run has claimed.
+  const sb = engine();
+  addPost(sb, 'pb', { review: approved, final, posting: { destinations: ['uk-fb'], at: '2026-11-03T14:00:00Z' } });
+  const fbb = fakeFacebook();
+  await run({ store: sb, privateKey: keys.privateKey, live: true, now: Date.parse('2026-11-03T14:05:00Z'), log: quiet, fetchImpl: fbb.fetchImpl, runner: 'cloud', minLateMs: 600_000 });
+  eq('backup: 5 minutes late is left to the Mini', [fbb.calls.length, !!(sb.db.posts[0].doc.published || {})['uk-fb']], [0, false]);
+  await run({ store: sb, privateKey: keys.privateKey, live: true, now: Date.parse('2026-11-03T14:12:00Z'), log: quiet, fetchImpl: fbb.fetchImpl, runner: 'cloud', minLateMs: 600_000 });
+  eq('backup: 12 minutes late, it publishes and says so', [fbb.calls[0].path, sb.db.events.find((e) => e.action === 'published').detail.via], ['105/photos', 'cloud']);
+  const sr = engine();
+  addPost(sr, 'pr', { review: approved, final, posting: { destinations: ['uk-fb'], at: '2026-11-03T14:00:00Z' } });
+  const seen = clone(sr.db.posts);
+  sr.enginePosts = async () => clone(seen);
+  sr.db.posts[0].doc.publishing = { 'uk-fb': { at: '2026-11-03T14:11:00Z', by: 'mini' } };
+  const fbr = fakeFacebook();
+  const tr = await run({ store: sr, privateKey: keys.privateKey, live: true, now: Date.parse('2026-11-03T14:12:00Z'), log: quiet, fetchImpl: fbr.fetchImpl, runner: 'cloud', minLateMs: 600_000 });
+  eq('race: the Mini claimed it between the backup planning and claiming, so the backup leaves it', [fbr.calls.length, tr.held], [0, 1]);
+
   // Facebook only: Posted afterwards.
   const s2 = engine();
   addPost(s2, 'p2', { review: approved, final, posting: { destinations: ['uk-fb'], at: '2026-11-03T14:00:00Z' } });
