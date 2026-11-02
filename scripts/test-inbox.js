@@ -332,7 +332,7 @@ function fakeMeta() {
     const S = require('../lib/sentiment');
     const tone = (t, o) => (S.toneOf(t, o) || { tone: null }).tone;
     eq('tone: warm, angry, mixed, neutral', [tone('Thank you so much, signed and shared 🙏'), tone('This is disgusting. Shame on them'), tone('Great work but this is a disgrace'), tone('When is the vigil?')], ['positive', 'negative', 'mixed', 'neutral']);
-    eq('tone: "not" flips the next words, a stop ends it', [tone('Not good at all'), tone("I don't hate it"), tone('No! This is evil')], ['negative', 'positive', 'negative']);
+    eq('tone: "not" flips the next words, a stop ends it', [tone('Not good at all'), tone("I don't hate it"), tone('No! This is evil'), tone('This is not great work'), tone('This is not well done')], ['negative', 'positive', 'negative', 'negative', 'negative']);
     eq('tone: Spanish words and emoji', [tone('Gracias, Dios os bendiga'), tone('Qué vergüenza de gobierno'), tone('😡😡')], ['positive', 'negative', 'negative']);
     eq('tone: other languages only by emoji, else unknown', [tone('Il est temps de agir', { lang: 'fr' }), tone('Merci 🙏', { lang: 'fr' }), S.toneOf('')], [null, 'positive', null]);
     eq('tone mix counts', S.toneMix(['Thank you', 'Rubbish', 'ok then']), { positive: 1, negative: 1, mixed: 0, neutral: 1, unknown: 0 });
