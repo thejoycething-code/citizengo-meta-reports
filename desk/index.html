@@ -141,6 +141,13 @@ h2{font-family:var(--display);font-weight:700;font-size:30px;line-height:1.05;ma
 .egq{grid-template-columns:6px 48px minmax(0,1fr)}.egq .stripe{background:var(--ok)}.egleaf{width:48px;height:48px;border-radius:8px;background:var(--accent-soft);color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:18px}
 .draft.egd{display:block}.egd .egbody{display:flex;flex-direction:column;gap:14px;padding:18px 20px;max-width:720px}.egd .egbody p{margin:4px 0 0;max-width:65ch}.egd .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .egpick .btn{display:flex;flex-direction:column;align-items:flex-start;line-height:1.2}.egpick .btn small{font-weight:400;color:var(--muted);font-size:11px}.egpick .btn[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft)}
+.vsug{display:flex;flex-direction:column;gap:8px;border:2px solid var(--accent);border-radius:12px;padding:10px 12px;background:var(--surface);font-size:13.5px}
+.vsug .vshead{display:flex;justify-content:space-between;align-items:center}.vsug .row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.vsmain{display:grid;grid-template-columns:120px minmax(0,1fr);gap:10px;align-items:start}
+.vsthumb{width:120px;height:76px;border-radius:8px;object-fit:cover;background:var(--fg);color:var(--surface);display:flex;align-items:center;justify-content:center;font-size:22px}
+.vsmeta{display:flex;flex-direction:column;gap:3px;min-width:0}.vsmeta small{color:var(--muted)}
+.vsq{margin:0;padding:8px 10px;border-radius:8px;background:var(--sunk);font-size:13px;line-height:1.5}
+.vscuts{margin:2px 0 0;padding-left:18px;font-size:13px}.vsrights{display:flex;gap:6px;align-items:flex-start;font-size:13px;color:var(--warn,#9a5b00)}
 .trashbar{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;padding:8px 10px;margin-bottom:8px;border:1px solid var(--line);border-radius:10px;background:var(--surface);font-size:13px}.trashbar .row{display:flex;gap:6px}
 .btn[disabled]{opacity:.45;cursor:not-allowed}
 
@@ -1052,18 +1059,40 @@ async function uploadVideo(d,blob,name){
     toast("Video uploaded. It goes out with the post.");if(d.status==="scheduled")queueSnapshot(d.id)}
   catch(e){failToast(e,"Couldn't upload the video")}
   finally{S.vidUp=null;renderDetail()}}
+document.addEventListener("change",ev=>{const r=ev.target.closest&&ev.target.closest('[data-act="vsRights"]');if(r){S.vsRights=r.checked?S.openId+"-"+r.dataset.opt:null;renderDetail();return}});
 document.addEventListener("change",ev=>{if(ev.target.id!=="vidFile")return;const f=ev.target.files&&ev.target.files[0];const d=S.drafts.find(x=>x.id===S.openId);ev.target.value="";if(f&&d&&!S.vidUp)uploadVideo(d,f,f.name)});
 document.addEventListener("click",async ev=>{const b=ev.target.closest("[data-vid]");if(!b)return;const d=S.drafts.find(x=>x.id===S.openId);if(!d||S.vidUp)return;
   b.disabled=true;try{const r=await fetch(d.video.url);if(!r.ok)throw new Error("HTTP "+r.status);const blob=await r.blob();await uploadVideo(d,blob,(d.video.file||d.video.label||"video").split("/").pop())}
   catch(e){failToast(e,"Couldn't read the attached video");b.disabled=false}});
+/* Video suggested first (2 Nov): the morning run attaches the clips it found (videoSuggestions; older
+   drafts carry videoOptions or a clipSuggestion). The desk shows one at a time with its source link,
+   timings, quote and the cuts it would make. Nothing is fetched or cut until someone presses Cut it,
+   which files a videoRequests doc for the next run. Footage whose rights aren't settled needs a tick. */
+const fmtSec=x=>{if(x==null||x==="")return"";if(typeof x==="string"&&/:/.test(x))return x;const n=Math.max(0,Math.round(Number(x)));return `${Math.floor(n/60)}:${String(n%60).padStart(2,"0")}`};
+function videoSuggestions(d){
+  if(Array.isArray(d.videoSuggestions)&&d.videoSuggestions.length)return d.videoSuggestions.map((v,i)=>({id:v.id||"vs"+i,...v}));
+  const out=(d.videoOptions||[]).map(o=>({id:o.id,title:o.label||o.speaker,who:o.speaker,quote:o.quote,pack:o.pack,source:"Parliament",rights:{ok:false,note:"Parliament's footage: check the Recording Unit's terms first"}}));
+  const c=d.clipSuggestion;if(c&&(c.footage||c.speaker))out.push({id:"clip",title:c.speaker?`${c.speaker}'s speech`:"Clip from the debate",who:c.speaker,url:c.footage,start:c.at,source:"Parliament",note:c.note,hansard:c.hansard,rights:{ok:false,note:"Parliament's footage: check the Recording Unit's terms first"}});
+  return out}
 function videoBox(d){
   const v=d.video;let h="";
   if(v)h+=`<div class="action"><span class="eyebrow">Video${v.status==="ready"||!v.status?" · ready":""}</span><b>${esc(v.label)}</b><small>${esc(v.cut||"")}</small><small style="font-family:var(--mono)">${esc(v.file||"")}</small></div>`;
-  (d.videoOptions||[]).forEach(o=>{
-    const rq=S.requests[d.id+"-"+o.id];const st=rq?.status;
-    const btn=!S.db?"":st==="requested"?`<span class="asig">Requested · cut in the next morning batch</span>`:st==="failed"?`<span class="asig" style="color:var(--bad)">Couldn't cut: ${esc(rq.reason||"")}</span> <button class="btn small" data-act="reqvideo" data-opt="${esc(o.id)}">Try again</button>`:st==="ready"?`<span class="asig">Cut and attached</span>`:`<button class="btn small" data-act="reqvideo" data-opt="${esc(o.id)}">Request this video</button>`;
-    h+=`<div class="action"><span class="eyebrow">Video on request</span><b>${esc(o.label||o.speaker)}</b>${btn}<small>${esc(o.quote?"\u201c"+o.quote+"\u201d":"")}</small></div>`;
-  });
+  const list=videoSuggestions(d);if(!list.length||d.videoDismissed)return h+(list.length&&d.videoDismissed&&S.db?`<div class="src">No video for this post · <a href="#" data-act="vsUndo">show the clips it found (${list.length})</a></div>`:"");
+  if(v&&v.status==="ready")return h;
+  const i=Math.min(S.vsIdx&&S.vsIdx.id===d.id?S.vsIdx.i:0,list.length-1);const o=list[i];
+  const rq=S.requests[d.id+"-"+o.id];const st=rq&&rq.status;const rightsOk=!(o.rights&&o.rights.ok===false);const ticked=S.vsRights===d.id+"-"+o.id;
+  const span=o.start!=null?`${fmtSec(o.start)}${o.end!=null?" – "+fmtSec(o.end):""}`:"";
+  const cuts=(o.cuts||[]).map(c=>`<li>${esc(c.format||"")}${c.length?` · <b>${esc(fmtSec(c.length))}</b>`:""}${c.what?` · ${esc(c.what)}`:""}</li>`).join("");
+  const state=st==="requested"?`<span class="asig">Cut requested · the next run cuts it</span>`:st==="ready"?`<span class="asig">Cut and attached</span>`:st==="failed"?`<span class="asig" style="color:var(--bad)">Couldn't cut: ${esc(rq.reason||"")}</span>`:"";
+  const btns=!S.db||st==="requested"||st==="ready"?"":`<button class="btn small primary" data-act="vsCut" data-opt="${esc(o.id)}"${rightsOk||ticked?"":" disabled"}>${st==="failed"?"Try again":"Cut it"}</button>${list.length>1?`<button class="btn small" data-act="vsNext">Next clip ›</button>`:""}<button class="btn small" data-act="vsNo">No video</button>`;
+  h+=`<div class="vsug"><div class="vshead"><span class="eyebrow">▶ Video found for this post</span>${list.length>1?`<span class="src">${i+1} of ${list.length}</span>`:""}</div>
+    <div class="vsmain">${o.thumb?`<img class="vsthumb" src="${esc(o.thumb)}" alt="">`:`<span class="vsthumb" aria-hidden="true">▶</span>`}<div class="vsmeta"><b>${esc(o.title||o.who||"Clip")}</b><small>${esc([o.source,o.when].filter(Boolean).join(" · "))}${span?` · ${esc(span)}`:""}</small>${o.url?`<a href="${esc(o.url)}" target="_blank" rel="noopener">Watch the moment ↗</a>`:""}${o.hansard?`<a href="${esc(o.hansard)}" target="_blank" rel="noopener">Read it in Hansard ↗</a>`:""}</div></div>
+    ${o.quote?`<blockquote class="vsq">“${esc(o.quote)}”</blockquote>`:""}
+    ${cuts?`<div><span class="src">What it would cut</span><ul class="vscuts">${cuts}</ul></div>`:""}
+    ${o.why||o.note?`<small class="src">${esc(o.why||o.note)}</small>`:""}
+    ${rightsOk?(o.rights&&o.rights.note?`<small style="color:var(--ok)">✓ ${esc(o.rights.note)}</small>`:""):`<label class="vsrights"><input type="checkbox" data-act="vsRights" data-opt="${esc(o.id)}"${ticked?" checked":""}> ${esc(o.rights.note||"Check we can use this footage")}. <b>I've checked</b></label>`}
+    <div class="row">${btns}${state}</div>
+    <small class="src">Nothing is downloaded or cut until you press Cut it.</small></div>`;
   return h;
 }
 function linkNote(d){const l=d.links?.[S.platform];const pl=PLATFORMS.find(p=>p.key===S.platform)?.label||"";
@@ -2161,6 +2190,11 @@ document.addEventListener("click",async ev=>{
     try{await S.db.doc("drafts/"+d.id).update({card:c});await logFeedback({draftId:d.id,action:"graphic-photo-choice",slide:c.template==="carousel"?S.slide:null,chosen:o.label||o.url,offered:(tgt.photoOptions||[]).map(x=>x.label),type:d.type,issue:d.issue});toast("Image chosen")}catch(e){failToast(e,"Couldn't save the choice")}return}
   if(act==="gphotorm"){const c=JSON.parse(JSON.stringify(d.card||{}));if(c.template==="carousel"){c.slides[S.slide].photo=null}else{c.photo=null}
     try{await S.db.doc("drafts/"+d.id).update({card:c});toast("Photo removed")}catch(e){failToast(e,"Couldn't remove the photo")}return}
+  if(act==="vsNext"){const n=videoSuggestions(d).length;const cur=S.vsIdx&&S.vsIdx.id===d.id?S.vsIdx.i:0;S.vsIdx={id:d.id,i:(cur+1)%n};S.vsRights=null;renderDetail();return}
+  if(act==="vsNo"){try{await S.db.doc("drafts/"+d.id).update({videoDismissed:{by:S.me,at:new Date().toISOString()}});toast("No video for this post")}catch(e){failToast(e,"Couldn't save that")}return}
+  if(act==="vsUndo"){ev.preventDefault();try{await S.db.doc("drafts/"+d.id).update({videoDismissed:null})}catch(e){failToast(e,"Couldn't save that")}return}
+  if(act==="vsCut"){const o=videoSuggestions(d).find(x=>x.id===b.dataset.opt);if(!o)return;const checked=o.rights&&o.rights.ok===false?{rightsCheckedBy:S.me}:{};
+    try{await S.db.doc("videoRequests/"+d.id+"-"+o.id).set({draftId:d.id,optionId:o.id,pack:o.pack||"",speaker:o.who||o.speaker||"",quote:o.quote||"",url:o.url||"",start:o.start??null,end:o.end??null,cuts:o.cuts||[],source:o.source||"",...checked,status:"requested",by:S.me,at:new Date().toISOString()});toast("Cut requested. The next run cuts it and attaches it here")}catch(e){failToast(e,"Couldn't request the cut")}return}
   if(act==="reqvideo"){const o=(d.videoOptions||[]).find(x=>x.id===b.dataset.opt);if(!o)return;
     try{await S.db.doc("videoRequests/"+d.id+"-"+o.id).set({draftId:d.id,optionId:o.id,pack:o.pack||"",speaker:o.speaker||"",quote:o.quote||"",status:"requested",by:S.me,at:new Date().toISOString()});toast("Video requested. It'll be cut in the next morning batch")}catch(e){failToast(e,"Couldn't request the video")}return}
   if(act==="copyComment"){const t=withLink(textFor(d,"facebookComment"),d,"facebook");try{await navigator.clipboard.writeText(t);toast("First comment copied")}catch(e){const el=$(".post.comment .ptext");if(el){const sel=window.getSelection(),r=document.createRange();r.selectNodeContents(el);sel.removeAllRanges();sel.addRange(r)}toast("Text selected. Press Cmd+C to copy")}return}
