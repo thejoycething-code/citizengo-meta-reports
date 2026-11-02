@@ -2694,7 +2694,7 @@ function calMonth(days,month,byDay){const today=dayKey(new Date());const reqOn=k
   return `<div class="month cmonth">${["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map(x=>`<div class="dow">${x}</div>`).join("")}${days.map(d=>{const k=dayKey(d);const list=byDay[k]||[];const rq=reqOn(k);
     const quiet=k>=today&&!list.some(i=>i.mine)&&!rq.length;
     const best=CAL.best!==false&&k>=today?bestChip(d,list):"";
-    return `<div class="mcell${d.getMonth()!==month?" out":""}${k===today?" today":""}${quiet?" quiet":""}" data-day="${k}"><span class="n">${d.getDate()}</span>${keyDatesOn(k).filter(x=>x.starts===k||d.getDay()===1).map(x=>kdHtml(x,k)).join("")}${rq.map(rqHtml).join("")}${list.map(i=>calChip(i)).join("")}${badgeHtml(k)}${best&&list.filter(i=>i.mine).length<2?`<span class="qhint" title="Our best slot that day is free">${best} free</span>`:""}</div>`}).join("")}</div>`}
+    return `<div class="mcell${d.getMonth()!==month?" out":""}${k===today?" today":""}${quiet?" quiet":""}" data-day="${k}"><span class="n">${d.getDate()}</span>${k>=today?keyDatesOn(k).filter(x=>x.starts===k||d.getDay()===1).map(x=>kdHtml(x,k)).join(""):""}${rq.map(rqHtml).join("")}${list.map(i=>calChip(i)).join("")}${badgeHtml(k)}${best&&list.filter(i=>i.mine).length<2?`<span class="qhint" title="Our best slot that day is free">${best} free</span>`:""}</div>`}).join("")}</div>`}
 function bestChip(d,list){const t=(S.teams||[]).find(x=>x.id===S.team);const lead=((t&&t.accounts)||[]).some(a=>a.platform==="facebook")?"fb":"ig";const we=[0,6].includes(d.getDay());const [h,m]=BEST[lead][we?"we":"wd"];const c=new Date(d);c.setHours(h,m,0,0);
   if(c.getTime()<Date.now()+30*60e3||list.some(i=>i.mine&&Math.abs(Date.parse(i.at)-c.getTime())<90*60e3))return"";return `★ ${hhmm(c)}`}
 function rqHtml(r){if(r.status!=="drafted"&&r.for_date<dayKey(new Date()))return"";return r.status==="drafted"?`<div class="rq done" title="${esc(r.angle||"")}">✎ Drafted: ${esc(r.title)}</div>`:`<div class="rq" title="${esc(r.angle||"")}"><span>✎ Asked: ${esc(r.title)}</span><button data-plan-cancel="${esc(r.id)}" aria-label="Cancel the request for ${esc(r.title)}">Cancel</button></div>`}
@@ -2706,13 +2706,13 @@ function calWeek(days,byDay){const today=dayKey(new Date());const pct=t=>((t.get
   const cols=days.map(d=>{const k=dayKey(d);const we=[0,6].includes(d.getDay());const [bh,bm]=BEST[lead][we?"we":"wd"];const b0=new Date(d);b0.setHours(bh-1,bm,0,0);const b1=new Date(d);b1.setHours(bh+2,bm,0,0);
     const list=(byDay[k]||[]);const now=new Date();
     const blocks=list.map(i=>`<div class="cwblock" style="top:${Math.max(0,Math.min(96,pct(new Date(i.at))))}%">${calChip(i,"wk")}</div>`).join("");
-    const head=keyDatesOn(k).filter(x=>x.starts===k).map(x=>`<span class="cwkd kc-${kdCat(x)}">${esc(x.title)}</span>`).join("")+(PLAN.reqs||[]).filter(r=>r.for_date===k).map(r=>`<span class="cwkd rqk">✎ ${esc(r.title)}</span>`).join("");
+    const head=(k>=today?keyDatesOn(k):[]).filter(x=>x.starts===k).map(x=>`<span class="cwkd kc-${kdCat(x)}">${esc(x.title)}</span>`).join("")+(PLAN.reqs||[]).filter(r=>r.for_date===k).map(r=>`<span class="cwkd rqk">✎ ${esc(r.title)}</span>`).join("");
     return `<div class="cwcol${k===today?" today":""}"><div class="cwhead"><b>${esc(d.toLocaleDateString("en-GB",{weekday:"short",day:"numeric"}))}</b>${head}${badgeHtml(k)}</div>
       <div class="cwtrack" data-day="${k}" data-week="1">${CAL.best!==false&&k>=today?`<span class="cwbest" style="top:${pct(b0)}%;height:${pct(b1)-pct(b0)}%" title="Our best window"></span>`:""}${k===today?`<span class="cwnow" style="top:${pct(now)}%"></span>`:""}${blocks}</div></div>`}).join("");
   return `<div class="cweek"><div class="cwruler"><div class="cwhead"></div><div class="cwtrack">${ruler.join("")}</div></div>${cols}</div>`}
 /* ---- list ---- */
 function calList(days,byDay){const today=dayKey(new Date());
-  return `<div class="clist">${days.map(d=>{const k=dayKey(d);const list=(byDay[k]||[]);const kd=keyDatesOn(k).filter(x=>x.starts===k).map(x=>x.title).join(" · ");
+  return `<div class="clist">${days.map(d=>{const k=dayKey(d);const list=(byDay[k]||[]);const kd=k>=today?keyDatesOn(k).filter(x=>x.starts===k).map(x=>x.title).join(" · "):"";
     if(!list.length&&k<today)return"";
     return `<div class="clday${k===today?" today":""}" data-day="${k}"><div class="cldh"><b>${esc(d.toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"}))}</b>${kd?`<span class="src">${esc(kd)}</span>`:""}${badgeHtml(k)}${list.length?"":`<span class="src">Nothing booked${CAL.best!==false&&bestChip(d,list)?" · "+bestChip(d,list)+" free":""}</span>`}</div>
       ${list.map(i=>{const dd=i.mine?S.drafts.find(x=>x.id===i.id):null;const links=dd?liveLinks(dd):(i.links||[]).map(x=>[accLabel(x.account),x.url]);const st=i.status==="posted"?"Posted":["pending","changes"].includes(i.status)?"In review":i.mine?"Scheduled":calTeamName(i.team);
