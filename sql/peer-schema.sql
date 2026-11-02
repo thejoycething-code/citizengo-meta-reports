@@ -131,3 +131,17 @@ begin
   end loop;
 end
 $$;
+
+-- Listening › Beyond our list (Nov 2026; applied as migration listen_beyond_tables).
+create table if not exists public.listen_hashtag_media (
+  hashtag text not null, media_id text not null, caption text, permalink text, posted_at timestamptz,
+  media_type text, like_count integer, comments_count integer, top boolean not null default false,
+  first_seen_at timestamptz not null default now(), collected_at timestamptz not null default now(),
+  primary key (hashtag, media_id)
+);
+create table if not exists public.listen_news (
+  url text primary key, topic text not null, title text not null, source text,
+  published_at timestamptz, collected_at timestamptz not null default now()
+);
+alter table public.listen_hashtag_media enable row level security;
+alter table public.listen_news enable row level security;

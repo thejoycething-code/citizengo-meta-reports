@@ -1,0 +1,22 @@
+[
+  { "tag": "assisteddying", "topic": "assisted-dying" },
+  { "tag": "assistedsuicide", "topic": "assisted-dying" },
+  { "tag": "killthebill", "topic": "assisted-dying" },
+  { "tag": "euthanasia", "topic": "assisted-dying" },
+  { "tag": "dignityindying", "topic": "assisted-dying" },
+  { "tag": "prolife", "topic": "abortion" },
+  { "tag": "abortion", "topic": "abortion" },
+  { "tag": "bufferzones", "topic": "abortion" },
+  { "tag": "prochoice", "topic": "abortion" },
+  { "tag": "pubertyblockers", "topic": "gender" },
+  { "tag": "transrights", "topic": "gender" },
+  { "tag": "genderidentity", "topic": "gender" },
+  { "tag": "sexeducation", "topic": "sex-education" },
+  { "tag": "rse", "topic": "sex-education" },
+  { "tag": "hospice", "topic": "hospices" },
+  { "tag": "palliativecare", "topic": "hospices" },
+  { "tag": "freespeech", "topic": "free-speech" },
+  { "tag": "religiousfreedom", "topic": "free-speech" },
+  { "tag": "silentprayer", "topic": "free-speech" },
+  { "tag": "surrogacy", "topic": "family" }
+]
