@@ -279,6 +279,7 @@ textarea{width:100%;min-height:220px;font:inherit;font-size:14px;line-height:1.5
 /* 15 Oct UI pass */
 header.top{align-items:center;padding-block:10px;gap:8px 16px}
 header.top .brandline{flex-direction:row;align-items:baseline;gap:10px}
+@media (max-width:640px){header.top .brandline{flex-wrap:nowrap;align-items:center;width:100%}header.top .brandline .eyebrow{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}header.top h1{font-size:22px}}
 header.top h1{font-size:24px}
 header.top .filters{padding-block:0;margin-left:auto}
 @media (min-width:961px){header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:15;background:var(--bg)}
@@ -350,7 +351,8 @@ header.top .filters{padding-block:0;margin-left:auto}
 .ibacts{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 .ibdraft{border:1px dashed var(--line);border-radius:8px;padding:8px 10px;font-size:13.5px;cursor:pointer;background:none;color:var(--fg);text-align:left;font:inherit;width:100%}
 .ibdraft small{display:block;color:var(--muted);font-size:11.5px}
-.akpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.akpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+@media (max-width:700px){.akpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .akpi{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:10px 12px}
 .akpi b{display:block;font-family:var(--display);font-size:24px;font-variant-numeric:tabular-nums;line-height:1.1}.akpi span{font-size:12px;color:var(--muted)}
 .abar{height:6px;border-radius:3px;background:var(--accent);min-width:2px}
@@ -409,6 +411,7 @@ details.more>summary::after{content:" ▾"}
 details.more .menu{position:absolute;z-index:12;top:calc(100% + 4px);left:0;min-width:220px;display:flex;flex-direction:column;gap:6px;padding:8px;background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:0 10px 24px rgba(0,0,0,.14)}
 details.more .menu .btn{text-align:left}.mrow{display:flex;gap:6px}.mrow select{flex:1;min-width:0}
 .opts-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-top:4px}
+.opts-h .gkind{white-space:nowrap;flex:none}
 .ostrip{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(92px,104px);gap:10px;overflow-x:auto;padding:2px 2px 8px;scroll-snap-type:x proximity}
 .othumb{position:relative;display:flex;flex-direction:column;gap:3px;min-width:0;scroll-snap-align:start}
 .opick{padding:0;border:0;background:none;border-radius:7px;position:relative;display:block;line-height:0}
@@ -464,6 +467,7 @@ mark.new{background:var(--ok-soft);color:var(--fg);border-radius:3px}
 .help[hidden],.zoom[hidden],.toast[hidden],.desk[hidden],.cal[hidden],.egv[hidden],.tabs[hidden],label[hidden]{display:none}
 /* 12: fewer boxes */
 .extras{border:0;border-top:1px solid var(--line);border-radius:0;padding:12px 0 0;background:transparent}
+.extras>.eyebrow{display:block;margin-bottom:4px}
 .decide .posting{border:0;padding:10px 12px;border-radius:10px}
 .gform{border:0;padding:0;background:transparent}
 @media (max-width:640px){header.top .filters{margin-left:0}.qgroup{display:none}.cmpgrid{grid-template-columns:minmax(0,1fr)}.zgrid.two{grid-template-columns:minmax(0,1fr)}}
@@ -835,9 +839,9 @@ function renderDetail0(){
   <article class="draft">
     <div class="dhead">
       ${navBar(d)}
-      <div class="chips">${d.action?.title||d.issue?`<span class="chip" title="Campaign, set automatically from the petition or issue">Campaign: ${esc(String(d.action?.title||d.issue).slice(0,40))}</span>`:""}<span class="chip type">${esc(d.type)}</span><span class="chip">${esc(d.issue)}</span><span class="chip">${esc(d.timing?.label||"")}${d.timing?.date?" · "+esc(new Date(d.timing.date).toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"})):""}</span><span class="chip st-${st}">${stLabel}</span></div>
+      <div class="chips">${d.action?.title||d.issue?`<span class="chip" title="Campaign, set automatically from the petition or issue">Campaign: ${esc(String(d.action?.title||d.issue).slice(0,40))}</span>`:""}${d.type?`<span class="chip type">${esc(d.type)}</span>`:""}${d.issue?`<span class="chip">${esc(d.issue)}</span>`:""}${d.timing?.label||d.timing?.date?`<span class="chip">${[d.timing?.label?esc(d.timing.label):"",d.timing?.date?esc(new Date(d.timing.date).toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"})):""].filter(Boolean).join(" · ")}</span>`:""}<span class="chip st-${st}">${stLabel}</span></div>
       ${revisedBox(d,st)}<h2>${esc(d.title)}</h2>
-      <div class="src">Source: ${d.source?.url?`<a href="${esc(d.source.url)}" target="_blank" rel="noopener">${esc(d.source.label)}</a>`:esc(d.source?.label||"")}</div>
+      ${d.source?.url||d.source?.label?`<div class="src">Source: ${d.source?.url?`<a href="${esc(d.source.url)}" target="_blank" rel="noopener">${esc(d.source.label||d.source.url)}</a>`:esc(d.source.label)}</div>`:""}
     </div>
     <div class="dbody">
       <div class="art">
@@ -978,7 +982,7 @@ function graphicTools(d){const opts=d.cardOptions||[];const ph=photoOf(d);
   const c0=d.card||{};const po=(c0.template==="carousel"?c0.slides?.[S.slide]?.photoOptions:c0.photoOptions)||[];
   {const main=d.card||{};const isCar=main.template==="carousel";const nS=isCar?(main.slides||[]).length:1;
    const inUse=o=>d.cardChoice===o.id||JSON.stringify(o.card)===JSON.stringify(main);
-   h+=`<div class="opts-h"><span class="eyebrow">Graphics for this post · ${opts.length}</span><span class="gkind${isCar?" car":""}">${isCar?`▤ Carousel · ${nS} slides`:"▣ Single image"}</span></div>
+   h+=`<div class="opts-h"><span class="eyebrow">Graphics for this post · ${opts.length+(opts.some(inUse)?0:1)}</span><span class="gkind${isCar?" car":""}">${isCar?`▤ Carousel · ${nS} slides`:"▣ Single image"}</span></div>
    <div class="ostrip">${opts.map((o,i)=>{const on=inUse(o);const k=optKind(o);return `<div class="othumb${on?" on":""}"><button class="opick" data-act="gpick" data-opt="${esc(o.id)}" aria-pressed="${on}" title="${esc(o.why||o.label||"")}"${S.db?"":" disabled"}><canvas data-opt="${esc(o.id)}" width="10" height="10"></canvas>${on?`<span class="oin">✓</span>`:i<9?`<span class="onum">${i+1}</span>`:""}${o.card&&o.card.template==="carousel"?`<span class="ocar">▤ ${(o.card.slides||[]).length}</span>`:""}</button>${on?`<span class="oinlab">✓ In use</span>`:S.db?`<button class="btn small ouse" data-act="gpick" data-opt="${esc(o.id)}">Use this</button>`:""}<span class="okind ${k[1]}">${k[0]}</span><span class="olab">${esc(String(o.label).replace(/^(AI|Set|Previous) · /,""))}</span>${on?"":`<button class="cmp" data-act="cmp" data-opt="${esc(o.id)}" title="Compare with the one in use" aria-label="Compare ${esc(o.label||"")} with the one in use">⇆</button>`}</div>`}).join("")}${S.assets&&S.db?`<div class="othumb"><button class="oup" data-act="gupload" data-drop="main" title="Upload finished images: one = the graphic, several = a carousel">⇪<span>Upload images</span><small>one = the graphic · several = a carousel</small></button></div>`:""}</div>`;
    h+=whereItGoes(d);}
   if(po.length)h+=`<div class="opts-h"><span class="eyebrow">Image options${c0.template==="carousel"?` for slide ${S.slide+1}`:""}</span></div><div class="opts pho">${po.map((o,i)=>{const on=ph&&ph.url===o.url;return `<div class="opt${on?" on":""}">${o.url?`<img src="${esc(o.url)}" alt="${esc(o.label||"")}" loading="lazy" style="object-position:${Math.round((o.fx??0.5)*100)}% ${Math.round((o.fy??0.3)*100)}%">`:`<div class="nophoto">Type only</div>`}<b>${esc(o.label||"")}</b><small>${esc(o.why||"")}</small>${S.db?`<button class="btn small" data-act="gpo" data-i="${i}"${on||(!o.url&&!ph)?" disabled":""}>${on||(!o.url&&!ph)?"In use":"Use this"}</button>`:""}</div>`}).join("")}</div>`;
@@ -1045,7 +1049,7 @@ function decideBar(d,st,checks){
   if(st!=="pending"){
     const r=d.review||{};
     const why=[...(r.reasons||[]),r.note].filter(Boolean).join(" · ");
-    return `<div class="row"><span class="state"><b>${esc(STATUS.find(s=>s.key===st).label)}</b> by ${esc(nameOf(r.by))}${r.at?" · "+esc(fmtWhen(r.at)):""}${why?` · ${esc(why)}`:""}</span>${st==="hold"?`<button class="btn small primary" data-act="approve" title="Schedules it for the time in Where and when">Schedule</button>`:""}${st==="hold"||st==="scheduled"?`<button class="btn small${st==="scheduled"?" primary":""}" data-act="posting" title="One click: the morning run finds the links itself">Mark as posted</button>`:""}${st==="posted"?"":`<button class="btn small" data-act="undo">Move back to review</button>`}</div>`;
+    return `<div class="row"><span class="state"><b>${esc(STATUS.find(s=>s.key===st).label)}</b> by ${esc(nameOf(r.by))}${r.at?" · "+esc(fmtWhen(r.at)):""}${why?` · ${esc(why)}`:""}</span>${st==="hold"?`<button class="btn small primary" data-act="approve" title="Schedules it for the time in Where and when">Schedule</button>`:""}${st==="hold"||st==="scheduled"?(()=>{const pub=d.published||{};const auto=((d.posting||{}).destinations||[]).filter(k=>["facebook","instagram"].includes(platOfKey(k)));const waitingOnHand=st==="scheduled"&&auto.every(k=>pub[k]);return `<button class="btn small${waitingOnHand?" primary":""}" data-act="posting" title="${auto.length&&!waitingOnHand?"The publisher marks it posted once Facebook and Instagram are out. Use this only if you posted it yourself.":"One click: the morning run finds the links itself"}">${waitingOnHand?"Mark X as posted":"Mark as posted"}</button>`})():""}${st==="posted"?"":`<button class="btn small" data-act="undo">Move back to review</button>`}</div>`;
   }
   if(S.mode==="reject"||S.mode==="changes"){
     const isRej=S.mode==="reject";
@@ -2295,7 +2299,7 @@ document.addEventListener("click",ev=>{const n=ev.target.closest("[data-nav]");i
   if(ev.target.id==="sideShade"){$("#side").classList.remove("open");$("#sideShade").hidden=true}});
 function renderTeams(){
   const ts=S.teams||[],t=ts.find(x=>x.id===S.team);
-  $("#teamLine").textContent=t?`${t.flag||""} ${t.name} · Content Engine`.trim():"CitizenGO · Content Engine";
+  $("#teamLine").textContent=t?`${t.flag||""} ${t.name}`.trim():"CitizenGO";
   $("#teamWrap").hidden=!ts.length;
   $("#fTeam").innerHTML=ts.map(x=>`<option value="${esc(x.id)}"${x.id===S.team?" selected":""}>${esc(((x.flag||"")+" "+x.name).trim())}</option>`).join("");
 }
