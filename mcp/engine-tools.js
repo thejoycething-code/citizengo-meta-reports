@@ -641,6 +641,7 @@ async function engineDeskDocs(store, args, { who }) {
 // Access is checked on every call before anything is served; fresh: true
 // (the desk's Refresh) recalculates now.
 const CACHE_MS = 26 * 3600e3;
+const wellFormed = (v) => JSON.parse(JSON.stringify(v, (k, x) => (typeof x === 'string' ? x.replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g, '') : x)));
 async function cached(store, key, args, compute) {
   if (!args.fresh && store.engineCacheGet) {
     const hit = await store.engineCacheGet(key).catch(() => null);
@@ -648,7 +649,9 @@ async function cached(store, key, args, compute) {
   }
   const out = await compute();
   let value; try { value = JSON.parse(out.text); } catch (e) { return out; }
-  if (value && value.ok !== false && store.engineCacheSet) await store.engineCacheSet(key, value).catch(() => {});
+  // Text cut to a length can end in half an emoji, which Postgres refuses as
+  // JSON: keep every string well formed before caching it.
+  if (value && value.ok !== false && store.engineCacheSet) await store.engineCacheSet(key, wellFormed(value)).catch(() => {});
   return json({ ...value, cached_at: new Date().toISOString() });
 }
 async function engineAnalytics(store, args, ctx0) {
@@ -1432,4 +1435,4 @@ const ENGINE_TOOLS = [
   { name: 'engine_calendar', description: 'Content Engine calendar: every team\'s scheduled and posted items (read-only for teams you are not in) plus your own teams\' drafts and holds, and the key dates (CitizenGO-wide and your teams\' own), between from and to (YYYY-MM-DD).', inputSchema: obj({ from: { type: 'string' }, to: { type: 'string' } }), handler: engineCalendar },
 ];
 
-module.exports = { cached, CACHE_MS, addDayGain, convergence, convergenceBuilding, topicsOf, langOf, storyKeys, ENGINE_TOOLS, context };
+module.exports = { cached, wellFormed, CACHE_MS, addDayGain, convergence, convergenceBuilding, topicsOf, langOf, storyKeys, ENGINE_TOOLS, context };
