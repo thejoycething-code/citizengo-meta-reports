@@ -1,15 +1,24 @@
 'use strict';
 // Link in bio, public [Phase 3, 2 Nov 2026]: no sign-in.
 //
-//   GET /links/<slug>               the team's page (rewritten to /api/bio?slug=)
+//   GET /links                      the global link: sends a visitor to their
+//                                   country's page (Vercel's country header),
+//                                   else the global page, else a picker
+//                                   (?pick=1 always shows the picker)
+//   GET /links/<slug>               the team's page; ?s=ig|x|fb|tt|qr|wa says
+//                                   where the visitor came from (counted, no
+//                                   cookies)
 //   GET /links/<slug>/go/<button>   counts a click, then sends the visitor on
-//                                   (rewritten to /api/bio?slug=&go=)
+//   GET /links/<slug>/qr.svg        the page's QR code (address with ?s=qr)
 //
-// The page shows only button titles and public petition links. A petition
-// button goes out as a Campaign Copilot link marked BIO (lib/bio.js
-// destination), so signatures from the bio are attributed in Looker.
+// On go.citizengo.org (once CitizenGO IT points it here), / and /<slug> do
+// the same (vercel.json). The page shows only button titles, public petition
+// links, our own Instagram images and petition totals. A petition button
+// goes out as a Campaign Copilot link marked BIO (lib/bio.js destination),
+// so signatures from the bio are attributed in Looker.
 
 const B = require('../lib/bio');
+const QR = require('../lib/qr');
 const { supabaseStore } = require('../lib/store');
 
 let store = null;
@@ -21,16 +30,41 @@ function send(res, status, body, headers = {}) {
   res.end(body);
 }
 const notFound = (res) => send(res, 404, '<!doctype html><meta charset="utf-8"><title>Not found</title><p style="font:16px system-ui;text-align:center;margin-top:20vh">This page isn\'t here. <a href="https://citizengo.org">citizengo.org</a></p>', { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'public, max-age=60' });
+const HTML = { 'Content-Type': 'text/html; charset=utf-8', 'X-Content-Type-Options': 'nosniff' };
+const CSP = `default-src 'none'; style-src 'unsafe-inline'; img-src 'self' https:; script-src '${B.COPY_HASH}'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'`;
+// Link previewers and crawlers load the page too; they are not visitors.
+const BOT = /bot|crawl|spider|preview|facebookexternalhit|whatsapp|telegram|slack|discord|embedly|vercel|headless|curl|wget|python|node-fetch/i;
+
+function originOf(req) {
+  const host = String((req.headers && (req.headers['x-forwarded-host'] || req.headers.host)) || '').split(',')[0].trim();
+  return /^[a-z0-9.-]+(:\d+)?$/i.test(host) ? `https://${host}` : '';
+}
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 405, '', { Allow: 'GET, HEAD' });
   const q = new URL(req.url, 'http://x').searchParams;
+  const src = B.SOURCES[q.get('s')] ? q.get('s') : null;
   const slug = String(q.get('slug') || '').toLowerCase();
-  if (!B.SLUG.test(slug)) return notFound(res);
+  const headers = req.headers || {};
+  const human = req.method === 'GET' && !BOT.test(String(headers['user-agent'] || ''));
   try {
     const s = getStore();
+    if (!slug) {
+      const bios = await s.engineBios().catch(() => []);
+      const to = q.get('pick') ? null : B.routeCountry(headers['x-vercel-ip-country'], bios);
+      if (to) return send(res, 302, '', { Location: `/links/${to}${src ? `?s=${src}` : ''}`, 'Cache-Control': 'private, no-store', Vary: 'X-Vercel-IP-Country' });
+      const teams = (await s.engineTeams()) || [];
+      const pages = bios.filter((b) => b.team_id !== 'global').map((b) => { const t = teams.find((x) => x.id === b.team_id) || {}; return { slug: b.slug, name: t.name || b.title, code: String(b.team_id).toUpperCase().slice(0, 3) }; });
+      return send(res, 200, req.method === 'HEAD' ? '' : B.pickerHtml({ pages }), { ...HTML, 'Cache-Control': 'public, max-age=300', 'Content-Security-Policy': CSP });
+    }
+    if (!B.SLUG.test(slug)) return notFound(res);
     const bio = await s.engineBio({ slug });
     if (!bio) return notFound(res);
+    const origin = originOf(req);
+    if (q.get('qr')) {
+      const svg = QR.svg(`${origin}/links/${slug}?s=qr`);
+      return send(res, 200, req.method === 'HEAD' ? '' : svg, { 'Content-Type': 'image/svg+xml', 'Cache-Control': 'public, max-age=3600', 'Content-Disposition': `inline; filename="link-in-bio-${slug}.svg"`, 'X-Content-Type-Options': 'nosniff' });
+    }
     const team = ((await s.engineTeams()) || []).find((t) => t.id === bio.team_id);
     if (!team) return notFound(res);
     const L = await B.load(s, { team, bio });
@@ -42,15 +76,21 @@ module.exports = async function handler(req, res) {
       const auth = await s.engineCopilotAuth().catch(() => null);
       const [to] = await Promise.all([
         B.destination(s, { ...item, last_posted: auto && auto.last_posted }, { owner: (auth && auth.owner) || 'CJO' }),
-        req.method === 'GET' ? s.engineBioClick(slug, item.id).catch(() => null) : null,
+        human ? s.engineBioClick(slug, item.id).catch(() => null) : null,
       ]);
       return send(res, 302, '', { Location: to, 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer-when-downgrade' });
     }
-    return send(res, 200, req.method === 'HEAD' ? '' : B.pageHtml({ bio, items: L.shown }), {
-      'Content-Type': 'text/html; charset=utf-8',
-      'Cache-Control': 'public, max-age=60, s-maxage=300, stale-while-revalidate=600',
-      'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'; img-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
-      'X-Content-Type-Options': 'nosniff',
+    // Awaited: a serverless function may stop once the page is sent.
+    if (human) await s.engineBioClick(slug, src ? `_v:${src}` : '_v').catch(() => null);
+    const qs = src ? `?s=${src}` : '';
+    const grid = L.tiles.map((t) => ({ img: t.img, label: t.label, href: t.item_id ? `${origin}/links/${slug}/go/${encodeURIComponent(t.item_id)}${qs}` : t.permalink })).filter((t) => t.href);
+    const html = B.pageHtml({ bio, items: L.shown, hero: L.hero, grid, socials: L.socials, status: L.status, origin, src, today: L.today });
+    return send(res, 200, req.method === 'HEAD' ? '' : html, {
+      ...HTML,
+      // Views are counted on the server, so the page itself is not cached
+      // by the CDN; the data behind it is light.
+      'Cache-Control': 'private, max-age=60',
+      'Content-Security-Policy': CSP,
     });
   } catch (e) {
     console.error('bio failed:', e && e.message);

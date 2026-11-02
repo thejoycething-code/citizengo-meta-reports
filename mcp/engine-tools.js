@@ -833,11 +833,14 @@ async function engineParliament(store, args, { who }) {
   }
 }
 
-// Tools › Link in bio [Phase 3, chosen 2 Nov]: the team's public page
-// (/links/<slug>) and its buttons. action get (default): settings, every
-// button with whether it shows and its clicks in the last 30 days. action
-// save: slug, title, intro, auto and the saved buttons (pinned, featured,
-// hidden, retitled, dated or added by hand).
+// Tools › Link in bio [Phase 3, chosen 2 Nov; parity features 2 Nov]: the
+// team's public page (/links/<slug>) and its buttons. Only the team's own
+// members see or change it. action get (default): settings, every button in
+// page order with its section, whether it shows (and why not), its clicks
+// and signatures from the bio in the last 30 days, the petition's Bluebook
+// total and Asana hints; plus page views by source, click rate and a daily
+// series. action save: slug, title, intro, auto, settings and the saved
+// buttons in order.
 async function engineBio(store, args, { who }) {
   const B = require('../lib/bio');
   const ctx = await context(store, who);
@@ -845,22 +848,52 @@ async function engineBio(store, args, { who }) {
   if (!team || !E.canEditTeam(ctx, team.id)) throw err('You are not in that team.', 'ENGINE_NOT_MEMBER');
   let bio = await store.engineBio({ team_id: team.id });
   if (args.action === 'save') {
-    const set = B.checkSettings({ slug: args.slug || (bio && bio.slug) || team.id, title: args.title != null ? args.title : bio && bio.title, intro: args.intro != null ? args.intro : bio && bio.intro, auto: args.auto != null ? args.auto : !(bio && bio.auto === false) });
+    const set = B.checkSettings({ slug: args.slug || (bio && bio.slug) || team.id, title: args.title != null ? args.title : bio && bio.title, intro: args.intro != null ? args.intro : bio && bio.intro, auto: args.auto != null ? args.auto : !(bio && bio.auto === false), settings: args.settings != null ? args.settings : (bio && bio.settings) || {} });
     if (set.error) throw err(set.error, 'ENGINE_REFUSED');
-    const items = Array.isArray(args.items) ? args.items.slice(0, 40).map(B.cleanItem).filter(Boolean) : (bio && bio.items) || [];
+    const items = Array.isArray(args.items) ? args.items.slice(0, 40).map(B.cleanItem).filter(Boolean).map(({ image, ...i }) => i) : (bio && bio.items) || [];
     try { bio = await store.engineSaveBio({ team_id: team.id, ...set, items, updated_at: new Date().toISOString(), updated_by: who }); }
     catch (e) { if (e.status === 409) throw err('Another team already uses that page address.', 'ENGINE_REFUSED'); throw e; }
   }
-  bio = bio || { team_id: team.id, slug: team.id, title: `CitizenGO ${team.name || ''}`.trim(), intro: '', auto: true, items: [], unsaved: true };
+  bio = bio || { team_id: team.id, slug: team.id, title: `CitizenGO ${team.name || ''}`.trim(), intro: '', auto: true, items: [], settings: {}, unsaved: true };
   const L = await B.load(store, { team, bio });
-  const since = new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10);
-  const clicks = {};
-  if (!bio.unsaved) for (const c of await store.engineBioClicks({ slug: bio.slug, since }).catch(() => [])) clicks[c.item_id] = (clicks[c.item_id] || 0) + (c.clicks || 0);
+  const days = 30, now = Date.now();
+  const since = new Date(now - days * 864e5).toISOString().slice(0, 10);
+  const clicks = {}, views = {}, daily = {};
+  if (!bio.unsaved) for (const c of await store.engineBioClicks({ slug: bio.slug, since }).catch(() => [])) {
+    const n = c.clicks || 0;
+    if (String(c.item_id).startsWith('_v')) {
+      const src = String(c.item_id).split(':')[1] || 'other';
+      views[src] = (views[src] || 0) + n; daily[c.day] = (daily[c.day] || 0) + n;
+    } else clicks[c.item_id] = (clicks[c.item_id] || 0) + n;
+  }
+  // Signatures from the bio: Copilot codes marked BIO for each petition, in
+  // the petition's own list (en_gb for an en-gb link).
+  const sigs = {};
+  const bioSigRows = store.bioSignatures ? await store.bioSignatures().catch(() => []) : [];
+  const listOf = (url) => { const m = String(url || '').match(/citizengo\.org\/([a-z]{2})-([a-z]{2})\//i); return m ? `${m[1]}_${m[2]}`.toLowerCase() : null; };
+  const lists = Object.fromEntries(L.all.filter((i) => i.petition_id).map((i) => [i.petition_id, listOf(i.url)]));
+  for (const r of bioSigRows) {
+    const pid = String(r.petition_id || ''); if (!(pid in lists)) continue;
+    if (lists[pid] && !String(r.campaign_code).startsWith(lists[pid] + '-')) continue;
+    sigs[pid] = (sigs[pid] || 0) + (Number(r.signatures) || 0);
+  }
   const shown = new Set(L.shown.map((i) => i.id));
   const savedIds = new Set(((!bio.unsaved && bio.items) || []).map((i) => String(i.id)));
-  return json({ team: team.id, bio: { slug: bio.slug, title: bio.title, intro: bio.intro || '', auto: bio.auto !== false, saved: !bio.unsaved, updated_at: bio.updated_at || null, updated_by: bio.updated_by || null },
-    path: `/links/${bio.slug}`, items: L.all.map((i) => ({ ...i, saved: savedIds.has(i.id), shown: shown.has(i.id), clicks: clicks[i.id] || 0, last_posted: (L.auto.find((a) => a.id === i.id) || {}).last_posted || null })),
-    total_clicks: Object.values(clicks).reduce((a, b) => a + b, 0), auto_days: B.AUTO_DAYS });
+  const totalViews = Object.values(views).reduce((a, b) => a + b, 0);
+  const totalClicks = Object.values(clicks).reduce((a, b) => a + b, 0);
+  const series = [];
+  for (let d = days - 1; d >= 0; d--) { const k = new Date(now - d * 864e5).toISOString().slice(0, 10); series.push({ day: k, views: daily[k] || 0 }); }
+  return json({ team: team.id, bio: { slug: bio.slug, title: bio.title, intro: bio.intro || '', auto: bio.auto !== false, settings: B.cleanSettings(bio.settings || {}), saved: !bio.unsaved, updated_at: bio.updated_at || null, updated_by: bio.updated_by || null },
+    path: `/links/${bio.slug}`, qr: `/links/${bio.slug}/qr.svg`, sources: B.SOURCES, sections: B.SECTIONS,
+    hero: L.hero ? L.hero.id : null, grid: L.tiles.length, socials: L.socials,
+    items: L.all.map((i) => {
+      const st = i.petition_id ? L.status[i.petition_id] || null : null;
+      return { ...i, saved: savedIds.has(i.id), shown: shown.has(i.id), clicks: clicks[i.id] || 0, signatures: i.petition_id ? sigs[i.petition_id] || 0 : null,
+        total: st && st.total != null ? st.total : null, last14: st && st.last14 != null ? st.last14 : null, asana_closed: !!(st && st.asana_closed), asana_victory: !!(st && st.asana_victory), asana_project: (st && st.asana_project) || null,
+        last_posted: (L.auto.find((a) => a.id === i.id) || {}).last_posted || null };
+    }),
+    stats: { days, views: totalViews, views_by_source: views, clicks: totalClicks, rate: totalViews ? Math.round((100 * totalClicks) / totalViews) : null, signatures: Object.values(sigs).reduce((a, b) => a + b, 0), daily: series },
+    total_clicks: totalClicks, auto_days: B.AUTO_DAYS, quiet_days: B.QUIET_DAYS, win_days: B.WIN_DAYS });
 }
 
 // Calendar › Instagram grid [Phase 3, chosen 2 Nov]: each of the team's
@@ -1643,7 +1676,7 @@ const ENGINE_TOOLS = [
   { name: 'engine_automations', description: 'Content Engine comment-to-DM automations for one of your teams: each rule\'s keywords, private message, public replies (taking turns), what it applies to (one post, a post type, or every post; the most specific wins), Facebook and/or Instagram, tag and hand-over, whether it is on, and its last 7 days (queued, sent, failed, and per step). paused: Pause everything is holding the team\'s accounts, so automations are held too.', inputSchema: obj({ team: { type: 'string' } }, ['team']), handler: engineAutomationsList },
   { name: 'engine_automation', description: 'Content Engine: add or update a comment-to-DM automation (team admins; name, keywords (whole words), dm_text with the real cgo.ac link, reply_texts (up to 5 public replies, taking turns), scope all / type (post_type petition, prayer, reel, wins, news) / post (thread_id), platforms facebook and/or instagram, skip_repeat (someone who already got the link just gets a like; default on), tag, hand_to (who to assign the comment to)), or pause, resume or remove one (id). A new comment with a keyword gets the private message (and a public reply) as you, through the Mini, at most one per comment and 200 per rule a day; Pause everything holds them too.', inputSchema: obj({ action: { type: 'string', enum: ['add', 'update', 'pause', 'resume', 'remove'] }, team: { type: 'string' }, id: { type: 'number' }, name: { type: 'string' }, keywords: { type: 'array', items: { type: 'string' } }, dm_text: { type: 'string' }, reply_text: { type: 'string' }, reply_texts: { type: 'array', items: { type: 'string' } }, scope: { type: 'string', enum: ['all', 'type', 'post'] }, post_type: { type: 'string', enum: ['petition', 'prayer', 'reel', 'wins', 'news'] }, thread_id: { type: 'string' }, platforms: { type: 'array', items: { type: 'string', enum: ['facebook', 'instagram'] } }, skip_repeat: { type: 'boolean' }, tag: { type: 'string' }, hand_to: { type: 'string' } }, ['action', 'team']), handler: engineAutomation },
   { name: 'engine_parliament', description: 'Content Engine Listening › Parliament for one of your teams (UK for now): Westminster and Scottish Parliament items on our issues that the Parliamentary Monitor triaged as worth a line or worth acting on (score 2 or 3), newest first, with why it matters, issue areas, kind and date, plus coming deadlines; last 21 days by default (days up to 60).', inputSchema: obj({ team: { type: 'string' }, days: { type: 'number' }, fresh: { type: 'boolean' } }, ['team']), handler: engineParliament },
-  { name: 'engine_bio', description: 'Content Engine Tools › Link in bio for one of your teams: its public page (/links/<slug>), filled with the petitions the team linked to in the last 30 days plus saved buttons. action get (default) lists every button, whether it shows and its clicks in 30 days; action save sets slug, title, intro, auto (fill with recent campaigns) and items (id, title, url, petition_id, pinned, featured, hidden, starts, ends, auto).', inputSchema: obj({ team: { type: 'string' }, action: { type: 'string', enum: ['get', 'save'] }, slug: { type: 'string' }, title: { type: 'string' }, intro: { type: 'string' }, auto: { type: 'boolean' }, items: { type: 'array', items: { type: 'object' } } }, ['team']), handler: engineBio },
+  { name: 'engine_bio', description: 'Content Engine Tools › Link in bio for one of your teams (only its members can see or change it): its public page (/links/<slug>, QR at /links/<slug>/qr.svg), filled with the petitions the team linked to in the last 30 days plus saved buttons. action get (default) lists every button in page order with its section, whether it shows (why: removed, closed, asana, quiet, ended, not_yet, won_old), clicks and signatures from the bio in 30 days, the Bluebook total and Asana hints, plus page views by source (ig, x, fb, tt, qr, wa), click rate and a daily series; action save sets slug, title, intro, auto, settings (donate_url, emails_url, whatsapp_url, grid, socials, totals, quiet) and items in order (id, title, url, petition_id, pinned, featured, hidden = removed, closed, won, won_at, section (Act now, Pray with us, Get involved, More), starts, ends, cd_date, cd_label, auto).', inputSchema: obj({ team: { type: 'string' }, action: { type: 'string', enum: ['get', 'save'] }, slug: { type: 'string' }, title: { type: 'string' }, intro: { type: 'string' }, auto: { type: 'boolean' }, settings: { type: 'object' }, items: { type: 'array', items: { type: 'object' } } }, ['team']), handler: engineBio },
   { name: 'engine_ig_grid', description: 'Content Engine Calendar › Instagram grid for one of your teams: each Instagram account with its latest 12 posts (type, caption start, link, preview image, time) from the nightly collection.', inputSchema: obj({ team: { type: 'string' } }, ['team']), handler: engineIgGrid },
   { name: 'engine_inbox_team', description: 'Content Engine Inbox › Team for one of your teams: open conversations per person and unassigned, each person\'s replies and median first-reply time, what has waited over 2 hours, and comments arriving by hour (UK time) against reply times, over the last 7 days (days up to 30).', inputSchema: obj({ team: { type: 'string' }, days: { type: 'number' } }, ['team']), handler: engineInboxTeam },
   { name: 'engine_inbox_history', description: 'Content Engine Inbox moderation history for one of your teams: every reply, hide, delete, like, assignment, label and done, by whom, newest first.', inputSchema: obj({ team: { type: 'string' }, limit: { type: 'number' } }, ['team']), handler: engineInboxHistory },

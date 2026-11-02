@@ -4,6 +4,16 @@
   ],
   "rewrites": [
     {
+      "source": "/:slug([a-z0-9][a-z0-9-]{1,30})",
+      "has": [
+        {
+          "type": "host",
+          "value": "go.citizengo.org"
+        }
+      ],
+      "destination": "/api/bio?slug=:slug"
+    },
+    {
       "source": "/.well-known/oauth-protected-resource/api/mcp",
       "destination": "/api/oauth/metadata?doc=protected-resource"
     },
@@ -20,12 +30,20 @@
       "destination": "/api/oauth/metadata?doc=authorization-server"
     },
     {
+      "source": "/links/:slug/qr.svg",
+      "destination": "/api/bio?slug=:slug&qr=1"
+    },
+    {
       "source": "/links/:slug/go/:go",
       "destination": "/api/bio?slug=:slug&go=:go"
     },
     {
       "source": "/links/:slug",
       "destination": "/api/bio?slug=:slug"
+    },
+    {
+      "source": "/links",
+      "destination": "/api/bio"
     }
   ],
   "headers": [
@@ -99,5 +117,18 @@
     "api/cron/publish.js": {
       "maxDuration": 300
     }
-  }
+  },
+  "redirects": [
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "host",
+          "value": "go.citizengo.org"
+        }
+      ],
+      "destination": "/links",
+      "permanent": false
+    }
+  ]
 }
