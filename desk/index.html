@@ -1000,6 +1000,8 @@ document.addEventListener("input",ev=>{if(ev.target.id!=="ieText"||!S.inline)ret
 /* say WHY a save failed, and keep the details for Claude */
 /* Web app: S.sample is the "Ask Claude" round trip (desk/web.js), so no timeout: the person takes as long as they need. */
 function askAI(prompt){return S.sample(prompt,{modelTier:"default"})}
+/* JSON from Claude with a time limit, except on the web app: there the request waits for the person's Desk AI tab or their paste, which takes as long as it takes (desk/web.js gives up after 15 minutes). */
+function aiJSON(prompt,ms){const p=S.sample.json(prompt,{modelTier:"default"});if(window.DESK_WEB)return p;return Promise.race([p,new Promise((_,rej)=>setTimeout(()=>rej(Object.assign(new Error("Claude took too long to answer"),{code:"ai-timeout"})),ms))])}
 function whyFailed(e){if(e?.code==="engine_refused"||e?.code==="conflict")return e.message;if(e?.code==="ai-timeout")return"Claude took too long to answer. Try again";const c=String(e?.code||e?.name||"").toLowerCase(),m=String(e?.message||e||"");const t=(c+" "+m).toLowerCase();
   if(!navigator.onLine||/network|fetch|offline|timeout|unavailable/.test(t))return"No connection. Check your internet and try again";
   if(/permission|denied|forbidden|unauth|not.?allowed|403|401|read.?only/.test(t))return"This view can't save. Open the board at claude.ai while signed in to your own account (a link preview in Slack or email can't save)";
@@ -3248,7 +3250,7 @@ For each group give: name (2-4 words), summary (one sentence), ids, suggest (one
 Comments (id, account, text):
 ${lines}
 Answer only with JSON: {"groups":[{"name":"","summary":"","ids":[],"suggest":"","replies":[]}]}`;
-  try{const r=await Promise.race([S.sample.json(prompt,{modelTier:"default"}),new Promise((_,rej)=>setTimeout(()=>rej(Object.assign(new Error("Claude took too long to answer"),{code:"ai-timeout"})),120000))]);
+  try{const r=await aiJSON(prompt,120000);
     const known=new Set(cs.map(i=>i.id)),seen=new Set();
     const groups=(r&&r.groups||[]).map(g=>({name:String(g.name||"Group").slice(0,40),summary:String(g.summary||"").slice(0,200),suggest:["reply","like","hide","done"].includes(g.suggest)?g.suggest:"done",
       ids:[].concat(g.ids||[]).map(String).filter(id=>known.has(id)&&!seen.has(id)&&seen.add(id)),replies:[].concat(g.replies||[]).map(String).filter(Boolean).slice(0,3)})).filter(g=>g.ids.length);
@@ -3366,7 +3368,7 @@ ${i.kind==="message"?"This is a private message to the account.":"This is a publ
 ${i.post_text?`The post: "${i.post_text}"`:""}
 Their message, from ${i.author_name||"someone"}: "${i.text}"
 Write three short alternative replies. Answer only with JSON: {"replies":[{"label":"Public reply","text":"..."},{"label":"Short and warm","text":"..."},{"label":"${i.kind==="message"?"Fuller answer":"If it's hostile: calm and brief"}","text":"..."}]}`;
-  try{const r=await Promise.race([S.sample.json(prompt,{modelTier:"default"}),new Promise((_,rej)=>setTimeout(()=>rej(Object.assign(new Error("Claude took too long to answer"),{code:"ai-timeout"})),90000))]);
+  try{const r=await aiJSON(prompt,90000);
     IB.drafts={id:i.id,list:(r&&r.replies||[]).filter(x=>x&&x.text).slice(0,3)}}
   catch(e){IB.drafts={id:i.id,error:"Couldn't draft: "+whyFailed(e)}}
   if(IB.open&&IB.open.id===i.id)renderInbox()}

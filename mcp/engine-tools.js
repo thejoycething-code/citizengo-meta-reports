@@ -712,12 +712,18 @@ async function engineListening(store, args, ctx0) {
 async function engineAiJob(store, args, { who }) {
   if (!E.signedIn(who)) throw err('Sign in to use the Content Engine.', 'ENGINE_SIGN_IN');
   const D = require('../lib/desk');
-  const id = String(args.id || '');
+  const action = args.action || 'get';
+  let id = String(args.id || '');
+  // next: the newest unanswered request (the page may be opened without an id).
+  if (action === 'next') {
+    const next = await D.aiJobNext(who);
+    if (!next) return json({ ok: false, error: 'No request is waiting for you. Press the AI button on the desk again.' });
+    id = next.id;
+  }
   if (!/^[0-9a-f]{24}$/.test(id)) return json({ ok: false, error: 'That request id is not valid.' });
   const job = await D.aiJobGet(id, who);
   if (!job) return json({ ok: false, error: 'No such request for you (it may belong to someone else).' });
-  const action = args.action || 'get';
-  if (action === 'get') {
+  if (action === 'get' || action === 'next') {
     const again = ['queued', 'failed'].includes(job.status);
     if (again) await D.aiJobUpdate(id, who, { status: 'running', error: null });
     return json({ ok: true, id, status: again ? 'running' : job.status, prompt: job.prompt, created_at: job.created_at });
@@ -733,7 +739,7 @@ async function engineAiJob(store, args, { who }) {
     await D.aiJobUpdate(id, who, { status: 'failed', error: String(args.error || 'Claude could not answer').slice(0, 500), done_at: new Date().toISOString() });
     return json({ ok: true });
   }
-  return json({ ok: false, error: 'action is get, complete or fail.' });
+  return json({ ok: false, error: 'action is get, next, complete or fail.' });
 }
 
 // Comment-to-DM automations: the team sees them; team admins change them.
@@ -1533,7 +1539,7 @@ const ENGINE_TOOLS = [
   { name: 'engine_health', description: 'Content Engine Tools: health check for a team: who can post to each account, pauses, and how fresh the Facebook figures, Looker signatures, ally and opponent watch, hashtags and news, and Page Inviter runs are. Read only.', inputSchema: obj({ team: { type: 'string' } }), handler: engineHealth },
   { name: 'engine_copilot_link', description: "Content Engine: make one Campaign Copilot tracked link with the engine's Copilot sign-in. args = one copilotArgs object from make_links.py --dry-run (assetType petition, petitionId, ctaFamilyCode, platformCode, seriesFlow FB1-5/IG1-5/TW1-5, listCode, topicCode, scopeCode, campaignTitle). Returns link {short, long, campaign, linkId, via, at} to write into the post's links for that platform. Asking twice with the same args returns the same link.", inputSchema: obj({ args: { type: 'object' } }, ['args']), handler: engineCopilotLink },
   { name: 'engine_desk_docs', description: "Content Engine desk documents (formerly the board artifact's collections): feedback (reviewers' decisions and notes), videoRequests (requested video cuts) and results (one row per checked post). action list: collection, optional since (ISO time; newer only), status, limit; newest first. action put: collection, id (omit to create), data, merge (true updates fields, e.g. a video request's status).", inputSchema: obj({ action: { type: 'string', enum: ['list', 'put'] }, collection: { type: 'string', enum: ['feedback', 'videoRequests', 'results'] }, since: { type: 'string' }, status: { type: 'string' }, limit: { type: 'number' }, id: { type: 'string' }, data: { type: 'object' }, merge: { type: 'boolean' } }, ['collection']), handler: engineDeskDocs },
-  { name: 'engine_ai_job', description: "Content Engine Desk AI helper: the web desk's AI requests are answered with the requester's own Claude. action get (id): the request's prompt (yours only). action complete (id, text): save the answer for the desk. action fail (id, error).", inputSchema: obj({ action: { type: 'string', enum: ['get', 'complete', 'fail'] }, id: { type: 'string' }, text: { type: 'string' }, error: { type: 'string' } }, ['id']), handler: engineAiJob },
+  { name: 'engine_ai_job', description: "Content Engine Desk AI helper: the web desk's AI requests are answered with the requester's own Claude. action get (id): the request's prompt (yours only). action next: your newest unanswered request from the last 30 minutes, with its id. action complete (id, text): save the answer for the desk. action fail (id, error).", inputSchema: obj({ action: { type: 'string', enum: ['get', 'next', 'complete', 'fail'] }, id: { type: 'string' }, text: { type: 'string' }, error: { type: 'string' } }, []), handler: engineAiJob },
   { name: 'engine_automations', description: 'Content Engine comment-to-DM automations for one of your teams: each rule\'s keywords, private message, public replies (taking turns), what it applies to (one post, a post type, or every post; the most specific wins), Facebook and/or Instagram, tag and hand-over, whether it is on, and its last 7 days (queued, sent, failed, and per step). paused: Pause everything is holding the team\'s accounts, so automations are held too.', inputSchema: obj({ team: { type: 'string' } }, ['team']), handler: engineAutomationsList },
   { name: 'engine_automation', description: 'Content Engine: add or update a comment-to-DM automation (team admins; name, keywords (whole words), dm_text with the real cgo.ac link, reply_texts (up to 5 public replies, taking turns), scope all / type (post_type petition, prayer, reel, wins, news) / post (thread_id), platforms facebook and/or instagram, skip_repeat (someone who already got the link just gets a like; default on), tag, hand_to (who to assign the comment to)), or pause, resume or remove one (id). A new comment with a keyword gets the private message (and a public reply) as you, through the Mini, at most one per comment and 200 per rule a day; Pause everything holds them too.', inputSchema: obj({ action: { type: 'string', enum: ['add', 'update', 'pause', 'resume', 'remove'] }, team: { type: 'string' }, id: { type: 'number' }, name: { type: 'string' }, keywords: { type: 'array', items: { type: 'string' } }, dm_text: { type: 'string' }, reply_text: { type: 'string' }, reply_texts: { type: 'array', items: { type: 'string' } }, scope: { type: 'string', enum: ['all', 'type', 'post'] }, post_type: { type: 'string', enum: ['petition', 'prayer', 'reel', 'wins', 'news'] }, thread_id: { type: 'string' }, platforms: { type: 'array', items: { type: 'string', enum: ['facebook', 'instagram'] } }, skip_repeat: { type: 'boolean' }, tag: { type: 'string' }, hand_to: { type: 'string' } }, ['action', 'team']), handler: engineAutomation },
   { name: 'engine_inbox_history', description: 'Content Engine Inbox moderation history for one of your teams: every reply, hide, delete, like, assignment, label and done, by whom, newest first.', inputSchema: obj({ team: { type: 'string' }, limit: { type: 'number' } }, ['team']), handler: engineInboxHistory },

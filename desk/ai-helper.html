@@ -1,0 +1,70 @@
+<!-- The Desk AI page: the source of the claude.ai artifact the web desk opens for its AI buttons
+     (window.DESK_AI_HELPER in desk/index.html). Not part of the web app (opened here it only says it needs the connector); publish it to that
+     artifact with capabilities {"mcp":{"servers":[{"server":"CitizenGO Organic Meta","tools":["engine_ai_job"]}]},"sample":{}}.
+     scripts/test-desk-ai.js runs its script against the real desk API and engine_ai_job tool. -->
+<title>Desk AI</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+:root{--bg:#f3f5f9;--surface:#fff;--fg:#1b2130;--muted:#5b6578;--line:#d6dce7;--accent:#2a5bd7;--ok:#1d7a46;--ok-soft:#e1f3e8;--bad:#b4282e;--bad-soft:#fbe4e4}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#12151c;--surface:#1a1f29;--fg:#e7eaf1;--muted:#9aa4b8;--line:#323a4b;--accent:#7ea3ff;--ok:#5fd18f;--ok-soft:#163626;--bad:#ff7d82;--bad-soft:#401b1d;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#12151c;--surface:#1a1f29;--fg:#e7eaf1;--muted:#9aa4b8;--line:#323a4b;--accent:#7ea3ff;--ok:#5fd18f;--ok-soft:#163626;--bad:#ff7d82;--bad-soft:#401b1d;color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:32px}
+main{max-width:620px;margin:0 auto;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px 24px;display:flex;flex-direction:column;gap:12px}
+h1{margin:0;font-size:22px}p{margin:0}.muted{color:var(--muted);font-size:14px}
+.state{border-radius:10px;padding:10px 12px;font-size:14px}.ok{background:var(--ok-soft);color:var(--ok)}.bad{background:var(--bad-soft);color:var(--bad)}
+pre{white-space:pre-wrap;word-wrap:break-word;font:13px/1.5 ui-monospace,Menlo,monospace;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px;max-height:260px;overflow:auto;margin:0}
+details summary{cursor:pointer;color:var(--muted);font-size:13px}
+button{font:inherit;font-weight:600;border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:8px;padding:8px 14px;cursor:pointer;justify-self:start}
+</style>
+<main>
+  <h1>Desk AI</h1>
+  <p class="muted">Answers the Content Engine desk's AI requests with your own Claude, then hands the answer back to the desk. Nothing is posted from here.</p>
+  <div id="state" class="state">Getting the request…</div>
+  <details id="ask" hidden><summary>What the desk asked</summary><pre id="prompt"></pre></details>
+  <pre id="answer" hidden></pre>
+  <button id="retry" hidden>Try again</button>
+</main>
+<script>
+/* Opened by the desk web app as …/artifact/<this page>#<request id>. The request
+   belongs to whoever filed it; the engine only lets that same person (this
+   viewer's CitizenGO connector) read it and save the answer. If the page sees no
+   id (the viewer may not pass the link's #part to the page), it takes the
+   person's newest unanswered request instead (engine_ai_job action next). */
+const SERVER="CitizenGO Organic Meta";
+const $=s=>document.querySelector(s);
+const state=(t,cls="")=>{const e=$("#state");e.textContent=t;e.className="state "+cls};
+let mcp=null,sample=null,picked="";
+async function call(input){const r=await mcp.callTool(SERVER,"engine_ai_job",input);return r&&r.payload}
+async function run(){
+  $("#retry").hidden=true;
+  // Try again stays on the request this page picked, even when it came by next.
+  let id=picked||(location.hash||"").slice(1);
+  if(id&&!/^[0-9a-f]{24}$/.test(id)){state("Open this page from the desk: that request id isn't right.","bad");return}
+  if(!mcp){state("This page needs the CitizenGO Organic Meta connector in your claude.ai, and permission to use it. Ask Chris for a connector token.","bad");return}
+  if(!sample){state("This page needs permission to ask Claude. Reload it and allow Claude when asked.","bad");return}
+  let job;
+  try{job=await call(id?{action:"get",id}:{action:"next"})}catch(e){state("Couldn't reach the desk through your connector: "+(e.message||e),"bad");$("#retry").hidden=false;return}
+  if(!job||job.ok===false){state((job&&job.error)||"That request wasn't found.","bad");return}
+  id=picked=job.id||id;
+  if(job.status==="done"){state("This request was already answered. Go back to the desk.","ok");return}
+  $("#prompt").textContent=job.prompt;$("#ask").hidden=false;
+  state("Asking your Claude… (usually under a minute)");
+  const ans=$("#answer");ans.hidden=false;ans.textContent="";
+  try{
+    const r=await sample(job.prompt,{onText:({text})=>{ans.textContent=text},modelTier:"default"});
+    const text=String(r&&r.text||"").trim();
+    if(!text)throw new Error("Claude gave an empty answer");
+    ans.textContent=text;
+    const done=await call({action:"complete",id,text});
+    if(done&&done.ok===false)throw new Error(done.error);
+    state("Done: the answer is on the desk. You can close this tab.","ok");
+    setTimeout(()=>{try{window.close()}catch(e){}},1500);
+  }catch(e){
+    const msg=e&&e.code==="rate_limited"?"Your Claude is busy or out of messages for now. Try again in a while.":e&&e.code==="not_granted"?"Claude wasn't allowed for this page. Reload and allow it.":"Claude couldn't answer: "+(e&&e.message||e);
+    state(msg,"bad");$("#retry").hidden=false;
+    try{await call({action:"fail",id,error:msg})}catch(x){}
+  }
+}
+$("#retry").addEventListener("click",run);
+(async()=>{[mcp,sample]=await Promise.all(["mcp","sample"].map(n=>window.claude?.use?window.claude.use(n).catch(()=>null):null));run()})();
+</script>
