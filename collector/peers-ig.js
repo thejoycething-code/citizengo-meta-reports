@@ -228,6 +228,18 @@ async function main() {
   const tokens = String(process.env.META_TOKENS || process.env.META_TOKEN || '')
     .split(/[\n,]/).map((t) => t.trim()).filter(Boolean);
   if (!tokens.length) throw new Error('META_TOKENS is not set');
+  const { client, via } = await connect(tokens);
+  let list = loadList(LISTS[opts.list]);
+  if (opts.only) list = list.filter((p) => opts.only.includes(p.username));
+  const pg = opts.dryRun ? {} : makePg();
+  const counts = await run({ get: client.get, upsert: pg.upsert, purge: pg.purge, list, opts, via });
+  // Every account failing means something is wrong with the token or route, not the peers.
+  if (list.length && counts.ok === 0) process.exitCode = 1;
+}
+
+// The token and our Instagram account to call as (also used by
+// collector/listen-hashtags.js).
+async function connect(tokens) {
   // One token per Business Portfolio: use the one that holds the account we
   // want to call as, falling back to the first linked account found.
   let client = null, via = null, fallback = null;
@@ -253,16 +265,11 @@ async function main() {
   if (!client && process.env.PEER_IG_VIA) throw new Error(`PEER_IG_VIA @${wanted[0]} is not linked to any Page these tokens can read`);
   if (!client && fallback) ({ c: client, found: via } = fallback);
   if (!client) throw new Error('no token can see a linked Instagram account');
-  let list = loadList(LISTS[opts.list]);
-  if (opts.only) list = list.filter((p) => opts.only.includes(p.username));
-  const pg = opts.dryRun ? {} : makePg();
-  const counts = await run({ get: client.get, upsert: pg.upsert, purge: pg.purge, list, opts, via });
-  // Every account failing means something is wrong with the token or route, not the peers.
-  if (list.length && counts.ok === 0) process.exitCode = 1;
+  return { client, via };
 }
 
 if (require.main === module) {
   main().catch((e) => { console.error(`peer watch failed: ${e.message}`); process.exit(1); });
 }
 
-module.exports = { args, gate, norm, makePg, loadList, findVia, classify, discover, run, LISTS };
+module.exports = { args, gate, norm, makePg, loadList, findVia, classify, discover, run, connect, LISTS };

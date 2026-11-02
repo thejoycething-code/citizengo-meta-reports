@@ -1,0 +1,58 @@
+name: Listening beyond our list
+
+# Listening › Topics › Beyond our list (Nov 2026): public Instagram posts for
+# the hashtags in config/listen-hashtags.json (collector/listen-hashtags.js,
+# Instagram's own hashtag search as our account, 25 hashtags or fewer: Meta
+# allows 30 a week) and UK headlines per campaign topic from Google News RSS
+# (collector/listen-news.js). Free sources only; rows kept 30 days.
+#
+# Daily 06:40 UTC, after the peer watch (06:10). Manual runs default to a dry run.
+
+on:
+  schedule:
+    - cron: '40 6 * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Print what would be stored; write nothing'
+        type: boolean
+        required: false
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: listen-collect
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      META_TOKENS: ${{ secrets.META_TOKENS }}
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL || vars.SUPABASE_URL }}
+      SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+      PEER_IG_VIA: ${{ vars.PEER_IG_VIA }}
+      PEER_IG_VIA_ID: ${{ vars.PEER_IG_VIA_ID || '17841422748868275' }}
+      DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && (github.event.inputs.dry_run == true || github.event.inputs.dry_run == 'true') && 'true' || 'false' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
+        with:
+          node-version: '24'
+
+      - name: Instagram hashtags
+        continue-on-error: true
+        run: |
+          FLAG=""
+          if [ "$DRY_RUN" = "true" ]; then FLAG="--dry-run"; fi
+          node collector/listen-hashtags.js $FLAG
+
+      - name: News headlines
+        if: always()
+        run: |
+          FLAG=""
+          if [ "$DRY_RUN" = "true" ]; then FLAG="--dry-run"; fi
+          node collector/listen-news.js $FLAG
