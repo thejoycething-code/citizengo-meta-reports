@@ -348,6 +348,10 @@ const callErr = async (store, name, args, who) => { try { await tool(name)(store
     const m = LT.watchMatches(P, [{ id: 'w1', words: ['Safeguards'], not: ['disabled'] }, { id: 'w2', words: ['peers'], sources: ['allies'] }, { id: 'w3', words: [] }], { now });
     eq('watches: any word, none of the not-words, chosen sides, 14 days', m.map((w) => w.id + ':' + w.total).join(','), 'w1:2,w2:0,w3:0');
     eq('watches: newest first', m[0].matches.map((p) => p.who).join(','), 'DiD,HUK');
+    const mix = LT.opponentMix(P, [{ label: 'DiD', link_titles: 'Assisted dying: choice now', spend_lower: 100, spend_upper: 199, currency: 'GBP', delivery_start: d(1) }, { label: 'Stonewall', bodies: 'Trans rights', spend_lower: 1000, spend_upper: 1499, currency: 'GBP', delivery_start: d(2), delivery_stop: d(1) }], [{ label: 'DiD', username: 'did', followers_count: 118000, stance: 'opponent' }, { label: 'BPAS', username: 'bpas', stance: 'opponent' }], { now, days: 7, storyKeys });
+    const did = mix.orgs.find((o) => o.who === 'DiD');
+    eq('opponents: per org, per topic posts, best and ads', [did.posts, did.followers, did.topics[0].key, did.topics[0].posts, did.topics[0].best_x, did.topics[0].ads, did.topics[0].hi], [2, 118000, 'assisted-dying', 2, 8, 1, 199]);
+    eq('opponents: ads-only org shows; quiet orgs listed; pushed together', [mix.orgs.some((o) => o.who === 'Stonewall' && o.running === 0 && o.topics[0].key === 'gender'), mix.quiet.map((q) => q.who).join(','), mix.together.map((t) => t.key).join(',')], [true, 'HUK,BPAS', '#choice']);
     const st = memoryStore();
     st.peerRecent = async () => [{ stance: 'opponent', label: 'DiD', caption: 'Hospice care is not enough, and the people know it now', permalink: 'https://ig/1', timestamp: new Date(Date.now() - 864e5).toISOString(), like_count: 5, comments_count: 1, vs_median: 2 }];
     const r = await call(st, 'engine_listening', { tab: 'watches', watches: [{ id: 'h', words: ['hospice'] }] }, 'chris');
