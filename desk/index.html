@@ -430,6 +430,8 @@ header.top .filters{padding-block:0;margin-left:auto}
 .ibi .tx{display:block;font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ibtag{display:inline-block;font-family:var(--mono);font-size:10.5px;border-radius:4px;padding:0 5px;margin-left:4px;background:var(--sunk);color:var(--muted)}
 .ibtag.ad{background:var(--warn-soft);color:var(--warn)}.ibtag.hid{background:var(--bad-soft);color:var(--bad)}.ibtag.q{background:var(--accent-soft);color:var(--accent)}
+.ibteam{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:12px;align-items:start}@media(max-width:900px){.ibteam{grid-template-columns:minmax(0,1fr)}}.atbl .num{text-align:right;white-space:nowrap}.ibwait{display:flex;gap:6px;flex-wrap:wrap}.ibhrs{display:flex;align-items:flex-end;gap:2px;height:120px}.ibh{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:2px;min-width:0}.ibh i{display:block;width:100%;background:var(--accent);border-radius:2px 2px 0 0;min-height:1px}.ibh i.slow{background:var(--warn,#b45309)}.ibh small{font-size:10px;color:var(--muted);height:12px}.ibwait .pill.warn{background:var(--warn-soft);color:var(--warn)}.ibwait .pill.bad{background:var(--bad-soft);color:var(--bad)}
+.iggrid-wrap{display:grid;grid-template-columns:minmax(0,480px) minmax(0,1fr);gap:16px;align-items:start;margin-top:12px}@media(max-width:900px){.iggrid-wrap{grid-template-columns:minmax(0,1fr)}}.igphone{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:12px}.iggrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:3px}.iggt{position:relative;aspect-ratio:3/4;background:var(--sunk);border:0;padding:0;overflow:hidden;display:block;color:var(--fg);text-decoration:none;font:inherit;cursor:pointer}.iggt img,.iggt canvas.cthumb{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:0}.iggt.plan::after{content:"";position:absolute;inset:0;border:3px solid var(--accent);pointer-events:none}.iggt.plan.draft::after{border-style:dashed}.igtag{position:absolute;left:6px;bottom:6px;font-size:11px;background:var(--surface);color:var(--fg);border-radius:4px;padding:1px 6px}.igcap{position:absolute;inset:0;padding:8px;font-size:11px;color:var(--muted);text-align:left;overflow:hidden}.iggt img+.igcap{display:none}.igic{position:absolute;top:6px;right:6px;font-size:12px;color:#fff;text-shadow:0 0 3px #000}
 .ibd{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px;display:flex;flex-direction:column;gap:12px;min-width:0}
 .ibd .ctx{font-size:12.5px;color:var(--muted);border-left:3px solid var(--line);padding-left:8px}
 .ibmsg{padding:8px 10px;border-radius:10px;background:var(--sunk);font-size:14px;max-width:85%;white-space:pre-wrap;overflow-wrap:anywhere}
@@ -2680,14 +2682,14 @@ function sideActive(){const v=S.view||"posts";
   if(v==="tools")return "tools:"+TL.tab;
   if(v==="listening")return "listening:"+(["citizengo","allies","opponents"].includes(LS.tab)?"allies":LS.tab);/* topics is its own entry */
   return v}
-/* Sidebar 3 (2 Nov): the life of a post (Plan, Make, Talk, Listen, Learn, Tools) with icons; folds to an icon rail. Statuses live in the tabs above the board. */
-const SIDE_IC={plan:'<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/>',make:'<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13 7l4 4"/>',talk:'<path d="M4 13l3-8h10l3 8v6H4zM4 13h5l1 2h4l1-2h5"/>',listen:'<path d="M3 12h3l3-7 4 14 3-7h5"/>',learn:'<path d="M5 20V10M12 20V4M19 20v-7"/>',tools:'<path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.4-.6-.6-2.4z"/>',
+/* Sidebar 3 (2 Nov): Drafts first, then Plan, Talk, Listen, Analytics, Tools with icons; folds to an icon rail. Statuses live in the tabs above the board. */
+const SIDE_IC={plan:'<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/>',make:'<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13 7l4 4"/>',talk:'<path d="M4 13l3-8h10l3 8v6H4zM4 13h5l1 2h4l1-2h5"/>',listen:'<circle cx="12" cy="12" r="2"/><path d="M16.2 7.8a6 6 0 010 8.4M7.8 16.2a6 6 0 010-8.4M19.1 4.9a10 10 0 010 14.2M4.9 19.1a10 10 0 010-14.2"/>',learn:'<path d="M5 20V10M12 20V4M19 20v-7"/>',tools:'<path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.4-.6-.6-2.4z"/>',
   light:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M5 19l1.5-1.5M17.5 6.5L19 5"/>',dark:'<path d="M20 14.5A8 8 0 019.5 4a8 8 0 1010.5 10.5z"/>',auto:'<rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4"/>'};
 const sideSvg=(k,n=18)=>`<svg width="${n}" height="${n}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${SIDE_IC[k]}</svg>`;
-const SIDE_NAV=[["plan","Plan",[["plan","Month"],["calendar:week","Week"],["calendar:list","List"]]],["make","Make",[["posts","Drafts"],["evergreen","Evergreen"]]],
-  ["talk","Talk",[["inbox:inbox","Conversations"],["inbox:mine","Assigned to me"],["inbox:posts","By post"],["inbox:autos","Automations"],["inbox:history","Moderation"]]],
+const SIDE_NAV=[["make","Drafts",[["posts","Review board"],["evergreen","Evergreen"]]],["plan","Plan",[["plan","Month"],["calendar:week","Week"],["calendar:list","List"],["calendar:grid","Instagram grid"]]],
+  ["talk","Talk",[["inbox:inbox","Conversations"],["inbox:mine","Assigned to me"],["inbox:posts","By post"],["inbox:autos","Automations"],["inbox:history","Moderation"],["inbox:team","Team"]]],
   ["listen","Listen",[["listening:rising","Rising now"],["listening:mentions","Mentions"],["listening:allies","Allies and opponents"],["listening:topics","Topics"],["listening:watches","Watches"]]],
-  ["learn","Learn",[["analytics","Overview"]]],["tools","Tools",[["tools:home","All tools"],["tools:inviter","Page Inviter"],["tools:links","Tracked links"],["tools:make","Make"],["tools:health","Health check"]]]];
+  ["learn","Analytics",[["analytics","Overview"]]],["tools","Tools",[["tools:home","All tools"],["tools:inviter","Page Inviter"],["tools:links","Tracked links"],["tools:make","Make"],["tools:health","Health check"]]]];
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}};const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 const SIDE={open:lsGet("desk.sideOpen",{make:true}),fold:lsGet("desk.sideFold",false)};
 function applyTheme(t){const r=document.documentElement;if(t==="light"||t==="dark")r.setAttribute("data-theme",t);else r.removeAttribute("data-theme");
@@ -2891,7 +2893,8 @@ async function loadCal(){
   const ticket=CAL.ticket=(CAL.ticket||0)+1;CAL.loading=true;CAL.err=null;renderCal();
   try{const [r,a,q]=await Promise.all([eng("engine_calendar",{from:dayKey(s),to:dayKey(e)}),CAL.ahead?Promise.resolve(CAL.ahead):eng("engine_calendar",{from:dayKey(now),to:dayKey(ahead)}),eng("engine_requests",{team:S.team,from:dayKey(s),to:dayKey(e)}).catch(()=>null)]);
     if(ticket!==CAL.ticket)return; // a newer week or month was asked for meanwhile
-    CAL.data=r;CAL.ahead=a;if(q)PLAN.reqs=q.requests||[]}
+    CAL.data=r;CAL.ahead=a;if(q)PLAN.reqs=q.requests||[];
+    if(CAL.view==="grid"&&(!CAL.ig||CAL.ig.team!==S.team)){try{CAL.ig=await eng("engine_ig_grid",{team:S.team})}catch(e){CAL.ig={team:S.team,accounts:[],err:e}}if(ticket!==CAL.ticket)return}}
   catch(err){if(ticket!==CAL.ticket)return;CAL.err=err}
   CAL.loading=false;renderCal();renderPlan()}
 function ownItems(){
@@ -2972,7 +2975,7 @@ function calChip(i,mode){const d=i.mine?S.drafts.find(x=>x.id===i.id):null;const
 function calHeader(label,count){const v=CAL.view;const f=CAL.filter||{};const nets=["fb","ig","x"];
   return `<div class="calbar"><h2>${esc(label)}</h2>
     <button class="btn small" data-cal="prev" aria-label="Previous">‹</button><button class="btn small" data-cal="today">Today</button><button class="btn small" data-cal="next" aria-label="Next">›</button>
-    <span class="tabs">${[["month","Month"],["week","Week"],["list","List"]].map(([k,l])=>`<button class="tab" data-cal="${k}" aria-pressed="${v===k}">${l}</button>`).join("")}</span>
+    <span class="tabs">${[["month","Month"],["week","Week"],["list","List"],["grid","Instagram grid"]].map(([k,l])=>`<button class="tab" data-cal="${k}" aria-pressed="${v===k}">${l}</button>`).join("")}</span>
     <select class="calctry" data-cal-country aria-label="Whose calendar">${[["","My team"],["all","All countries"]].concat(((CAL.data&&CAL.data.teams)||[]).filter(t=>t.id!==S.team).map(t=>[t.id,`${t.flag||""} ${t.name}`.trim()])).map(([x,l])=>`<option value="${esc(x)}"${(CAL.country||"")===x?" selected":""}>${esc(l)}</option>`).join("")}</select>
     <span class="calf">${nets.map(n=>`<button class="tab small" data-cal-net="${n}" aria-pressed="${!!(f.net||[]).includes(n)}">${({fb:"FB",ig:"IG",x:"X"})[n]}</button>`).join("")}
     <select data-cal-status aria-label="Status"><option value="">All statuses</option>${[["scheduled","Scheduled"],["review","In review"],["posted","Posted"]].map(([x,l])=>`<option value="${x}"${f.status===x?" selected":""}>${l}</option>`).join("")}</select>
@@ -3011,6 +3014,7 @@ function calList(days,byDay){const today=dayKey(new Date());
 function renderCal(){
   const el=$("#calView");if(!el||el.hidden)return;
   if(CAL.view==="list"&&!CAL.listFrom)CAL.listFrom=true;
+  if(CAL.view==="grid"){el.innerHTML=`<div>${calGrid()}${calPeekHtml()}</div>`;drawCalThumbs();return}
   const {s,e,month}=calRange();
   const items=calItems();const byDay={};items.forEach(i=>{const k=dayKey(new Date(i.at));(byDay[k]=byDay[k]||[]).push(i)});
   Object.values(byDay).forEach(l=>l.sort((a,b)=>String(a.at).localeCompare(String(b.at))));
@@ -3028,6 +3032,28 @@ function renderCal(){
   el.innerHTML=`<div>${head}${campRow}${grid}<div class="kdlegend">${Object.entries(KD_CATS).map(([k,l])=>`<span class="kc-${k}">${l}</span>`).join("")}</div>${calPeekHtml()}</div>${calSide(days,items)}`;
   drawCalThumbs();
 }
+/* Calendar › Instagram grid [Phase 3, chosen 2 Nov]: the posts going to an
+   Instagram account, newest first, laid on top of what is live there now, so
+   the profile can be seen before it happens. Live posts come from the
+   nightly collection; a dashed tile is still in Review. */
+function calGrid(){const G=CAL.ig;const head=`<div class="calbar"><h2>Instagram grid</h2><span class="tabs">${[["month","Month"],["week","Week"],["list","List"],["grid","Instagram grid"]].map(([k,l])=>`<button class="tab" data-cal="${k}" aria-pressed="${CAL.view===k}">${l}</button>`).join("")}</span>`;
+  if(!G)return head+'</div><p class="src">Loading…</p>';
+  const accs=G.accounts||[];if(!accs.length)return head+`</div><p class="src">${G.err?esc("Couldn't load it: "+whyFailed(G.err)):"This team has no Instagram account set up."}</p>`;
+  const acc=accs.find(a=>a.key===CAL.igKey)||accs.find(a=>a.media.length)||accs[0];
+  const pick=accs.length>1?`<select class="calctry" data-cal-ig aria-label="Instagram account">${accs.map(a=>`<option value="${esc(a.key)}"${a.key===acc.key?" selected":""}>${esc(a.handle?"@"+a.handle:a.name)}</option>`).join("")}</select>`:`<span class="src">${esc(acc.handle?"@"+acc.handle:acc.name)}</span>`;
+  const now=new Date().toISOString();
+  const plan=ownItems().filter(i=>i.status!=="posted"&&(i.dests||[]).includes(acc.key)&&i.at>=now.slice(0,10)).sort((a,b)=>String(b.at).localeCompare(String(a.at)));
+  const live=acc.media.slice(0,Math.max(0,15-plan.length));
+  const when=t=>new Date(t).toLocaleDateString("en-GB",{weekday:"short",day:"numeric"});
+  const tiles=plan.map(i=>{const st=["pending","changes"].includes(i.status)?"Review":"Scheduled";return `<button class="iggt plan${st==="Review"?" draft":""}" data-cal-peek="${esc(i.id)}" title="${esc(i.title)}"><canvas class="cthumb" data-cthumb="${esc(i.id)}" width="10" height="10" aria-hidden="true"></canvas><span class="igtag">${st} · ${esc(when(i.at))}</span></button>`}).join("")
+    +live.map(m=>`<a class="iggt" href="${esc(m.url||"#")}" target="_blank" rel="noopener" title="${esc(m.caption||"")}">${m.img&&/^https:/.test(m.img)?`<img src="${esc(m.img)}" alt="${esc((m.caption||"Instagram post").slice(0,80))}" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">`:""}<span class="igcap">${esc((m.caption||"").slice(0,70))}</span>${m.type==="VIDEO"?'<span class="igic" aria-label="Reel">▶</span>':m.type==="CAROUSEL_ALBUM"?'<span class="igic" aria-label="Carousel">❐</span>':""}</a>`).join("");
+  const notes=[];const camps=plan.map(i=>campOf(S.drafts.find(x=>x.id===i.id))||"");
+  for(let k=1;k<camps.length;k++)if(camps[k]&&camps[k]===camps[k-1]){notes.push(`Two “${esc(camps[k])}” posts sit side by side. Spacing them out keeps the grid varied.`);break}
+  const drafts=plan.filter(i=>["pending","changes"].includes(i.status)).length;
+  if(drafts)notes.push(`${drafts} of the ${plan.length} planned ${plan.length===1?"post is":"posts are"} still in Review (dashed).`);
+  if(!plan.length)notes.push("Nothing is planned for this account yet. Posts with this account ticked show here once they have a time.");
+  if(!acc.media.length)notes.push("No live posts collected for this account yet; they arrive with the nightly collection.");
+  return head+pick+`</div><div class="iggrid-wrap"><div class="igphone"><div class="iggrid">${tiles||'<p class="src">Nothing to show yet.</p>'}</div></div><div class="rsside"><section class="rsbox"><h3>How it reads</h3>${notes.map(n=>`<p class="src" style="margin:0">${n}</p>`).join("")||'<p class="src" style="margin:0">Looks fine.</p>'}</section><section class="rsbox"><h3>How it works</h3><p class="src" style="margin:0">Newest first, like the profile. Planned posts sit on top of the ${acc.media.length} latest live ones from last night's collection. Click a planned post to open it; to change its place, change its time in Month or Week.</p></section></div></div>`}
 function drawCalThumbs(){document.querySelectorAll("canvas[data-cthumb]").forEach(cv=>{const d=S.drafts.find(x=>x.id===cv.dataset.cthumb);if(!d||!d.card)return;const c=d.card.template==="carousel"&&HOUSE_T.has(d.card.slides?.[0]?.template)?d.card.slides[0]:d.card;try{const k=S.slide;S.slide=0;drawCard(d,cv,c);S.slide=k}catch(e){}})}
 /* The side: pause switch, then the Plan's ideas to drag onto a day. */
 function calSide(days,items){const today=dayKey(new Date());const reqOn=k=>(PLAN.reqs||[]).filter(r=>r.for_date===k);
@@ -3188,6 +3214,7 @@ async function loadInbox(){if(!S.team)return;if(IB.loading){IB.again=true;render
     if(IB.tab==="history"&&(IB.modTab||"flagged")==="flagged"){const fl=await eng("engine_inbox",{team:S.team,status:"all",limit:500});IB.flagged=(fl.items||[]).filter(ibFlagged)}
     if(IB.tab==="history"){const [h,ru]=await Promise.all([eng("engine_inbox_history",{team:S.team,limit:200}),eng("engine_inbox_rules",{team:S.team})]);IB.history=h.actions||[];IB.rules=ru}
     if(IB.tab==="autos"){const [au,ps]=await Promise.all([eng("engine_automations",{team:S.team}),(IB.posts||[]).length?null:eng("engine_inbox_posts",{team:S.team}).catch(()=>null)]);IB.autos=au;if(ps)IB.posts=ps.posts||[]}
+    if(IB.tab==="team"){IB.team=await eng("engine_inbox_team",{team:S.team,days:IB.teamDays||7})}
     if(IB.tab==="posts"){const p=await eng("engine_inbox_posts",{team:S.team,ads:IB.postsAds});IB.posts=p.posts||[]}
     if(IB.open){const it=IB.items.find(x=>x.id===IB.open.id);if(it)IB.open=it;await loadThread()}}
   catch(e){IB.err=e}finally{IB.loading=false;renderInbox();if(IB.again)loadInbox()}}
@@ -3213,8 +3240,24 @@ function ibFlagged(i){return i.hidden||(i.labels||[]).some(l=>/^(auto-hidden|thr
 function ibWhen(t){const d=new Date(t),m=(Date.now()-d)/6e4;return m<60?Math.max(1,Math.round(m))+" min ago":m<1440?Math.round(m/60)+" h ago":d.toLocaleDateString("en-GB",{day:"numeric",month:"short"})}
 function ibWhere(i){return `${accLabel(i.account_key)} · ${i.kind==="message"?(i.platform==="instagram"?"Instagram DM":"Messenger"):i.kind==="mention"?"mentioned us":"comment"}`}
 function ibPending(i){return IB.pending.filter(a=>a.item_id===i.id)}
+/* Inbox › Team [Phase 3, chosen 2 Nov]: who has what, how fast each person
+   answers, what has waited too long, and when comments arrive against when
+   we answer. Shown here only: no Slack or email alerts. */
+const ibMins=m=>m==null?"—":m<60?`${m} min`:`${Math.floor(m/60)} h${m%60?` ${String(m%60).padStart(2,"0")}`:""}`;
+function ibTeam(){const T=IB.team;if(!T)return '<p class="src">Loading…</p>';const me=String(S.whoId||"").toLowerCase();
+  const days=`<span class="tabs">${[7,30].map(d=>`<button class="tab" data-ib-tdays="${d}" aria-pressed="${(IB.teamDays||7)===d}">${d} days</button>`).join("")}</span>`;
+  const rows=T.people.map(p=>`<tr><td><b>${esc(p.who)}</b>${p.who.toLowerCase()===me?' <small class="src">you</small>':""}</td><td class="num">${p.assigned_open||"—"}</td><td class="num">${p.replies_today||"—"}</td><td class="num">${p.replies||"—"}</td><td class="num">${p.done||"—"}</td><td class="num">${ibMins(p.median_reply_min)}</td></tr>`).join("");
+  const un=T.unassigned||{};const w=T.waiting||{};
+  const who=`<section class="rsbox"><h3>Who has what</h3><div class="awrap"><table class="atbl"><tr><th>Person</th><th class="num" title="Open conversations assigned to them">Assigned</th><th class="num" title="Replies sent today">Today</th><th class="num" title="Replies sent in the last ${T.days} days">${T.days} days</th><th class="num" title="Marked done in the last ${T.days} days">Done</th><th class="num" title="Median time to the first reply">First reply</th></tr>${rows}
+    <tr><td><b>Nobody yet</b></td><td class="num"><b>${un.count||0}</b></td><td colspan="4">${un.oldest_at?`<span class="src">oldest ${esc(ibWhen(un.oldest_at))}</span> <button class="btn small" data-nav="inbox:inbox">Open Conversations</button>`:'<span class="src">Nothing waiting.</span>'}</td></tr></table></div>
+    <span class="src">Today and ${T.days} days count replies sent. First reply is the median time from arrival to the first reply sent from the desk. Replies made in Facebook or Instagram directly aren't counted.</span></section>`;
+  const wait=`<section class="rsbox"><h3>Waiting too long</h3>${w.over_2h||w.hostile_unassigned?`<div class="ibwait">${w.over_2h?`<span class="pill warn">${w.over_2h} open over 2 hours</span>`:""}${w.hostile_unassigned?`<span class="pill bad">${w.hostile_unassigned} hostile, unassigned</span>`:""}</div>`:'<span class="src">Nothing has waited over 2 hours.</span>'}<span class="src">${T.open} open in all · team median first reply ${ibMins(T.median_reply_min)}. Shown here only, no Slack or email alerts.</span></section>`;
+  const H=T.hours||[];const max=Math.max(1,...H.map(h=>h.arrived));const slow=H.filter(h=>h.arrived>=3&&h.median_reply_min!=null).sort((a,b)=>b.median_reply_min-a.median_reply_min)[0];
+  const bars=`<div class="ibhrs" role="img" aria-label="Comments and messages arriving by hour of day, UK time">${H.map(h=>`<span class="ibh" title="${h.hour}:00 · ${h.arrived} arrived · first reply ${ibMins(h.median_reply_min)}"><i style="height:${Math.round(h.arrived/max*100)}%"${slow&&slow.hour===h.hour?' class="slow"':""}></i><small>${h.hour%3?"":h.hour}</small></span>`).join("")}</div>`;
+  const hrs=`<section class="rsbox"><h3>When comments arrive, and how fast we answer</h3>${bars}<span class="src">${slow?`Slowest answered hour: ${slow.hour}:00 to ${slow.hour+1}:00, median ${ibMins(slow.median_reply_min)} for ${slow.arrived} arrivals.`:"Not enough replies yet to compare hours."} UK time, last ${T.days} days.</span></section>`;
+  return `<div class="egbar"><span class="src">Who is answering what, and how fast.</span>${days}</div>${T.partial?'<p class="src">Showing the most recent 1,000; older ones are left out.</p>':""}<div class="ibteam">${who}<div class="rsside">${wait}${hrs}</div></div>`}
 function renderInbox(){renderSide();ibPresence();const el=$("#ibView");const c=IB.counts;const n=c?c.open:0;const al=IB.alerts||[];$("#ibCount").innerHTML=(n?` ${n}`:"")+(al.length?' <b style="color:var(--bad)" title="Pile-on alert">!</b>':"");if(!el||el.hidden)return;
-  const tabs=`<b style="font-size:15px">${esc({inbox:IB.filter==="mine"?"Assigned to me":"Conversations",posts:"By post",history:"Moderation",autos:"Automations"}[IB.tab]||"")}</b>`;
+  const tabs=`<b style="font-size:15px">${esc({inbox:IB.filter==="mine"?"Assigned to me":"Conversations",posts:"By post",history:"Moderation",autos:"Automations",team:"Team"}[IB.tab]||"")}</b>`;
   const banner=al.map(a=>`<div class="pswitch on"><b>‖ Pile-on on ${esc(accLabel(a.account_key))}${a.is_ad?" (ad)":""}: ${a.comments_hour} comments in the last hour, ${a.hostile_hour} hostile</b><span>“${esc((a.post_text||"").slice(0,120))}” · usually about ${esc(String(a.baseline))} an hour · ${esc(ibWhen(a.at))}</span><div class="ibacts"><button class="btn small primary" data-ib-pile="${esc(a.thread_id)}">See its comments</button>${a.post_url?`<a class="btn small" href="${esc(a.post_url)}" target="_blank" rel="noopener">Open the post ↗</a>`:""}<button class="btn small" data-ib-seen="${a.id}">Seen, dismiss for the team</button></div><small>Hiding the worst keeps them visible to the writer and their friends, so it dies down quietly. Add repeated words to the auto-hide list under Moderation.</small></div>`).join("");
   const head=banner+`<div><h2>Inbox</h2><p class="lede">Comments and messages on ${esc(((S.teams||[]).find(t=>t.id===S.team)||{}).name||"your team")}'s Facebook and Instagram, read every few minutes. Replies, hides and deletes go out with your own Facebook connection.</p></div><div class="egbar">${tabs}<button class="btn small" data-ib="refresh">${IB.loading?"Loading…":"Refresh"}</button></div>`;
   if(IB.err){el.innerHTML=head+`<p class="offline">Couldn't load the inbox (${esc(whyFailed(IB.err))}).</p>`;return}
@@ -3222,6 +3265,7 @@ function renderInbox(){renderSide();ibPresence();const el=$("#ibView");const c=I
     el.innerHTML=head+tabs2+(mt==="rules"?ibRules():mt==="banned"?ibBanned():mt==="flagged"?ibFlaggedList():ibHistory());return}
   if(IB.tab==="autos"){el.innerHTML=head+(ibAutos()||'<p class="src">Loading…</p>');return}
   if(IB.tab==="posts"){el.innerHTML=head+ibPosts();return}
+  if(IB.tab==="team"){el.innerHTML=head+ibTeam();return}
   const filt=`<div class="egbar"><span class="tabs">${IB_FILTERS.map(([k,l,ck])=>`<button class="tab" data-ib-filter="${k}" aria-pressed="${IB.filter===k}">${l}${c&&c[ck]!=null?` <span class="n">${c[ck]}</span>`:""}</button>`).join("")}<button class="tab" disabled title="X replies need X's paid API">X · later</button></span></div>
   <div class="egbar"><span class="tabs">${[["open","Open"],["done","Done"],["moderated","Moderated"]].map(([k,l])=>`<button class="tab" data-ib-status="${k}" aria-pressed="${IB.status===k}">${l}</button>`).join("")}</span><span class="tabs">${[["all","Organic and ads"],["ads","Ads only"]].map(([k,l])=>`<button class="tab" data-ib-ads="${k}" aria-pressed="${(IB.ads||"all")===k}">${l}</button>`).join("")}</span><label class="lg">Sort <select id="ibSort"><option value="priority"${(IB.sort||"priority")==="priority"?" selected":""}>Needs a reply first</option><option value="newest"${IB.sort==="newest"?" selected":""}>Newest</option><option value="supporters"${IB.sort==="supporters"?" selected":""}>Supporters first</option><option value="negative"${IB.sort==="negative"?" selected":""}>Negative first</option></select></label>${IB.tone&&ibToneLine(IB.tone)?`<span class="src" title="Tone of the words in open items, not whether they agree with us">Open: ${esc(ibToneLine(IB.tone))}</span>`:""}<button class="btn small" data-ib-clean="on">🧹 Clean up${ibCleanGroups().length?` <span class="n">${ibCleanGroups().reduce((a,g)=>a+g.ids.length,0)}</span>`:""}</button>${S.sample&&IB.status==="open"?(IB.topics?`<button class="btn small" data-ib-topics="off">Back to the list</button>`:`<button class="btn small" data-ib-topics="on">✨ Sort by topic</button>`):""}</div>`;
   if(IB.topics){el.innerHTML=head+filt+ibTopics();return}
@@ -3562,6 +3606,7 @@ document.addEventListener("click",async ev=>{
     if(a==="assign")extra={assign_to:S.whoId||""};
     if(IB.topics===null||!IB.topics)IB.topics={groups:[]};const had=IB.topics.groups.length;await ibBulk(ids,a,extra);if(!had)IB.topics=null;IB.sel=new Set();loadInbox();return}
   const bl4=ev.target.closest("[data-ib-bulklabel]");if(bl4){const v=String($("#ibBulkLabel")?.value||"").trim();if(!v){toast("Type the label");return}IB.bulkLabel=false;const ids=[...(IB.sel||[])];const had=!!IB.topics;if(!had)IB.topics={groups:[]};await ibBulk(ids,"label",{labels:[v]});if(!had)IB.topics=null;IB.sel=new Set();loadInbox();return}
+  const td=ev.target.closest("[data-ib-tdays]");if(td){IB.teamDays=Number(td.dataset.ibTdays);IB.team=null;loadInbox();return}
   const mt4=ev.target.closest("[data-ib-mod]");if(mt4){IB.modTab=mt4.dataset.ibMod;loadInbox();return}
   const ad4=ev.target.closest("[data-ib-adall]");if(ad4){IB.tab="posts";IB.post=ad4.dataset.ibAdall;IB.postThread=null;await loadInbox();try{const r=await eng("engine_inbox",{team:S.team,thread:IB.post});IB.postThread=r.items||[]}catch(e){IB.postThread=[]}renderInbox();renderSide();return}
   const fl4=ev.target.closest("[data-ib-flag]");if(fl4){const it=(IB.flagged||[]).find(x=>x.id===fl4.dataset.ibFlag);if(it){IB.tab="inbox";IB.status=it.status==="done"?"done":"open";IB.filter="all";IB.open=it;IB.thread=[];await loadInbox();renderSide()}return}
@@ -4115,11 +4160,11 @@ document.addEventListener("click",ev=>{
   const v=ev.target.closest("[data-view]");if(v){setView(v.dataset.view);return}
   const o=ev.target.closest("[data-cal-open]");if(o){const d=S.drafts.find(x=>x.id===o.dataset.calOpen);if(d){S.status=d.status||"pending";S.openId=d.id;resetDraftUi();setView("posts")}return}
   const c=ev.target.closest("[data-cal]");if(!c||c.tagName==="INPUT")return;const a=c.dataset.cal;
-  if(a==="week"||a==="month"||a==="list"){CAL.view=a;CAL.peek=null;loadCal();renderSide();return}
+  if(a==="week"||a==="month"||a==="list"||a==="grid"){CAL.view=a;CAL.peek=null;loadCal();renderSide();return}
   if(a==="today"){CAL.anchor=new Date();loadCal();return}
   if(a==="prev"||a==="next"){const n=a==="next"?1:-1;const d=new Date(CAL.anchor);if(CAL.view==="week")d.setDate(d.getDate()+7*n);else d.setMonth(d.getMonth()+n,1);CAL.anchor=d;loadCal()}
 });
-document.addEventListener("change",ev=>{if(ev.target.matches?.("[data-cal-country]")){CAL.country=ev.target.value;renderCal()}});
+document.addEventListener("change",ev=>{if(ev.target.matches?.("[data-cal-country]")){CAL.country=ev.target.value;renderCal()}if(ev.target.matches?.("[data-cal-ig]")){CAL.igKey=ev.target.value;renderCal()}});
 document.addEventListener("click",ev=>{const c=ev.target.closest("[data-cal-copy]");if(c){ev.stopPropagation();copyAsIdea(c);return}if(ev.target.closest("[data-cal-country-back]")){CAL.country="";renderCal()}});
 document.addEventListener("change",ev=>{if(ev.target.id!=="fTeam")return;CAL.data=null;CAL.ahead=null;CAL.country="";ACC.data=null;S.team=ev.target.value;teamPref(S.team);S.openId=null;S.drafts=[];resetDraftUi();renderTeams();PLAN.reqs=[];EG.posts=[];EG.loaded=false;IB.items=[];IB.open=null;IB.thread=[];AN.data=null;LS.data=null;TL.links=null;TL.health=null;TL.made=null;if(S.view==="listening")loadListening();else if(S.view==="analytics")loadAnalytics();else if(S.view==="inbox")loadInbox();else if(S.view==="calendar")loadCal();else if(S.view==="plan")loadPlan();else if(S.view==="evergreen")loadEvergreen();else renderAll();refreshPosts()});
 (async()=>{

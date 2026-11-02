@@ -16,7 +16,7 @@
 
 const IG_MEDIA_FIELDS = [
   'id', 'caption', 'media_type', 'media_product_type', 'permalink',
-  'thumbnail_url', 'timestamp', 'like_count', 'comments_count',
+  'thumbnail_url', 'media_url', 'timestamp', 'like_count', 'comments_count',
 ].join(',');
 
 // Probed one at a time, like the Facebook metrics, so one unavailable metric
@@ -143,7 +143,10 @@ async function collectInstagram({ page, as, call, lookbackDays, maxPosts, runSta
         media_product_type: r.media_product_type || null,
         caption: r.caption || null,
         permalink: r.permalink || null,
-        thumbnail_url: r.thumbnail_url || null,
+        // A preview image for the desk's Instagram grid: a video's own
+        // thumbnail, else the image itself (a carousel's media_url is its
+        // first item). Signed CDN links that expire, refreshed every night.
+        thumbnail_url: r.thumbnail_url || (r.media_type !== 'VIDEO' && r.media_url) || null,
         timestamp: r.timestamp,
         _like_count: typeof r.like_count === 'number' ? r.like_count : null,
         _comments_count: typeof r.comments_count === 'number' ? r.comments_count : null,
