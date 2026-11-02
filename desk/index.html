@@ -138,6 +138,9 @@ h2{font-family:var(--display);font-weight:700;font-size:30px;line-height:1.05;ma
 .btn.primary:hover{filter:brightness(1.08);background:var(--ok)}
 .btn.warn{color:var(--warn);border-color:var(--warn)}
 .btn.bad{color:var(--bad);border-color:var(--bad)}
+.egq{grid-template-columns:6px 48px minmax(0,1fr)}.egq .stripe{background:var(--ok)}.egleaf{width:48px;height:48px;border-radius:8px;background:var(--accent-soft);color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:18px}
+.draft.egd{display:block}.egd .egbody{display:flex;flex-direction:column;gap:14px;padding:18px 20px;max-width:720px}.egd .egbody p{margin:4px 0 0;max-width:65ch}.egd .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.egpick .btn{display:flex;flex-direction:column;align-items:flex-start;line-height:1.2}.egpick .btn small{font-weight:400;color:var(--muted);font-size:11px}.egpick .btn[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft)}
 .trashbar{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;padding:8px 10px;margin-bottom:8px;border:1px solid var(--line);border-radius:10px;background:var(--surface);font-size:13px}.trashbar .row{display:flex;gap:6px}
 .btn[disabled]{opacity:.45;cursor:not-allowed}
 
@@ -197,15 +200,30 @@ textarea{width:100%;min-height:220px;font:inherit;font-size:14px;line-height:1.5
 .fact small{display:block;color:var(--muted);font-size:12px}
 
 .decide{border-top:1px solid var(--line);padding:14px 20px;background:var(--sunk);display:flex;flex-direction:column;gap:10px}
-/* Desk: the decision rail sits to the right of the draft on wide screens */
+/* Review layout C (2 Nov): edit and schedule on the left, the live previews on the right */
 @media (min-width:1280px){
-  .draft{display:grid;grid-template-columns:minmax(0,1fr) 320px;align-items:start}
-  .draft>:not(.decide){grid-column:1}
-  .draft>.decide{grid-column:2;grid-row:1 / span 8;border-top:0;border-left:1px solid var(--line);align-self:stretch;padding:14px}
-  .draft>.decide>*{position:relative}
+  .draft{display:grid;grid-template-columns:minmax(380px,440px) minmax(0,1fr);grid-template-areas:"head head" "side main";align-items:start}
+  .draft>.dhead{grid-area:head}
+  .draft>.dbody{grid-area:main;position:sticky;top:0;align-self:start;padding-left:22px;max-height:100vh;overflow-y:auto;box-sizing:border-box}
+  .draft>.cside{grid-area:side;border-right:1px solid var(--line);align-self:stretch;background:var(--sunk);min-width:0}
+  .cside>.decide{border-top:0;padding:14px;background:transparent}
+  .cside>.decide>*{position:relative}
   .decide .lint,.decide .posting{background:var(--surface);margin-bottom:0}
   .decide .row .btn.primary{flex:1 1 100%;padding:10px}
+  .cside .notes{grid-template-columns:minmax(0,1fr);padding:0 14px 14px}
+  .cside>.cedit{padding:14px 14px 0}
 }
+.dlane{display:flex;flex-direction:column;gap:6px;border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:var(--surface)}
+.dlane .lhead{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center;font-size:13px}.dlane .lhead .row{display:flex;gap:4px}.dlane .lhead .src{flex-basis:100%;font-size:12px}
+.dlane .lrow{display:grid;grid-template-columns:96px minmax(0,1fr);gap:8px;align-items:center;font-size:12px}
+.dlane .lname{color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dlane .lticks{position:relative;height:14px;font-family:var(--mono);font-size:10.5px;color:var(--muted)}.dlane .lticks span{position:absolute;transform:translateX(-50%)}
+.dlane .ltrack{position:relative;height:30px;border-radius:7px;background:var(--sunk);cursor:pointer}
+.dlane .lbest{position:absolute;top:0;bottom:0;background:var(--accent-soft);border-radius:7px}
+.dlane .lo,.dlane .lme{position:absolute;top:4px;height:22px;display:flex;align-items:center;padding:0 6px;border-radius:5px;font-size:11px;white-space:nowrap;transform:translateX(-2px);max-width:45%;overflow:hidden}
+.dlane .lo{background:var(--line);color:var(--fg);cursor:default}
+.dlane .lme{background:var(--accent);color:var(--accent-fg);font-weight:700;z-index:1;box-shadow:0 1px 4px rgba(0,0,0,.2)}
+.cedit{display:flex;flex-direction:column;gap:10px;padding:14px 20px 0;min-width:0}
 @media (min-width:1280px) and (max-width:1460px){.dbody{grid-template-columns:minmax(0,1fr)}.art canvas{max-width:380px}}
 .decide .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .decide .state{font-size:13.5px}
@@ -671,7 +689,8 @@ function renderTabs(){
   const counts={};S.drafts.forEach(d=>{const k=d.status||"pending";counts[k]=(counts[k]||0)+1});
   const bin=STATUS.find(s=>s.key==="rejected");
   $("#statusTabs").innerHTML=STATUS.filter(s=>s!==bin).map(s=>`<button class="tab" aria-pressed="${S.status===s.key}" data-status="${s.key}">${s.label}<span class="n">${counts[s.key]||0}</span></button>`).join("")
-    +`<span class="tabsep" aria-hidden="true"></span><button class="tab tabicon" aria-pressed="${S.status==="rejected"}" data-status="rejected" aria-label="Rejected (${counts.rejected||0})" title="Rejected (${counts.rejected||0})"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg></button>`;
+    +`<span class="tabsep" aria-hidden="true"></span><button class="tab tabicon" aria-pressed="${S.status==="evergreen"}" data-status="evergreen" aria-label="Evergreen (${egDue()} due)" title="Evergreen: past winners due a fresh version (${egDue()} due)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19c0-8 6-14 15-14 0 9-6 15-14 15M5 19l7-7"/></svg>${egDue()?`<span class="n">${egDue()}</span>`:""}</button>`
+    +`<button class="tab tabicon" aria-pressed="${S.status==="rejected"}" data-status="rejected" aria-label="Rejected (${counts.rejected||0})" title="Rejected (${counts.rejected||0})"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg></button>`;
 }
 function renderFilters(){
   const fill=(id,vals,cur)=>{const el=$(id);const opts=['<option value="">All</option>'].concat([...new Set(vals)].sort().map(v=>`<option${v===cur?" selected":""}>${esc(v)}</option>`));el.innerHTML=opts.join("")};
@@ -680,6 +699,7 @@ function renderFilters(){
 }
 function hasChecks(d){return (d.facts||[]).some(f=>f.status==="check")}
 function renderQueue(){
+  if(S.status==="evergreen"){renderEgQueue();return}
   const list=filtered();
   if(!S.drafts.length){
     $("#queue").innerHTML=`<div class="empty">No drafts yet. The engine adds each day's batch here; Claude can load one on request.</div>`;
@@ -712,6 +732,37 @@ document.addEventListener("click",async ev=>{const b=ev.target.closest('[data-ac
     toast(`Cleared ${r.archived} rejected draft${r.archived===1?"":"s"}`);S.openId=null;await refreshPosts();S.trash={ready:0,waiting:r.waiting||0}}
   catch(e){failToast(e,"Couldn't empty the trash");S.trash.busy=false;S.trash.confirm=false}
   renderAll()});
+/* Evergreen in Posts (2 Nov): the bank sits beside the bin as its own icon tab. Due winners first; one
+   button asks the morning run for a fresh version on the next quiet day (a day with no post booked). */
+const egDue=()=>((EG&&EG.posts)||[]).filter(p=>p.state==="due").length;
+function quietDays(n){const busy=new Set(S.drafts.filter(x=>["scheduled","hold","pending","changes"].includes(x.status||"pending")).map(whenOf).filter(Boolean).map(dayKey));
+  const out=[];for(let i=1;i<45&&out.length<n;i++){const c=new Date();c.setDate(c.getDate()+i);c.setHours(12,0,0,0);if(!busy.has(dayKey(c)))out.push(c)}return out}
+function egList(){const rank=p=>p.state==="due"?0:1;return (EG.posts||[]).filter(p=>p.state==="due"||p.state==="coming").sort((a,b)=>rank(a)-rank(b)||String(a.due_on||"").localeCompare(String(b.due_on||"")))}
+const egDay=d=>d?new Date(String(d).slice(0,10)+"T12:00:00").toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"}):"";
+function renderEgQueue(){const q=$("#queue");
+  if(!EG.loaded){q.innerHTML=`<div class="empty">${EG.err?esc("Couldn't load the evergreen bank: "+whyFailed(EG.err)):"Loading the evergreen bank…"}</div>`;return}
+  const l=egList();if(!l.length){q.innerHTML=`<div class="empty">No past winners are due. They come back 10 weeks after they last went out.</div>`;return}
+  if(!l.some(p=>String(p.id)===S.egOpen))S.egOpen=String(l[0].id);let last=null;
+  q.innerHTML=l.map(p=>{const g=p.state==="due"?"Due now":"Coming up";const head=g!==last?`<div class="qgroup">${g}<span>${l.filter(x=>x.state===p.state).length}</span></div>`:"";last=g;
+    return head+`<button class="qitem egq" data-eg-open="${esc(String(p.id))}" aria-current="${String(p.id)===S.egOpen}"><span class="stripe"></span><span class="egleaf" aria-hidden="true">${p.format==="Reel"||p.format==="Video"?"▶":"✦"}</span><span class="qbody"><span class="qt">${esc(p.title)}</span><span class="qm"><span>${esc(p.result||p.format||"")}</span></span><span class="qflags">${p.requested?`<span class="qf">✎ ${esc(egDay(p.requested.for_date))}</span>`:p.state==="due"?"":`<span class="qf">${esc(egDay(p.due_on))}</span>`}</span></span></button>`}).join("")}
+function renderEgDetail(){const el=$("#detail");const p=(EG.posts||[]).find(x=>String(x.id)===S.egOpen);if(!p){el.innerHTML=EG.loaded?`<div class="empty">Pick a past winner.</div>`:"";return}
+  const qd=quietDays(3);const pick=S.egDate||(qd[0]?dayKey(qd[0]):"");
+  const acts=p.requested?`<p class="src">✎ A fresh version is on its way for <b>${esc(egDay(p.requested.for_date))}</b>: the morning run drafts it into Review.</p><div class="row"><button class="btn small" data-egp="went_out">It went out</button></div>`
+    :`<div class="egpick"><span class="eyebrow">Go out on</span><div class="row">${qd.map(c=>`<button class="btn small" data-egday="${dayKey(c)}" aria-pressed="${dayKey(c)===pick}">${esc(egDay(dayKey(c)))}<small>quiet day</small></button>`).join("")}<input type="date" id="egPickDate" value="${esc(pick)}" min="${dayKey(new Date())}" aria-label="Or pick a date"></div></div>
+      <div class="row"><button class="btn primary" data-egp="ask"${EG.busy?" disabled":""}>Draft a fresh version</button><button class="btn" data-egp="snooze">Not now (4 weeks)</button><button class="btn" data-egp="retire">Retire</button></div>`;
+  el.innerHTML=`<article class="draft egd"><div class="dhead"><div class="chips"><span class="chip">${p.state==="due"?"Due now":"Due "+esc(egDay(p.due_on))}</span>${p.format?`<span class="chip type">${esc(p.format)}</span>`:""}</div><h2>${esc(p.title)}</h2>
+    <div class="src">Last out ${esc(egDay(p.last_out))}${p.result?" · "+esc(p.result):""}${p.url?` · <a href="${esc(p.url)}" target="_blank" rel="noopener">see the original</a>`:""}</div></div>
+    <div class="egbody">${p.why?`<div><span class="eyebrow">What a fresh version changes</span><p>${esc(p.why)}</p></div>`:""}${acts}
+    <p class="src">Fresh, not a repost: new hook and caption, the original's numbers attached. The morning run holds it back if an English CitizenGO account posted it in the last 6 weeks.</p></div></article>`}
+document.addEventListener("click",async ev=>{const o=ev.target.closest("[data-eg-open]");if(o){S.egOpen=o.dataset.egOpen;S.egDate=null;renderQueue();renderDetail();return}
+  const dy=ev.target.closest("[data-egday]");if(dy){S.egDate=dy.dataset.egday;renderDetail();return}
+  const b=ev.target.closest("[data-egp]");if(!b)return;const a=b.dataset.egp;const p=(EG.posts||[]).find(x=>String(x.id)===S.egOpen);if(!p)return;
+  if(a==="ask"){const d=$("#egPickDate")?.value;if(!d){toast("Pick the day it should go out");return}EG.busy=true;renderDetail();
+    try{const input={action:"create",team:S.team,for_date:d,title:`Fresh version: ${p.title}`,source:"evergreen",evergreen_id:p.id};const ang=[p.why,p.result?`Then: ${p.result}`:"",p.url||""].filter(Boolean).join(" · ");if(ang)input.angle=ang;
+      const r=await eng("engine_request",input);if(r&&r.ok){p.requested={id:r.request.id,for_date:r.request.for_date};toast(`Asked for: a fresh draft lands in Review for ${egDay(d)}`)}else toast((r&&r.error)||"Couldn't ask for a fresh draft")}
+    catch(e){failToast(e,"Couldn't ask for a fresh draft")}EG.busy=false;S.egDate=null;renderQueue();renderDetail();return}
+  b.disabled=true;try{const r=await eng("engine_evergreen_update",{action:a,id:p.id});if(r&&r.ok){toast(a==="snooze"?"Back in 4 weeks":a==="retire"?"Retired":"Recorded: due again in 10 weeks");S.egOpen=null;await loadEvergreen()}else{toast((r&&r.error)||"Couldn't save that");b.disabled=false}}
+  catch(e){failToast(e,"Couldn't save that");b.disabled=false}});
 /* K1: queue tone and flags */
 function qTone(d){const st=d.status||"pending";if(staleSplit(d).real.length)return"stale";if(d.launch&&["pending","changes"].includes(st))return"launch";return st}
 function qFlags(d){const st=d.status||"pending",f=[];const p=d.posting||{};
@@ -800,7 +851,7 @@ function readyBox(d){const it=readyItems(d);const ok=it.filter(x=>x[1][0]===true
 function rememberPick(){const ds=$("#postDay"),ts=$("#postTime");const per=[...document.querySelectorAll("input[data-time]")];
   if(!S.openId||(!ds&&!per.length))return;S.pick={id:S.openId,day:ds?.value||null,time:ts?.value||null,times:per.length?Object.fromEntries(per.filter(i=>i.value).map(i=>[i.dataset.time,i.value])):null}}
 const pickFor=()=>S.pick&&S.pick.id===S.openId?S.pick:null;
-function refreshReady(){rememberPick();const d=S.drafts.find(x=>x.id===S.openId);const r=$("#ready");if(d&&r)r.outerHTML=readyBox(d);const w=$("#apWhen");const t=pickerWhen();const pt=perTimes();
+function refreshReady(){setTimeout(refreshLane,0);rememberPick();const d=S.drafts.find(x=>x.id===S.openId);const r=$("#ready");if(d&&r)r.outerHTML=readyBox(d);const w=$("#apWhen");const t=pickerWhen();const pt=perTimes();
   if(w&&pt&&pt.length>1)w.textContent="goes out at these times";else if(w&&t)w.textContent=t.toLocaleString("en-GB",{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"});
   const tl=$("#apTimes");if(tl)tl.innerHTML=pt&&pt.length>1?pt.map(([k,t2])=>`${esc((Object.fromEntries(teamDests()))[k]||k)} ${esc(t2.toLocaleString("en-GB",{weekday:"short",hour:"2-digit",minute:"2-digit"}))}`).join(" · "):""}
 function approveSplit(d,checks){const t=(()=>{const pk=pickFor();if(pk){const pt=pk.times&&Object.values(pk.times).sort()[0];const x=pt?new Date(pt):pk.day&&pk.time?new Date(`${pk.day}T${pk.time}:00`):null;if(x&&!isNaN(x))return x}const p=d.posting||{};const v=p.at||p.suggestedAt;const x=v?new Date(v):null;return x&&x.getTime()>Date.now()?x:bestSlot(p.destinations||defaultDests(d))})();
@@ -854,6 +905,7 @@ function fromBanner(){const el=$("#detail");if(!el||!S.openId)return;if(LS.reqsT
   const m=String(q.angle).match(/^Rework of (.+?)'s post \(([^)]*)\): (\S+?)\.?(?:\s|$)/);if(!m)return;
   const b=document.createElement("div");b.className="fromb";b.innerHTML=`↻ From <b>${esc(m[1])}</b> · ${esc(m[2])} · <a href="${esc(m[3])}" target="_blank" rel="noopener">original ↗</a>`;el.prepend(b)}
 function renderDetail0(){
+  if(S.status==="evergreen"){renderEgDetail();return}
   const d=S.drafts.find(x=>x.id===S.openId);
   const el=$("#detail");
   if(!d||!filtered().includes(d)){el.innerHTML=S.drafts.length?"":`<div class="empty">Drafts will open here.</div>`;return}
@@ -876,10 +928,14 @@ function renderDetail0(){
     <div class="dbody">
       <div style="min-width:0;display:flex;flex-direction:column;gap:10px">
         <div class="ptabs" role="tablist" aria-label="Jump to a network">${PLATFORMS.map(p=>`<button class="ptab" role="tab" aria-selected="${S.platform===p.key}" data-jump="${p.key}">${p.label}${tabWarn(d,p.key)}${edited[p.key]!=null||(p.key==="facebook"&&edited.facebookComment!=null)?'<span class="edited">EDITED</span>':""}</button>`).join("")}${["facebook","instagram","x"].some(k=>edited[k]!=null)&&S.db?`<button class="ptab diffbtn" data-act="showDiff" aria-pressed="${!!S.showDiff}">${S.showDiff?"Hide my changes":"Show my changes"}</button>`:""}<span class="src fhint">Scroll sideways for each network · click any text to edit it</span></div>
-        ${videoBox(d)}${actionBox(d)}
         ${feedStrip(d)}
-        ${checksRow(d)}
         ${captionChips()}${rewriteAllBox(d)}
+      </div>
+    </div>
+    <div class="cside">
+      <div class="cedit">
+        ${checksRow(d)}
+        ${videoBox(d)}${actionBox(d)}
         <details class="gfold" id="gFold"${S.gOpen||S.gedit||S.gPreview?" open":""}><summary>Graphic <span class="src">change it, edit it, options, alt text</span></summary>
       <div class="art">
         <canvas id="card" width="1080" height="1080" role="img" aria-label="Post image preview"></canvas>
@@ -892,7 +948,7 @@ function renderDetail0(){
       </div>
         </details>
       </div>
-    </div>
+    ${mobileBar(d,st)}<div class="decide">${["pending","changes"].includes(st)&&S.db?readyBox(d):""}${["pending","changes"].includes(st)&&lintDraft(d).length?lintBox(d):""}${["scheduled","posted"].includes(st)?publishBox(d):""}${["pending","changes","hold","scheduled"].includes(st)?postingPanel(d,st):""}${decideBar(d,st,checks)}</div>
     <div class="notes">
       <div>
         ${launchBox(d)}${extrasBox(d)}<h3>Why this post</h3>
@@ -906,9 +962,9 @@ function renderDetail0(){
       </div>
     </div>
     ${resultsBox(d)}
-    ${mobileBar(d,st)}<div class="decide">${["pending","changes"].includes(st)&&S.db?readyBox(d):""}${["pending","changes"].includes(st)&&lintDraft(d).length?lintBox(d):""}${["scheduled","posted"].includes(st)?publishBox(d):""}${["pending","changes","hold","scheduled"].includes(st)?postingPanel(d,st):""}${decideBar(d,st,checks)}</div>
+    </div>
   </article>`;
-  drawCard(d,null,S.gPreview?.id===d.id?S.gPreview.card:null);drawThumbs(d);savePrefs();stripTo(S.platform,false);
+  drawCard(d,null,S.gPreview?.id===d.id?S.gPreview.card:null);drawThumbs(d);savePrefs();stripTo(S.platform,false);refreshLane();
 }
 function stripTo(p,smooth){const fs=$("#fstrip"),col=fs&&fs.querySelector(`[data-fcol="${p}"]`);if(!fs||!col)return;fs.scrollTo({left:col.offsetLeft-fs.offsetLeft,behavior:smooth?"smooth":"auto"})}
 function markPlatform(p){S.platform=p;document.querySelectorAll(".ptabs [data-jump]").forEach(b=>b.setAttribute("aria-selected",b.dataset.jump===p));document.querySelectorAll("#fstrip .fcol").forEach(c=>c.classList.toggle("on",c.dataset.fcol===p))}
@@ -1912,7 +1968,7 @@ function postingPanel(d,st){const p=d.posting||{};const dests=p.destinations||de
   return `${isVideoPost(d)&&dests.some(k=>["facebook","instagram"].includes(platOfKey(k)))?videoUploadBox(d):""}<div class="posting"><span class="eyebrow">Posting</span>
   <div class="dests">${teamDests().map(([k,l])=>{const lock=locked(k);const on=dests.includes(k);return `<label class="dest"${lock?` title="You can't post to this Page yourself. Connect Facebook if you manage it, or leave it for someone who does."`:""}><input type="checkbox" data-dest="${k}" ${on?"checked":""}${lock&&!on?" disabled":""}> ${lock?"🔒 ":""}${l}</label>`}).join("")}</div>
   ${teamDests().some(([k])=>locked(k)&&dests.includes(k))?`<div class="row"><span class="src">🔒 You can't post to a ticked Page, so Schedule will be refused until you untick it or someone who manages it approves.</span></div>`:""}
-  ${storyRow(d,dests)}${collabRow(d,dests)}${bioRow(d,dests)}${signRow(d)}${perAcctRow(d,dests,at)}<div class="row"><span class="src">${p.why?esc(p.why)+" · ":""}${esc(BEST_HINT)}</span></div>
+  ${storyRow(d,dests)}${collabRow(d,dests)}${bioRow(d,dests)}${signRow(d)}${perAcctRow(d,dests,at)}<div class="dlane" id="dayLane" aria-label="The day at a glance"></div><div class="row"><span class="src">${p.why?esc(p.why)+" · ":""}${esc(BEST_HINT)}</span></div>
   ${st==="hold"||st==="scheduled"?`<div class="row"><button class="btn small" data-act="savePosting">Update where and when</button>${links?`<span class="src">${links}</span>`:`<span class="src">The Asana task appears here once it’s created.</span>`}</div>`:""}
   ${S.db?`<div class="row"><button class="btn small" data-act="canvaReq" ${d.canvaRequest?"disabled":""}>${d.canva?.url?"Refresh Canva copy":d.canvaRequest?"Canva copy requested":"Send to Canva"}</button></div>`:""}</div>`}
 function readPosting(){const dests=[...document.querySelectorAll("input[data-dest]")].filter(x=>x.checked).map(x=>x.dataset.dest);
@@ -1932,6 +1988,32 @@ function perAcctRow(d,dests,at){const p=d.posting||{};const per=S.perAcct!=null?
 function perTimes(){const per=[...document.querySelectorAll("input[data-time]")];if(!per.length)return null;const dests=new Set([...document.querySelectorAll("input[data-dest]")].filter(x=>x.checked).map(x=>x.dataset.dest));return per.filter(i=>dests.has(i.dataset.time)&&i.value).map(i=>[i.dataset.time,new Date(i.value)]).sort((a,b)=>a[1]-b[1])}
 document.addEventListener("change",ev=>{if(ev.target.id==="sameTime"){S.perAcct=!ev.target.checked;renderDetail()}else if(ev.target.dataset&&ev.target.dataset.time)refreshReady()});
 document.addEventListener("click",ev=>{const b=ev.target.closest("[data-best]");if(!b)return;const i=document.querySelector(`input[data-time="${b.dataset.best}"]`);if(i){i.value=localVal(new Date(b.dataset.at));refreshReady()}});
+/* Review D (2 Nov): the picked day as a timeline, one lane per ticked account. Our best window is
+   shaded, posts already scheduled that day are grey, this post is blue. Click a lane to move it there. */
+const LANE_FROM=6,LANE_TO=24;
+function laneDests(d){const ticked=[...document.querySelectorAll("input[data-dest]")].filter(x=>x.checked).map(x=>x.dataset.dest);return ticked.length?ticked:((d.posting||{}).destinations||defaultDests(d))}
+function laneTimes(d,dests){const pt=perTimes();if(pt)return Object.fromEntries(pt.map(([k,t])=>[k,t]));const t=pickerWhen();return t?Object.fromEntries(dests.map(k=>[k,t])):{}}
+function otherTimes(x,k){const p=x.posting||{};const v=(p.times&&p.times[k])||((p.destinations||[]).includes(k)?(p.at||x.post_at):null);const t=v?new Date(v):null;return t&&!isNaN(t)?t:null}
+function refreshLane(){const el=$("#dayLane");const d=S.drafts.find(x=>x.id===S.openId);if(!el||!d)return;
+  const dests=laneDests(d);const times=laneTimes(d,dests);const lead=Object.values(times).sort((a,b)=>a-b)[0]||bestSlot(dests);
+  const day=new Date(lead);day.setHours(0,0,0,0);const dk=dayKey(day);const we=[0,6].includes(day.getDay());
+  const pos=t=>Math.max(0,Math.min(100,((t.getHours()+t.getMinutes()/60)-LANE_FROM)/(LANE_TO-LANE_FROM)*100));
+  const hm=t=>t.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"});const names=Object.fromEntries(teamDests());
+  const ticks=[];for(let h=LANE_FROM;h<LANE_TO;h+=3)ticks.push(`<span style="left:${(h-LANE_FROM)/(LANE_TO-LANE_FROM)*100}%">${String(h).padStart(2,"0")}</span>`);
+  const per=!!perTimes();
+  const lanes=dests.map(k=>{const [bh,bm]=BEST[leadOf(k)][we?"we":"wd"];const b0=new Date(day);b0.setHours(bh-1,bm,0,0);const b1=new Date(day);b1.setHours(bh+1,bm,0,0);
+    const others=S.drafts.filter(x=>x.id!==d.id&&x.status==="scheduled").map(x=>[x,otherTimes(x,k)]).filter(([,t])=>t&&dayKey(t)===dk)
+      .map(([x,t])=>`<span class="lo" style="left:${pos(t)}%" title="${esc(hm(t)+" · "+x.title)}">${esc(hm(t))} ${esc(String(x.title||"").slice(0,18))}</span>`).join("");
+    const me=times[k]&&dayKey(times[k])===dk?`<span class="lme" style="left:${pos(times[k])}%">${esc(hm(times[k]))}</span>`:"";
+    return `<div class="lrow"><span class="lname">${esc(names[k]||k)}</span><div class="ltrack" data-lane="${esc(k)}" title="Click to post ${per?"this account":"everywhere"} at that time"><span class="lbest" style="left:${pos(b0)}%;width:${pos(b1)-pos(b0)}%"></span>${others}${me}</div></div>`}).join("");
+  el.innerHTML=`<div class="lhead"><b>${esc(day.toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"short"}))}</b>${per?"":`<span class="row"><button class="btn small" data-lday="-1" aria-label="Day before">‹</button><button class="btn small" data-lday="1" aria-label="Day after">›</button></span>`}<span class="src">Shaded: our best window · grey: already scheduled · click a lane to move the post</span></div>
+    <div class="lrow"><span class="lname"></span><div class="lticks">${ticks.join("")}</div></div>${lanes}`}
+document.addEventListener("click",ev=>{const dd=ev.target.closest("[data-lday]");if(dd){const t=pickerWhen();if(!t)return;const n=new Date(t);n.setDate(n.getDate()+Number(dd.dataset.lday));if(n.getTime()<Date.now()){toast("That's in the past");return}setPicker(n);refreshReady();return}
+  const tr=ev.target.closest(".ltrack[data-lane]");if(!tr||ev.target.closest(".lo"))return;const r=tr.getBoundingClientRect();const f=Math.max(0,Math.min(1,(ev.clientX-r.left)/r.width));
+  let mins=Math.round((LANE_FROM*60+f*(LANE_TO-LANE_FROM)*60)/15)*15;mins=Math.min(mins,23*60+45);
+  const d=S.drafts.find(x=>x.id===S.openId);if(!d)return;const lead=Object.values(laneTimes(d,laneDests(d))).sort((a,b)=>a-b)[0]||bestSlot(laneDests(d));
+  const t=new Date(lead);t.setHours(Math.floor(mins/60),mins%60,0,0);if(t.getTime()<Date.now()+5*60e3){toast("That time has passed. Pick a later one");return}
+  const inp=document.querySelector(`input[data-time="${tr.dataset.lane}"]`);if(inp)inp.value=localVal(t);else setPicker(t);refreshReady()});
 /* Instagram collabs: up to 3 handles invited on the feed post or Reel (not Stories). */
 const collabList=v=>[...new Set(String(v||"").split(/[\s,]+/).map(h=>h.trim().replace(/^@/,"").toLowerCase()).filter(Boolean))];
 function signRow(d){if(!d.action?.url)return"";return `<div class="row"><label class="dest"><input type="checkbox" id="postSign"${(d.posting||{}).comment_dm!==false?" checked":""}> Comment to DM: anyone who comments “SIGN” gets this petition's link by private message</label><span class="src">On by default for petition posts, on Facebook and Instagram. Someone who already got it just gets a like.</span></div>`}
@@ -2025,7 +2107,7 @@ document.addEventListener("click",async ev=>{
   if(b.id==="toastUndo"){const f=toast._undo;toast._undo=null;$("#toast").hidden=true;if(f)await f();return}
   if(b.dataset.act==="help"){toggleHelp();return}
   if(b.dataset.act==="zclose"){closeZoom();return}
-  if(b.dataset.status&&!b.classList.contains("qitem")){S.status=b.dataset.status;S.openId=null;resetDraftUi();if(S.status==="rejected"){S.trash=null;loadTrash()}renderAll();return}
+  if(b.dataset.status&&!b.classList.contains("qitem")){S.status=b.dataset.status;S.openId=null;resetDraftUi();if(S.status==="rejected"){S.trash=null;loadTrash()}if(S.status==="evergreen"&&!EG.loaded)loadEvergreen();renderAll();return}
   if(b.classList.contains("qitem")){S.openId=b.dataset.id;resetDraftUi();renderQueue();renderDetail();if(matchMedia("(max-width:960px)").matches)$("#detail").scrollIntoView({behavior:"smooth"});return}
   if(b.dataset.platform){S.platform=b.dataset.platform;S.editing=null;S.inline=null;S.inlineVal=null;renderDetail();return}
   if(b.dataset.reason){const r=b.dataset.reason;S.picked.has(r)?S.picked.delete(r):S.picked.add(r);b.setAttribute("aria-pressed",S.picked.has(r));return}
@@ -2276,7 +2358,7 @@ function sideActive(){const v=S.view||"posts";
   if(v==="listening")return "listening:"+(["citizengo","allies","opponents"].includes(LS.tab)?"allies":LS.tab);/* topics is its own entry */
   return v}
 function renderSide(){const el=$("#sideNav");if(!el)return;const n=sideCounts(),act=sideActive();
-  const NAV=[["Content Engine",[["posts","Posts"],["evergreen","Evergreen"]]],["Calendar",[["calendar","Calendar"],["plan","Plan"]]],
+  const NAV=[["Content Engine",[["posts","Posts"]]],["Calendar",[["calendar","Calendar"],["plan","Plan"]]],
     ["Inbox",[["inbox:inbox","Conversations"],["inbox:mine","Assigned to me"],["inbox:posts","By post"],["inbox:autos","Automations"],["inbox:history","Moderation"]]],
     ["Listening",[["listening:digest","Digest"],["listening:mentions","Mentions"],["listening:allies","Allies and opponents"],["listening:topics","Topics"]]],["Analytics",[["analytics","Overview"]]],["Tools",[["tools","Page Inviter"]]]];
   el.innerHTML=NAV.map(([g,items])=>`<div class="grp"><span>${esc(g)}</span>${items.map(([k,l])=>`<button class="lk" data-nav="${k}"${act===k?' aria-current="page"':""}><span>${esc(l)}</span>${n[k]?`<span class="bdg${k==="inbox:history"?" bad":""}">${n[k]}</span>`:""}</button>`).join("")}</div>`).join("");
@@ -2547,10 +2629,10 @@ document.addEventListener("submit",async ev=>{if(ev.target.id!=="planIdea")retur
    Past winners come back up 10 weeks after they last went out. Suggest only:
    "Make a fresh draft" files a Plan request for a date you pick; nothing is
    queued on its own. */
-const EG={posts:[],tab:"due",err:null,loaded:false,drafting:null,adding:false,busy:false};
+var EG={posts:[],tab:"due",err:null,loaded:false,drafting:null,adding:false,busy:false};
 async function loadEvergreen(){EG.err=null;renderEvergreen();
   try{const r=await eng("engine_evergreen",{team:S.team});EG.posts=(r&&r.posts)||[];EG.loaded=true}catch(e){EG.err=e}
-  renderEvergreen()}
+  renderEvergreen();if(S.view==="posts"){renderTabs();if(S.status==="evergreen"){renderQueue();renderDetail()}}renderSide&&renderSide()}
 /* ---------- Inbox (slice 3) ----------
    Comments and DMs read on the Mini. Done, assign and label apply at once;
    replies, likes, hides and deletes go to Meta from the Mini with your own
@@ -3122,7 +3204,7 @@ document.addEventListener("submit",async ev=>{if(ev.target.id!=="egAdd")return;e
   try{const r=await eng("engine_evergreen_update",input);if(r&&r.ok){EG.adding=false;toast("Added to the bank");EG.busy=false;await loadEvergreen();return}toast((r&&r.error)||"Couldn't add it")}
   catch(e){failToast(e,"Couldn't add it")}
   EG.busy=false;renderEvergreen()});
-function setView(v){S.view=v;document.querySelectorAll("#viewTabs [data-view]").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.view===v)));
+function setView(v){if(v==="evergreen"){S.status="evergreen";S.openId=null;resetDraftUi();if(!EG.loaded)loadEvergreen();v="posts"}S.view=v;document.querySelectorAll("#viewTabs [data-view]").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.view===v)));
   const off=v!=="posts";$("main.desk").hidden=off;$("#calView").hidden=v!=="calendar";$("#planView").hidden=v!=="plan";$("#egView").hidden=v!=="evergreen";$("#ibView").hidden=v!=="inbox";$("#anView").hidden=v!=="analytics";$("#lsView").hidden=v!=="listening";$("#stView").hidden=v!=="settings";$("#toolsView").hidden=v!=="tools";$("#statusTabs").hidden=off;document.querySelector(".filters label[for=fIssue]").hidden=off;document.querySelector(".filters label[for=fType]").hidden=off;
   if(v==="calendar"){renderCal();loadCal()}else if(v==="plan")loadPlan();else if(v==="evergreen")loadEvergreen();else if(v==="inbox")loadInbox();else if(v==="analytics")loadAnalytics();else if(v==="listening")loadListening();else if(v==="settings")renderSettings();else if(v==="tools")loadTools();else renderAll();renderSide()}
 document.addEventListener("click",ev=>{
