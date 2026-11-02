@@ -387,6 +387,7 @@ const callErr = async (store, name, args, who) => { try { await tool(name)(store
     const s = T.inviterSummary([{ day: '2026-11-01', user_email: 'a', device_id: 'd1', page_id: 'p1', page_name: 'UK', invites: 50, extension_version: '2.13.19', updated_at: '2026-11-01T10:00Z' }, { day: '2026-10-30', user_email: 'b', device_id: 'd2', page_id: 'p1', invites: 10, extension_version: '2.13.18', updated_at: '2026-10-30T10:00Z' }],
       [{ day: '2026-10-01', page_id: 'p1', invites: 20 }], { UK: { follows: 30, net: 25 } });
     eq('tools: inviter results per Page and person', [s.invites, s.before, s.pages[0].name, s.pages[0].last, s.pages[0].follows, s.people.map((p) => p.who + ':' + p.version).join(',')], [60, 20, 'UK', '2026-11-01', 30, 'a:2.13.19,b:2.13.18']);
+    eq('tools: inviter per-day list is `daily`, not `days` (the desk reads days as the window)', [s.days, s.daily.map((d) => d.day + ':' + d.invites).join(',')], [undefined, '2026-10-30:10,2026-11-01:50']);
     const pet = T.petitionOf('citizengo.org/en-gb/fr/17968-stop-the-ban');
     eq('tools: Copilot args from a petition link, like make_links.py', JSON.stringify(T.copilotArgs(pet, { platform: 'x', series: 2, title: "Stop the banning of church outreach in Colchester's high street now" })),
       JSON.stringify({ assetType: 'petition', petitionId: 17968, ctaFamilyCode: 'AA', platformCode: 'tw', seriesFlow: 'TW2', listCode: 'EN_GB', topicCode: 'FR', scopeCode: 'LO', campaignTitle: 'Stop The Banning Of Church Outreach In Colchesters High' }));
