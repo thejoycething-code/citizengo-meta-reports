@@ -393,3 +393,9 @@ create table if not exists public.engine_copilot_auth (
   expires_at timestamptz, owner text, signed_in_by text, updated_at timestamptz not null default now()
 );
 alter table public.engine_copilot_auth enable row level security;
+
+-- Video previews [2 Nov]: collector/video-preview.js stores a small MP4 of a cut
+-- clip (<team>/<post>/preview-*.mp4, up to 25 MB) for the desk's trimmer, which
+-- only gets a 1-hour signed link (engine_preview). The app keeps its own limits
+-- (images 3 MB, video pieces 2.5 MB); the bucket ceiling is for previews.
+update storage.buckets set allowed_mime_types = array['image/jpeg', 'image/png', 'application/octet-stream', 'video/mp4'], file_size_limit = 26214400 where id = 'engine-media';

@@ -70,4 +70,4 @@ async function main() {
 }
 
 if (require.main === module) main().catch((e) => { console.error(e.message || e); process.exit(1); });
-module.exports = { withPreview };
+module.exports = { withPreview, encode };
