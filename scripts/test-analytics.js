@@ -165,6 +165,19 @@ const callErr = async (args, who) => { try { await call(args, who); return null;
       { fbRows: [{ permalink_url: 'https://www.facebook.com/123456789012', views_total: 5000 }], igRows: [{ permalink: 'https://www.instagram.com/p/XYZ', reach: 800 }] });
     eq('analytics: campaigns grouped by petition with views and signatures per 1k', [c.length, c[0].title, c[0].signatures, c[0].views, c[0].ig_reach, c[0].per_1k, c[0].by_platform.instagram], [2, 'Free Isabel', 40, 5000, 800, 8, 10]);
   }
+  {
+    const AX = require('../lib/analytics-extra');
+    const { topicsOf } = require('../lib/listen-topics');
+    const rows = [];
+    for (let i = 0; i < 24; i++) rows.push({ page_id: 'p', views_total: i % 2 ? 900 : 300, engagement_rate: i % 2 ? 4 : 2, created_time: `2026-10-${String(5 + (i % 7)).padStart(2, '0')}T${i % 2 ? '19' : '09'}:00:00Z`,
+      message: i % 2 ? 'Peers vote on assisted suicide today?' : 'A much longer post about many things that go on and on with lots of words in it to read, more than twenty five words in all for sure here', media_type: i % 2 ? 'reel' : 'photo' });
+    const w = AX.works(rows, { med: { p: 600 }, ukParts: (iso) => { const d = new Date(iso); return { weekday: (d.getUTCDay() + 6) % 7, hour: d.getUTCHours() }; }, topicsOf, langOf: () => 'en', fbFormat: (r) => (r.media_type === 'reel' ? 'Reel' : 'Photo') });
+    eq('what works: formats, topics and habits from the posts', [w.posts, w.formats[0].key, w.formats[0].median_views, w.topics[0].key, w.habits.map((h) => h.label).includes('Short text'), w.habits.find((h) => h.label === 'Short text').ratio], [24, 'Reel', 900, 'assisted-dying', true, 2]);
+    eq('what works: heat map cells need two posts', [w.heat.length, w.heat[0].length, w.heat.flat().filter((c) => c && c.median_views).length > 0], [7, 8, true]);
+    const now = Date.parse('2026-11-02T12:00:00Z');
+    const wk = AX.weeklyByGroup([{ page_id: 'a', metric_date: '2026-10-27', media_view_unique: 5 }, { page_id: 'a', metric_date: '2026-10-28', media_view_unique: 7 }, { page_id: 'b', metric_date: '2026-10-27', media_view_unique: 1 }], { uk: new Set(['a']), ie: new Set(['b']) }, { now, weeks: 2 });
+    eq('countries: weekly reach per team', [wk.weeks.join(','), wk.series.uk.join(','), wk.series.ie.join(',')], ['2026-10-19,2026-10-26', ',12', ',1']);
+  }
   console.log(`\n${passed} passed, ${failed} failed`);
   process.exit(failed ? 1 : 0);
 })().catch((e) => { console.error(e); process.exit(1); });

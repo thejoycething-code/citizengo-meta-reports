@@ -658,11 +658,12 @@ async function engineAnalytics(store, args, ctx0) {
     const off = (store.engineAccessLimits ? await store.engineAccessLimits({ who: ctx0.who }) : []).filter((l) => l.account_key === '*' && l.can_analytics === false).map((l) => l.team_id);
     if (Object.keys(ctx.myTeams).every((t) => off.includes(t))) throw err('A team admin has turned Analytics off for you.', 'ENGINE_NOT_ALLOWED');
   }
-  const scope = ['citizengo', 'hazteoir', 'team'].includes(args.scope) ? args.scope : 'citizengo';
+  const scope = ['citizengo', 'hazteoir', 'team', 'countries'].includes(args.scope) ? args.scope : 'citizengo';
   const days = [7, 30, 90].includes(Number(args.days)) ? Number(args.days) : 30;
   const team = scope === 'team' ? String(args.team || '') : '';
   if (team && !E.canEditTeam(ctx, team)) throw err('You are not in that team.', 'ENGINE_NOT_MEMBER');
-  return cached(store, `analytics:${scope}:${days}:${team}`, args, () => analyticsCompute(store, args, ctx0));
+  if (scope === 'countries') return cached(store, `analytics:v2:countries:${days}`, args, () => countriesCompute(store, ctx, days));
+  return cached(store, `analytics:v2:${scope}:${days}:${team}`, args, () => analyticsCompute(store, args, ctx0));
 }
 async function engineListening(store, args, ctx0) {
   const ctx = await context(store, ctx0.who);
@@ -903,6 +904,12 @@ async function analyticsCompute(store, args, { who }) {
   const sigPrev = team && store.engineSignatures ? await signaturesFor(store, team.id, days, now - days * 864e5, { posts: teamPosts }).catch(() => null) : null;
   const facebook = facebookDetail(rows, med);
 
+  // Board C: what works, over 90 days whatever the window (enough posts to compare).
+  const rows90 = days === 90 ? rows : (((await run(TOOLS, 'top_posts', { days: 90, sort: 'views', compact: true, limit: 1000 })).data || {}).rows || []).filter((r) => pageIds.has(r.page_id));
+  const med90 = {};
+  for (const id of pageIds) med90[id] = median(rows90.filter((r) => r.page_id === id).map((r) => r.views_total));
+  const works = require('../lib/analytics-extra').works(oncePerLink(rows90), { med: med90, ukParts, topicsOf: require('../lib/listen-topics').topicsOf, langOf, fbFormat });
+
   // Boards A and B: the window before this one, daily lines, what changed, campaigns.
   const AX = require('../lib/analytics-extra');
   const ymd = (t) => new Date(t).toISOString().slice(0, 10);
@@ -929,7 +936,7 @@ async function analyticsCompute(store, args, { who }) {
 
   return json({
     scope, team: team ? team.id : null, days, to: new Date().toISOString().slice(0, 10), trend, inbox, facebook: team ? facebook : null, instagram_all: instagramAll, signatures: signatures ? { ...signatures, linked: undefined } : null,
-    previous: prevT, change: AX.changes(curT, prevT), daily, changed, campaigns: campaignList,
+    previous: prevT, change: AX.changes(curT, prevT), daily, changed, campaigns: campaignList, works,
     counts: { facebook_pages: pageIds.size, instagram: ig.length, x: x.length },
     kpis: {
       reach: sumOf(fb.map((r) => r.reach)), views: sumOf(fb.map((r) => r.views)), engagements: sumOf(fb.map((r) => r.engagements)),
@@ -941,6 +948,44 @@ async function analyticsCompute(store, args, { who }) {
     instagram: ig.map((r) => ({ name: r.name, followers: r.followers, new: r.newFollowers, unfollows: r.unfollows, net: r.net })),
     top_posts: top, instagram_posts: igTop, x,
   });
+}
+
+// Board E, every country: each team's own Facebook Pages, reach and net
+// follows against the window before, 12 weeks of weekly reach, signatures
+// from its tracked links, and its best post against its Page's normal.
+async function countriesCompute(store, ctx, days, now = Date.now()) {
+  const { TOOLS } = require('./tools');
+  const AX = require('../lib/analytics-extra');
+  const run = (name, a) => TOOLS.find((t) => t.name === name).handler(store, a);
+  const ymd = (t) => new Date(t).toISOString().slice(0, 10);
+  const teams = (ctx.teams || []).filter((t) => (t.accounts || []).some((a) => a.platform === 'facebook' && a.page_id));
+  const pagesAll = (await store.loadAll()).pages || [];
+  const nameOf = Object.fromEntries(pagesAll.map((p) => [p.page_id, p.name]));
+  const groups = Object.fromEntries(teams.map((t) => [t.id, new Set(t.accounts.filter((a) => a.platform === 'facebook' && a.page_id).map((a) => a.page_id))]));
+  const [cur, prev, tp, growthRows] = await Promise.all([
+    run('page_growth', { days }), run('page_growth', { since: ymd(now - 2 * days * 864e5), until: ymd(now - (days + 1) * 864e5) }),
+    run('top_posts', { days, sort: 'views', compact: true, limit: 1000 }),
+    store.pageGrowth ? store.pageGrowth({ since: ymd(now - 13 * 7 * 864e5) }).catch(() => []) : [],
+  ]);
+  const rows = ((tp.data && tp.data.rows) || []);
+  const med = {};
+  for (const r of rows) (med[r.page_id] = med[r.page_id] || []).push(r.views_total);
+  for (const k of Object.keys(med)) med[k] = median(med[k]);
+  const weekly = AX.weeklyByGroup(growthRows, groups, { now });
+  const out = [];
+  for (const t of teams) {
+    const names = new Set([...groups[t.id]].map((id) => nameOf[id]).filter(Boolean));
+    const fb = ((cur.data && cur.data.facebook) || []).filter((r) => names.has(r.name));
+    const fbp = ((prev.data && prev.data.facebook) || []).filter((r) => names.has(r.name));
+    const c = AX.totals(fb, [], []), p = AX.totals(fbp, [], []);
+    const best = rows.filter((r) => groups[t.id].has(r.page_id) && med[r.page_id] && typeof r.views_total === 'number').sort((a, b) => b.views_total / med[b.page_id] - a.views_total / med[a.page_id])[0];
+    const sig = store.engineSignatures ? await signaturesFor(store, t.id, days, now).catch(() => null) : null;
+    out.push({ id: t.id, name: t.name, flag: t.flag || '', pages: names.size, reach: c.reach, reach_prev: p.reach, change: AX.pct(c.reach, p.reach), net_follows: c.net_follows, engagements: c.engagements,
+      weekly: weekly.series[t.id], signatures: sig ? sig.total : null,
+      best: best ? { page: best.page_name, text: String(best.message || '').slice(0, 140), url: best.permalink_url, x: Math.round((best.views_total / med[best.page_id]) * 10) / 10, views: best.views_total, format: fbFormat(best), created_time: best.created_time } : null });
+  }
+  out.sort((a, b) => (b.reach || 0) - (a.reach || 0));
+  return json({ scope: 'countries', days, to: ymd(now), weeks: weekly.weeks, teams: out });
 }
 
 // Listening [slice 3, 1 Nov]: posts beating their own normal, as data.
@@ -1069,6 +1114,11 @@ function ukHour(iso) {
   const parts = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', hour: '2-digit', hour12: false, weekday: 'short' }).formatToParts(new Date(iso));
   const g = (k) => (parts.find((p) => p.type === k) || {}).value;
   return { hour: Number(g('hour')) % 24, weekend: ['Sat', 'Sun'].includes(g('weekday')) };
+}
+function ukParts(iso) {
+  const parts = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', hour: '2-digit', hour12: false, weekday: 'short' }).formatToParts(new Date(iso));
+  const g = (k) => (parts.find((p) => p.type === k) || {}).value;
+  return { weekday: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].indexOf(g('weekday')), hour: Number(g('hour')) % 24 };
 }
 function facebookDetail(rows, med) {
   const scored = rows.filter((r) => typeof r.views_total === 'number');
@@ -1365,7 +1415,7 @@ const ENGINE_TOOLS = [
   { name: 'engine_automations', description: 'Content Engine comment-to-DM automations for one of your teams: each rule\'s keywords, private message, public replies (taking turns), what it applies to (one post, a post type, or every post; the most specific wins), Facebook and/or Instagram, tag and hand-over, whether it is on, and its last 7 days (queued, sent, failed, and per step). paused: Pause everything is holding the team\'s accounts, so automations are held too.', inputSchema: obj({ team: { type: 'string' } }, ['team']), handler: engineAutomationsList },
   { name: 'engine_automation', description: 'Content Engine: add or update a comment-to-DM automation (team admins; name, keywords (whole words), dm_text with the real cgo.ac link, reply_texts (up to 5 public replies, taking turns), scope all / type (post_type petition, prayer, reel, wins, news) / post (thread_id), platforms facebook and/or instagram, skip_repeat (someone who already got the link just gets a like; default on), tag, hand_to (who to assign the comment to)), or pause, resume or remove one (id). A new comment with a keyword gets the private message (and a public reply) as you, through the Mini, at most one per comment and 200 per rule a day; Pause everything holds them too.', inputSchema: obj({ action: { type: 'string', enum: ['add', 'update', 'pause', 'resume', 'remove'] }, team: { type: 'string' }, id: { type: 'number' }, name: { type: 'string' }, keywords: { type: 'array', items: { type: 'string' } }, dm_text: { type: 'string' }, reply_text: { type: 'string' }, reply_texts: { type: 'array', items: { type: 'string' } }, scope: { type: 'string', enum: ['all', 'type', 'post'] }, post_type: { type: 'string', enum: ['petition', 'prayer', 'reel', 'wins', 'news'] }, thread_id: { type: 'string' }, platforms: { type: 'array', items: { type: 'string', enum: ['facebook', 'instagram'] } }, skip_repeat: { type: 'boolean' }, tag: { type: 'string' }, hand_to: { type: 'string' } }, ['action', 'team']), handler: engineAutomation },
   { name: 'engine_inbox_history', description: 'Content Engine Inbox moderation history for one of your teams: every reply, hide, delete, like, assignment, label and done, by whom, newest first.', inputSchema: obj({ team: { type: 'string' }, limit: { type: 'number' } }, ['team']), handler: engineInboxHistory },
-  { name: 'engine_analytics', description: 'Content Engine Analytics for the desk, as data: page reach, views, engagements and net follows, Instagram follower movement, top Facebook posts against their own Page\'s median, top Instagram posts and X totals, for the last 7, 30 or 90 days. scope citizengo (every CitizenGO Page, default), hazteoir (kept apart) or team (with team).', inputSchema: obj({ scope: { type: 'string', enum: ['citizengo', 'hazteoir', 'team'] }, team: { type: 'string' }, days: { type: 'number', enum: [7, 30, 90] }, fresh: { type: 'boolean' } }), handler: engineAnalytics },
+  { name: 'engine_analytics', description: 'Content Engine Analytics for the desk, as data: page reach, views, engagements and net follows, Instagram follower movement, top Facebook posts against their own Page\'s median, top Instagram posts and X totals, for the last 7, 30 or 90 days. scope citizengo (every CitizenGO Page, default), hazteoir (kept apart), team (with team) or countries (every team side by side).', inputSchema: obj({ scope: { type: 'string', enum: ['citizengo', 'hazteoir', 'team', 'countries'] }, team: { type: 'string' }, days: { type: 'number', enum: [7, 30, 90] }, fresh: { type: 'boolean' } }), handler: engineAnalytics },
   { name: 'engine_listening', description: 'Content Engine Listening for the desk, as data: posts beating their own normal (min_multiple, default 3). tab citizengo: other CitizenGO Pages\' posts (not your team\'s, with team) by views against that Page\'s 90-day median, last 7 or 30 days. tab allies: watched ally Instagram accounts (optional country UK, US, IE, CA, AU), last 7, 10 or 30 days. tab opponents: watched opponent accounts plus their Meta Ad Library issue ads. tab beyond: hashtag posts from anyone (config/listen-hashtags.json), UK headlines per topic, and accounts our watched posts keep tagging that are not on our lists. tab opponents_mix: each opponent organisation\'s last 7 or 14 days split by topic (posts, best post, ads, spend). tab watches: watches [{id, words, not, sources}] matched against the last 14 days of those posts. tab overview: English posts from all of those in the last 14 days sorted into campaign topics (posts, change, share of voice, words, top posts, gaps) plus rising hashtags, links and names.', inputSchema: obj({ tab: { type: 'string', enum: ['citizengo', 'allies', 'opponents', 'overview', 'watches', 'opponents_mix', 'beyond'] }, watches: { type: 'array', items: { type: 'object' } }, team: { type: 'string' }, country: { type: 'string' }, days: { type: 'number' }, min_multiple: { type: 'number' }, fresh: { type: 'boolean' } }), handler: engineListening },
   { name: 'engine_record', description: 'Content Engine: record bookkeeping on a post in any status, posted and rejected included: results, posted (the real post links and time), stale, and posting.asanaTaskGid / asanaUrl / syncedAt / removedAt. Nothing else; the post itself is saved with engine_save. version must be the one you read.', inputSchema: obj({ id: { type: 'string' }, version: { type: 'number' }, patch: { type: 'object' } }, ['id', 'version', 'patch']), handler: engineRecord },
   { name: 'engine_trash', description: "Content Engine: the desk's bin of rejected posts for one of your teams. action count (default) says how many the morning run has already learnt from (ready) and how many are newer (waiting); action empty archives the ready ones: they leave the desk but the morning run still reads them like rejected posts.", inputSchema: obj({ team: { type: 'string' }, action: { type: 'string', enum: ['count', 'empty'] } }, ['team']), handler: engineTrash },
