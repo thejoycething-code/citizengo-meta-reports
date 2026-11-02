@@ -348,6 +348,10 @@ const callErr = async (store, name, args, who) => { try { await tool(name)(store
     const m = LT.watchMatches(P, [{ id: 'w1', words: ['Safeguards'], not: ['disabled'] }, { id: 'w2', words: ['peers'], sources: ['allies'] }, { id: 'w3', words: [] }], { now });
     eq('watches: any word, none of the not-words, chosen sides, 14 days', m.map((w) => w.id + ':' + w.total).join(','), 'w1:2,w2:0,w3:0');
     eq('watches: newest first', m[0].matches.map((p) => p.who).join(','), 'DiD,HUK');
+    const st = memoryStore();
+    st.peerRecent = async () => [{ stance: 'opponent', label: 'DiD', caption: 'Hospice care is not enough, and the people know it now', permalink: 'https://ig/1', timestamp: new Date(Date.now() - 864e5).toISOString(), like_count: 5, comments_count: 1, vs_median: 2 }];
+    const r = await call(st, 'engine_listening', { tab: 'watches', watches: [{ id: 'h', words: ['hospice'] }] }, 'chris');
+    eq('engine_listening watches: matched through the tool', [r.tab, r.watches.length, r.watches[0].id, r.watches[0].total], ['watches', 1, 'h', 1]);
   }
 
   console.log(`\n${passed} passed, ${failed} failed`);
