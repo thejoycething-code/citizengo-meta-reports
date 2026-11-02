@@ -95,16 +95,37 @@ rc=$?
 echo "== $(date '+%F %T') $JOB exit $rc"
 echo "$(date '+%F %T') exit $rc" > "$LOGS/meta-$JOB.last"
 
-# PII-free failure alert, as the workflows send. On GitHub a failed watchdog
-# shows as a red run; here only check-freshness.js alerts for itself, so the
-# watchdog alerts too (a stale-data failure can therefore alert twice).
+# Failure alert. On GitHub a failed watchdog shows as a red run; here only
+# check-freshness.js alerts for itself, so the watchdog alerts too (a stale-data
+# failure can therefore alert twice).
+#
+# ALERT_WEBHOOK_URL was never set on GitHub either (found 2 Nov 2026), so the
+# alert that actually reaches Christopher is a Slack DM through the
+# parl-monitor runner's bot (tools/alert_failure.py, the same DM its own Mini
+# jobs send), quoting the last 15 lines of this job's log. The webhook is
+# still posted to when set.
 if [ $rc -ne 0 ]; then
-  hook="$(env_value ALERT_WEBHOOK_URL)"
   what="collection FAILED"; [ "$JOB" = "watchdog" ] && what="watchdog found a problem"
+  hook="$(env_value ALERT_WEBHOOK_URL)"
   if [ -n "$hook" ]; then
     curl -s -X POST -H 'Content-Type: application/json' \
       -d "{\"text\":\"Meta $JOB $what on the Mac Mini (exit $rc). Log: ~/runner/logs/meta-$JOB.log\"}" \
       "$hook" > /dev/null || true
+  fi
+  PM="$HOME/runner/parl-monitor"
+  if [ -f "$PM/tools/alert_failure.py" ]; then
+    tail15="$(awk '/^== .* '"$JOB"' start$/{buf=""} {buf=buf $0 "\n"} END{printf "%s", buf}' "$LOG" | tail -n 15)"
+    text=":rotating_light: *Meta Reports: $JOB $what* on the Mac Mini (exit $rc).
+\`\`\`
+${tail15[-2500,-1]}
+\`\`\`
+Log: ~/runner/logs/meta-$JOB.log · re-run: zsh ~/runner/meta-reports/scripts/mini-collect.sh $JOB"
+    # send() never raises: if Slack is down it prints the message instead.
+    ( cd "$PM" && printf '%s' "$text" |
+      python3 -c 'import sys; sys.path.insert(0, "tools"); import alert_failure; alert_failure.send(sys.stdin.read())' ) ||
+      echo "alert DM failed"
+  else
+    echo "no alert sent: $PM/tools/alert_failure.py not found"
   fi
 fi
 exit $rc

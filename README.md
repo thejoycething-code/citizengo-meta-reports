@@ -634,7 +634,7 @@ Since 2 Nov the Mac Mini runs the scheduled collections on time from
 scheduled steps, and `scripts/launchd/net.citizengo.meta.<job>.plist` starts it
 (nightly 04:30, x 05:15, peers 06:10, ig-connected 06:15, links 06:40,
 listen 06:45, watchdog 09:00, London time). Logs are in
-`~/runner/logs/meta-<job>.log`, and a failed run posts to `ALERT_WEBHOOK_URL`.
+`~/runner/logs/meta-<job>.log`. A failed run DMs Christopher through the parl-monitor runner's Slack bot (and posts to `ALERT_WEBHOOK_URL` if that is ever set; it was empty on GitHub too).
 
 The secrets live in that checkout's `.env`: `META_TOKENS`, `ALERT_WEBHOOK_URL`,
 `X_CLIENT_ID`, `X_CLIENT_SECRET`, `X_TOKEN_PRIVATE_KEY` and the Supabase pair.
