@@ -669,7 +669,12 @@ async function engineListening(store, args, ctx0) {
   if (!ctx.maintainer && !Object.keys(ctx.myTeams).length) throw err('Join a Content Engine team to see Listening.', 'ENGINE_NOT_MEMBER');
   const team = args.team ? String(args.team) : '';
   if (team && !E.canEditTeam(ctx, team)) throw err('You are not in that team.', 'ENGINE_NOT_MEMBER');
-  if (args.tab === 'overview') return cached(store, 'listening:overview:v1', args, () => topicsOverview(store));
+  if (args.tab === 'overview') return cached(store, 'listening:overview:v2', args, () => topicsOverview(store));
+  if (args.tab === 'watches') {
+    const ws = (Array.isArray(args.watches) ? args.watches : []).slice(0, 30).map((w) => ({ id: String(w.id || '').slice(0, 60), words: (w.words || []).map(String).slice(0, 20), not: (w.not || []).map(String).slice(0, 20), sources: (w.sources || []).map(String).slice(0, 3) }));
+    const sig = require('crypto').createHash('sha1').update(JSON.stringify(ws)).digest('hex').slice(0, 16);
+    return cached(store, `listening:watches:${sig}`, args, () => watchesCompute(store, ws));
+  }
   const tab = ['citizengo', 'allies', 'opponents'].includes(args.tab) ? args.tab : 'citizengo';
   // Only the citizengo tab depends on the team (it leaves the team's own Pages out).
   const key = `listening:${tab}:${tab === 'citizengo' ? team : ''}:${args.country || ''}:${Number(args.days) || ''}:${Number(args.min_multiple) || ''}`;
@@ -945,6 +950,16 @@ async function listeningCompute(store, args, { who }) {
 // Listening › Topics: every watched Instagram post and every English CitizenGO
 // Facebook post of the last 28 days, sorted into campaign topics.
 async function topicsOverview(store, now = Date.now()) {
+  const posts = (await listeningCorpus(store, now)).filter((p) => p.lang === 'en');
+  return json({ tab: 'overview', ...require('../lib/listen-topics').overview(posts, { now, storyKeys }), read: posts.length });
+}
+// Listening › Watches: the team's watches matched against the same 28 days of
+// posts (every language), cached by the watches' words.
+async function watchesCompute(store, watches, now = Date.now()) {
+  const posts = await listeningCorpus(store, now);
+  return json({ tab: 'watches', watches: require('../lib/listen-topics').watchMatches(posts, watches, { now }), read: posts.length });
+}
+async function listeningCorpus(store, now = Date.now()) {
   const since = new Date(now - 28 * 864e5).toISOString();
   const { TOOLS } = require('./tools');
   const [peers, fb] = await Promise.all([
@@ -955,11 +970,10 @@ async function topicsOverview(store, now = Date.now()) {
   const med = {};
   for (const r of cgo) (med[r.page_id] = med[r.page_id] || []).push(r.views_total);
   for (const k of Object.keys(med)) med[k] = median(med[k]);
-  const posts = [
-    ...oncePerLink(cgo.filter((r) => r.created_time >= since && langOf(r.message) === 'en')).map((r) => ({ src: 'citizengo', who: r.page_name, text: r.message, url: r.permalink_url, created_time: r.created_time, views: r.views_total, x: med[r.page_id] ? Math.round((r.views_total / med[r.page_id]) * 10) / 10 : null })),
-    ...(peers || []).filter((r) => langOf(r.caption) === 'en').map((r) => ({ src: r.stance === 'opponent' ? 'opponents' : 'allies', who: r.label || `@${r.username}`, text: r.caption, url: r.permalink, created_time: r.timestamp, likes: r.like_count, comments: r.comments_count, x: r.vs_median == null ? null : Number(r.vs_median) })),
+  return [
+    ...oncePerLink(cgo.filter((r) => r.created_time >= since)).map((r) => ({ src: 'citizengo', who: r.page_name, text: r.message, url: r.permalink_url, created_time: r.created_time, views: r.views_total, lang: langOf(r.message), x: med[r.page_id] ? Math.round((r.views_total / med[r.page_id]) * 10) / 10 : null })),
+    ...(peers || []).map((r) => ({ src: r.stance === 'opponent' ? 'opponents' : 'allies', who: r.label || `@${r.username}`, text: r.caption, url: r.permalink, created_time: r.timestamp, likes: r.like_count, comments: r.comments_count, lang: langOf(r.caption), x: r.vs_median == null ? null : Number(r.vs_median) })),
   ];
-  return json({ tab: 'overview', ...require('../lib/listen-topics').overview(posts, { now, storyKeys }), read: posts.length });
 }
 
 // What each watched post gained (likes + comments) between its last two daily
@@ -1298,7 +1312,7 @@ const ENGINE_TOOLS = [
   { name: 'engine_automation', description: 'Content Engine: add or update a comment-to-DM automation (team admins; name, keywords (whole words), dm_text with the real cgo.ac link, reply_texts (up to 5 public replies, taking turns), scope all / type (post_type petition, prayer, reel, wins, news) / post (thread_id), platforms facebook and/or instagram, skip_repeat (someone who already got the link just gets a like; default on), tag, hand_to (who to assign the comment to)), or pause, resume or remove one (id). A new comment with a keyword gets the private message (and a public reply) as you, through the Mini, at most one per comment and 200 per rule a day; Pause everything holds them too.', inputSchema: obj({ action: { type: 'string', enum: ['add', 'update', 'pause', 'resume', 'remove'] }, team: { type: 'string' }, id: { type: 'number' }, name: { type: 'string' }, keywords: { type: 'array', items: { type: 'string' } }, dm_text: { type: 'string' }, reply_text: { type: 'string' }, reply_texts: { type: 'array', items: { type: 'string' } }, scope: { type: 'string', enum: ['all', 'type', 'post'] }, post_type: { type: 'string', enum: ['petition', 'prayer', 'reel', 'wins', 'news'] }, thread_id: { type: 'string' }, platforms: { type: 'array', items: { type: 'string', enum: ['facebook', 'instagram'] } }, skip_repeat: { type: 'boolean' }, tag: { type: 'string' }, hand_to: { type: 'string' } }, ['action', 'team']), handler: engineAutomation },
   { name: 'engine_inbox_history', description: 'Content Engine Inbox moderation history for one of your teams: every reply, hide, delete, like, assignment, label and done, by whom, newest first.', inputSchema: obj({ team: { type: 'string' }, limit: { type: 'number' } }, ['team']), handler: engineInboxHistory },
   { name: 'engine_analytics', description: 'Content Engine Analytics for the desk, as data: page reach, views, engagements and net follows, Instagram follower movement, top Facebook posts against their own Page\'s median, top Instagram posts and X totals, for the last 7, 30 or 90 days. scope citizengo (every CitizenGO Page, default), hazteoir (kept apart) or team (with team).', inputSchema: obj({ scope: { type: 'string', enum: ['citizengo', 'hazteoir', 'team'] }, team: { type: 'string' }, days: { type: 'number', enum: [7, 30, 90] }, fresh: { type: 'boolean' } }), handler: engineAnalytics },
-  { name: 'engine_listening', description: 'Content Engine Listening for the desk, as data: posts beating their own normal (min_multiple, default 3). tab citizengo: other CitizenGO Pages\' posts (not your team\'s, with team) by views against that Page\'s 90-day median, last 7 or 30 days. tab allies: watched ally Instagram accounts (optional country UK, US, IE, CA, AU), last 7, 10 or 30 days. tab opponents: watched opponent accounts plus their Meta Ad Library issue ads. tab overview: English posts from all of those in the last 14 days sorted into campaign topics (posts, change, share of voice, words, top posts, gaps) plus rising hashtags, links and names.', inputSchema: obj({ tab: { type: 'string', enum: ['citizengo', 'allies', 'opponents', 'overview'] }, team: { type: 'string' }, country: { type: 'string' }, days: { type: 'number' }, min_multiple: { type: 'number' }, fresh: { type: 'boolean' } }), handler: engineListening },
+  { name: 'engine_listening', description: 'Content Engine Listening for the desk, as data: posts beating their own normal (min_multiple, default 3). tab citizengo: other CitizenGO Pages\' posts (not your team\'s, with team) by views against that Page\'s 90-day median, last 7 or 30 days. tab allies: watched ally Instagram accounts (optional country UK, US, IE, CA, AU), last 7, 10 or 30 days. tab opponents: watched opponent accounts plus their Meta Ad Library issue ads. tab watches: watches [{id, words, not, sources}] matched against the last 14 days of those posts. tab overview: English posts from all of those in the last 14 days sorted into campaign topics (posts, change, share of voice, words, top posts, gaps) plus rising hashtags, links and names.', inputSchema: obj({ tab: { type: 'string', enum: ['citizengo', 'allies', 'opponents', 'overview', 'watches'] }, watches: { type: 'array', items: { type: 'object' } }, team: { type: 'string' }, country: { type: 'string' }, days: { type: 'number' }, min_multiple: { type: 'number' }, fresh: { type: 'boolean' } }), handler: engineListening },
   { name: 'engine_record', description: 'Content Engine: record bookkeeping on a post in any status, posted and rejected included: results, posted (the real post links and time), stale, and posting.asanaTaskGid / asanaUrl / syncedAt / removedAt. Nothing else; the post itself is saved with engine_save. version must be the one you read.', inputSchema: obj({ id: { type: 'string' }, version: { type: 'number' }, patch: { type: 'object' } }, ['id', 'version', 'patch']), handler: engineRecord },
   { name: 'engine_trash', description: "Content Engine: the desk's bin of rejected posts for one of your teams. action count (default) says how many the morning run has already learnt from (ready) and how many are newer (waiting); action empty archives the ready ones: they leave the desk but the morning run still reads them like rejected posts.", inputSchema: obj({ team: { type: 'string' }, action: { type: 'string', enum: ['count', 'empty'] } }, ['team']), handler: engineTrash },
   { name: 'engine_status', description: 'Content Engine: approve (schedules it; needs publishing rights for every Facebook and Instagram account), hold, changes (needs a note), reject, reopen, or mark as posted (it went out) a post.', inputSchema: obj({ id: { type: 'string' }, version: { type: 'number' }, action: { type: 'string', enum: ['approve', 'hold', 'changes', 'reject', 'reopen', 'posted'] }, note: { type: 'string' }, reasons: { type: 'array', items: { type: 'string' } } }, ['id', 'version', 'action']), handler: engineStatus },
