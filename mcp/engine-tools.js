@@ -1152,7 +1152,8 @@ async function engineInviter(store, args, { who }) {
   const ids = new Set(out.pages.map((p) => p.page_id));
   const posts = tp.filter((r) => ids.has(r.page_id) && typeof r.reactions_total === 'number').sort((a, b) => b.reactions_total - a.reactions_total).slice(0, 8)
     .map((r) => ({ page: r.page_name, text: String(r.message || '').slice(0, 120), url: r.permalink_url, created_time: r.created_time, reactions: r.reactions_total, comments: r.comments_total }));
-  return json({ days, ...out, posts });
+  // days last: the summary's own per-day list is `daily`, so it can't overwrite the window length.
+  return json({ ...out, days, posts });
 }
 
 // Tracked links: every link the team's posts carry (made by the morning run)

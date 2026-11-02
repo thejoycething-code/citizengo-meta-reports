@@ -2765,7 +2765,7 @@ function tlCard(icon,title,desc,status,go,dim){return `<article class="tlcard${d
 function tlHome(){const I=TL.inv,L=TL.links,H=TL.health;const bad=H?H.checks.filter(c=>c.level==="bad"||c.level==="warn").length:null;
   const sig=L?L.links.reduce((a,l)=>a+(l.signatures||0),0):null;
   return `<p class="src" style="margin:0">Everything that isn't a post, a reply or a report.</p><div class="tlgrid">
-    ${tlCard("🙌","Page Inviter","Invites people who reacted to our posts to like the Page. A Chrome extension.",I?`✓ ${esc(PI_INFO.version)} · ${anN(I.invites)} invites in ${I.days} days · ${I.people.length} ${I.people.length===1?"person":"people"}`:TL.loading.inv?"Loading…":"—","inviter")}
+    ${tlCard("🎣","Page Inviter","Invites people who reacted to our posts to like the Page. A Chrome extension.",I?`✓ ${esc(PI_INFO.version)} · ${anN(I.invites)} invites in ${I.days} days · ${I.people.length} ${I.people.length===1?"person":"people"}`:TL.loading.inv?"Loading…":"—","inviter")}
     ${tlCard("🔗","Tracked links","Make cgo.ac links for a petition, one per network, and see the signatures each brought.",L?`✓ ${L.links.length} links · ${anN(sig)} signatures`:TL.loading.links?"Loading…":"—","links")}
     ${tlCard("🎨","Make a graphic","Our post designs without starting a post: pick one, type the words, download.",`✓ ${SWITCH_T.length} designs`,"make")}
     ${tlCard("✂️","Clip a video","Paste a Parliament or TV link and the moment you want; the next run cuts Reel, Facebook and X versions.","✓ Cut in the next morning run","make")}
