@@ -335,6 +335,29 @@ header.top .filters{padding-block:0;margin-left:auto}
   .queue{top:calc(env(safe-area-inset-top,0px) + 64px);max-height:calc(100vh - 80px)}}
 .desk{margin-top:14px}
 /* calendar (Calendar B): week or month on the left, the queue alongside */
+.camprow{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 8px}.camp{font-size:12px;font-weight:700;border-left:4px solid var(--cc);background:var(--surface);border-radius:6px;padding:3px 8px}
+.calf{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-left:auto;font-size:12.5px}.calf select,.calf input[type=search]{font:inherit;font-size:12.5px;padding:4px 7px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--fg)}.calf input[type=search]{width:130px}
+.cchip{display:flex;gap:6px;align-items:center;width:100%;text-align:left;background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--cc,var(--line));border-radius:7px;padding:3px;font-size:11.5px;line-height:1.25;color:var(--fg);min-width:0;cursor:pointer}
+.cchip .cbody{display:flex;flex-direction:column;min-width:0}.cchip b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}.cchip small{color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cchip.draft{background:var(--warn-soft);border-style:dashed;border-color:var(--warn);border-left:3px solid var(--cc,var(--warn))}.cchip.posted{background:var(--ok-soft)}.cchip.other{cursor:default;opacity:.85}
+.cthumb{width:22px;height:28px;border-radius:4px;flex:none;background:var(--sunk);object-fit:cover}.cthumb.big{width:56px;height:70px}
+.cmonth .mcell{min-height:104px}.cmonth .mcell .cchip{padding:2px}.mcell.quiet .n{color:var(--fg)}
+.qhint{margin-top:auto;font-family:var(--mono);font-size:10.5px;color:var(--muted)}
+.mcell.dropok,.cwtrack.dropok,.clday.dropok{outline:2px dashed var(--accent);outline-offset:-2px}
+.cweek{display:grid;grid-template-columns:34px repeat(7,minmax(0,1fr));gap:6px}.cwhead{min-height:46px;display:flex;flex-direction:column;gap:2px;font-size:12.5px}.cwcol.today .cwhead b{color:var(--accent)}
+.cwkd{font-size:10.5px;border-left:3px solid var(--accent);padding-left:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.cwkd.rqk{border-color:var(--ok)}
+.cwtrack{position:relative;height:620px;background:var(--surface);border:1px solid var(--line);border-radius:8px}.cwruler .cwtrack{background:none;border:0;font-family:var(--mono);font-size:10.5px;color:var(--muted)}.cwruler span{position:absolute;right:2px;transform:translateY(-50%)}
+.cwbest{position:absolute;left:0;right:0;background:repeating-linear-gradient(135deg,var(--accent-soft) 0 6px,transparent 6px 10px);pointer-events:none}.cwnow{position:absolute;left:0;right:0;border-top:2px solid var(--bad);pointer-events:none;z-index:2}
+.cwblock{position:absolute;left:3px;right:3px;z-index:1}.cwblock .cchip{box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.clist{display:flex;flex-direction:column;gap:2px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:4px 12px 10px}
+.clday{padding:6px 0;border-bottom:1px solid var(--line)}.clday.today .cldh b{color:var(--accent)}.cldh{display:flex;gap:10px;align-items:baseline;padding:4px 0}
+.clrow{display:grid;grid-template-columns:52px minmax(0,1fr) 80px 90px 160px 120px;gap:10px;align-items:center;padding:3px 0;font-size:13px}.clrow .cchip{font-size:12.5px}.clst.scheduled{color:var(--ok)}.clst.pending,.clst.changes{color:var(--warn)}.cllinks a{font-size:12.5px;margin-right:6px}
+@media (max-width:820px){.clrow{grid-template-columns:44px minmax(0,1fr) 70px}.clrow>:nth-child(n+4){display:none}.cweek{overflow-x:auto;grid-template-columns:30px repeat(7,minmax(120px,1fr))}}
+.cpeek{position:absolute;z-index:30;width:340px;max-width:calc(100vw - 32px);background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:0 10px 30px rgba(15,25,50,.22);padding:12px;display:flex;flex-direction:column;gap:8px;font-size:13px}
+.cpeek .cprow{display:flex;gap:10px;align-items:flex-start}.cpeek .cprow>div{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}.cpeek small{color:var(--muted)}
+.cpmove{display:flex;flex-wrap:wrap;gap:6px 8px;align-items:center;background:var(--accent-soft);border-radius:8px;padding:8px}.cpmove small{flex-basis:100%}.cpmove select{font:inherit;font-size:13px;padding:3px 6px}
+.cptext{margin:0;color:var(--muted)}.cplinks a{margin-right:8px;font-weight:600}.cpeek .row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+#calView>div:first-child{position:relative;min-width:0}
 .cal{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:16px;align-items:start;margin-top:14px}
 @media (max-width:960px){.cal{grid-template-columns:minmax(0,1fr)}}
 .calbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin-bottom:10px}
@@ -2462,7 +2485,7 @@ function sideActive(){const v=S.view||"posts";
   if(v==="listening")return "listening:"+(["citizengo","allies","opponents"].includes(LS.tab)?"allies":LS.tab);/* topics is its own entry */
   return v}
 function renderSide(){const el=$("#sideNav");if(!el)return;const n=sideCounts(),act=sideActive();
-  const NAV=[["Content Engine",[["posts","Posts"]]],["Calendar",[["calendar","Calendar"],["plan","Plan"]]],
+  const NAV=[["Content Engine",[["posts","Posts"]]],["Calendar",[["calendar","Calendar"]]],
     ["Inbox",[["inbox:inbox","Conversations"],["inbox:mine","Assigned to me"],["inbox:posts","By post"],["inbox:autos","Automations"],["inbox:history","Moderation"]]],
     ["Listening",[["listening:digest","Digest"],["listening:mentions","Mentions"],["listening:allies","Allies and opponents"],["listening:topics","Topics"]]],["Analytics",[["analytics","Overview"]]],["Tools",[["tools","Page Inviter"]]]];
   el.innerHTML=NAV.map(([g,items])=>`<div class="grp"><span>${esc(g)}</span>${items.map(([k,l])=>`<button class="lk" data-nav="${k}"${act===k?' aria-current="page"':""}><span>${esc(l)}</span>${n[k]?`<span class="bdg${k==="inbox:history"?" bad":""}">${n[k]}</span>`:""}</button>`).join("")}</div>`).join("");
@@ -2550,7 +2573,7 @@ function renderTeams(){
    Your own team's posts come from the desk's own list (S.drafts), so drafts
    show at their suggested time, hatched. Other teams' scheduled and posted
    items, and the key dates, come from engine_calendar. */
-const CAL={view:"week",anchor:new Date(),others:false,data:null,ahead:null,err:null,loading:false};
+const CAL={view:"month",best:true,filter:{},anchor:new Date(),others:false,data:null,ahead:null,err:null,loading:false};
 const accLabel=k=>{const [c,p]=String(k).split("-");return `${c==="sc"?"Scot":c==="global"?"CGO":c.toUpperCase()} ${({fb:"FB",ig:"IG",x:"X"})[p]||p||""}`.trim()};
 const hhmm=t=>new Date(t).toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"});
 function calRange(){const a=new Date(CAL.anchor);a.setHours(0,0,0,0);
@@ -2559,9 +2582,9 @@ function calRange(){const a=new Date(CAL.anchor);a.setHours(0,0,0,0);
 async function loadCal(){
   const {s,e}=calRange();const now=new Date();now.setHours(0,0,0,0);const ahead=new Date(now);ahead.setDate(now.getDate()+28);
   const ticket=CAL.ticket=(CAL.ticket||0)+1;CAL.loading=true;CAL.err=null;renderCal();
-  try{const [r,a]=await Promise.all([eng("engine_calendar",{from:dayKey(s),to:dayKey(e)}),CAL.ahead?Promise.resolve(CAL.ahead):eng("engine_calendar",{from:dayKey(now),to:dayKey(ahead)})]);
+  try{const [r,a,q]=await Promise.all([eng("engine_calendar",{from:dayKey(s),to:dayKey(e)}),CAL.ahead?Promise.resolve(CAL.ahead):eng("engine_calendar",{from:dayKey(now),to:dayKey(ahead)}),eng("engine_requests",{team:S.team,from:dayKey(s),to:dayKey(e)}).catch(()=>null)]);
     if(ticket!==CAL.ticket)return; // a newer week or month was asked for meanwhile
-    CAL.data=r;CAL.ahead=a}
+    CAL.data=r;CAL.ahead=a;if(q)PLAN.reqs=q.requests||[]}
   catch(err){if(ticket!==CAL.ticket)return;CAL.err=err}
   CAL.loading=false;renderCal();renderPlan()}
 function ownItems(){
@@ -2606,39 +2629,113 @@ function freeSlots(d,list){if(dayKey(d)<dayKey(new Date()))return"";const t=(S.t
   for(const lead of plats){const [h,m]=BEST[lead][we?"we":"wd"];const c=new Date(d);c.setHours(h,m,0,0);if(c.getTime()<Date.now()+30*60e3)continue;
     if(list.some(i=>i.mine&&Math.abs(Date.parse(i.at)-c.getTime())<90*60e3))continue;if(out.some(o=>o.t.getTime()===c.getTime()))continue;out.push({t:c,lead})}
   return out.map(o=>`<div class="free" data-day="${dayKey(d)}" data-slot="${o.t.toISOString()}" title="Drop a post here to schedule it at ${hhmm(o.t)}">+ free ${hhmm(o.t)} <small>${({fb:"FB",ig:"IG",x:"X"})[o.lead]}</small></div>`).join("")}
+/* ---------- Calendar v2 (2 Nov): Calendar and Plan in one ----------
+   Month (default), Week by the hour and List over the same posts, Plan requests and key dates. Posts carry a
+   thumbnail, their networks and a campaign colour; posted ones link to the live post. Drag a post to another
+   day or time: a small card opens to confirm (or open it in Posts). Best slots are shown unless turned off. */
+const CAMP_COLORS=["#6a3fc1","#b4282e","#1d7a46","#c26a00","#2a7ab0","#a0307a"];
+function campOf(d){return (d&&(d.action&&d.action.title||d.issue))||""}
+function campColor(name){const all=[...new Set(S.drafts.map(campOf).filter(Boolean))].sort();const i=all.indexOf(name);return i<0?"":CAMP_COLORS[i%CAMP_COLORS.length]}
+function liveLinks(d){const out=[];const pub=d.published||{};for(const [k,v] of Object.entries(pub))if(v&&v.url)out.push([accLabel(k),v.url]);
+  const r=d.results||{};for(const [k,l] of [["facebook","FB"],["instagram","IG"],["x","X"]])if(r[k]&&r[k].url&&!out.some(o=>o[1]===r[k].url))out.push([l,r[k].url]);return out}
+function calItems(){const ctry=CAL.country||"";const foreign=ctry&&ctry!=="all"&&ctry!==S.team;let items=(foreign?[]:ownItems()).concat(otherItems());
+  const f=CAL.filter||{};
+  if(f.net&&f.net.length)items=items.filter(i=>(i.dests||[]).some(k=>f.net.includes(leadOf(k))));
+  if(f.status)items=items.filter(i=>f.status==="review"?["pending","changes"].includes(i.status):i.status===f.status);
+  if(f.q){const q=f.q.toLowerCase();items=items.filter(i=>String(i.title).toLowerCase().includes(q))}
+  return items}
+const calNets=i=>[...new Set((i.dests||[]).map(k=>({fb:"FB",ig:"IG",x:"X"})[leadOf(k)]))].join(" ");
+function calChip(i,mode){const d=i.mine?S.drafts.find(x=>x.id===i.id):null;const cc=d?campColor(campOf(d)):"";
+  const cls=i.status==="posted"?"posted":["pending","changes"].includes(i.status)?"draft":"sch";
+  const drag=i.mine&&i.status!=="posted"?` draggable="true" data-drag="${esc(i.id)}"`:"";
+  const thumb=i.mine?`<canvas class="cthumb" data-cthumb="${esc(i.id)}" width="10" height="10" aria-hidden="true"></canvas>`:"";
+  const meta=`${i.status==="posted"?"✓ ":cls==="draft"?"Review · ":""}${hhmm(i.at)} · ${calNets(i)}`;
+  if(!i.mine)return `<div class="cchip other${mode?" "+mode:""}"><span class="cbody"><b>${esc(i.title)}</b><small>${esc(meta)}</small><button class="kdask" data-cal-copy="${esc(i.id)}" data-team="${esc(i.team||"")}" data-day="${esc(i.day||"")}" data-title="${esc(i.raw||i.title)}">→ copy as an idea</button></span></div>`;
+  return `<button class="cchip ${cls}${mode?" "+mode:""}" data-cal-peek="${esc(i.id)}"${drag}${cc?` style="--cc:${cc}"`:""} title="${esc(i.title)}">${thumb}<span class="cbody"><b>${esc(i.title)}</b><small>${esc(meta)}</small></span></button>`}
+function calHeader(label,count){const v=CAL.view;const f=CAL.filter||{};const nets=["fb","ig","x"];
+  return `<div class="calbar"><h2>${esc(label)}</h2>
+    <button class="btn small" data-cal="prev" aria-label="Previous">‹</button><button class="btn small" data-cal="today">Today</button><button class="btn small" data-cal="next" aria-label="Next">›</button>
+    <span class="tabs">${[["month","Month"],["week","Week"],["list","List"]].map(([k,l])=>`<button class="tab" data-cal="${k}" aria-pressed="${v===k}">${l}</button>`).join("")}</span>
+    <select class="calctry" data-cal-country aria-label="Whose calendar">${[["","My team"],["all","All countries"]].concat(((CAL.data&&CAL.data.teams)||[]).filter(t=>t.id!==S.team).map(t=>[t.id,`${t.flag||""} ${t.name}`.trim()])).map(([x,l])=>`<option value="${esc(x)}"${(CAL.country||"")===x?" selected":""}>${esc(l)}</option>`).join("")}</select>
+    <span class="calf">${nets.map(n=>`<button class="tab small" data-cal-net="${n}" aria-pressed="${!!(f.net||[]).includes(n)}">${({fb:"FB",ig:"IG",x:"X"})[n]}</button>`).join("")}
+    <select data-cal-status aria-label="Status"><option value="">All statuses</option>${[["scheduled","Scheduled"],["review","In review"],["posted","Posted"]].map(([x,l])=>`<option value="${x}"${f.status===x?" selected":""}>${l}</option>`).join("")}</select>
+    <input type="search" data-cal-q placeholder="Search" value="${esc(f.q||"")}" aria-label="Search posts">
+    <label class="lg"><input type="checkbox" data-cal-best${CAL.best!==false?" checked":""}> Best slots</label></span></div>
+    <div class="calnote">${CAL.loading?"Loading the calendar…":CAL.err?esc("Couldn't load key dates and other teams: "+whyFailed(CAL.err)):esc(count)}</div>`}
+/* ---- month ---- */
+function calMonth(days,month,byDay){const today=dayKey(new Date());const reqOn=k=>(PLAN.reqs||[]).filter(r=>r.for_date===k);
+  return `<div class="month cmonth">${["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map(x=>`<div class="dow">${x}</div>`).join("")}${days.map(d=>{const k=dayKey(d);const list=byDay[k]||[];const rq=reqOn(k);
+    const quiet=k>=today&&!list.some(i=>i.mine)&&!rq.length;
+    const best=CAL.best!==false&&k>=today?bestChip(d,list):"";
+    return `<div class="mcell${d.getMonth()!==month?" out":""}${k===today?" today":""}${quiet?" quiet":""}" data-day="${k}"><span class="n">${d.getDate()}</span>${keyDatesOn(k).filter(x=>x.starts===k||d.getDay()===1).map(x=>kdHtml(x,k)).join("")}${rq.map(rqHtml).join("")}${list.map(i=>calChip(i)).join("")}${best&&list.filter(i=>i.mine).length<2?`<span class="qhint" title="Our best slot that day is free">${best} free</span>`:""}</div>`}).join("")}</div>`}
+function bestChip(d,list){const t=(S.teams||[]).find(x=>x.id===S.team);const lead=((t&&t.accounts)||[]).some(a=>a.platform==="facebook")?"fb":"ig";const we=[0,6].includes(d.getDay());const [h,m]=BEST[lead][we?"we":"wd"];const c=new Date(d);c.setHours(h,m,0,0);
+  if(c.getTime()<Date.now()+30*60e3||list.some(i=>i.mine&&Math.abs(Date.parse(i.at)-c.getTime())<90*60e3))return"";return `★ ${hhmm(c)}`}
+function rqHtml(r){return r.status==="drafted"?`<div class="rq done" title="${esc(r.angle||"")}">✎ Drafted: ${esc(r.title)}</div>`:`<div class="rq" title="${esc(r.angle||"")}"><span>✎ Asked: ${esc(r.title)}</span><button data-plan-cancel="${esc(r.id)}" aria-label="Cancel the request for ${esc(r.title)}">Cancel</button></div>`}
+/* ---- week by the hour ---- */
+const CW_FROM=6,CW_TO=23;
+function calWeek(days,byDay){const today=dayKey(new Date());const pct=t=>((t.getHours()+t.getMinutes()/60)-CW_FROM)/(CW_TO-CW_FROM)*100;
+  const ruler=[];for(let h=CW_FROM;h<CW_TO;h+=2)ruler.push(`<span style="top:${(h-CW_FROM)/(CW_TO-CW_FROM)*100}%">${String(h).padStart(2,"0")}</span>`);
+  const t=(S.teams||[]).find(x=>x.id===S.team);const lead=((t&&t.accounts)||[]).some(a=>a.platform==="facebook")?"fb":"ig";
+  const cols=days.map(d=>{const k=dayKey(d);const we=[0,6].includes(d.getDay());const [bh,bm]=BEST[lead][we?"we":"wd"];const b0=new Date(d);b0.setHours(bh-1,bm,0,0);const b1=new Date(d);b1.setHours(bh+2,bm,0,0);
+    const list=(byDay[k]||[]);const now=new Date();
+    const blocks=list.map(i=>`<div class="cwblock" style="top:${Math.max(0,Math.min(96,pct(new Date(i.at))))}%">${calChip(i,"wk")}</div>`).join("");
+    const head=keyDatesOn(k).filter(x=>x.starts===k).map(x=>`<span class="cwkd kc-${kdCat(x)}">${esc(x.title)}</span>`).join("")+(PLAN.reqs||[]).filter(r=>r.for_date===k).map(r=>`<span class="cwkd rqk">✎ ${esc(r.title)}</span>`).join("");
+    return `<div class="cwcol${k===today?" today":""}"><div class="cwhead"><b>${esc(d.toLocaleDateString("en-GB",{weekday:"short",day:"numeric"}))}</b>${head}</div>
+      <div class="cwtrack" data-day="${k}" data-week="1">${CAL.best!==false&&k>=today?`<span class="cwbest" style="top:${pct(b0)}%;height:${pct(b1)-pct(b0)}%" title="Our best window"></span>`:""}${k===today?`<span class="cwnow" style="top:${pct(now)}%"></span>`:""}${blocks}</div></div>`}).join("");
+  return `<div class="cweek"><div class="cwruler"><div class="cwhead"></div><div class="cwtrack">${ruler.join("")}</div></div>${cols}</div>`}
+/* ---- list ---- */
+function calList(days,byDay){const today=dayKey(new Date());
+  return `<div class="clist">${days.map(d=>{const k=dayKey(d);const list=(byDay[k]||[]);const kd=keyDatesOn(k).filter(x=>x.starts===k).map(x=>x.title).join(" · ");
+    if(!list.length&&k<today)return"";
+    return `<div class="clday${k===today?" today":""}" data-day="${k}"><div class="cldh"><b>${esc(d.toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"}))}</b>${kd?`<span class="src">${esc(kd)}</span>`:""}${list.length?"":`<span class="src">Nothing booked${CAL.best!==false&&bestChip(d,list)?" · "+bestChip(d,list)+" free":""}</span>`}</div>
+      ${list.map(i=>{const dd=i.mine?S.drafts.find(x=>x.id===i.id):null;const links=dd?liveLinks(dd):[];const st=i.status==="posted"?"Posted":["pending","changes"].includes(i.status)?"In review":i.mine?"Scheduled":calTeamName(i.team);
+        return `<div class="clrow"><b class="clt">${esc(hhmm(i.at))}</b>${calChip(i,"ls")}<span class="src">${esc(calNets(i))}</span><span class="clst ${i.status}">${esc(st)}</span><span class="src">${esc(dd?campOf(dd):"")}</span><span class="cllinks">${links.map(([l,u])=>`<a href="${esc(u)}" target="_blank" rel="noopener">${esc(l)} ↗</a>`).join(" ")}</span></div>`}).join("")}</div>`}).join("")}</div>`}
 function renderCal(){
   const el=$("#calView");if(!el||el.hidden)return;
-  const {s,e,month}=calRange();const today=dayKey(new Date());
-  const ctry=CAL.country||"";const foreign=ctry&&ctry!=="all"&&ctry!==S.team;
-  const items=(foreign?[]:ownItems()).concat(otherItems());const byDay={};items.forEach(i=>{const k=dayKey(new Date(i.at));(byDay[k]=byDay[k]||[]).push(i)});
+  if(CAL.view==="list"&&!CAL.listFrom)CAL.listFrom=true;
+  const {s,e,month}=calRange();
+  const items=calItems();const byDay={};items.forEach(i=>{const k=dayKey(new Date(i.at));(byDay[k]=byDay[k]||[]).push(i)});
   Object.values(byDay).forEach(l=>l.sort((a,b)=>String(a.at).localeCompare(String(b.at))));
   const days=[];for(const d=new Date(s);d<e;d.setDate(d.getDate()+1))days.push(new Date(d));
+  const inRange=CAL.view==="week"?days:days.filter(d=>d.getMonth()===month);
+  const count=inRange.reduce((n,d)=>n+(byDay[dayKey(d)]||[]).filter(i=>i.mine&&i.status!=="posted").length,0);
+  const quietN=inRange.filter(d=>dayKey(d)>=dayKey(new Date())&&!(byDay[dayKey(d)]||[]).some(i=>i.mine)).length;
   const label=CAL.view==="week"?`${s.toLocaleDateString("en-GB",{day:"numeric",month:"short"})} – ${new Date(e-864e5).toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"})}`:new Date(CAL.anchor).toLocaleDateString("en-GB",{month:"long",year:"numeric"});
-  const count=days.reduce((n,d)=>n+(byDay[dayKey(d)]||[]).filter(i=>i.mine&&i.status!=="posted").length,0);
-  const kdCount=new Set(days.flatMap(d=>keyDatesOn(dayKey(d)).filter(k=>k.starts===dayKey(d)).map(k=>k.title))).size;
-  const theme=CAL.view==="week"?weekTheme(days):null;
-  const bar=`<div class="calbar"><h2>${esc(theme?`${theme} · ${count} post${count===1?"":"s"}, ${kdCount} key date${kdCount===1?"":"s"}`:label)}</h2>${theme?`<span class="src">${esc(label)}</span>`:""}
-    <button class="btn small" data-cal="prev" aria-label="Previous">‹</button><button class="btn small" data-cal="today">Today</button><button class="btn small" data-cal="next" aria-label="Next">›</button>
-    <span class="tabs"><button class="tab" data-cal="week" aria-pressed="${CAL.view==="week"}">Week</button><button class="tab" data-cal="month" aria-pressed="${CAL.view==="month"}">Month</button></span>
-    <select class="calctry" data-cal-country aria-label="Whose calendar">${[["","My team"],["all","All countries"]].concat(((CAL.data&&CAL.data.teams)||[]).filter(t=>t.id!==S.team).map(t=>[t.id,`${t.flag||""} ${t.name}`.trim()])).map(([v,l])=>`<option value="${esc(v)}"${(CAL.country||"")===v?" selected":""}>${esc(l)}</option>`).join("")}</select>
-    <span class="legend"><span class="lg"><i class="s"></i>🕒 Scheduled</span><span class="lg"><i class="d"></i>Draft</span><span class="lg"><i class="k"></i>Key date</span><span class="lg"><i class="p"></i>✓ Posted</span></span></div>
-    ${foreign?`<div class="callock">🔒 ${esc(calTeamName(ctry))}'s calendar is read-only for you. Use “→ copy as an idea” on a post to add it to ${esc(calTeamName(S.team))}'s Plan. <button class="btn small" data-cal-country-back>Back to my team</button></div>`:""}
-    <div class="calnote">${CAL.loading?"Loading the calendar…":CAL.err?esc("Couldn't load key dates and other teams: "+whyFailed(CAL.err)):`${count} post${count===1?"":"s"} to go out, ${kdCount} key date${kdCount===1?"":"s"}`}</div>`;
-  const grid=CAL.view==="week"
-    ?`<div class="week">${days.map(d=>{const k=dayKey(d);return `<div class="day${k===today?" today":""}" data-day="${k}"><h3>${esc(d.toLocaleDateString("en-GB",{weekday:"short",day:"numeric"}))}</h3>${keyDatesOn(k).map(x=>kdHtml(x,k)).join("")}${(byDay[k]||[]).map(itemHtml).join("")}${freeSlots(d,byDay[k]||[])}</div>`}).join("")}</div>`
-    :monthHtml(days,month,byDay);
-  const held=S.drafts.filter(d=>d.status==="hold");
-  const own=ownItems();const upcoming=[];const t0=new Date();t0.setHours(0,0,0,0);
-  for(let i=0;i<28&&upcoming.length<6;i++){const d=new Date(t0);d.setDate(t0.getDate()+i);const k=dayKey(d);
-    if(own.some(x=>dayKey(new Date(x.at))===k))continue;keyDatesOn(k,CAL.ahead).filter(x=>x.starts===k).forEach(x=>upcoming.push({...x,day:d}))}
-  const side=`<aside class="qside">${pauseSwitchHtml()}<h3>Queue</h3><p>On hold: approved but not scheduled. Open one to pick its time and approve it.</p>
-    ${held.length?held.map(d=>{const dests=(d.posting||{}).destinations||defaultDests(d);const t=bestSlot(dests);return `<button class="ci" data-cal-open="${esc(d.id)}" draggable="true" data-drag="${esc(d.id)}" title="Drag onto a day to schedule">${esc(d.title||d.id)}<span class="w">Next slot: ${esc(t.toLocaleString("en-GB",{weekday:"short",hour:"2-digit",minute:"2-digit"}))} · ${esc([...new Set(dests.map(accLabel))].join(" · "))}</span></button>`}).join(""):`<p>Nothing on hold.</p>`}
-    <h4>Coming up, nothing drafted that day</h4>
-    ${upcoming.length?upcoming.map(x=>`<div class="kd${x.kind==="mothers_day"?" md":""} kc-${kdCat(x)}">${esc(x.day.toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"}))} · ${esc(x.title)}${x.angle?`<small>${esc(x.angle)}</small>`:""}${kdAskBtn(x,dayKey(x.day))}</div>`).join(""):`<p>${CAL.ahead?"Every key date in the next four weeks has a post.":"Loading…"}</p>`}</aside>`;
-  const eg=(EG.posts||[]).filter(p=>p.state==="due");
-  const egHtml=eg.length?`<h4>Evergreen due</h4>${eg.slice(0,5).map(p=>`<button class="ci" data-nav="evergreen">Evergreen: ${esc(p.title)}<span class="w">→ open in the bank</span></button>`).join("")}`:"";
-  el.innerHTML=`<div>${bar}${grid}<div class="kdlegend">${Object.entries(KD_CATS).map(([k,l])=>`<span class="kc-${k}">${l}</span>`).join("")}</div></div>${side.replace("</aside>",egHtml+"</aside>")}`;
+  const ctry=CAL.country||"";const foreign=ctry&&ctry!=="all"&&ctry!==S.team;
+  const camps=[...new Set(inRange.flatMap(d=>(byDay[dayKey(d)]||[]).filter(i=>i.mine).map(i=>campOf(S.drafts.find(x=>x.id===i.id))).filter(Boolean)))];
+  const campRow=camps.length?`<div class="camprow">${camps.map(c=>{const n=inRange.reduce((a,d)=>a+(byDay[dayKey(d)]||[]).filter(i=>i.mine&&campOf(S.drafts.find(x=>x.id===i.id))===c).length,0);return `<span class="camp" style="--cc:${campColor(c)}">${esc(c)} · ${n} post${n===1?"":"s"}</span>`}).join("")}</div>`:"";
+  const head=calHeader(label,`${count} post${count===1?"":"s"} to go out · ${quietN} quiet day${quietN===1?"":"s"} ahead`)+(foreign?`<div class="callock">🔒 ${esc(calTeamName(ctry))}'s calendar is read-only for you. Use “→ copy as an idea” on a post to add it to ${esc(calTeamName(S.team))}'s calendar. <button class="btn small" data-cal-country-back>Back to my team</button></div>`:"");
+  const grid=CAL.view==="week"?calWeek(days,byDay):CAL.view==="list"?calList(inRange,byDay):calMonth(days,month,byDay);
+  el.innerHTML=`<div>${head}${campRow}${grid}<div class="kdlegend">${Object.entries(KD_CATS).map(([k,l])=>`<span class="kc-${k}">${l}</span>`).join("")}</div>${calPeekHtml()}</div>${calSide(days,items)}`;
+  drawCalThumbs();
 }
+function drawCalThumbs(){document.querySelectorAll("canvas[data-cthumb]").forEach(cv=>{const d=S.drafts.find(x=>x.id===cv.dataset.cthumb);if(!d||!d.card)return;const c=d.card.template==="carousel"&&HOUSE_T.has(d.card.slides?.[0]?.template)?d.card.slides[0]:d.card;try{const k=S.slide;S.slide=0;drawCard(d,cv,c);S.slide=k}catch(e){}})}
+/* The side: pause switch, then the Plan's ideas to drag onto a day. */
+function calSide(days,items){const today=dayKey(new Date());const reqOn=k=>(PLAN.reqs||[]).filter(r=>r.for_date===k);
+  const ideas=[];const seen=new Set();
+  for(const d of days){const k=dayKey(d);if(k<today)continue;if(items.some(i=>i.mine&&dayKey(new Date(i.at))===k)||reqOn(k).length)continue;keyDatesOn(k).filter(x=>x.starts===k&&!seen.has(x.title)).forEach(x=>{seen.add(x.title);ideas.push({...x,day:d})})}
+  const held=S.drafts.filter(d=>d.status==="hold");const eg=(EG.posts||[]).filter(p=>["due","coming"].includes(p.state));
+  const tab=(k,l,n)=>`<button class="tab" data-plan-tray="${k}" aria-pressed="${PLAN.tray===k}">${l}${n!=null?` <span class="n">${n}</span>`:""}</button>`;
+  const T=PLAN.tray;let body;
+  if(T==="key")body=ideas.length?ideas.map(x=>`<div class="item" draggable="true"><b>${esc(x.title)}</b><small>${esc(x.day.toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"}))}${x.angle?" · "+esc(x.angle):""}</small><button class="btn small primary" data-plan-ask="${esc(dayKey(x.day))}" data-title="${esc(x.title)}" data-angle="${esc(x.angle||"")}"${PLAN.busy?" disabled":""}>Draft it for ${esc(x.day.toLocaleDateString("en-GB",{day:"numeric",month:"short"}))}</button></div>`).join(""):`<p>Every key date in view has a post or a request.</p>`;
+  else if(T==="eg")body=eg.length?eg.map(p=>`<div class="item" draggable="true" data-drag-eg="${p.id}"><b>${esc(p.title)}</b><small>${p.state==="due"?"Due now":"Coming up"}${p.why?" · "+esc(p.why):""}</small></div>`).join(""):`<p>Nothing due in the bank.</p>`;
+  else if(T==="hold")body=held.length?held.map(d=>`<div class="item" draggable="true" data-drag="${esc(d.id)}"><b>${esc(d.title||d.id)}</b><small>Approved, waiting for a time: drag it onto a day</small></div>`).join(""):`<p>Nothing on hold.</p>`;
+  else if(T==="year")body=yearList();
+  else body=`<form id="planIdea"><label>Date<input type="date" name="for_date" min="${today}" required></label><label>What's it about?<input type="text" name="title" maxlength="200" placeholder="e.g. Thank supporters for 20,000 signatures" required></label><label>Angle or notes (optional)<textarea name="angle" rows="3" maxlength="1000" placeholder="Sources, tone, a photo you have in mind"></textarea></label><button class="btn primary" type="submit"${PLAN.busy?" disabled":""}>Ask for a draft</button></form>`;
+  return `<aside class="qside tray">${pauseSwitchHtml()}<h3>Ideas to place</h3><span class="tabs">${tab("key","Key dates",ideas.length)}${tab("eg","Evergreen",eg.length)}${tab("hold","On hold",held.length)}${tab("own","Own idea")}${tab("year","Year")}</span><p class="src" style="margin:0">Drag onto a day: the morning run drafts it into Review for that date.</p>${body}</aside>`}
+/* ---- the small card: peek at a post, or confirm a move after a drag ---- */
+function calPeekHtml(){const P=CAL.peek;if(!P)return"";const d=S.drafts.find(x=>x.id===P.id);if(!d){CAL.peek=null;return""}
+  const it=ownItems().find(i=>i.id===d.id);const at=it?new Date(it.at):null;const links=liveLinks(d);const st=STATUS.find(x=>x.key===(d.status||"pending"));
+  const times=[];for(let h=6;h<24;h++)for(let m=0;m<60;m+=15)times.push(`${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`);
+  const to=P.to?new Date(P.to):null;const tt=to?`${String(to.getHours()).padStart(2,"0")}:${String(to.getMinutes()).padStart(2,"0")}`:"";if(to&&!times.includes(tt)){times.push(tt);times.sort()}
+  const text=asPosts(textFor(d,"facebook")||textFor(d,"instagram")||"")[0]||"";
+  const fmt=t=>t.toLocaleString("en-GB",{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"});
+  return `<div class="cpeek" id="calPeek" role="dialog" aria-label="${esc(d.title)}" style="left:${P.x}px;top:${P.y}px">
+    <div class="cprow"><canvas class="cthumb big" data-cthumb="${esc(d.id)}" width="10" height="10" aria-hidden="true"></canvas><div><b>${esc(d.title)}</b><small>${esc(st?st.label:"")}${at?" · "+esc(fmt(at)):""} · ${esc(calNets(it||{dests:defaultDests(d)}))}</small></div><button class="btn small" data-cal-peekclose aria-label="Close">✕</button></div>
+    ${P.to?`<div class="cpmove"><span>Move to</span><b>${esc(to.toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"}))}</b><select id="cpTime" aria-label="Time">${times.map(x=>`<option${x===tt?" selected":""}>${x}</option>`).join("")}</select>${at?`<small>from ${esc(fmt(at))}${((d.posting||{}).times&&Object.keys(d.posting.times).length>1)?" · each account keeps its gap":""}</small>`:""}</div>`:`<p class="cptext">${esc(text.slice(0,220))}${text.length>220?"…":""}</p>`}
+    ${links.length?`<div class="cplinks">Live: ${links.map(([l,u])=>`<a href="${esc(u)}" target="_blank" rel="noopener">${esc(l)} ↗</a>`).join(" ")}</div>`:""}
+    <div class="row">${P.to?`<button class="btn small primary" data-cal-move>${d.status==="scheduled"?"Move it":"Set this time and open"}</button>`:""}<button class="btn small" data-cal-open="${esc(d.id)}">Open in Posts</button>${!P.to&&d.status!=="posted"?`<span class="src">Drag it to another day to move it</span>`:""}</div></div>`}
+function openPeek(id,x,y,to){const box=$("#calView").getBoundingClientRect();const W=340;CAL.peek={id,to:to?to.toISOString():null,x:Math.max(8,Math.min(x-box.left,box.width-W-8)),y:Math.max(8,y-box.top+8)};renderCal();document.querySelector("#calPeek [data-cal-move],#calPeek [data-cal-open]")?.focus()}
 function monthHtml(days,month,byDay,extra){const today=dayKey(new Date());
   return `<div class="month">${["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map(x=>`<div class="dow">${x}</div>`).join("")}${days.map(d=>{const k=dayKey(d);return `<div class="mcell${d.getMonth()!==month?" out":""}${k===today?" today":""}" data-day="${k}"><span class="n">${d.getDate()}</span>${keyDatesOn(k).filter(x=>x.starts===k||d.getDay()===1).map(x=>kdHtml(x,k)).join("")}${extra?extra(k):""}${PLAN.images&&S.view==="plan"?(byDay[k]||[]).map(i=>`<canvas class="mthumb" data-thumb="${esc(i.id)}" width="108" height="135" title="${esc(i.title)}" data-cal-open="${esc(i.id)}"></canvas>`).join(""):(byDay[k]||[]).map(itemHtml).join("")}</div>`}).join("")}</div>`}
 
@@ -2654,6 +2751,7 @@ async function loadPlan(){
   renderPlan();
 }
 function renderPlan(){
+  if(S.view==="calendar")renderCal();
   const el=$("#planView");if(!el||el.hidden)return;
   const {s,e,month}=calRange();const today=dayKey(new Date());
   const items=ownItems();const byDay={};items.forEach(i=>{const k=dayKey(new Date(i.at));(byDay[k]=byDay[k]||[]).push(i)});
@@ -2691,10 +2789,10 @@ function drawMonthThumbs(){document.querySelectorAll("canvas[data-thumb]").forEa
 /* Drag and drop: posts onto a day or a free slot; Plan ideas onto a day. */
 function dropTime(d,day,slot){if(slot)return new Date(slot);const dests=(d.posting||{}).destinations||defaultDests(d);const cur=d.post_at||(d.posting&&d.posting.at);const t=new Date(day+"T12:00:00");
   if(cur){const c=new Date(cur);t.setHours(c.getHours(),c.getMinutes(),0,0)}else{const we=[0,6].includes(t.getDay());const [h,m]=BEST[leadOf(dests[0]||"uk-fb")][we?"we":"wd"];t.setHours(h,m,0,0)}return t}
-async function dropPost(id,day,slot){const d=S.drafts.find(x=>x.id===id);if(!d)return;const t=dropTime(d,day,slot);if(t.getTime()<Date.now()+60e3){toast("That time has passed: pick a later day");return}
+async function dropPost(id,day,slot,at){const d=S.drafts.find(x=>x.id===id);if(!d)return;const t=at||dropTime(d,day,slot);if(t.getTime()<Date.now()+60e3){toast("That time has passed: pick a later day");return}
   const when=t.toLocaleString("en-GB",{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"});
   if(d.status==="scheduled"){const p=d.posting||{};const delta=t.getTime()-Date.parse(d.post_at||p.at);const times=p.times&&Object.keys(p.times).length?Object.fromEntries(Object.entries(p.times).map(([k,v])=>[k,new Date(Date.parse(v)+delta).toISOString()])):null;
-    try{await S.db.doc("drafts/"+d.id).update({posting:{...p,at:t.toISOString(),...(times?{times}:{}),changedBy:S.me,changedAt:new Date().toISOString()}});toast(`Moved to ${when}`);renderCal()}catch(e){failToast(e,"Couldn't move it")}return}
+    try{await S.db.doc("drafts/"+d.id).update({posting:{...p,at:t.toISOString(),...(times?{times}:{}),changedBy:S.me,changedAt:new Date().toISOString()}});toast(`Moved to ${when}`);CAL.peek=null;renderCal()}catch(e){failToast(e,"Couldn't move it")}return}
   S.status=d.status||"pending";S.openId=d.id;resetDraftUi();S.perAcct=false;setView("posts");await new Promise(r=>setTimeout(r,60));setPicker(t);refreshReady();
   if(d.status==="hold"){S.apMenu=false;document.querySelector('#detail [data-act="approve"]:not([data-hold])')?.click()}else toast(`Set to ${when}: check it and press Schedule`)}
 document.addEventListener("dragstart",ev=>{const p=ev.target.closest&&ev.target.closest("[data-drag],[data-drag-eg],.qside.tray .item[draggable]");if(!p)return;
@@ -2703,7 +2801,9 @@ document.addEventListener("dragover",ev=>{const z=ev.target.closest&&ev.target.c
 document.addEventListener("dragleave",ev=>{const z=ev.target.closest&&ev.target.closest("[data-day]");if(z)z.classList.remove("dropok")});
 document.addEventListener("drop",async ev=>{const z=ev.target.closest&&ev.target.closest("[data-day]");if(!z)return;ev.preventDefault();z.classList.remove("dropok");const v=ev.dataTransfer.getData("text/plain")||"";const day=z.dataset.day;
   if(day<dayKey(new Date())){toast("That day has passed");return}
-  if(v.startsWith("post:"))return dropPost(v.slice(5),day,z.dataset.slot);
+  if(v.startsWith("post:")){const id=v.slice(5);const d=S.drafts.find(x=>x.id===id);if(!d)return;let t;
+    if(z.dataset.week){const r=z.getBoundingClientRect();const f=Math.max(0,Math.min(1,(ev.clientY-r.top)/r.height));let m=Math.round((CW_FROM*60+f*(CW_TO-CW_FROM)*60)/15)*15;t=new Date(day+"T00:00:00");t.setHours(Math.floor(m/60),m%60,0,0)}else t=dropTime(d,day,z.dataset.slot);
+    if(S.view==="calendar"){openPeek(id,ev.clientX,ev.clientY,t);return}return dropPost(id,day,z.dataset.slot)}
   if(v.startsWith("eg:")){const p=(EG.posts||[]).find(x=>String(x.id)===v.slice(3));if(p)await askDraft({for_date:day,title:`Fresh version: ${p.title}`,angle:p.why||undefined,source:"evergreen",evergreen_id:p.id});return}
   if(v.startsWith("idea:")){const [title,angle]=v.slice(5).split("|");if(title)await askDraft({for_date:day,title,angle:angle||undefined,source:"key_date"})}});
 document.addEventListener("click",async ev=>{const k=ev.target.closest("[data-kd-ask]");if(k){ev.stopPropagation();k.disabled=true;await askDraft({for_date:k.dataset.kdAsk,title:k.dataset.title,angle:k.dataset.angle||undefined,source:"key_date"});if(S.view==="calendar")renderCal();return}
@@ -2729,6 +2829,18 @@ document.addEventListener("click",async ev=>{
 document.addEventListener("submit",async ev=>{if(ev.target.id!=="planIdea")return;ev.preventDefault();const f=new FormData(ev.target);
   const input={for_date:String(f.get("for_date")||""),title:String(f.get("title")||"").trim(),source:"idea"};const a=String(f.get("angle")||"").trim();if(a)input.angle=a;
   await askDraft(input);});
+/* Calendar v2 handlers: peek, move, filters. */
+document.addEventListener("click",async ev=>{
+  const pk=ev.target.closest("[data-cal-peek]");if(pk){ev.preventDefault();openPeek(pk.dataset.calPeek,ev.clientX,ev.clientY);return}
+  if(ev.target.closest("[data-cal-peekclose]")){CAL.peek=null;renderCal();return}
+  const mv=ev.target.closest("[data-cal-move]");if(mv&&CAL.peek&&CAL.peek.to){const t=new Date(CAL.peek.to);const [h,m]=($("#cpTime")?.value||"12:00").split(":").map(Number);t.setHours(h,m,0,0);mv.disabled=true;const id=CAL.peek.id;await dropPost(id,dayKey(t),null,t);if(S.view==="calendar"){CAL.peek=null;renderCal()}return}
+  if(ev.target.closest("[data-cal-open]")){CAL.peek=null;return}
+  const n=ev.target.closest("[data-cal-net]");if(n){const f=CAL.filter;f.net=f.net||[];const k=n.dataset.calNet;f.net=f.net.includes(k)?f.net.filter(x=>x!==k):f.net.concat(k);renderCal();return}
+  if(CAL.peek&&S.view==="calendar"&&!ev.target.closest("#calPeek")){CAL.peek=null;renderCal()}
+},true);
+document.addEventListener("change",ev=>{const t=ev.target;if(!t.matches)return;if(t.matches("[data-cal-status]")){CAL.filter.status=t.value;renderCal()}else if(t.matches("[data-cal-best]")){CAL.best=t.checked;renderCal()}});
+document.addEventListener("input",ev=>{if(ev.target.matches&&ev.target.matches("[data-cal-q]")){CAL.filter.q=ev.target.value;clearTimeout(CAL._qt);CAL._qt=setTimeout(()=>{renderCal();const q=document.querySelector("[data-cal-q]");if(q){q.focus();q.setSelectionRange(q.value.length,q.value.length)}},250)}});
+document.addEventListener("keydown",ev=>{if(ev.key==="Escape"&&CAL.peek&&S.view==="calendar"){CAL.peek=null;renderCal()}});
 /* ---------- evergreen bank (A) ----------
    Past winners come back up 10 weeks after they last went out. Suggest only:
    "Make a fresh draft" files a Plan request for a date you pick; nothing is
@@ -3308,14 +3420,14 @@ document.addEventListener("submit",async ev=>{if(ev.target.id!=="egAdd")return;e
   try{const r=await eng("engine_evergreen_update",input);if(r&&r.ok){EG.adding=false;toast("Added to the bank");EG.busy=false;await loadEvergreen();return}toast((r&&r.error)||"Couldn't add it")}
   catch(e){failToast(e,"Couldn't add it")}
   EG.busy=false;renderEvergreen()});
-function setView(v){if(v==="evergreen"){S.status="evergreen";S.openId=null;resetDraftUi();if(!EG.loaded)loadEvergreen();v="posts"}S.view=v;document.querySelectorAll("#viewTabs [data-view]").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.view===v)));
+function setView(v){if(v==="plan"){v="calendar";CAL.view="month"}if(v==="evergreen"){S.status="evergreen";S.openId=null;resetDraftUi();if(!EG.loaded)loadEvergreen();v="posts"}S.view=v;document.querySelectorAll("#viewTabs [data-view]").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.view===v)));
   const off=v!=="posts";$("main.desk").hidden=off;$("#calView").hidden=v!=="calendar";$("#planView").hidden=v!=="plan";$("#egView").hidden=v!=="evergreen";$("#ibView").hidden=v!=="inbox";$("#anView").hidden=v!=="analytics";$("#lsView").hidden=v!=="listening";$("#stView").hidden=v!=="settings";$("#toolsView").hidden=v!=="tools";$("#statusTabs").hidden=off;document.querySelector(".filters label[for=fIssue]").hidden=off;document.querySelector(".filters label[for=fType]").hidden=off;
   if(v==="calendar"){renderCal();loadCal()}else if(v==="plan")loadPlan();else if(v==="evergreen")loadEvergreen();else if(v==="inbox")loadInbox();else if(v==="analytics")loadAnalytics();else if(v==="listening")loadListening();else if(v==="settings")renderSettings();else if(v==="tools")loadTools();else renderAll();renderSide()}
 document.addEventListener("click",ev=>{
   const v=ev.target.closest("[data-view]");if(v){setView(v.dataset.view);return}
   const o=ev.target.closest("[data-cal-open]");if(o){const d=S.drafts.find(x=>x.id===o.dataset.calOpen);if(d){S.status=d.status||"pending";S.openId=d.id;resetDraftUi();setView("posts")}return}
   const c=ev.target.closest("[data-cal]");if(!c||c.tagName==="INPUT")return;const a=c.dataset.cal;
-  if(a==="week"||a==="month"){CAL.view=a;loadCal();return}
+  if(a==="week"||a==="month"||a==="list"){CAL.view=a;CAL.peek=null;loadCal();return}
   if(a==="today"){CAL.anchor=new Date();loadCal();return}
   if(a==="prev"||a==="next"){const n=a==="next"?1:-1;const d=new Date(CAL.anchor);if(CAL.view==="week")d.setDate(d.getDate()+7*n);else d.setMonth(d.getMonth()+n,1);CAL.anchor=d;loadCal()}
 });
