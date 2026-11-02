@@ -2646,7 +2646,7 @@ function tlInviter(){const I=TL.inv;const days=`<span class="tabs">${[7,30,90].m
   if(TL.err.inv)return head+`<p class="offline">Couldn't load the results (${esc(whyFailed(TL.err.inv))}).</p>`+piSetup();
   if(!I)return head+`<p class="src">${TL.loading.inv?"Loading the results…":""}</p>`+piSetup();
   const ch=I.before?Math.round((I.invites-I.before)/I.before*100):null;const fol=I.pages.reduce((a,p)=>a+(p.follows||0),0);
-  const old=v=>v&&PI_INFO.build&&v.split(".").map(Number).join(".")!==PI_INFO.build&&v.localeCompare(PI_INFO.build,undefined,{numeric:true})<0;
+  /* The extension reports its display version (1.4) or, in older copies, its build (2.13.18). */const old=v=>{if(!v||v===PI_INFO.version||v===PI_INFO.build)return false;const ref=v.split(".").length>2?PI_INFO.build:PI_INFO.version;return v.localeCompare(ref,undefined,{numeric:true})<0};
   const tiles=`<div class="antiles"><div class="antile"><span class="src">Invites</span><span class="antv"><b>${anN(I.invites)}</b>${anChg(ch)}</span><span class="src">vs ${anN(I.before)} the ${I.days} days before</span></div>
     <div class="antile"><span class="src">New Page follows, same days</span><span class="antv"><b>${anN(fol)}</b></span><span class="src">on the ${I.pages.length} Pages invited for (not all from invites)</span></div>
     <div class="antile"><span class="src">People running it</span><span class="antv"><b>${I.people.length}</b></span><span class="src">${I.people.reduce((a,p)=>a+p.computers,0)} computers</span></div></div>`;

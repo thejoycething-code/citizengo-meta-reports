@@ -1085,14 +1085,14 @@ async function engineHealth(store, args, { who }) {
     store.listenHashtagMedia ? store.listenHashtagMedia({ since: twoDays }).catch(() => []) : [],
     store.listenNews ? store.listenNews({ since: twoDays }).catch(() => []) : [],
     store.inviterUsage ? store.inviterUsage({ since: new Date(now - 90 * 864e5).toISOString().slice(0, 10) }).catch(() => []) : [],
-    store.engineSignatures ? store.engineSignatures({ markers: true }).catch(() => []) : [],
+    store.linkSignaturesPulled ? store.linkSignaturesPulled().catch(() => null) : null,
   ]);
   const inviterLast = {};
   for (const r of usage) if (!inviterLast[r.page_id] || r.day > inviterLast[r.page_id]) inviterLast[r.page_id] = r.day;
   const T = require('../lib/tools-extra');
   const myPauses = pauses.filter((p) => p.scope === 'all' || p.team_id === team.id || (p.account_keys || []).some((k) => keys.has(k)));
   const checks = T.healthChecks({ team, tokens: tokens.filter((t) => keys.has(t.account_key)), rights: rights.filter((r) => keys.has(r.account_key)), pauses: myPauses,
-    runs: runs.map((r) => ({ ...r, name: nameOf[r.page_id] })), sigPulled: sig.map((r) => r.pulled_at).filter(Boolean).sort().pop() || null,
+    runs: runs.map((r) => ({ ...r, name: nameOf[r.page_id] })), sigPulled: sig || null,
     peersChecked: peers.map((a) => a.last_checked_at).filter(Boolean).sort().pop() || null, listenRows: media.length, newsRows: news.length, inviterLast, now });
   return json({ team: team.id, checked_at: new Date(now).toISOString(), checks });
 }
