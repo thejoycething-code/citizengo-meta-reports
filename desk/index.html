@@ -1108,8 +1108,12 @@ function videoBox(d){
    or cut, per version; the kept stretches go to the Mini as keep ranges (broadcast_reframe / speech_cut), which
    cut on word edges. A cut video can be played with the gaps skipped. */
 const TRIM_VERSIONS=[["reel","Reel 9:16"],["facebook","Facebook 4:5"],["x","X 16:9"]];
-function trimSource(d){const t=S.trim;if(!t)return null;if(t.kind==="v")return d.video?{words:d.video.words||[],media:d.video.url||null,title:d.video.label,file:d.video.file,src:d.video}:null;
-  const o=videoSuggestions(d).find(x=>x.id===t.opt);return o?{words:o.words||[],media:o.previewUrl||null,title:o.title,url:o.url,src:o}:null}
+function trimSource(d){const t=S.trim;if(!t)return null;if(t.kind==="v")return d.video?{words:d.video.words||[],media:d.video.url||pvUrl(d,d.video.preview),preview:d.video.preview,title:d.video.label,file:d.video.file,src:d.video}:null;
+  const o=videoSuggestions(d).find(x=>x.id===t.opt);return o?{words:o.words||[],media:o.previewUrl||pvUrl(d,o.preview),preview:o.preview,title:o.title,url:o.url,src:o}:null}
+/* Previews live in the engine's private storage; engine_preview hands out a 1-hour signed link, fetched once per path. */
+function pvUrl(d,path){if(!path)return null;S.pv=S.pv||{};const c=S.pv[path];if(c&&c.url&&Date.now()-c.at<50*60e3)return c.url;
+  if(!c||(!c.busy&&!c.err&&!c.url)||(c.url&&Date.now()-c.at>=50*60e3)){S.pv[path]={busy:true};eng("engine_preview",{id:d.id,path}).then(r=>{S.pv[path]=r&&r.ok?{url:r.url,at:Date.now()}:{err:(r&&r.error)||"No preview"};if(S.trim)renderDetail()}).catch(e=>{S.pv[path]={err:whyFailed(e)};if(S.trim)renderDetail()})}
+  return null}
 const wS=w=>Number(w[1]),wE=w=>Number(w[2]);
 function keptToRanges(words,kept){const out=[];let i=0;while(i<words.length){if(!kept[i]){i++;continue}let j=i;while(j+1<words.length&&kept[j+1])j++;
   out.push([Math.max(0,+(wS(words[i])-0.15).toFixed(2)),+(wE(words[j])+0.25).toFixed(2)]);i=j+1}
@@ -1130,6 +1134,7 @@ function trimView(d){const t=S.trim;const src=trimSource(d);if(!src)return "";t.
   return `<div class="trim" id="trim"><div class="trimhead"><b>Trimming: ${esc(src.title||"video")}</b><span class="src">${src.media?"":src.url?`<a href="${esc(src.url)}" target="_blank" rel="noopener">Watch the source ↗</a> · `:""}select words, then Keep or Cut</span><button class="btn small" data-act="trimClose">Done</button></div>
     <div class="ptabs" role="tablist" aria-label="Version">${tabs}</div>
     ${t.ver==="x"?`<label class="dest"><input type="checkbox" data-act="trimXSame"${t.xSame?" checked":""}> Same cut as the Reel</label>`:""}
+    ${!src.media&&src.preview?`<div class="src">${S.pv&&S.pv[src.preview]&&S.pv[src.preview].err?esc("Couldn't load the preview: "+S.pv[src.preview].err):"Loading the preview…"}</div>`:""}
     ${src.media?`<div class="trimplay"><video id="trimVid" src="${esc(src.media)}" controls preload="metadata" playsinline></video><button class="btn small" data-act="trimPlay">▶ Play my cut</button></div>`:""}
     <div class="trimbar" aria-label="Kept stretches">${bar}</div>
     <div class="trimtext${t.ver==="x"&&t.xSame?" ro":""}" id="trimText">${text}</div>

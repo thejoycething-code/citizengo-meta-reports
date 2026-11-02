@@ -295,6 +295,25 @@ const callErr = async (store, name, args, who) => { try { await tool(name)(store
     eq('engine_trash: another team cannot empty it', await callErr(store, 'engine_trash', { team: 'uk', action: 'empty' }, 'greg'), 'ENGINE_NOT_MEMBER');
   }
 
+  {
+    const store = memoryStore();
+    store.engineMediaUrl = async (p) => `https://signed/${p}`;
+    await call(store, 'engine_create', { team: 'uk', id: 'uk-pv', doc: { title: 'Clip' } }, 'chris');
+    const ok = await call(store, 'engine_preview', { id: 'uk-pv', path: 'uk/uk-pv/preview-video-abc.mp4' }, 'chris');
+    eq('engine_preview: a signed link for the post\'s own preview', [ok.ok, ok.url], [true, 'https://signed/uk/uk-pv/preview-video-abc.mp4']);
+    eq('engine_preview: another post\'s file or a path trick is refused', [
+      (await call(store, 'engine_preview', { id: 'uk-pv', path: 'uk/uk-other/preview-video-abc.mp4' }, 'chris')).ok,
+      (await call(store, 'engine_preview', { id: 'uk-pv', path: 'uk/uk-pv/preview-../../x.mp4' }, 'chris')).ok,
+      (await call(store, 'engine_preview', { id: 'uk-pv', path: 'uk/uk-pv/video-abc/000.part' }, 'chris')).ok,
+    ], [false, false, false]);
+    eq('engine_preview: another team cannot get one', await callErr(store, 'engine_preview', { id: 'uk-pv', path: 'uk/uk-pv/preview-video-abc.mp4' }, 'greg'), 'ENGINE_NOT_FOUND');
+    const { withPreview } = require('../collector/video-preview');
+    eq('video-preview: sets the path on the cut video or on one suggestion', [
+      withPreview({ video: { file: 'a.mp4' } }, 'video', 'p1').video.preview,
+      withPreview({ videoSuggestions: [{ id: 'v1' }, { id: 'v2' }] }, 'v2', 'p2').videoSuggestions.map((s) => s.preview || null).join(','),
+    ], ['p1', ',p2']);
+  }
+
   console.log(`\n${passed} passed, ${failed} failed`);
   process.exit(failed ? 1 : 0);
 })().catch((e) => { console.error(e); process.exit(1); });

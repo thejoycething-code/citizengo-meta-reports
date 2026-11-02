@@ -1192,6 +1192,18 @@ async function engineVideo(store, args, { who }) {
   return json({ ok: false, error: 'action is part or done.' });
 }
 
+// A signed link (1 hour) to a video preview stored for a post you can see in
+// the desk (collector/video-preview.js puts them in the post's own folder).
+async function enginePreview(store, args, { who }) {
+  const ctx = await context(store, who);
+  const post = await editablePost(store, ctx, args.id);
+  const prefix = `${post.team_id}/${String(post.id).replace(/[^a-z0-9-]/gi, '-')}/preview-`;
+  const p = String(args.path || '');
+  if (!p.startsWith(prefix) || p.includes('..') || !/\.mp4$/.test(p)) return json({ ok: false, error: 'That preview is not part of this post.' });
+  const url = await store.engineMediaUrl(p, 3600);
+  return url ? json({ ok: true, url, expires_in: 3600 }) : json({ ok: false, error: 'The preview could not be found.' });
+}
+
 async function engineMedia(store, args, { who }) {
   const ctx = await context(store, who);
   const post = await editablePost(store, ctx, args.id);
@@ -1261,6 +1273,7 @@ const ENGINE_TOOLS = [
   { name: 'engine_request', description: 'Content Engine Plan: ask the daily engine to draft a post for a date (action create: team, for_date YYYY-MM-DD, title, optional angle, source key_date or idea), cancel an open request (action cancel: id), or record that it was drafted (action drafted: id, post_id).', inputSchema: obj({ action: { type: 'string', enum: ['create', 'cancel', 'drafted'] }, id: { type: 'number' }, team: { type: 'string' }, for_date: { type: 'string' }, title: { type: 'string' }, angle: { type: 'string' }, source: { type: 'string', enum: ['key_date', 'idea', 'evergreen'] }, evergreen_id: { type: 'number' }, post_id: { type: 'string' } }, ['action']), handler: engineRequest },
   { name: 'engine_evergreen', description: 'Content Engine evergreen bank for one of your teams: past winners with their state (due, coming, resting, retired), due date and any open fresh-draft request. Due 10 weeks after a post last went out.', inputSchema: obj({ team: { type: 'string' } }, ['team']), handler: engineEvergreen },
   { name: 'engine_evergreen_update', description: 'Content Engine evergreen bank: add a past winner (action add: team, title, last_out YYYY-MM-DD, optional url, format, account_key, result, why), or snooze it 4 weeks, retire, restore, or record that a fresh version went out (went_out, optional last_out) by id.', inputSchema: obj({ action: { type: 'string', enum: ['add', 'snooze', 'retire', 'restore', 'went_out'] }, id: { type: 'number' }, team: { type: 'string' }, title: { type: 'string' }, last_out: { type: 'string' }, url: { type: 'string' }, format: { type: 'string' }, account_key: { type: 'string' }, result: { type: 'string' }, why: { type: 'string' }, source_post: { type: 'string' } }, ['action']), handler: engineEvergreenUpdate },
+  { name: 'engine_preview', description: "Content Engine: a 1-hour signed link to play a video preview stored for a post (path from the post's video.preview or a videoSuggestions entry's preview), for the desk's trimmer.", inputSchema: obj({ id: { type: 'string' }, path: { type: 'string' } }, ['id', 'path']), handler: enginePreview },
   { name: 'engine_media', description: 'Content Engine: store one finished image (base64 JPEG or PNG, up to 3 MB) for a post you can edit, for Facebook or Instagram (index 0-9 for carousels), or platform story for the Instagram Story frames (index 0-9, in order). Returns its path for the post\'s final snapshot.', inputSchema: obj({ id: { type: 'string' }, platform: { type: 'string', enum: ['facebook', 'instagram', 'story'] }, index: { type: 'number' }, mime: { type: 'string', enum: ['image/jpeg', 'image/png'] }, data: { type: 'string' } }, ['id', 'platform', 'mime', 'data']), handler: engineMedia },
   { name: 'engine_connect', description: 'Content Engine: a ten-minute link that connects your own Facebook account, so the Pages you can post to become your publishing rights.', inputSchema: obj({}), handler: engineConnect },
   { name: 'engine_calendar', description: 'Content Engine calendar: every team\'s scheduled and posted items (read-only for teams you are not in) plus your own teams\' drafts and holds, and the key dates (CitizenGO-wide and your teams\' own), between from and to (YYYY-MM-DD).', inputSchema: obj({ from: { type: 'string' }, to: { type: 'string' } }), handler: engineCalendar },
