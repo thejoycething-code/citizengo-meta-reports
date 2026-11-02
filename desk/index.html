@@ -3083,8 +3083,9 @@ function calGrid(){const G=CAL.ig;const head=`<div class="calbar"><h2>Instagram 
   const acc=accs.find(a=>a.key===CAL.igKey)||accs.find(a=>a.media.length)||accs[0];
   const pick=accs.length>1?`<select class="calctry" data-cal-ig aria-label="Instagram account">${accs.map(a=>`<option value="${esc(a.key)}"${a.key===acc.key?" selected":""}>${esc(a.handle?"@"+a.handle:a.name)}</option>`).join("")}</select>`:`<span class="src">${esc(acc.handle?"@"+acc.handle:acc.name)}</span>`;
   const now=new Date().toISOString();
-  const igAt=i=>{const t=otherTimes(S.drafts.find(x=>x.id===i.id)||{},acc.key);return t?t.toISOString():i.at};
-  const plan=ownItems().filter(i=>i.status!=="posted"&&(i.dests||[]).includes(acc.key)).map(i=>({...i,at:igAt(i)})).filter(i=>i.at>=now.slice(0,10)).sort((a,b)=>String(b.at).localeCompare(String(a.at)));
+  // From the drafts themselves, not ownItems(): that drops a Review post whose earliest (say Facebook) day has passed, even if its Instagram time is still to come.
+  const plan=S.drafts.filter(d=>!["rejected","hold","posted"].includes(d.status)&&((d.posting||{}).destinations||defaultDests(d)).includes(acc.key)).map(d=>{const p=d.posting||{};const t=otherTimes(d,acc.key);
+    const at=t?t.toISOString():p.suggestedAt||(d.timing&&d.timing.date?d.timing.date+"T12:00:00":null);return at?{id:d.id,at,status:d.status,title:d.title||""}:null}).filter(i=>i&&i.at>=now.slice(0,10)).sort((a,b)=>String(b.at).localeCompare(String(a.at)));
   const live=acc.media.slice(0,Math.max(0,15-plan.length));
   const when=t=>new Date(t).toLocaleDateString("en-GB",{weekday:"short",day:"numeric"});
   const tiles=plan.map(i=>{const st=["pending","changes"].includes(i.status)?"Review":"Scheduled";return `<button class="iggt plan${st==="Review"?" draft":""}" data-cal-peek="${esc(i.id)}" title="${esc(i.title)}"><canvas class="cthumb" data-cthumb="${esc(i.id)}" width="10" height="10" aria-hidden="true"></canvas><span class="igtag">${st} · ${esc(when(i.at))}</span></button>`}).join("")
