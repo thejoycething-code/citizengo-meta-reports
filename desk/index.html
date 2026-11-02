@@ -235,6 +235,8 @@ textarea{width:100%;min-height:220px;font:inherit;font-size:14px;line-height:1.5
 .allpv{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:8px}.allpv>div{border:1px solid var(--line);border-radius:8px;padding:8px;background:var(--surface);font-size:13px;max-height:260px;overflow:auto}@media (max-width:820px){.allpv{grid-template-columns:minmax(0,1fr)}}
 #tplSwitch{font-size:12.5px;padding:4px 6px}
 .posting{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:10px;display:flex;flex-direction:column;gap:8px}
+.pfail{border:1px solid var(--bad);background:var(--bad-soft);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:6px;font-size:13.5px}.pfail>b{color:var(--bad)}
+.btn.danger{background:var(--bad);border-color:var(--bad);color:#fff}
 .dests{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:13px}.dest{display:flex;gap:6px;align-items:center}
 
 /* K1 queue items */
@@ -1140,7 +1142,8 @@ function publishBox(d){const pub=d.published||{},errs=d.publishErrors||{};const 
   if(!keys.length&&!heldRow&&!lateRow)return"";
   return `<div class="posting"><span class="eyebrow">Publishing</span>${heldRow}${lateRow}${keys.map(k=>{const p=pub[k],e=errs[k];const l=esc(accLabel(k));
     return p?`<div class="row"><span class="src">✓ ${l}: ${p.url?`<a href="${esc(p.url)}" target="_blank" rel="noopener">published</a>`:"published"}${p.at?" "+esc(fmtWhen(p.at)):""}${p.comment_error?` · <b>${esc(p.comment_error)}</b>`:""}</span></div>`
-      :`<div class="row"><span class="src">✗ ${l}: ${esc(e.message||"failed")}${e.tries>=3?"":" Trying again shortly."}</span></div>`}).join("")}</div>`}
+      :e.tries>=3?`<div class="pfail" role="alert"><b>${l} didn't post</b><span>${esc(e.message||"It failed.")}</span><span class="src">Before retrying, check ${l}: Meta sometimes reports a failure for a post that did go up.</span><div class="row">${/more than 6 hours/.test(e.message||"")?"":`<button class="btn small danger" data-act="pubRetry" data-slot="${esc(k)}">Retry now</button>`}<button class="btn small" data-act="pubUp" data-slot="${esc(k)}">It's up: mark posted</button></div></div>`
+      :`<div class="row"><span class="src">✗ ${l}: ${esc(e.message||"failed")} Trying again shortly.</span></div>`}).join("")}</div>`}
 const CRC_T=(()=>{const t=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;t[n]=c>>>0}return t})();
 function crc32(b){let c=0xFFFFFFFF;for(let i=0;i<b.length;i++)c=CRC_T[(c^b[i])&255]^(c>>>8);return (c^0xFFFFFFFF)>>>0}
 /* minimal zip (stored, no compression: PNGs are already compressed) */
@@ -2078,6 +2081,9 @@ Return only the new post text, nothing else.`;
     catch(e){toast(e?.code==="rate_limited"?"Too many redrafts. Wait a minute":"Redraft didn't work this time")}
     finally{b.disabled=false;b.textContent="Redraft"}
     return}
+  if(act==="pubRetry"||act==="pubUp"){const k=b.dataset.slot;if(!k)return;
+    const patch=act==="pubRetry"?{publishErrors:{[k]:null},publishing:{[k]:null}}:{publishErrors:{[k]:null},publishing:{[k]:null},published:{[k]:{at:new Date().toISOString(),by:S.me,url:null,manual:true}}};
+    try{await S.db.doc("drafts/"+d.id).update(patch);toast(act==="pubRetry"?`Retrying ${accLabel(k)}: the publisher picks it up within 5 minutes`:`${accLabel(k)} marked as posted`)}catch(e){failToast(e,"Couldn't save that")}return}
   if(act==="approve"){const pst=readPosting();if(!pst.destinations.length){toast("Pick at least one place to post it");return}
     {const cl=pst.collaborators||[];const bad=cl.filter(h=>!/^[a-z0-9._]{1,30}$/.test(h));if(bad.length){toast("Not an Instagram handle: "+bad.join(", "));return}if(cl.length>3){toast("Instagram allows 3 collaborators at most");return}}
     try{await S.db.doc("drafts/"+d.id).update({posting:{...(d.posting||{}),...pst,approvedBy:S.me,approvedAt:new Date().toISOString()}})}catch(e){failToast(e,"Couldn't save where and when");return}
