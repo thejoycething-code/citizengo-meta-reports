@@ -14,7 +14,7 @@ Which posts qualify, which are duplicates, and the wording of the alert are all 
 
 ```
 export PATH="$HOME/.local/node/bin:$PATH"
-cd "/Users/christopherjoyce/Claude/meta-reports"
+cd "/Users/christopherjoyce/runner/meta-reports"
 npm run -s alerts:breakout -- --json
 ```
 
