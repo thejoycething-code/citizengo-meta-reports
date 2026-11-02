@@ -149,6 +149,22 @@ const callErr = async (args, who) => { try { await call(args, who); return null;
     const e = JSON.parse((await cached(cs, 'bad', {}, async () => ({ raw: true, text: JSON.stringify({ ok: false }) }))).text);
     eq('cache: a repeat is served from the cache; fresh and expired recalculate; refusals are not kept', [a.n, b.n, c.n, d.n, !!b.cached_at, e.ok, 'bad' in mem], [1, 1, 2, 3, true, false, false]);
   }
+  {
+    const AX = require('../lib/analytics-extra');
+    const now = Date.parse('2026-11-02T12:00:00Z');
+    const d = AX.dailySeries([{ page_id: 'p1', metric_date: '2026-11-01', media_view_unique: 10, post_engagements: 2, daily_follows: 3, daily_unfollows: 1 }, { page_id: 'p1', metric_date: '2026-11-01', media_view_unique: 5 }, { page_id: 'other', metric_date: '2026-11-01', media_view_unique: 99 }], new Set(['p1']), { now, days: 3 });
+    eq('analytics: daily lines for the Pages in scope', [d.dates.join(','), d.reach.join(','), d.net.join(',')], ['2026-10-30,2026-10-31,2026-11-01', ',,15', ',,2']);
+    const cur = AX.totals([{ reach: 120, netFollows: 5 }], [{ newFollowers: 3 }], []), prev = AX.totals([{ reach: 100, netFollows: 9 }], [], []);
+    eq('analytics: change against the window before', [AX.changes(cur, prev).reach, AX.changes(cur, prev).net_follows], [20, -44]);
+    const w = AX.whatChanged({ kpis: cur, prev, days: 30, detail: { formats: [{ format: 'Reel', posts: 4, median_views: 900 }, { format: 'Photo', posts: 5, median_views: 300 }], hours: [] }, top: [], sig: { total: 50 }, sigPrev: { total: 40 } });
+    eq('analytics: what changed, from the figures', w.map((x) => x.icon).join(','), 'up,format,down,sign');
+    const c = AX.campaigns([
+      { id: 'a', title: 'A', action_url: 'https://citizengo.org/en-gb/isabel?x=1', action_title: 'Free Isabel', signatures: 30, new_members: 5, by_platform: { facebook: 30 }, urls: ['https://www.facebook.com/uk/posts/123456789012'], posted_at: '2026-10-30' },
+      { id: 'b', title: 'B', action_url: 'https://www.citizengo.org/en-gb/isabel', signatures: 10, new_members: 1, by_platform: { instagram: 10 }, urls: ['https://www.instagram.com/p/XYZ/'], posted_at: '2026-10-31' },
+      { id: 'c', title: 'C', action_url: 'https://citizengo.org/en-gb/hospices', signatures: 0, urls: [] }],
+      { fbRows: [{ permalink_url: 'https://www.facebook.com/123456789012', views_total: 5000 }], igRows: [{ permalink: 'https://www.instagram.com/p/XYZ', reach: 800 }] });
+    eq('analytics: campaigns grouped by petition with views and signatures per 1k', [c.length, c[0].title, c[0].signatures, c[0].views, c[0].ig_reach, c[0].per_1k, c[0].by_platform.instagram], [2, 'Free Isabel', 40, 5000, 800, 8, 10]);
+  }
   console.log(`\n${passed} passed, ${failed} failed`);
   process.exit(failed ? 1 : 0);
 })().catch((e) => { console.error(e); process.exit(1); });

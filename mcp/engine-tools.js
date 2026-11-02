@@ -897,15 +897,39 @@ async function analyticsCompute(store, args, { who }) {
   // biggest Pages (a team: all of its own), against the median CitizenGO Page.
   const trend = await weeklyTrend(store, { pagesAll, inScope, scope });
   const inbox = team ? await inboxFigures(store, team.id, days) : null;
-  const signatures = team && store.engineSignatures ? await signaturesFor(store, team.id, days).catch(() => null) : null;
-  const facebook = team ? facebookDetail(rows, med) : null;
+  const now = Date.now();
+  const teamPosts = team && store.enginePosts ? await store.enginePosts({ team_ids: [team.id], statuses: ['posted', 'scheduled'], limit: 500 }).catch(() => []) : [];
+  const signatures = team && store.engineSignatures ? await signaturesFor(store, team.id, days, now, { posts: teamPosts }).catch(() => null) : null;
+  const sigPrev = team && store.engineSignatures ? await signaturesFor(store, team.id, days, now - days * 864e5, { posts: teamPosts }).catch(() => null) : null;
+  const facebook = facebookDetail(rows, med);
+
+  // Boards A and B: the window before this one, daily lines, what changed, campaigns.
+  const AX = require('../lib/analytics-extra');
+  const ymd = (t) => new Date(t).toISOString().slice(0, 10);
+  const growthPrev = (await run(TOOLS, 'page_growth', { since: ymd(now - 2 * days * 864e5), until: ymd(now - (days + 1) * 864e5) })).data || { facebook: [], instagram: [] };
+  const fbPrev = (growthPrev.facebook || []).filter((r) => pageNames.has(r.name));
+  const igPrev = (growthPrev.instagram || []).filter((r) => (scope === 'team' ? igNames.includes(String(r.name).toLowerCase()) : scope === 'citizengo' ? /citizengo/i.test(r.name) : !/citizengo/i.test(r.name)));
+  let xPrev = [];
+  if (xtools.enabled() && x.length) {
+    const out = await run(xtools.X_TOOLS, 'x_period_summary', { from: ymd(now - (2 * days - 1) * 864e5), to: ymd(now - days * 864e5) }).catch(() => null);
+    xPrev = ((out && out.rows) || []).filter((r) => x.some((c) => c.account === (r.label || `@${r.username}`))).map((r) => ({ impressions: Number(r.impressions || 0) }));
+  }
+  const curT = AX.totals(fb, ig, x), prevT = AX.totals(fbPrev, igPrev, xPrev);
+  if (sigPrev) prevT.signatures = sigPrev.total;
+  if (signatures) curT.signatures = signatures.total;
+  const daily = AX.dailySeries(store.pageGrowth ? await store.pageGrowth({ since: ymd(now - (days + 1) * 864e5) }).catch(() => []) : [], pageIds, { now, days });
+  const changed = AX.whatChanged({ kpis: curT, prev: prevT, detail: facebook, top, sig: signatures, sigPrev, days });
+  const campaignList = signatures ? AX.campaigns(signatures.linked || [], { fbRows: rows, igRows }) : null;
+  // Signatures on the best posts, where a post was ours from the desk.
+  if (signatures) { const by = {}; for (const p of signatures.linked || []) for (const u of p.urls || []) by[AX.postKey(u)] = p; for (const t of top) { const hit = by[AX.postKey(t.url)]; if (hit) t.signatures = hit.signatures; } }
   const instagramAll = team ? igRows.slice(0, 60).map((r) => ({
     account: r.ig_username, text: String(r.caption || '').slice(0, 140), url: r.permalink, created_time: r.timestamp, type: r.media_product_type || r.media_type,
     reach: r.reach, views: r.views, saves: r.saved, saves_per_1k: r.saves_per_1k_reached, rate: r.interaction_rate_pct, watch_s: r.reels_avg_watch_seconds, follows: r.follows,
   })) : null;
 
   return json({
-    scope, team: team ? team.id : null, days, to: new Date().toISOString().slice(0, 10), trend, inbox, facebook, instagram_all: instagramAll, signatures,
+    scope, team: team ? team.id : null, days, to: new Date().toISOString().slice(0, 10), trend, inbox, facebook: team ? facebook : null, instagram_all: instagramAll, signatures: signatures ? { ...signatures, linked: undefined } : null,
+    previous: prevT, change: AX.changes(curT, prevT), daily, changed, campaigns: campaignList,
     counts: { facebook_pages: pageIds.size, instagram: ig.length, x: x.length },
     kpis: {
       reach: sumOf(fb.map((r) => r.reach)), views: sumOf(fb.map((r) => r.views)), engagements: sumOf(fb.map((r) => r.engagements)),
@@ -1075,10 +1099,11 @@ function facebookDetail(rows, med) {
 // the Mini) joined to each post's tracked links by campaign code, for posts
 // that went out in the window, plus the reply and DM links (by marker).
 // Signatures count from the code's whole life, not only the window.
-async function signaturesFor(store, teamId, days, now = Date.now()) {
-  const since = new Date(now - days * 864e5).toISOString();
-  const posts = (await store.enginePosts({ team_ids: [teamId], statuses: ['posted', 'scheduled'], limit: 500 }))
-    .filter((p) => (p.doc && p.doc.posted && p.doc.posted.at ? p.doc.posted.at : p.post_at || '') >= since);
+async function signaturesFor(store, teamId, days, now = Date.now(), { posts: given = null } = {}) {
+  const since = new Date(now - days * 864e5).toISOString(), until = new Date(now).toISOString();
+  const at = (p) => (p.doc && p.doc.posted && p.doc.posted.at ? p.doc.posted.at : p.post_at || '');
+  const posts = (given || await store.enginePosts({ team_ids: [teamId], statuses: ['posted', 'scheduled'], limit: 500 }))
+    .filter((p) => at(p) >= since && at(p) < until);
   const codeOf = {};
   for (const p of posts) for (const [plat, l] of Object.entries((p.doc && p.doc.links) || {})) if (l && l.campaign) codeOf[String(l.campaign).toLowerCase()] = { post: p, plat };
   const rows = await store.engineSignatures({ codes: Object.keys(codeOf), markers: true });
@@ -1090,7 +1115,7 @@ async function signaturesFor(store, teamId, days, now = Date.now()) {
     const hit = codeOf[r.campaign_code];
     if (hit) {
       const k = hit.post.id;
-      const e = per[k] = per[k] || { id: k, title: hit.post.title, posted_at: (hit.post.doc.posted && hit.post.doc.posted.at) || hit.post.post_at, signatures: 0, new_members: 0, by_platform: {} };
+      const e = per[k] = per[k] || blankSig(hit.post);
       e.signatures += Number(r.signatures) || 0; e.new_members += Number(r.new_members) || 0;
       e.by_platform[hit.plat] = (e.by_platform[hit.plat] || 0) + (Number(r.signatures) || 0);
     }
@@ -1098,10 +1123,18 @@ async function signaturesFor(store, teamId, days, now = Date.now()) {
     if (m) marks[m[1].toUpperCase()] += Number(r.signatures) || 0;
   }
   const list = Object.values(per).sort((a, b) => b.signatures - a.signatures);
+  // Every post with a tracked link, signatures or not, for Campaigns.
+  const linked = {};
+  for (const x of Object.values(codeOf)) linked[x.post.id] = per[x.post.id] || blankSig(x.post);
   return {
     total: list.reduce((n, p) => n + p.signatures, 0), new_members: list.reduce((n, p) => n + p.new_members, 0),
-    posts_with_links: new Set(Object.values(codeOf).map((x) => x.post.id)).size, posts: list.slice(0, 30), replies_and_dms: marks, pulled_at: pulled,
+    posts_with_links: new Set(Object.values(codeOf).map((x) => x.post.id)).size, posts: list.slice(0, 30), linked: Object.values(linked), replies_and_dms: marks, pulled_at: pulled,
   };
+}
+function blankSig(post) {
+  const doc = post.doc || {};
+  return { id: post.id, title: post.title, posted_at: (doc.posted && doc.posted.at) || post.post_at, signatures: 0, new_members: 0, by_platform: {},
+    action_url: (doc.action && doc.action.url) || null, action_title: (doc.action && doc.action.title) || null, urls: E.liveLinks(doc).map((l) => l.url) };
 }
 
 // The Inbox's own figures for a team's Analytics (Phase 2): what came in, how
