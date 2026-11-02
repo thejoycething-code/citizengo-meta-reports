@@ -429,3 +429,22 @@ language sql security definer set search_path = public as $$
   on conflict (slug, item_id, day) do update set clicks = engine_bio_clicks.clicks + 1;
 $$;
 revoke all on function public.engine_bio_click(text, text) from public, anon, authenticated;
+-- Link in bio parity [2 Nov 2026]: page settings (Donate, emails, WhatsApp
+-- channel, grid, icons, totals, quiet rule) and, per petition, its Bluebook
+-- total and signatures in the last 14 days, plus closed or won hints from
+-- the campaign's Asana project. Pulled nightly on the Mini
+-- (scripts/link-signatures-mini.sh, scripts/load-petition-status.js).
+-- Page views are rows in engine_bio_clicks with item_id '_v' or '_v:<source>'.
+alter table public.engine_bio add column if not exists settings jsonb not null default '{}'::jsonb;
+create table if not exists public.petition_status (
+  petition_id text primary key,
+  total bigint,                 -- Bluebook signatures, all time
+  last14 bigint,                -- Bluebook signatures in the last 14 days
+  bb_pulled_at timestamptz,
+  asana_project text,           -- 'EN_GB - <title> - MM/YYYY'
+  asana_closed boolean not null default false,  -- project complete or archived, or its evaluation task done
+  asana_victory boolean not null default false, -- "Update the status of the Petition on the Landing Page" done
+  asana_checked_at timestamptz
+);
+alter table public.petition_status enable row level security;
+comment on table public.petition_status is 'Link in bio: per petition, Bluebook totals and Asana closed/won hints, nightly from the Mini. Read by lib/bio.js.';
