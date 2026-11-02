@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 'use strict';
 // Nightly on the Mini, after the Looker signatures pull (scripts/link-signatures-mini.sh):
-// works out the Analytics and Listening views the desk opens, from the data
+// works out the Analytics and Listening views the desk opens (kept in step
+// with desk/index.html's calls), from the data
 // already collected, and keeps them in engine_cache, so nobody waits for them.
 // Each call is exactly what the desk sends, so the keys match.
 //
@@ -22,15 +23,19 @@ async function main() {
     for (const scope of ['citizengo', 'hazteoir']) jobs.push(['engine_analytics', { scope, days }]);
     for (const team of teams) jobs.push(['engine_analytics', { scope: 'team', team, days }]);
   }
+  for (const days of [7, 30, 90]) jobs.push(['engine_analytics', { scope: 'countries', days }]);
+  // Listening: Rising now (per team), Topics (overview + beyond our list),
+  // the Allies and Other CitizenGO tabs, and Opponents (7 and 14 days).
   for (const team of teams) {
-    jobs.push(['engine_listening', { tab: 'citizengo', team }]); // Listening tab and Topics
-    jobs.push(['engine_listening', { tab: 'citizengo', team, days: 7, min_multiple: 10 }]); // Digest
+    jobs.push(['engine_listening', { tab: 'citizengo', team, days: 7, min_multiple: 3 }]);
+    jobs.push(['engine_listening', { tab: 'citizengo', team }]);
   }
-  jobs.push(['engine_listening', { tab: 'allies', team: teams[0], country: 'UK' }]); // Listening tab
-  jobs.push(['engine_listening', { tab: 'allies', team: teams[0] }]); // Topics
-  jobs.push(['engine_listening', { tab: 'allies', days: 10, min_multiple: 3 }]); // Digest
-  jobs.push(['engine_listening', { tab: 'opponents', team: teams[0] }]);
-  jobs.push(['engine_listening', { tab: 'opponents', days: 7, min_multiple: 5 }]);
+  jobs.push(['engine_listening', { tab: 'allies', days: 10, min_multiple: 3 }]);
+  jobs.push(['engine_listening', { tab: 'opponents', days: 7, min_multiple: 3 }]);
+  jobs.push(['engine_listening', { tab: 'allies', team: teams[0], country: 'UK' }]);
+  jobs.push(['engine_listening', { tab: 'overview' }]);
+  jobs.push(['engine_listening', { tab: 'beyond' }]);
+  for (const days of [7, 14]) jobs.push(['engine_listening', { tab: 'opponents_mix', days }]);
   let ok = 0; const failed = [];
   const t0 = Date.now();
   for (const [name, args] of jobs) {
