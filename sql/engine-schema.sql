@@ -49,7 +49,7 @@ create table if not exists public.engine_posts (
   id text primary key,
   team_id text not null references public.engine_teams(id),
   status text not null default 'review'
-    check (status in ('review', 'changes', 'hold', 'scheduled', 'posted', 'rejected')),
+    check (status in ('review', 'changes', 'hold', 'scheduled', 'posted', 'rejected', 'archived')),
   title text not null default '',
   post_at timestamptz,                       -- earliest scheduled time across accounts, for the calendar
   doc jsonb not null default '{}'::jsonb,

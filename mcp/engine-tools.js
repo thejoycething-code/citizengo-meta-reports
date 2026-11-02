@@ -177,6 +177,36 @@ async function engineStatus(store, args, { who }) {
   return json({ ok: true, post: saved });
 }
 
+// Empty the bin: rejected posts go to 'archived' once the morning run has read
+// them, i.e. it imported a draft for the team after the rejection (it reads the
+// feedback before drafting). Newer rejections wait for the next run. Archived
+// posts leave the desk but stay in the store for the run's repeat checks and
+// rule learning. action count (default) says how many are ready; empty clears them.
+async function engineTrash(store, args, { who }) {
+  const ctx = await context(store, who);
+  const team = String(args.team || '');
+  if (!E.canEditTeam(ctx, team)) throw err('You are not in that team.', 'ENGINE_NOT_MEMBER');
+  const rows = await store.enginePosts({ team_ids: [team], limit: 1000 });
+  const learnt = rows.filter((p) => p.created_by === 'import').reduce((m, p) => Math.max(m, Date.parse(p.created_at) || 0), 0);
+  const ready = [], waiting = [];
+  for (const p of rows.filter((x) => x.status === 'rejected')) {
+    const at = Date.parse((p.doc && p.doc.review && p.doc.review.at) || p.updated_at) || 0;
+    (at && at < learnt ? ready : waiting).push(p);
+  }
+  const learnt_at = learnt ? new Date(learnt).toISOString() : null;
+  if (args.action !== 'empty') return json({ team, ready: ready.length, waiting: waiting.length, learnt_at });
+  const at = new Date().toISOString();
+  let archived = 0;
+  for (const p of ready) {
+    const doc = E.mergeDoc(p.doc, { archived: { from: 'rejected', at, by: who } });
+    const saved = await store.engineUpdatePost(p.id, p.version, { status: 'archived', doc, updated_by: who });
+    if (!saved) continue;
+    archived++;
+    await store.engineEvent({ post_id: p.id, team_id: team, who, action: 'archive', detail: { from: 'rejected', to: 'archived' } });
+  }
+  return json({ ok: true, team, archived, waiting: waiting.length + ready.length - archived, learnt_at });
+}
+
 const newId = (team) => `${team}-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Math.random().toString(36).slice(2, 8)}`;
 
 async function engineCreate(store, args, { who }) {
@@ -1129,7 +1159,7 @@ const VIDEO_TYPES = ['video/mp4', 'video/quicktime'];
 async function engineVideo(store, args, { who }) {
   const ctx = await context(store, who);
   const post = await editablePost(store, ctx, args.id);
-  if (['posted', 'rejected'].includes(post.status)) return json({ ok: false, error: `A ${post.status} post can't take a new video.` });
+  if (['posted', 'rejected', 'archived'].includes(post.status)) return json({ ok: false, error: `A ${post.status} post can't take a new video.` });
   const upload = String(args.upload || '');
   if (!/^[a-z0-9]{8,32}$/.test(upload)) return json({ ok: false, error: 'upload must be 8-32 lowercase letters and digits.' });
   const prefix = `${post.team_id}/${String(post.id).replace(/[^a-z0-9-]/gi, '-')}/video-${upload}`;
@@ -1199,7 +1229,7 @@ const obj = (properties, required = []) => ({ type: 'object', properties, requir
 
 const ENGINE_TOOLS = [
   { name: 'engine_me', description: 'Content Engine: who you are, your country teams and the accounts you can publish to. Used by the posts desk.', inputSchema: obj({}), handler: engineMe },
-  { name: 'engine_posts', description: 'Content Engine: the posts in one of your teams (the desk), optionally by status (one, or several comma-separated: review, changes, hold, scheduled, posted, rejected). Each post comes with track (its Asana task, results check, posted time, stale flag and source); full: true returns each whole post instead.', inputSchema: obj({ team: { type: 'string' }, status: { type: 'string' }, full: { type: 'boolean' }, limit: { type: 'number' } }, ['team']), handler: enginePosts },
+  { name: 'engine_posts', description: 'Content Engine: the posts in one of your teams (the desk), optionally by status (one, or several comma-separated: review, changes, hold, scheduled, posted, rejected, archived: rejected posts cleared from the desk bin). Each post comes with track (its Asana task, results check, posted time, stale flag and source); full: true returns each whole post instead.', inputSchema: obj({ team: { type: 'string' }, status: { type: 'string' }, full: { type: 'boolean' }, limit: { type: 'number' } }, ['team']), handler: enginePosts },
   { name: 'engine_post', description: 'Content Engine: one whole post from your teams.', inputSchema: obj({ id: { type: 'string' } }, ['id']), handler: enginePost },
   { name: 'engine_save', description: 'Content Engine: save changes to a post (text, graphic, first comment, where and when). patch merges into the post; version must be the one you read, or the save is refused as a conflict.', inputSchema: obj({ id: { type: 'string' }, version: { type: 'number' }, patch: { type: 'object' } }, ['id', 'version', 'patch']), handler: engineSave },
   { name: 'engine_pause', description: 'Content Engine Pause everything: hold every scheduled post at once (action pause: scope mine = every account you can post to, team = one of your teams (team), all = every account, admins only; a reason the team sees; optional hours, otherwise until someone resumes), or resume a pause (action resume: id). Nothing is deleted or changed: the publisher just waits.', inputSchema: obj({ action: { type: 'string', enum: ['pause', 'resume'] }, scope: { type: 'string', enum: ['mine', 'team', 'all'] }, team: { type: 'string' }, reason: { type: 'string' }, hours: { type: 'number' }, id: { type: 'number' } }, ['action']), handler: enginePause },
@@ -1223,6 +1253,7 @@ const ENGINE_TOOLS = [
   { name: 'engine_analytics', description: 'Content Engine Analytics for the desk, as data: page reach, views, engagements and net follows, Instagram follower movement, top Facebook posts against their own Page\'s median, top Instagram posts and X totals, for the last 7, 30 or 90 days. scope citizengo (every CitizenGO Page, default), hazteoir (kept apart) or team (with team).', inputSchema: obj({ scope: { type: 'string', enum: ['citizengo', 'hazteoir', 'team'] }, team: { type: 'string' }, days: { type: 'number', enum: [7, 30, 90] }, fresh: { type: 'boolean' } }), handler: engineAnalytics },
   { name: 'engine_listening', description: 'Content Engine Listening for the desk, as data: posts beating their own normal (min_multiple, default 3). tab citizengo: other CitizenGO Pages\' posts (not your team\'s, with team) by views against that Page\'s 90-day median, last 7 or 30 days. tab allies: watched ally Instagram accounts (optional country UK, US, IE, CA, AU), last 7, 10 or 30 days. tab opponents: watched opponent accounts plus their Meta Ad Library issue ads.', inputSchema: obj({ tab: { type: 'string', enum: ['citizengo', 'allies', 'opponents'] }, team: { type: 'string' }, country: { type: 'string' }, days: { type: 'number' }, min_multiple: { type: 'number' }, fresh: { type: 'boolean' } }), handler: engineListening },
   { name: 'engine_record', description: 'Content Engine: record bookkeeping on a post in any status, posted and rejected included: results, posted (the real post links and time), stale, and posting.asanaTaskGid / asanaUrl / syncedAt / removedAt. Nothing else; the post itself is saved with engine_save. version must be the one you read.', inputSchema: obj({ id: { type: 'string' }, version: { type: 'number' }, patch: { type: 'object' } }, ['id', 'version', 'patch']), handler: engineRecord },
+  { name: 'engine_trash', description: "Content Engine: the desk's bin of rejected posts for one of your teams. action count (default) says how many the morning run has already learnt from (ready) and how many are newer (waiting); action empty archives the ready ones: they leave the desk but the morning run still reads them like rejected posts.", inputSchema: obj({ team: { type: 'string' }, action: { type: 'string', enum: ['count', 'empty'] } }, ['team']), handler: engineTrash },
   { name: 'engine_status', description: 'Content Engine: approve (schedules it; needs publishing rights for every Facebook and Instagram account), hold, changes (needs a note), reject, reopen, or mark as posted (it went out) a post.', inputSchema: obj({ id: { type: 'string' }, version: { type: 'number' }, action: { type: 'string', enum: ['approve', 'hold', 'changes', 'reject', 'reopen', 'posted'] }, note: { type: 'string' }, reasons: { type: 'array', items: { type: 'string' } } }, ['id', 'version', 'action']), handler: engineStatus },
   { name: 'engine_create', description: 'Content Engine: add a new post to Review in one of your teams (the daily engine, "Rework for…" and imports use this).', inputSchema: obj({ team: { type: 'string' }, doc: { type: 'object' }, id: { type: 'string' }, source_team: { type: 'string' }, source_post: { type: 'string' } }, ['team', 'doc']), handler: engineCreate },
   { name: 'engine_copy', description: 'Content Engine: copy a post you can see (yours, or another team\'s scheduled or posted one) into one of your teams as a new draft in Review.', inputSchema: obj({ id: { type: 'string' }, to_team: { type: 'string' } }, ['id', 'to_team']), handler: engineCopy },

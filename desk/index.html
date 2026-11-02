@@ -138,6 +138,7 @@ h2{font-family:var(--display);font-weight:700;font-size:30px;line-height:1.05;ma
 .btn.primary:hover{filter:brightness(1.08);background:var(--ok)}
 .btn.warn{color:var(--warn);border-color:var(--warn)}
 .btn.bad{color:var(--bad);border-color:var(--bad)}
+.trashbar{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;padding:8px 10px;margin-bottom:8px;border:1px solid var(--line);border-radius:10px;background:var(--surface);font-size:13px}.trashbar .row{display:flex;gap:6px}
 .btn[disabled]{opacity:.45;cursor:not-allowed}
 
 .ptabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:12px}
@@ -684,10 +685,10 @@ function renderQueue(){
     $("#queue").innerHTML=`<div class="empty">No drafts yet. The engine adds each day's batch here; Claude can load one on request.</div>`;
     return;
   }
-  if(!list.length){$("#queue").innerHTML=`<div class="empty">Nothing in “${esc(STATUS.find(s=>s.key===S.status).label)}”.</div>`;return}
+  if(!list.length){$("#queue").innerHTML=trashBar()+`<div class="empty">Nothing in “${esc(STATUS.find(s=>s.key===S.status).label)}”.</div>`;return}
   if(!list.find(d=>d.id===S.openId)) { S.openId=list[0].id; resetDraftUi(); }
   const grouped=!["posted","rejected"].includes(S.status);let lastG=null;
-  $("#queue").innerHTML=list.map(d=>{const g=grouped?groupOf(d):null;const head=g&&g!==lastG?`<div class="qgroup">${esc(g)}<span>${list.filter(x=>groupOf(x)===g).length}</span></div>`:"";lastG=g;return head+`
+  $("#queue").innerHTML=trashBar()+list.map(d=>{const g=grouped?groupOf(d):null;const head=g&&g!==lastG?`<div class="qgroup">${esc(g)}<span>${list.filter(x=>groupOf(x)===g).length}</span></div>`:"";lastG=g;return head+`
     <button class="qitem" data-id="${esc(d.id)}" data-status="${esc(d.status||"pending")}" data-tone="${qTone(d)}" aria-current="${d.id===S.openId}">
       <span class="stripe"></span>
       <canvas class="qthumb" data-q="${esc(d.id)}" width="10" height="10" aria-hidden="true"></canvas>
@@ -697,6 +698,20 @@ function renderQueue(){
     </button>`}).join("");
   document.querySelectorAll("canvas.qthumb").forEach(cv=>{const d=S.drafts.find(x=>x.id===cv.dataset.q);if(!d||!d.card)return;const c=d.card.template==="carousel"&&HOUSE_T.has(d.card.slides?.[0]?.template)?d.card.slides[0]:d.card;try{const k=S.slide;S.slide=0;drawCard(d,cv,c);S.slide=k}catch(e){}});
 }
+/* Empty the bin (2 Nov): the engine archives rejected drafts the morning run has already learnt from;
+   newer ones wait for its next run. Archived drafts leave the desk but the run still reads them. */
+function trashBar(){if(S.status!=="rejected"||!S.db)return"";const t=S.trash;
+  if(!t)return `<div class="trashbar"><span class="src">Checking what the morning run has learnt from…</span></div>`;
+  if(t.confirm)return `<div class="trashbar"><span>Clear ${t.ready} rejected draft${t.ready===1?"":"s"} from the desk? The engine keeps what it learnt from them.</span><span class="row"><button class="btn small" data-act="trashNo">Cancel</button><button class="btn small bad" data-act="trashYes"${t.busy?" disabled":""}>${t.busy?"Clearing…":"Clear them"}</button></span></div>`;
+  return `<div class="trashbar"><button class="btn small" data-act="trashEmpty"${t.ready?"":" disabled"}>Empty trash${t.ready?` (${t.ready})`:""}</button><span class="src">${t.err?"Couldn't check the bin":t.waiting?`${t.waiting} newer ${t.waiting===1?"waits":"wait"} until the morning run has learnt from ${t.waiting===1?"it":"them"}`:t.ready?"The morning run has learnt from all of these":"Nothing to clear"}</span></div>`}
+async function loadTrash(){try{const r=await eng("engine_trash",{team:S.team});S.trash={ready:r.ready||0,waiting:r.waiting||0}}catch(e){S.trash={ready:0,waiting:0,err:true}}if(S.status==="rejected")renderQueue()}
+document.addEventListener("click",async ev=>{const b=ev.target.closest('[data-act="trashEmpty"],[data-act="trashNo"],[data-act="trashYes"]');if(!b||!S.trash)return;const a=b.dataset.act;
+  if(a!=="trashYes"){S.trash.confirm=a==="trashEmpty";renderQueue();return}
+  S.trash.busy=true;renderQueue();
+  try{const r=await eng("engine_trash",{team:S.team,action:"empty"});if(!r||!r.ok)throw Object.assign(new Error((r&&r.error)||"The engine refused"),{code:"engine_refused"});
+    toast(`Cleared ${r.archived} rejected draft${r.archived===1?"":"s"}`);S.openId=null;await refreshPosts();S.trash={ready:0,waiting:r.waiting||0}}
+  catch(e){failToast(e,"Couldn't empty the trash");S.trash.busy=false;S.trash.confirm=false}
+  renderAll()});
 /* K1: queue tone and flags */
 function qTone(d){const st=d.status||"pending";if(staleSplit(d).real.length)return"stale";if(d.launch&&["pending","changes"].includes(st))return"launch";return st}
 function qFlags(d){const st=d.status||"pending",f=[];const p=d.posting||{};
@@ -2010,7 +2025,7 @@ document.addEventListener("click",async ev=>{
   if(b.id==="toastUndo"){const f=toast._undo;toast._undo=null;$("#toast").hidden=true;if(f)await f();return}
   if(b.dataset.act==="help"){toggleHelp();return}
   if(b.dataset.act==="zclose"){closeZoom();return}
-  if(b.dataset.status&&!b.classList.contains("qitem")){S.status=b.dataset.status;S.openId=null;resetDraftUi();renderAll();return}
+  if(b.dataset.status&&!b.classList.contains("qitem")){S.status=b.dataset.status;S.openId=null;resetDraftUi();if(S.status==="rejected"){S.trash=null;loadTrash()}renderAll();return}
   if(b.classList.contains("qitem")){S.openId=b.dataset.id;resetDraftUi();renderQueue();renderDetail();if(matchMedia("(max-width:960px)").matches)$("#detail").scrollIntoView({behavior:"smooth"});return}
   if(b.dataset.platform){S.platform=b.dataset.platform;S.editing=null;S.inline=null;S.inlineVal=null;renderDetail();return}
   if(b.dataset.reason){const r=b.dataset.reason;S.picked.has(r)?S.picked.delete(r):S.picked.add(r);b.setAttribute("aria-pressed",S.picked.has(r));return}
@@ -2243,7 +2258,7 @@ function engineDown(e,loaded){
 }
 async function refreshPosts(){
   if(!S.team)return;
-  try{const r=await eng("engine_posts",{team:S.team,full:true,limit:500});S.drafts=(r&&r.posts||[]).map(fromEngine);S.pauses=(r&&r.pauses)||[];S.publishers=(r&&r.publishers)||null;$("#offline").hidden=true;renderPause();await redraw();if(S.view==="calendar")renderCal();if(S.view==="plan")renderPlan()}
+  try{const r=await eng("engine_posts",{team:S.team,full:true,limit:500,status:"review,changes,hold,scheduled,posted,rejected"});S.drafts=(r&&r.posts||[]).map(fromEngine);S.pauses=(r&&r.pauses)||[];S.publishers=(r&&r.publishers)||null;$("#offline").hidden=true;renderPause();await redraw();if(S.view==="calendar")renderCal();if(S.view==="plan")renderPlan()}
   catch(e){engineDown(e,S.drafts.length>0);if(["needs_reauth","server_not_connected","not_in_manifest","not_granted"].includes(e?.code)){S.drafts=[];renderAll()}}
 }
 function teamPref(v){try{if(v===undefined)return localStorage.getItem("desk.team");localStorage.setItem("desk.team",v)}catch(e){return null}}

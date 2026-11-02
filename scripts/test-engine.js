@@ -280,6 +280,21 @@ const callErr = async (store, name, args, who) => { try { await tool(name)(store
     eq('engine_video: another team cannot send a video for it', await callErr(store, 'engine_video', { action: 'part', id: 'uk-vid', upload: 'up12345678', index: 0, data: 'AA==' }, 'greg'), 'ENGINE_NOT_FOUND');
   }
 
+  {
+    const store = memoryStore();
+    store.db.posts.push(
+      { id: 'uk-old', team_id: 'uk', status: 'rejected', version: 1, doc: { review: { at: '2026-10-20T09:00:00Z' } }, created_by: 'import', created_at: '2026-10-19T07:00:00Z' },
+      { id: 'uk-run', team_id: 'uk', status: 'posted', version: 1, doc: {}, created_by: 'import', created_at: '2026-10-21T07:00:00Z' },
+      { id: 'uk-new', team_id: 'uk', status: 'rejected', version: 1, doc: { review: { at: '2026-10-22T09:00:00Z' } }, created_by: 'chris', created_at: '2026-10-21T08:00:00Z' });
+    const n = await call(store, 'engine_trash', { team: 'uk' }, 'chris');
+    eq('engine_trash count: only rejections the morning run has read since are ready', [n.ready, n.waiting, n.learnt_at], [1, 1, '2026-10-21T07:00:00.000Z']);
+    const e = await call(store, 'engine_trash', { team: 'uk', action: 'empty' }, 'chris');
+    const old = store.db.posts.find((p) => p.id === 'uk-old');
+    eq('engine_trash empty: archives the ready ones and keeps the rest', [e.archived, e.waiting, old.status, old.doc.archived.from, store.db.posts.find((p) => p.id === 'uk-new').status], [1, 1, 'archived', 'rejected', 'rejected']);
+    eq('archived posts cannot be edited, rejected or reopened', [E.saveAllowed({ status: 'archived' }).ok, E.transition({ from: 'archived', action: 'reject' }).ok, E.transition({ from: 'archived', action: 'reopen' }).ok], [false, false, false]);
+    eq('engine_trash: another team cannot empty it', await callErr(store, 'engine_trash', { team: 'uk', action: 'empty' }, 'greg'), 'ENGINE_NOT_MEMBER');
+  }
+
   console.log(`\n${passed} passed, ${failed} failed`);
   process.exit(failed ? 1 : 0);
 })().catch((e) => { console.error(e); process.exit(1); });
