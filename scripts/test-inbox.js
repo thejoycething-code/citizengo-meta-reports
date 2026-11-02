@@ -327,6 +327,26 @@ function fakeMeta() {
     eq('ban goes to the Page\'s blocked list for that author', [b.ok, fm.calls.filter((c) => c.path === '105/blocked').map((c) => c.params.user)], [true, ['u9']]);
   }
 
+  // Gaps §8: tone without paid AI (lib/sentiment.js).
+  {
+    const S = require('../lib/sentiment');
+    const tone = (t, o) => (S.toneOf(t, o) || { tone: null }).tone;
+    eq('tone: warm, angry, mixed, neutral', [tone('Thank you so much, signed and shared 🙏'), tone('This is disgusting. Shame on them'), tone('Great work but this is a disgrace'), tone('When is the vigil?')], ['positive', 'negative', 'mixed', 'neutral']);
+    eq('tone: "not" flips the next words, a stop ends it', [tone('Not good at all'), tone("I don't hate it"), tone('No! This is evil')], ['negative', 'positive', 'negative']);
+    eq('tone: Spanish words and emoji', [tone('Gracias, Dios os bendiga'), tone('Qué vergüenza de gobierno'), tone('😡😡')], ['positive', 'negative', 'negative']);
+    eq('tone: other languages only by emoji, else unknown', [tone('Il est temps de agir', { lang: 'fr' }), tone('Merci 🙏', { lang: 'fr' }), S.toneOf('')], [null, 'positive', null]);
+    eq('tone mix counts', S.toneMix(['Thank you', 'Rubbish', 'ok then']), { positive: 1, negative: 1, mixed: 0, neutral: 1, unknown: 0 });
+    const g = engine();
+    await collect.run({ store: g, privateKey: keys.privateKey, live: true, now: NOW, log: () => {}, fetchImpl: fakeMeta().fetchImpl });
+    const r = await call(g, 'engine_inbox', { team: 'uk' }, 'chris');
+    const by = Object.fromEntries(r.items.map((i) => [i.id, i.tone]));
+    const th = await call(g, 'engine_inbox', { team: 'uk', thread: 'm1' }, 'chris');
+    eq('inbox items carry their tone; our replies carry none', [by.fbc_c9, by.igc_i1, by.fbt_999_1, by.igt_igt1, th.items.filter((i) => i.from_us).map((i) => 'tone' in i)], ['negative', 'positive', 'positive', 'neutral', [false]]);
+    eq('open items\' tone', r.tone, { positive: 2, negative: 1, mixed: 0 });
+    const ps = await call(g, 'engine_inbox_posts', { team: 'uk', days: 30 }, 'chris');
+    eq('by post: the comments\' tone', ps.posts.find((p) => p.thread_id === '105_9').tone, { positive: 0, negative: 1, mixed: 0, neutral: 0 });
+  }
+
   console.log(`\n${passed} passed, ${failed} failed`);
   process.exit(failed ? 1 : 0);
 })().catch((e) => { console.error(e); process.exit(1); });

@@ -304,7 +304,7 @@ a Slack or email digest waits for Chris's OK. Mentions (built 1 Nov): the inbox 
 people's posts that tag our Pages (`/{page}/tagged`) or Instagram accounts (`/{ig}/tags`) from the last 7 days,
 as `engine_inbox` rows of kind `mention` (applied: the kind check now allows it). Desk actions only (done, assign,
 label); replying would mean commenting on someone else's post, so the desk links to it. Inbox filter "Mentions"
-and a Listening Mentions tab. Not yet: sentiment, "already reworked by".
+and a Listening Mentions tab. Tone (built 2 Nov): each comment, message and mention gets positive, negative, mixed or neutral from English and Spanish word lists and emoji (`lib/sentiment.js`, no paid AI), worked out as it is read. It is the tone of the words, not agreement: an angry supporter reads negative, so it sits beside the Supporter and Hostile tags.
 
 ## Slice 3 onwards
 

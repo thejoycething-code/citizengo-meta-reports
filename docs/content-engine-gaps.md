@@ -55,7 +55,7 @@ as far as that allows.
       (Facebook Page block); threats kept as a saved copy, never deleted. Ban is a new action value: claude.ai passes it once the connector is refreshed (one reconnect at the end of the build).
 - [x] By post: the post beside its comments, answered count, topics, sort, inline reply / hide, state tags.
 - [x] Presence and live updates (room); assignment notices.
-- [ ] (needs Chris) Pile-on and pause messages to Slack. X Inbox: not for now (Chris, 1 Nov).
+- [ ] Pile-on and pause messages to Slack: not for now (Chris, 2 Nov). X Inbox: not for now (Chris, 1 Nov).
 
 ## 5. Automations (flow builder)
 - [x] Applies to: this post / post type (petition, prayer, Reel, wins, news reaction) / all posts, with precedence.
@@ -80,7 +80,7 @@ as far as that allows.
 - [x] Convergence "building" (one account twice) before the alert. Done 1 Nov: engine building[] (one account twice, or two accounts).
 - [x] Language tag and filter; HazteOir filter off by default; "Already reworked by"; landed drafts marked
       "From <Page>" with the original's numbers. Done 1 Nov: lang from common words (no paid AI); HazteOir Pages included but hidden by default; reworked[] from Plan requests; drafts show "From <Page>" with the original's numbers.
-- [ ] (needs Chris) Sentiment without paid AI. Digest by Slack or email: not wanted (Chris, 1 Nov). Opponent-watch data protection: signed off by Chris 1 Nov (public information only).
+- [x] Sentiment without paid AI. Done 2 Nov: tone from English and Spanish word lists and emoji (lib/sentiment.js), with "not" flipping the next words; on every Inbox item, Negative first sort, each post's comment tone in By post, and on Listening › Mentions. It is the tone of the words, not whether someone agrees with us. Digest by Slack or email: not wanted (Chris, 1 Nov). Opponent-watch data protection: signed off by Chris 1 Nov (public information only).
 
 ## 9. Analytics
 - [x] Account picker: search, saved groups, platform filter, multi-select, compare side by side. Done 1 Nov: on the desk (search, platform, tick, compare side by side); saved groups in the artifact db (analyticsGroups).
