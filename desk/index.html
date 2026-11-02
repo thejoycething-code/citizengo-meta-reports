@@ -141,6 +141,14 @@ h2{font-family:var(--display);font-weight:700;font-size:30px;line-height:1.05;ma
 .egq{grid-template-columns:6px 48px minmax(0,1fr)}.egq .stripe{background:var(--ok)}.egleaf{width:48px;height:48px;border-radius:8px;background:var(--accent-soft);color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:18px}
 .draft.egd{display:block}.egd .egbody{display:flex;flex-direction:column;gap:14px;padding:18px 20px;max-width:720px}.egd .egbody p{margin:4px 0 0;max-width:65ch}.egd .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .egpick .btn{display:flex;flex-direction:column;align-items:flex-start;line-height:1.2}.egpick .btn small{font-weight:400;color:var(--muted);font-size:11px}.egpick .btn[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft)}
+.trim{display:flex;flex-direction:column;gap:10px;border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:var(--surface)}
+.trimhead{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center}.trimhead .btn{margin-left:auto}
+.trimplay{display:flex;flex-direction:column;gap:6px;align-items:flex-start}.trimplay video{max-width:min(320px,100%);max-height:420px;border-radius:10px;background:#000}
+.trimbar{position:relative;height:14px;border-radius:5px;background:var(--sunk)}.trimbar span{position:absolute;top:0;bottom:0;background:var(--accent);border-radius:4px}
+.trimtext{font-family:var(--body);font-size:15.5px;line-height:1.9;max-height:46vh;overflow:auto;padding:4px 2px;user-select:text}
+.trimtext .tw{color:var(--muted);text-decoration:line-through;text-decoration-color:var(--line);cursor:pointer;border-radius:3px}
+.trimtext .tw.on{color:var(--fg);text-decoration:none;background:var(--accent-soft)}.trimtext.ro .tw{cursor:default}
+.trim .row{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center}
 .vsug{display:flex;flex-direction:column;gap:8px;border:2px solid var(--accent);border-radius:12px;padding:10px 12px;background:var(--surface);font-size:13.5px}
 .vsug .vshead{display:flex;justify-content:space-between;align-items:center}.vsug .row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 .vsmain{display:grid;grid-template-columns:120px minmax(0,1fr);gap:10px;align-items:start}
@@ -935,7 +943,7 @@ function renderDetail0(){
     <div class="dbody">
       <div style="min-width:0;display:flex;flex-direction:column;gap:10px">
         <div class="ptabs" role="tablist" aria-label="Jump to a network">${PLATFORMS.map(p=>`<button class="ptab" role="tab" aria-selected="${S.platform===p.key}" data-jump="${p.key}">${p.label}${tabWarn(d,p.key)}${edited[p.key]!=null||(p.key==="facebook"&&edited.facebookComment!=null)?'<span class="edited">EDITED</span>':""}</button>`).join("")}${["facebook","instagram","x"].some(k=>edited[k]!=null)&&S.db?`<button class="ptab diffbtn" data-act="showDiff" aria-pressed="${!!S.showDiff}">${S.showDiff?"Hide my changes":"Show my changes"}</button>`:""}<span class="src fhint">Scroll sideways for each network · click any text to edit it</span></div>
-        ${feedStrip(d)}
+        ${S.trim&&S.trim.id===d.id?trimView(d):feedStrip(d)}
         ${captionChips()}${rewriteAllBox(d)}
       </div>
     </div>
@@ -1076,7 +1084,7 @@ function videoSuggestions(d){
   return out}
 function videoBox(d){
   const v=d.video;let h="";
-  if(v)h+=`<div class="action"><span class="eyebrow">Video${v.status==="ready"||!v.status?" · ready":""}</span><b>${esc(v.label)}</b><small>${esc(v.cut||"")}</small><small style="font-family:var(--mono)">${esc(v.file||"")}</small></div>`;
+  if(v)h+=`<div class="action"><span class="eyebrow">Video${v.status==="ready"||!v.status?" · ready":""}</span><b>${esc(v.label)}</b><small>${esc(v.cut||"")}</small><small style="font-family:var(--mono)">${esc(v.file||"")}</small>${(v.words||[]).length&&S.db?`<button class="btn small" data-act="trimOpen" data-kind="v">Trim it</button>`:""}</div>`;
   const list=videoSuggestions(d);if(!list.length||d.videoDismissed)return h+(list.length&&d.videoDismissed&&S.db?`<div class="src">No video for this post · <a href="#" data-act="vsUndo">show the clips it found (${list.length})</a></div>`:"");
   if(v&&v.status==="ready")return h;
   const i=Math.min(S.vsIdx&&S.vsIdx.id===d.id?S.vsIdx.i:0,list.length-1);const o=list[i];
@@ -1084,17 +1092,74 @@ function videoBox(d){
   const span=o.start!=null?`${fmtSec(o.start)}${o.end!=null?" – "+fmtSec(o.end):""}`:"";
   const cuts=(o.cuts||[]).map(c=>`<li>${esc(c.format||"")}${c.length?` · <b>${esc(fmtSec(c.length))}</b>`:""}${c.what?` · ${esc(c.what)}`:""}</li>`).join("");
   const state=st==="requested"?`<span class="asig">Cut requested · the next run cuts it</span>`:st==="ready"?`<span class="asig">Cut and attached</span>`:st==="failed"?`<span class="asig" style="color:var(--bad)">Couldn't cut: ${esc(rq.reason||"")}</span>`:"";
-  const btns=!S.db||st==="requested"||st==="ready"?"":`<button class="btn small primary" data-act="vsCut" data-opt="${esc(o.id)}"${rightsOk||ticked?"":" disabled"}>${st==="failed"?"Try again":"Cut it"}</button>${list.length>1?`<button class="btn small" data-act="vsNext">Next clip ›</button>`:""}<button class="btn small" data-act="vsNo">No video</button>`;
+  const btns=!S.db||st==="requested"||st==="ready"?"":`<button class="btn small primary" data-act="vsCut" data-opt="${esc(o.id)}"${rightsOk||ticked?"":" disabled"}>${st==="failed"?"Try again":"Cut it"}</button>${(o.words||[]).length?`<button class="btn small" data-act="trimOpen" data-kind="s" data-opt="${esc(o.id)}">Trim first</button>`:""}${list.length>1?`<button class="btn small" data-act="vsNext">Next clip ›</button>`:""}<button class="btn small" data-act="vsNo">No video</button>`;
   h+=`<div class="vsug"><div class="vshead"><span class="eyebrow">▶ Video found for this post</span>${list.length>1?`<span class="src">${i+1} of ${list.length}</span>`:""}</div>
     <div class="vsmain">${o.thumb?`<img class="vsthumb" src="${esc(o.thumb)}" alt="">`:`<span class="vsthumb" aria-hidden="true">▶</span>`}<div class="vsmeta"><b>${esc(o.title||o.who||"Clip")}</b><small>${esc([o.source,o.when].filter(Boolean).join(" · "))}${span?` · ${esc(span)}`:""}</small>${o.url?`<a href="${esc(o.url)}" target="_blank" rel="noopener">Watch the moment ↗</a>`:""}${o.hansard?`<a href="${esc(o.hansard)}" target="_blank" rel="noopener">Read it in Hansard ↗</a>`:""}</div></div>
     ${o.quote?`<blockquote class="vsq">“${esc(o.quote)}”</blockquote>`:""}
     ${cuts?`<div><span class="src">What it would cut</span><ul class="vscuts">${cuts}</ul></div>`:""}
     ${o.why||o.note?`<small class="src">${esc(o.why||o.note)}</small>`:""}
-    ${rightsOk?(o.rights&&o.rights.note?`<small style="color:var(--ok)">✓ ${esc(o.rights.note)}</small>`:""):`<label class="vsrights"><input type="checkbox" data-act="vsRights" data-opt="${esc(o.id)}"${ticked?" checked":""}> ${esc(o.rights.note||"Check we can use this footage")}. <b>I've checked</b></label>`}
+    ${rightsOk?(o.rights&&o.rights.note?`<small style="color:var(--ok)">✓ ${esc(o.rights.note)}</small>`:""):`<label class="vsrights"><input type="checkbox" data-act="vsRights" data-opt="${esc(o.id)}"${ticked?" checked":""}> <span>${esc(o.rights.note||"Check we can use this footage")}. <b>I've checked</b></span></label>`}
     <div class="row">${btns}${state}</div>
     <small class="src">Nothing is downloaded or cut until you press Cut it.</small></div>`;
   return h;
 }
+/* Video trimmer (2 Nov): in Review, in place of the previews. The words come with the clip (the morning run
+   attaches word timings: [word, start, end] in seconds, on a suggestion or a cut video). Select words to keep
+   or cut, per version; the kept stretches go to the Mini as keep ranges (broadcast_reframe / speech_cut), which
+   cut on word edges. A cut video can be played with the gaps skipped. */
+const TRIM_VERSIONS=[["reel","Reel 9:16"],["facebook","Facebook 4:5"],["x","X 16:9"]];
+function trimSource(d){const t=S.trim;if(!t)return null;if(t.kind==="v")return d.video?{words:d.video.words||[],media:d.video.url||null,title:d.video.label,file:d.video.file,src:d.video}:null;
+  const o=videoSuggestions(d).find(x=>x.id===t.opt);return o?{words:o.words||[],media:o.previewUrl||null,title:o.title,url:o.url,src:o}:null}
+const wS=w=>Number(w[1]),wE=w=>Number(w[2]);
+function keptToRanges(words,kept){const out=[];let i=0;while(i<words.length){if(!kept[i]){i++;continue}let j=i;while(j+1<words.length&&kept[j+1])j++;
+  out.push([Math.max(0,+(wS(words[i])-0.15).toFixed(2)),+(wE(words[j])+0.25).toFixed(2)]);i=j+1}
+  return out.reduce((a,r)=>{const l=a[a.length-1];if(l&&r[0]<=l[1])l[1]=Math.max(l[1],r[1]);else a.push(r);return a},[])}
+function rangesToKept(words,ranges){return words.map(w=>ranges.some(([a,b])=>wS(w)>=a-0.01&&wE(w)<=b+0.01))}
+function trimOpen(d,kind,opt){S.trim={id:d.id,kind,opt:opt||null,ver:"reel",xSame:true,opts:{follow:true,captions:true,plate:true}};const src=trimSource(d);if(!src){S.trim=null;return}
+  const saved=(d.videoTrim&&d.videoTrim.target===(kind+":"+(opt||"")))?d.videoTrim:null;const n=src.words.length;const cuts=(src.src&&src.src.cuts)||[];
+  const hint=k=>{const c=cuts.find(c=>(k==="reel"?/reel|9:16/i:k==="facebook"?/facebook|4:5/i:/\bx\b|16:9/i).test(c.format||""));return c&&Array.isArray(c.keep)?rangesToKept(src.words,c.keep):null};
+  S.trim.kept={};for(const [k] of TRIM_VERSIONS)S.trim.kept[k]=saved&&saved.versions&&saved.versions[k]?rangesToKept(src.words,saved.versions[k]):hint(k)||new Array(n).fill(true);
+  if(saved){S.trim.xSame=saved.xSame!==false;if(saved.options)S.trim.opts={...S.trim.opts,...saved.options}}}
+function trimRanges(k){const t=S.trim;return t?keptToRanges(t.words||[],t.kept[k==="x"&&t.xSame?"reel":k]):[]}
+function trimView(d){const t=S.trim;const src=trimSource(d);if(!src)return "";t.words=src.words;const words=src.words;const k=t.ver==="x"&&t.xSame?"reel":t.ver;const kept=t.kept[k];
+  const len=r=>r.reduce((a,[x,y])=>a+(y-x),0);const total=words.length?wE(words[words.length-1])-Math.max(0,wS(words[0])-0.15):0;
+  const tabs=TRIM_VERSIONS.map(([v,l])=>`<button class="ptab" role="tab" aria-selected="${t.ver===v}" data-trimver="${v}">${l} <span class="src">${fmtSec(len(trimRanges(v)))}</span></button>`).join("");
+  let text="";words.forEach((w,i)=>{text+=`<span class="tw${kept[i]?" on":""}" data-w="${i}">${esc(w[0])}</span> `});
+  const r=trimRanges(t.ver);const t0=words.length?Math.max(0,wS(words[0])-0.15):0;
+  const bar=r.map(([a,b])=>`<span style="left:${(a-t0)/total*100}%;width:${(b-a)/total*100}%"></span>`).join("");
+  return `<div class="trim" id="trim"><div class="trimhead"><b>Trimming: ${esc(src.title||"video")}</b><span class="src">${src.media?"":src.url?`<a href="${esc(src.url)}" target="_blank" rel="noopener">Watch the source ↗</a> · `:""}select words, then Keep or Cut</span><button class="btn small" data-act="trimClose">Done</button></div>
+    <div class="ptabs" role="tablist" aria-label="Version">${tabs}</div>
+    ${t.ver==="x"?`<label class="dest"><input type="checkbox" data-act="trimXSame"${t.xSame?" checked":""}> Same cut as the Reel</label>`:""}
+    ${src.media?`<div class="trimplay"><video id="trimVid" src="${esc(src.media)}" controls preload="metadata" playsinline></video><button class="btn small" data-act="trimPlay">▶ Play my cut</button></div>`:""}
+    <div class="trimbar" aria-label="Kept stretches">${bar}</div>
+    <div class="trimtext${t.ver==="x"&&t.xSame?" ro":""}" id="trimText">${text}</div>
+    <div class="row trimtools"><button class="btn small" data-act="trimSel" data-keep="1">Keep selected</button><button class="btn small" data-act="trimSel" data-keep="0">Cut selected</button><button class="btn small" data-act="trimAll" data-keep="1">Keep all</button><button class="btn small" data-act="trimAll" data-keep="0">Cut all</button><span class="src">${r.length} stretch${r.length===1?"":"es"} · ${fmtSec(len(r))} of ${fmtSec(total)}</span></div>
+    <div class="row"><label class="dest"><input type="checkbox" data-trimopt="follow"${t.opts.follow?" checked":""}> Follow the speaker</label><label class="dest"><input type="checkbox" data-trimopt="captions"${t.opts.captions?" checked":""}> Captions</label><label class="dest"><input type="checkbox" data-trimopt="plate"${t.opts.plate?" checked":""}> Name plate</label></div>
+    ${t.kind==="s"&&src.src.rights&&src.src.rights.ok===false?`<label class="vsrights"><input type="checkbox" data-act="vsRights" data-opt="${esc(src.src.id)}"${S.vsRights===d.id+"-"+src.src.id?" checked":""}> <span>${esc(src.src.rights.note||"Check we can use this footage")}. <b>I've checked</b></span></label>`:""}
+    <div class="row"><button class="btn primary" data-act="trimCut">Cut these versions on the Mini</button><button class="btn small" data-act="trimSave">Save for later</button></div></div>`}
+function trimSelection(){const sel=window.getSelection();const box=$("#trimText");if(!sel||sel.isCollapsed||!box)return null;const idx=[...box.querySelectorAll(".tw")].filter(el=>sel.containsNode(el,true)).map(el=>+el.dataset.w);return idx.length?[Math.min(...idx),Math.max(...idx)]:null}
+function trimPayload(d){const t=S.trim;const versions={};for(const [k] of TRIM_VERSIONS)versions[k]=trimRanges(k);return{target:t.kind+":"+(t.opt||""),versions,xSame:t.xSame,options:t.opts}}
+document.addEventListener("mouseup",ev=>{if(!ev.target.closest||!ev.target.closest("#trimText"))return;const t=S.trim;if(!t||(t.ver==="x"&&t.xSame))return;const r=trimSelection();if(!r||r[0]===r[1]&&window.getSelection().toString().trim()==="")return;
+  const k=t.ver;const keep=!t.kept[k][r[0]];for(let i=r[0];i<=r[1];i++)t.kept[k][i]=keep;window.getSelection().removeAllRanges();t._drag=Date.now();renderDetail()});
+document.addEventListener("click",ev=>{const w=ev.target.closest("#trimText .tw");if(w&&window.getSelection().isCollapsed){const t=S.trim;if(!t||(t.ver==="x"&&t.xSame)||Date.now()-(t._drag||0)<400)return;const i=+w.dataset.w;t.kept[t.ver][i]=!t.kept[t.ver][i];renderDetail()}});
+document.addEventListener("change",ev=>{const t=S.trim;if(!t)return;const o=ev.target.dataset&&ev.target.dataset.trimopt;if(o){t.opts[o]=ev.target.checked;return}if(ev.target.dataset&&ev.target.dataset.act==="trimXSame"){t.xSame=ev.target.checked;if(!t.xSame)t.kept.x=[...t.kept.reel];renderDetail()}});
+document.addEventListener("click",async ev=>{const b=ev.target.closest('[data-act^="trim"],[data-trimver]');if(!b)return;const d=S.drafts.find(x=>x.id===S.openId);if(!d)return;const a=b.dataset.act;
+  if(b.dataset.trimver){S.trim.ver=b.dataset.trimver;renderDetail();return}
+  if(a==="trimOpen"){trimOpen(d,b.dataset.kind,b.dataset.opt);renderDetail();return}
+  if(a==="trimClose"){S.trim=null;renderDetail();return}
+  const t=S.trim;if(!t)return;const k=t.ver==="x"&&t.xSame?"reel":t.ver;
+  if(a==="trimAll"){t.kept[k]=t.kept[k].map(()=>b.dataset.keep==="1");renderDetail();return}
+  if(a==="trimSel"){const r=trimSelection();if(!r){toast("Select some words first");return}for(let i=r[0];i<=r[1];i++)t.kept[k][i]=b.dataset.keep==="1";renderDetail();return}
+  if(a==="trimPlay"){const v=$("#trimVid");const r=trimRanges(t.ver);if(!v||!r.length)return;let n=0;v.currentTime=r[0][0];v.play();v.ontimeupdate=()=>{if(v.currentTime>=r[n][1]){n++;if(n>=r.length){v.pause();v.ontimeupdate=null}else v.currentTime=r[n][0]}};return}
+  const pay=trimPayload(d);if(!Object.values(pay.versions).some(r=>r.length)){toast("Keep some words first");return}
+  if(a==="trimSave"){try{await S.db.doc("drafts/"+d.id).update({videoTrim:{...pay,by:S.me,at:new Date().toISOString()}});toast("Trim saved on the post")}catch(e){failToast(e,"Couldn't save the trim")}return}
+  if(a==="trimCut"){const src=trimSource(d);const o=t.kind==="s"?src.src:null;
+    if(o&&o.rights&&o.rights.ok===false&&S.vsRights!==d.id+"-"+o.id){toast("Tick that you've checked the footage rights first");return}
+    const id=t.kind==="s"?d.id+"-"+o.id:d.id+"-trim-"+Date.now().toString(36);
+    const outs=TRIM_VERSIONS.map(([k,l])=>({version:k,format:l,keep:pay.versions[k]})).filter(x=>x.keep.length);
+    try{await S.db.doc("drafts/"+d.id).update({videoTrim:{...pay,by:S.me,at:new Date().toISOString()}});
+      await S.db.doc("videoRequests/"+id).set({draftId:d.id,optionId:o?o.id:null,pack:o?o.pack||"":"",speaker:o?o.who||"":"",url:o?o.url||"":"",file:t.kind==="v"?(d.video.file||""):"",source:o?o.source||"":"",outputs:outs,options:pay.options,...(o&&o.rights&&o.rights.ok===false?{rightsCheckedBy:S.me}:{}),status:"requested",by:S.me,at:new Date().toISOString()});
+      toast(`${outs.length} version${outs.length===1?"":"s"} sent to the Mini to cut`);S.trim=null;renderDetail()}catch(e){failToast(e,"Couldn't send the cut")}}});
 function linkNote(d){const l=d.links?.[S.platform];const pl=PLATFORMS.find(p=>p.key===S.platform)?.label||"";
   return l?.short?`<small>${esc(pl)} tracked link: <span style="font-family:var(--mono)">${esc(l.short.replace(/^https?:\/\//,""))}</span> · ${esc(l.campaign)}</small>`
     :`<small>${esc(pl)}: full tracked link for now; the short link is added by the next engine run.</small>`}
@@ -1293,7 +1358,7 @@ function makeZip(files){const enc=new TextEncoder();const parts=[],central=[];le
   return new Blob([...parts,...central,e.buffer],{type:"application/zip"})}
 
 function renderAll(){renderTabs();renderFilters();renderQueue();renderDetail()}
-function resetDraftUi(){S.inline=null;S.inlineVal=null;S.apMenu=false;S.factTicks=new Set();S.cmpPrev=false;closeZoom&&closeZoom();S.gPreview=null;S.capPreview=null;S.padj=false;S.slide=0;S.editing=null;S.mode=null;S.picked=new Set();S.factsOk=false;S.pick=null}
+function resetDraftUi(){S.trim=null;S.inline=null;S.inlineVal=null;S.apMenu=false;S.factTicks=new Set();S.cmpPrev=false;closeZoom&&closeZoom();S.gPreview=null;S.capPreview=null;S.padj=false;S.slide=0;S.editing=null;S.mode=null;S.picked=new Set();S.factsOk=false;S.pick=null}
 
 /* ---------- card art: CitizenGO brand guidelines Q3 2026 ---------- */
 /* Roboto only; white grounds with Brand Blue, or blue grounds where white dominates; official logo top-left with one N-height clear space. */
