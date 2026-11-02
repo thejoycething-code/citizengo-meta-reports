@@ -88,11 +88,20 @@
   // through their CitizenGO connector; the desk waits for the answer. Without
   // the helper (or if they choose), the copy-paste round trip below.
   const AI_HELPER = window.DESK_AI_HELPER || null;
+  // A prompt as one string: a string, or [{role, content}] where content is a
+  // string or content blocks (only their text is kept).
+  const promptText = (p) => typeof p === 'string' ? p
+    : Array.isArray(p) ? p.map((t) => (typeof t.content === 'string' ? t.content : Array.isArray(t.content) ? t.content.filter((b) => b && b.type === 'text').map((b) => b.text).join('\n') : '')).join('\n\n')
+    : String(p);
   function viaHelper(prompt) {
-    const text = typeof prompt === 'string' ? prompt : (Array.isArray(prompt) ? prompt.map((t) => t.content).join('\n\n') : String(prompt));
+    const text = promptText(prompt);
+    // Open the tab now, while the click still counts as the person's, or the
+    // browser blocks it; it is pointed at the request once the request is filed.
+    let tab = null;
+    try { tab = window.open('', '_blank'); if (tab) tab.opener = null; } catch (e) { tab = null; }
     return new Promise(async (resolve, reject) => {
       let job;
-      try { job = await api('aijob', { method: 'POST', body: { prompt: text } }); } catch (e) { return askClaude(prompt).then(resolve, reject); }
+      try { job = await api('aijob', { method: 'POST', body: { prompt: text } }); } catch (e) { try { if (tab) tab.close(); } catch (x) {} return askClaude(prompt).then(resolve, reject); }
       const link = `${AI_HELPER}#${job.id}`;
       const box = document.createElement('div');
       box.className = 'askc';
@@ -102,7 +111,7 @@
         <div class="ibacts"><a class="btn small primary" href="${link}" target="_blank" rel="noopener">Open Desk AI ↗</a><button class="btn small" data-k="manual">Copy and paste instead</button><button class="btn small" data-k="cancel">Cancel</button></div>
       </div>`;
       document.body.appendChild(box);
-      try { window.open(link, '_blank', 'noopener'); } catch (e) {}
+      try { if (tab) tab.location.href = link; } catch (e) {}
       let stop = false;
       const finish = (fn) => { stop = true; box.remove(); fn(); };
       box.addEventListener('click', (ev) => {
@@ -116,6 +125,7 @@
         if (stop) return;
         try {
           const j = await api('aijob', { query: `&id=${job.id}` });
+          if (stop) return;
           if (j.status === 'done' && j.text) return finish(() => resolve({ text: j.text, truncated: false }));
           if (j.status === 'failed') { const m = box.querySelector('[data-k="msg"]'); if (m) m.textContent = `${j.error || 'Claude could not answer.'} Try again from the Desk AI tab, or copy and paste instead.`; }
         } catch (e) {}
@@ -124,9 +134,23 @@
     });
   }
 
+  // The answer as JSON, read as tolerantly as claude.ai's sample.json: the whole
+  // reply; else the body of one code fence; else from the first { or [ to the
+  // last } or ]. Otherwise invalid_json, with the reply on e.text.
+  function parseAnswer(text) {
+    const t = String(text || '').trim();
+    const tries = [t];
+    const fence = t.match(/```(?:json)?\s*\n?([\s\S]*?)```/i);
+    if (fence) tries.push(fence[1].trim());
+    const a = t.search(/[[{]/), b = Math.max(t.lastIndexOf('}'), t.lastIndexOf(']'));
+    if (a >= 0 && b > a) tries.push(t.slice(a, b + 1));
+    for (const x of tries) { try { return JSON.parse(x); } catch (e) {} }
+    throw Object.assign(new Error("Claude's answer wasn't the data the desk asked for"), { code: 'invalid_json', text: t });
+  }
+
   // "Ask Claude" by hand: the prompt goes to claude.ai in a new tab; the answer comes back by paste.
   function askClaude(prompt) {
-    const text = typeof prompt === 'string' ? prompt : (Array.isArray(prompt) ? prompt.map((t) => t.content).join('\n\n') : String(prompt));
+    const text = promptText(prompt);
     return new Promise((resolve, reject) => {
       const box = document.createElement('div');
       box.className = 'askc';
@@ -161,7 +185,7 @@
   }
   const ask = (input) => (AI_HELPER ? viaHelper(input) : askClaude(input));
   const sample = Object.assign((input) => ask(input), {
-    async json(input) { const r = await ask(input); return JSON.parse(String(r.text).replace(/^```(?:json)?|```$/g, '').trim()); },
+    async json(input) { const r = await ask(input); return parseAnswer(r.text); },
     async limits() { return { images: false }; },
   });
 
