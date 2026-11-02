@@ -314,6 +314,8 @@ const callErr = async (store, name, args, who) => { try { await tool(name)(store
     ], ['p1', ',p2']);
   }
 
+  eq('calendar items carry live post links, https only', JSON.stringify(E.calendarItem({ id: 'x', team_id: 'ie', status: 'posted', doc: { published: { 'ie-fb': { url: 'https://facebook.com/p/1' }, 'ie-ig': { url: 'javascript:alert(1)' } }, results: { x: { url: 'https://x.com/s/2' } } } }, { editable: false }).links), JSON.stringify([{ account: 'ie-fb', url: 'https://facebook.com/p/1' }, { account: 'x', url: 'https://x.com/s/2' }]));
+
   console.log(`\n${passed} passed, ${failed} failed`);
   process.exit(failed ? 1 : 0);
 })().catch((e) => { console.error(e); process.exit(1); });
