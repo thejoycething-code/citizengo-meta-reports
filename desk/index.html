@@ -444,7 +444,7 @@ header.top .filters{padding-block:0;margin-left:auto}
 .anchg{font-size:13px;font-weight:700;color:var(--muted)}.anchg.good{color:var(--ok)}.anchg.bad{color:var(--bad)}
 .angrid{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:12px;align-items:start}@media(max-width:1100px){.angrid{grid-template-columns:minmax(0,1fr)}}
 .anbest{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px}.anbp{border:1px solid var(--line);border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:4px;min-width:0;font-size:13px}.anbp p{margin:0;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}.anbp .btn{align-self:flex-start}.anbv{font-family:var(--display);font-size:20px}
-.anch{display:flex;gap:8px;font-size:13px;border-top:1px solid var(--line);padding-top:7px}.anch.sp{justify-content:space-between}.anch>span:first-child{flex:none}.rsbox h3+.anch{border-top:0;padding-top:0}
+.anch{display:flex;gap:8px;font-size:13px;border-top:1px solid var(--line);padding-top:7px}.anch.sp{justify-content:space-between}.anch.sp>span:first-child{flex:1 1 auto;min-width:0;overflow-wrap:anywhere}.anch.sp>:last-child{flex:none;text-align:right}.anch>span:first-child{flex:none}.rsbox h3+.anch{border-top:0;padding-top:0}
 .anmore{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:10px 14px;display:flex;flex-direction:column;gap:10px}.anmore>summary{cursor:pointer;font-weight:600}.anmore[open]>summary{margin-bottom:10px}
 .anrow{all:unset;cursor:pointer;display:flex;flex-direction:column;gap:2px}.anrow:focus-visible{outline:2px solid var(--accent);outline-offset:2px}.ansub td{background:var(--sunk)}.anpp{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:4px 0;font-size:13px}
 .anfun{display:flex;flex-direction:column;gap:3px}.anfun div{background:var(--accent);color:var(--accent-fg);border-radius:4px;padding:4px 8px;font-size:12px;min-width:max-content}
@@ -454,6 +454,11 @@ header.top .filters{padding-block:0;margin-left:auto}
 .anbar{display:grid;grid-template-columns:minmax(0,150px) minmax(0,1fr) auto;gap:8px;align-items:center;font-size:13px}.anbt{height:12px;background:var(--sunk);border-radius:0 4px 4px 0;overflow:hidden}.anbt i{display:block;height:100%;background:var(--accent);border-radius:0 4px 4px 0}
 .anhab{display:flex;flex-direction:column;gap:2px;border-top:1px solid var(--line);padding-top:7px;font-size:13px}.rsbox h3+.anhab{border-top:0;padding-top:0}.anhab .good{color:var(--ok)}.anhab .bad{color:var(--bad)}
 .ancountries{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}.antn{display:flex;justify-content:space-between;gap:8px;align-items:baseline}.ancountries .btn{align-self:flex-start;margin-top:4px}
+.tlgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}.tlcard{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px;display:flex;flex-direction:column;gap:6px;min-width:0}.tlcard.dim{opacity:.6}.tlcard .btn{align-self:flex-start;margin-top:auto}.tlicon{font-size:24px}.tlst{font-size:12px;font-weight:600;color:var(--ok)}.tlst .bad,.tlst b.bad{color:var(--warn)}
+.tlsplit{display:grid;grid-template-columns:minmax(0,420px) minmax(0,1fr);gap:12px;align-items:start}@media(max-width:1000px){.tlsplit{grid-template-columns:minmax(0,1fr)}}.tlform{min-width:0}.tlform input,.tlform textarea,.tlform select{max-width:100%;box-sizing:border-box;min-width:0}.tlrow{display:flex;gap:10px}.tlrow .wsf{flex:1}.tlform select{font:inherit;border:1px solid var(--line);border-radius:8px;padding:6px 8px;background:var(--surface);color:var(--fg)}
+.tlq{margin-left:auto;font:inherit;font-size:13px;border:1px solid var(--line);border-radius:8px;padding:5px 9px;background:var(--surface);color:var(--fg);min-width:0}
+.mkprev{background:var(--sunk);border-radius:8px;padding:8px;display:flex;justify-content:center}.mkprev canvas{max-width:100%;max-height:420px;width:auto;height:auto;border-radius:4px}
+.tlcheck{display:flex;gap:12px;align-items:flex-start;border-top:1px solid var(--line);padding:10px 2px;font-size:13px}.rsbox h3+.tlcheck,.rsbox>.tlcheck:first-child{border-top:0}.tli{font-size:16px;width:20px;flex:none;text-align:center}.tlcheck.bad .tli{color:var(--bad)}.tlcheck.warn .tli{color:var(--warn)}.tlcheck.ok .tli{color:var(--ok)}.tlcheck.info .tli{color:var(--accent)}
 .akpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
 @media (max-width:700px){.akpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .akpi{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:10px 12px}
@@ -2566,12 +2571,13 @@ function sideCounts(){const c=IB.counts||{};return{
   "inbox:history":(IB.alerts||[]).length,"listening:mentions":c.mentions||0}}
 function sideActive(){const v=S.view||"posts";
   if(v==="inbox")return IB.tab==="inbox"?(IB.filter==="mine"?"inbox:mine":"inbox:inbox"):"inbox:"+IB.tab;
+  if(v==="tools")return "tools:"+TL.tab;
   if(v==="listening")return "listening:"+(["citizengo","allies","opponents"].includes(LS.tab)?"allies":LS.tab);/* topics is its own entry */
   return v}
 function renderSide(){const el=$("#sideNav");if(!el)return;const n=sideCounts(),act=sideActive();
   const NAV=[["Content Engine",[["posts","Posts"]]],["Calendar",[["calendar","Calendar"]]],
     ["Inbox",[["inbox:inbox","Conversations"],["inbox:mine","Assigned to me"],["inbox:posts","By post"],["inbox:autos","Automations"],["inbox:history","Moderation"]]],
-    ["Listening",[["listening:rising","Rising now"],["listening:mentions","Mentions"],["listening:allies","Allies and opponents"],["listening:topics","Topics"],["listening:watches","Watches"]]],["Analytics",[["analytics","Overview"]]],["Tools",[["tools","Page Inviter"]]]];
+    ["Listening",[["listening:rising","Rising now"],["listening:mentions","Mentions"],["listening:allies","Allies and opponents"],["listening:topics","Topics"],["listening:watches","Watches"]]],["Analytics",[["analytics","Overview"]]],["Tools",[["tools:home","All tools"],["tools:inviter","Page Inviter"],["tools:links","Tracked links"],["tools:make","Make"],["tools:health","Health check"]]]];
   el.innerHTML=NAV.map(([g,items])=>`<div class="grp"><span>${esc(g)}</span>${items.map(([k,l])=>`<button class="lk" data-nav="${k}"${act===k?' aria-current="page"':""}><span>${esc(l)}</span>${n[k]?`<span class="bdg${k==="inbox:history"?" bad":""}">${n[k]}</span>`:""}</button>`).join("")}</div>`).join("");
   const me=$("#sideMe");if(me){const nm=S.meName||S.whoId||"";const ini=nm.split(/[\s@.]+/).filter(Boolean).slice(0,2).map(x=>x[0].toUpperCase()).join("")||"?";
     me.innerHTML=`<i>${esc(ini)}</i><span>${esc(nm||"Signed in")}<small${S.mcp&&!$("#offline").hidden?' class="off"':""}>${S.mcp&&$("#offline").hidden?"● live":"○ not connected"}</small></span>`}
@@ -2579,6 +2585,7 @@ function renderSide(){const el=$("#sideNav");if(!el)return;const n=sideCounts(),
 function navGo(key){const [v,sub]=key.split(":");
   if(v==="inbox"){IB.open=null;IB.topics=null;if(sub==="mine"){IB.tab="inbox";IB.filter="mine"}else if(sub==="inbox"){IB.tab="inbox";if(IB.filter==="mine")IB.filter="all"}else IB.tab=sub}
   if(v==="listening"){LS.tab=sub==="digest"?"rising":sub;LS.data=null}
+  if(v==="tools")TL.tab=sub||"home";
   $("#side").classList.remove("open");$("#sideShade").hidden=true;
   setView(v);renderSide()}
 /* Settings › Team and access [gaps §7]: per person and account, Post /
@@ -2614,25 +2621,105 @@ function renderAccess(){const el=$("#stAccess");if(!el)return;const A=ACC.data;
 const PI_INFO={version:"1.4",build:"2.13.19",date:"1 Nov 2026",zip:"page-inviter",
   guide:"https://docs.google.com/document/d/1ivB8vSWNRifpvAnFwBMd11NeJdKnlQfGyc2rGgZEcks/edit",
   news:["“Use Meta reporting for CitizenGO Pages” is on for everyone: quiet Pages are skipped, so runs are shorter.","Posts with no new reactions aren't reopened.","It remembers up to 30,000 finished posts, so long-running Pages don't start over.","If a Page lookup fails it tries once more, then uses its last answer."]};
-const TL={days:30,usage:null,err:null,loading:false};
-async function loadTools(){renderTools();if(TL.loading||!S.mcp)return;TL.loading=true;TL.err=null;
-  try{const r=await S.mcp.callTool(ENGINE,"page_inviter_usage",{days:TL.days},{cache:false});TL.usage=piParse(r)}catch(e){TL.err=e;TL.usage=null}finally{TL.loading=false;renderTools()}}
-function piParse(r){const text=typeof r?.payload==="string"?r.payload:typeof r?.payload?.text==="string"?r.payload.text:(r&&r.content||[]).filter(c=>c.type==="text").map(c=>c.text).join("\n");
-  const lines=text.split("\n");const head=(lines.find(l=>/^\*\*/.test(l))||"").replace(/\*\*/g,"");const rows=lines.filter(l=>/^\|/.test(l)&&!/^\|\s*-/.test(l)).map(l=>l.replace(/^\||\|$/g,"").split("|").map(c=>c.trim()));
-  return{head,cols:rows[0]||[],rows:rows.slice(1),note:(lines.find(l=>/^_.*_$/.test(l))||"").replace(/^_|_$/g,""),empty:/^No Page Inviter usage/.test(text)?text:null}}
-function renderTools(){const el=$("#toolsView");if(!el||el.hidden)return;const U=TL.usage;
-  const usage=TL.err?`<p class="offline">Couldn't load usage (${esc(whyFailed(TL.err))}).</p>`:!U?`<p class="src">${TL.loading?"Loading usage…":""}</p>`:U.empty?`<p class="src">${esc(U.empty)}</p>`
-    :`<p class="src" style="margin:0">${esc(U.head)}</p><div class="awrap"><table class="atbl"><thead><tr>${U.cols.map(c=>`<th>${esc(c)}</th>`).join("")}</tr></thead><tbody>${U.rows.map(r=>`<tr>${r.map(c=>`<td>${esc(c)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>${U.note?`<p class="src" style="margin:0">${esc(U.note)}</p>`:""}`;
-  el.innerHTML=`<div><h2>Page Inviter</h2><p class="lede">The Chrome extension that invites people who reacted to our Facebook posts to like the Page. It works through CitizenGO's Meta reporting, so there's nothing to set up.</p></div>
-  <div class="akpis"><div class="akpi"><b>${esc(PI_INFO.version)}</b><span>Current version · ${esc(PI_INFO.date)} · build ${esc(PI_INFO.build)}</span></div></div>
-  <div class="ibd"><b>Get it</b>${PI_INFO.zip&&window.deskFile?`<div class="ibacts"><button class="btn small primary" data-pi-dl>Download citizengo-page-inviter.zip</button><span class="src">1.6 MB · for CitizenGO staff only: it has the extension's built-in connection</span></div>`:`<p class="src" style="margin:0">Ask Christopher for the latest zip; it will be downloadable here once it's uploaded.</p>`}
-    <ol class="pisteps"><li>Unzip it somewhere permanent (e.g. Documents) and keep the folder.</li><li>In Chrome open <code>chrome://extensions</code> and turn on <b>Developer mode</b> (top right).</li><li>Click <b>Load unpacked</b> and choose the unzipped <code>citizengo-page-inviter</code> folder.</li><li>Pin it (puzzle piece → pin) and allow notifications if Chrome asks.</li></ol>
-    <p class="src" style="margin:0"><b>Updating:</b> replace the folder's contents with the new version, then click ↻ on the extension in <code>chrome://extensions</code> and reload any Facebook tab. Settings, Page list, history and icon are kept.</p></div>
-  <div class="ibd"><b>What's new in ${esc(PI_INFO.version)}</b><ul class="pisteps">${PI_INFO.news.map(n=>`<li>${esc(n)}</li>`).join("")}</ul></div>
-  <div class="ibd"><b>Guides and help</b><p class="src" style="margin:0"><a href="${esc(PI_INFO.guide)}" target="_blank" rel="noopener">The Page Inviter guide ↗</a> (still a draft: ask Christopher for access). Fixes reach everyone automatically, usually within the hour; to check now, open <i>Settings → Connection &amp; fixes → Check for fixes now</i>. To report a problem, use <i>Ask for a fix or change</i> there, from the Facebook page that isn't working.</p></div>
-  <div class="ibd"><div class="egbar"><b>Who's using it</b><span class="tabs">${[7,30,90].map(d=>`<button class="tab" data-pi-days="${d}" aria-pressed="${TL.days===d}">${d} days</button>`).join("")}</span></div>${usage}</div>`}
+/* Tools (Nov 2026): all tools, Page Inviter results, tracked links, make a
+   graphic or clip a video, and a health check. Link in bio is phase 3. */
+const TL={tab:"home",days:30,inv:null,links:null,health:null,err:{},loading:{},made:null,q:"",mk:{T:"ig1d",kicker:"",headline:"",sub:"",photo:""},clipMsg:""};
+const TL_TABS=[["home","All tools"],["inviter","Page Inviter"],["links","Tracked links"],["make","Make"],["health","Health check"]];
+async function tlLoad(k,fn){if(TL.loading[k]||!S.mcp)return;TL.loading[k]=true;TL.err[k]=null;renderTools();try{TL[k]=await fn()}catch(e){TL.err[k]=e}finally{TL.loading[k]=false;renderTools()}}
+function loadTools(){renderTools();const t=TL.tab;
+  if((t==="home"||t==="inviter")&&!TL.inv)tlLoad("inv",()=>eng("engine_inviter",{days:TL.days}));
+  if((t==="home"||t==="links")&&(!TL.links||TL.links.team!==S.team))tlLoad("links",()=>eng("engine_links",{team:S.team}));
+  if((t==="home"||t==="health")&&(!TL.health||TL.health.team!==S.team))tlLoad("health",()=>eng("engine_health",{team:S.team}))}
+function tlCard(icon,title,desc,status,go,dim){return `<article class="tlcard${dim?" dim":""}"><span class="tlicon" aria-hidden="true">${icon}</span><b>${esc(title)}</b><span class="src">${esc(desc)}</span><span class="tlst">${status}</span>${go?`<button class="btn small${dim?"":" primary"}" data-tl-tab="${go}">Open</button>`:`<span class="src">Phase 3</span>`}</article>`}
+function tlHome(){const I=TL.inv,L=TL.links,H=TL.health;const bad=H?H.checks.filter(c=>c.level==="bad"||c.level==="warn").length:null;
+  const sig=L?L.links.reduce((a,l)=>a+(l.signatures||0),0):null;
+  return `<p class="src" style="margin:0">Everything that isn't a post, a reply or a report.</p><div class="tlgrid">
+    ${tlCard("🙌","Page Inviter","Invites people who reacted to our posts to like the Page. A Chrome extension.",I?`✓ ${esc(PI_INFO.version)} · ${anN(I.invites)} invites in ${I.days} days · ${I.people.length} ${I.people.length===1?"person":"people"}`:TL.loading.inv?"Loading…":"—","inviter")}
+    ${tlCard("🔗","Tracked links","Make cgo.ac links for a petition, one per network, and see the signatures each brought.",L?`✓ ${L.links.length} links · ${anN(sig)} signatures`:TL.loading.links?"Loading…":"—","links")}
+    ${tlCard("🎨","Make a graphic","Our post designs without starting a post: pick one, type the words, download.",`✓ ${SWITCH_T.length} designs`,"make")}
+    ${tlCard("✂️","Clip a video","Paste a Parliament or TV link and the moment you want; the next run cuts Reel, Facebook and X versions.","✓ Cut in the next morning run","make")}
+    ${tlCard("🩺","Health check","Who can post where, pauses, and whether every data feed is up to date.",H?(bad?`<b class="bad">⚠ ${bad} thing${bad===1?"":"s"} to look at</b>`:"✓ All good"):TL.loading.health?"Loading…":"—","health")}
+    ${tlCard("📱","Link in bio","One Instagram bio page with today's petitions, updated when a post goes out.","Later",null,true)}</div>`}
+function tlInviter(){const I=TL.inv;const days=`<span class="tabs">${[7,30,90].map(d=>`<button class="tab" data-pi-days="${d}" aria-pressed="${TL.days===d}">${d} days</button>`).join("")}</span>`;
+  const dl=PI_INFO.zip&&window.deskFile?`<button class="btn small primary" data-pi-dl>⬇ Download ${esc(PI_INFO.version)} (zip)</button>`:"";
+  const head=`<div class="rsbar">${dl}<span class="src">Version ${esc(PI_INFO.version)} · ${esc(PI_INFO.date)} · build ${esc(PI_INFO.build)}</span><span style="margin-left:auto">${days}</span></div>`;
+  if(TL.err.inv)return head+`<p class="offline">Couldn't load the results (${esc(whyFailed(TL.err.inv))}).</p>`+piSetup();
+  if(!I)return head+`<p class="src">${TL.loading.inv?"Loading the results…":""}</p>`+piSetup();
+  const ch=I.before?Math.round((I.invites-I.before)/I.before*100):null;const fol=I.pages.reduce((a,p)=>a+(p.follows||0),0);
+  const old=v=>v&&PI_INFO.build&&v.split(".").map(Number).join(".")!==PI_INFO.build&&v.localeCompare(PI_INFO.build,undefined,{numeric:true})<0;
+  const tiles=`<div class="antiles"><div class="antile"><span class="src">Invites</span><span class="antv"><b>${anN(I.invites)}</b>${anChg(ch)}</span><span class="src">vs ${anN(I.before)} the ${I.days} days before</span></div>
+    <div class="antile"><span class="src">New Page follows, same days</span><span class="antv"><b>${anN(fol)}</b></span><span class="src">on the ${I.pages.length} Pages invited for (not all from invites)</span></div>
+    <div class="antile"><span class="src">People running it</span><span class="antv"><b>${I.people.length}</b></span><span class="src">${I.people.reduce((a,p)=>a+p.computers,0)} computers</span></div></div>`;
+  const pages=I.pages.length?`<section class="rsbox"><h3>By Page</h3><div class="awrap"><table class="atbl"><thead><tr><th>Page</th><th class="n">Invites</th><th class="n">Change</th><th class="n">New follows</th><th>Last run</th></tr></thead><tbody>${I.pages.map(p=>`<tr><td>${esc(p.name)}</td><td class="n">${anN(p.invites)}</td><td class="n">${p.before?anChg(Math.round((p.invites-p.before)/p.before*100)):"—"}</td><td class="n">${p.follows!=null?anN(p.follows):"—"}</td><td>${esc(p.last)}</td></tr>`).join("")}</tbody></table></div><span class="src">Invites the extension clicked; Facebook doesn't say how many were accepted. New follows are the Page's own over the same days.</span></section>`:`<p class="src">No invites reported in the last ${I.days} days.</p>`;
+  const ppl=`<section class="rsbox"><h3>Who's running it</h3>${I.people.map(p=>`<div class="anch sp"><span>${esc(p.who)}</span><span class="src">${anN(p.invites)} · ${p.computers} computer${p.computers===1?"":"s"} · ${esc(p.version||"—")}${old(p.version)?` <b class="bad">update available</b>`:p.version?" ✓":""}</span></div>`).join("")||'<span class="src">Nobody yet.</span>'}</section>`;
+  const posts=`<section class="rsbox"><h3>Most-reacted posts to run on</h3><span class="src">Last 30 days, on the Pages above. The extension only opens posts with new reactions.</span>${(I.posts||[]).map(p=>`<div class="anch sp"><span>${p.url?`<a href="${esc(p.url)}" target="_blank" rel="noopener">${esc(p.text.slice(0,70)||"Post")}</a>`:esc(p.text.slice(0,70))} <span class="src">· ${esc(p.page||"")} · ${esc(String(p.created_time||"").slice(0,10))}</span></span><b>${anN(p.reactions)}</b></div>`).join("")||'<span class="src">None.</span>'}</section>`;
+  return head+tiles+`<div class="angrid">${pages}<div class="rsside">${ppl}${posts}</div></div>`+piSetup()}
+function piSetup(){return `<details class="anmore"><summary>Set it up, what's new and help</summary>
+  <ol class="pisteps"><li>Download the zip above and unzip it somewhere permanent (e.g. Documents).</li><li>In Chrome open <code>chrome://extensions</code> and turn on <b>Developer mode</b> (top right).</li><li>Click <b>Load unpacked</b> and choose the unzipped <code>citizengo-page-inviter</code> folder.</li><li>Pin it (puzzle piece → pin) and allow notifications if Chrome asks.</li></ol>
+  <p class="src" style="margin:0"><b>Updating:</b> replace the folder's contents with the new version, then click ↻ on the extension in <code>chrome://extensions</code> and reload any Facebook tab. Settings, Page list, history and icon are kept.</p>
+  <b>What's new in ${esc(PI_INFO.version)}</b><ul class="pisteps">${PI_INFO.news.map(n=>`<li>${esc(n)}</li>`).join("")}</ul>
+  <p class="src" style="margin:0"><a href="${esc(PI_INFO.guide)}" target="_blank" rel="noopener">The Page Inviter guide ↗</a> (still a draft: ask Christopher for access). The zip is for CitizenGO staff only: it has the extension's built-in connection.</p></details>`}
+function tlLinks(){const L=TL.links;const m=TL.made;
+  const form=`<section class="rsbox tlform"><h3>Make tracked links</h3>
+    <label class="wsf">Petition link<input id="tlUrl" placeholder="https://citizengo.org/en-gb/fr/17968-..." value="${esc(TL.lf?.url||"")}"></label>
+    <label class="wsf">Petition name <small>(goes in the code, 60 letters at most)</small><input id="tlTitle" value="${esc(TL.lf?.title||"")}"></label>
+    <fieldset class="wsf"><legend>Networks</legend>${[["facebook","Facebook"],["instagram","Instagram"],["x","X"]].map(([k,l])=>`<label><input type="checkbox" data-tl-plat="${k}"${!TL.lf||TL.lf.platforms.includes(k)?" checked":""}> ${l}</label>`).join("")}</fieldset>
+    <div class="tlrow"><label class="wsf">Post number<select id="tlSeries">${[1,2,3,4,5].map(n=>`<option${(TL.lf?.series||1)===n?" selected":""}>${n}</option>`).join("")}</select></label><label class="wsf">Reach<select id="tlScope">${[["LO","Local"],["IN","International"],["GL","Global"]].map(([k,l])=>`<option value="${k}"${(TL.lf?.scope||"LO")===k?" selected":""}>${l}</option>`).join("")}</select></label></div>
+    <div class="tpacts"><button class="btn small primary" data-tl-make>Make the links</button></div>
+    ${m?`<div class="wsprev">${m.map(x=>x.error?`<span class="bad">${esc(x.platform)}: ${esc(x.error)}</span>`:`<span class="anch sp"><span><b>${esc(({facebook:"Facebook",instagram:"Instagram",x:"X"})[x.platform]||x.platform)}</b> ${esc(x.short)}${x.reused?' <small class="src">(already existed)</small>':""}</span><button class="btn small" data-tl-copy="${esc(x.short)}">Copy</button></span>`).join("")}</div>`:""}
+    <span class="src">Made through Campaign Copilot, the same way the morning run makes them, so signatures come back by code from Looker each night. Post number is FB1–FB5: use a new number for each post on the same petition.</span></section>`;
+  const list=TL.err.links?`<p class="offline">Couldn't load the links (${esc(whyFailed(TL.err.links))}).</p>`:!L?`<p class="src">${TL.loading.links?"Loading…":""}</p>`:(()=>{const q=TL.q.toLowerCase();const rows=L.links.filter(l=>!q||[l.short,l.petition_title,l.used_in,l.campaign].some(v=>String(v||"").toLowerCase().includes(q)));
+    return `<section class="rsbox"><div class="rsbar"><h3>Your links</h3><span class="src">Last 90 days${L.pulled_at?` · signatures from Looker, pulled ${esc(new Date(L.pulled_at).toLocaleString("en-GB",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}))}`:""}</span><input id="tlQ" class="tlq" placeholder="Search links or petitions" value="${esc(TL.q)}"></div>
+      ${rows.length?`<div class="awrap"><table class="atbl"><thead><tr><th>Link</th><th>Used in</th><th>Made</th><th class="n">Signatures</th><th></th></tr></thead><tbody>${rows.map(l=>`<tr><td><b>${esc(String(l.short||"").replace(/^https?:\/\//,""))||"—"}</b><br><small class="src">${esc(l.petition_title||l.petition_url||"")}</small></td><td>${l.used_in?esc(l.used_in):'<span class="src">Made here</span>'}<br><small class="src">${esc(({facebook:"Facebook",instagram:"Instagram",x:"X"})[l.platform]||l.platform||"")}</small></td><td><small class="src">${esc(l.by||"")}${l.by?" · ":""}${esc(String(l.at||"").slice(0,10))}</small></td><td class="n"><b>${anN(l.signatures)}</b></td><td>${l.short?`<button class="btn small" data-tl-copy="${esc(l.short)}">Copy</button>`:""}</td></tr>`).join("")}</tbody></table></div>`:`<p class="src">No links${q?" match":" yet"}.</p>`}
+      <span class="src">Clicks aren't shown: the shortener's click data isn't collected yet.</span></section>`})();
+  return `<div class="tlsplit">${form}${list}</div>`}
+function tlMake(){const k=TL.mk;const clips=Object.entries(S.requests||{}).map(([id,r])=>({id,...r})).filter(r=>r.kind==="clip"&&r.team===S.team).sort((a,b)=>String(b.at).localeCompare(String(a.at))).slice(0,8);
+  const g=`<section class="rsbox tlform"><h3>Make a graphic</h3><span class="src">The same designs as a post, without starting one.</span>
+    <label class="wsf">Design<select id="mkT">${SWITCH_T.map(([v,l])=>`<option value="${v}"${v===k.T?" selected":""}>${esc(l)}</option>`).join("")}</select></label>
+    <label class="wsf">Small line above <small>(optional)</small><input id="mkKick" value="${esc(k.kicker)}" placeholder="e.g. BREAKING"></label>
+    <label class="wsf">Headline <small>(put *stars* round words to highlight them)</small><textarea id="mkHl" rows="2" placeholder="Let the church *preach*">${esc(k.headline)}</textarea></label>
+    <label class="wsf">Line underneath <small>(optional)</small><input id="mkSub" value="${esc(k.sub)}"></label>
+    <label class="wsf">Photo <small>(optional, stays on your computer)</small><input type="file" id="mkPhoto" accept="image/*"></label>
+    <div class="mkprev"><canvas id="mkCanvas" aria-label="Preview of the graphic"></canvas></div>
+    <div class="tpacts"><button class="btn small primary" data-mk-dl>Download</button></div></section>`;
+  const c=`<section class="rsbox tlform"><h3>Clip a video</h3><span class="src">Paste a parliamentlive.tv, YouTube or TV link we're allowed to use and the moment you want. The next morning run cuts it on the Mini and it appears below.</span>
+    <label class="wsf">Link<input id="clUrl" placeholder="https://parliamentlive.tv/event/index/..."></label>
+    <div class="tlrow"><label class="wsf">From <small>(h:mm:ss)</small><input id="clFrom" placeholder="14:32"></label><label class="wsf">To<input id="clTo" placeholder="16:46"></label></div>
+    <label class="wsf">What it is <small>(for the list)</small><input id="clTitle" placeholder="Peer's speech, Lords committee"></label>
+    <fieldset class="wsf"><legend>Versions</legend>${[["reel","Reel 9:16"],["facebook","Facebook 4:5"],["x","X 16:9"]].map(([v,l])=>`<label><input type="checkbox" data-cl-v="${v}" checked> ${l}</label>`).join("")}</fieldset>
+    <label class="dest"><input type="checkbox" id="clRights"> I've checked we can use this footage (Parliament's Recording Unit terms, or the broadcaster's)</label>
+    <div class="tpacts"><button class="btn small primary" data-cl-go>Ask for the cut</button></div>${TL.clipMsg?`<span class="src">${esc(TL.clipMsg)}</span>`:""}
+    ${clips.length?`<div class="wsprev"><b>Your team's clips</b>${clips.map(r=>`<div class="anch sp"><span>${esc(r.title||r.url)} <small class="src">${esc(r.start||"")}–${esc(r.end||"")} · ${esc(String(r.at||"").slice(0,10))}</small></span><span>${r.status==="done"&&(r.files||[]).length?r.files.map(f=>`<button class="btn small" data-cl-dl="${esc(r.id)}" data-path="${esc(f.path)}">${esc(f.version||"file")}</button>`).join(" "):`<span class="src">${r.status==="failed"?"Couldn't cut: "+esc(r.error||""):"Waiting for the next run"}</span>`}</span></div>`).join("")}</div>`:""}</section>`;
+  return `<div class="tlsplit">${g}${c}</div>`}
+const TL_ICON={bad:"⛔",warn:"⚠",info:"ℹ",ok:"✓"};
+function tlHealth(){const H=TL.health;if(TL.err.health)return `<p class="offline">Couldn't run the check (${esc(whyFailed(TL.err.health))}).</p>`;if(!H)return `<p class="src">${TL.loading.health?"Checking…":""}</p>`;
+  const t=(S.teams||[]).find(x=>x.id===S.team);const n=H.checks.filter(c=>c.level==="bad"||c.level==="warn").length;
+  return `<div class="rsbar"><b>${esc(t?((t.flag||"")+" "+t.name).trim():S.team)}: ${n?`${n} thing${n===1?"":"s"} to look at`:"all good"}</b><span class="src">Checked ${esc(new Date(H.checked_at).toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"}))}</span><button class="btn small" data-tl-recheck>Check again</button></div>
+    <section class="rsbox">${H.checks.map(c=>`<div class="tlcheck ${c.level}"><b class="tli" aria-hidden="true">${TL_ICON[c.level]}</b><span><b>${esc(c.title)}</b><br><span class="src">${esc(c.detail)}</span></span></div>`).join("")}</section>
+    <p class="src" style="margin:0">Who can post, reply and moderate is in Settings › Team and access. Nothing here changes anything.</p>`}
+function renderTools(){const el=$("#toolsView");if(!el||el.hidden)return;
+  const body=TL.tab==="inviter"?tlInviter():TL.tab==="links"?tlLinks():TL.tab==="make"?tlMake():TL.tab==="health"?tlHealth():tlHome();
+  el.innerHTML=`<div><h2>${esc((TL_TABS.find(x=>x[0]===TL.tab)||[])[1]||"Tools")}</h2></div><div class="egbar"><span class="tabs">${TL_TABS.map(([k,l])=>`<button class="tab" data-tl-tab="${k}" aria-pressed="${TL.tab===k}">${l}</button>`).join("")}</span></div>`+body;
+  if(TL.tab==="make")mkDraw()}
+function mkCard(){const k=TL.mk;return switchTemplate({kicker:k.kicker,headline:k.headline||"Your headline here",sub:k.sub,photo:k.photo?{url:k.photo}:null},k.T)}
+function mkDraw(){const cv=$("#mkCanvas");if(!cv)return;try{drawCard({id:"tool-make",card:mkCard()},cv,mkCard())}catch(e){console.warn(e)}}
+document.addEventListener("click",async ev=>{const tb=ev.target.closest("[data-tl-tab]");if(tb){TL.tab=tb.dataset.tlTab;renderSide();loadTools();return}
+  const dd=ev.target.closest("[data-pi-days]");if(dd){TL.days=Number(dd.dataset.piDays);TL.inv=null;loadTools();return}
+  if(ev.target.closest("[data-tl-recheck]")){TL.health=null;loadTools();return}
+  const cp=ev.target.closest("[data-tl-copy]");if(cp){try{await navigator.clipboard.writeText(cp.dataset.tlCopy);toast("Copied")}catch(e){toast(cp.dataset.tlCopy)}return}
+  if(ev.target.closest("[data-tl-make]")){const b=ev.target.closest("[data-tl-make]");TL.lf={url:$("#tlUrl").value.trim(),title:$("#tlTitle").value.trim(),platforms:[...document.querySelectorAll("[data-tl-plat]")].filter(x=>x.checked).map(x=>x.dataset.tlPlat),series:Number($("#tlSeries").value)||1,scope:$("#tlScope").value};
+    if(!TL.lf.url){toast("Paste the petition link first");return}b.disabled=true;b.textContent="Making…";
+    try{const r=await eng("engine_links",{action:"make",team:S.team,...TL.lf});TL.made=r.links||[];if(r.ok===false&&!(r.links||[]).length)toast(r.error||"Couldn't make the links");else{TL.links=null;loadTools()}}catch(e){failToast(e,"Couldn't make the links")}renderTools();return}
+  if(ev.target.closest("[data-mk-dl]")){const cv=$("#mkCanvas");if(!cv)return;cv.toBlob(async b=>{if(!b)return;const name=`citizengo-${TL.mk.T}-${Date.now()}.png`;try{if(S.downloads)await S.downloads.save({filename:name,data:b,mimeType:"image/png"});else{const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download=name;a.click()}}catch(e){failToast(e,"Couldn't download it")}},"image/png");return}
+  if(ev.target.closest("[data-cl-go]")){const url=$("#clUrl").value.trim(),from=$("#clFrom").value.trim(),to=$("#clTo").value.trim();const versions=[...document.querySelectorAll("[data-cl-v]")].filter(x=>x.checked).map(x=>x.dataset.clV);
+    if(!/^https:\/\//.test(url)){toast("Paste the video's https link");return}if(!/^\d{1,2}(:\d{2}){1,2}$/.test(from)||!/^\d{1,2}(:\d{2}){1,2}$/.test(to)){toast("Give From and To as minutes:seconds, e.g. 14:32");return}if(!versions.length){toast("Pick at least one version");return}
+    if(!$("#clRights").checked){toast("Tick that we can use this footage first");return}if(!S.db){toast("Can't save requests here");return}
+    const id="clip-"+S.team+"-"+Date.now().toString(36);try{await S.db.doc("videoRequests/"+id).set({kind:"clip",team:S.team,url,start:from,end:to,title:$("#clTitle").value.trim().slice(0,120),versions,rightsCheckedBy:S.me,status:"requested",by:S.me,at:new Date().toISOString()});S.requests=S.requests||{};S.requests[id]={kind:"clip",team:S.team,url,start:from,end:to,title:$("#clTitle").value.trim(),status:"requested",at:new Date().toISOString()};TL.clipMsg="Requested. The next morning run cuts it; it'll appear in the list below.";renderTools()}catch(e){failToast(e,"Couldn't request the cut")}return}
+  const cd=ev.target.closest("[data-cl-dl]");if(cd){try{const r=await eng("engine_preview",{clip:cd.dataset.clDl,team:S.team,path:cd.dataset.path});if(r&&r.url)window.open(r.url,"_blank","noopener");else toast((r&&r.error)||"Couldn't get the file")}catch(e){failToast(e,"Couldn't get the file")}return}});
+document.addEventListener("input",ev=>{const t=ev.target;if(t.id==="tlQ"){TL.q=t.value;const pos=t.selectionStart;renderTools();const n=$("#tlQ");if(n){n.focus();n.setSelectionRange(pos,pos)}return}
+  const map={mkKick:"kicker",mkHl:"headline",mkSub:"sub"};if(map[t.id]){TL.mk[map[t.id]]=t.value;mkDraw()}});
+document.addEventListener("change",ev=>{const t=ev.target;if(t.id==="mkT"){TL.mk.T=t.value;mkDraw()}else if(t.id==="mkPhoto"&&t.files&&t.files[0]){const r=new FileReader();r.onload=()=>{TL.mk.photo=r.result;mkDraw();setTimeout(mkDraw,300)};r.readAsDataURL(t.files[0])}});
 document.addEventListener("click",async ev=>{if(!ev.target.closest("[data-pi-dl]"))return;try{const r=await window.deskFile(PI_INFO.zip);location.href=r.url}catch(e){toast(e.message||"Couldn't get the download")}});
-document.addEventListener("click",ev=>{const d=ev.target.closest("[data-pi-days]");if(d){TL.days=Number(d.dataset.piDays);TL.usage=null;loadTools()}});
 function renderSettings(){const el=$("#stBody");if(!el)return;const rights=new Set(S.rights||[]),conn=new Set(S.connected||[]);
   el.innerHTML=(S.teams||[]).map(t=>`<div class="ibd"><b>${esc(((t.flag||"")+" "+t.name).trim())}</b><span class="src">Your role: ${esc(t.role||"editor")}${t.role==="admin"?" (you can change this team's auto-hide list and automations)":""}</span>
     <div class="awrap"><table class="atbl"><thead><tr><th>Account</th><th>Can you post and reply?</th></tr></thead><tbody>${(t.accounts||[]).map(a=>`<tr><td>${esc(a.name||a.key)} <small class="src">${esc(a.platform)}</small></td><td>${a.platform==="x"?"Posted by hand: copy the text from the post":conn.has(a.key)?"✓ Yes, through your Facebook connection":rights.has(a.key)?"✓ Yes, set up by hand (connect Facebook to confirm it)":"🔒 No: you need a role on this Page in Facebook"}</td></tr>`).join("")}</tbody></table></div></div>`).join("")||`<p class="src">You aren't in a Content Engine team yet.</p>`;
@@ -3893,7 +3980,7 @@ document.addEventListener("click",ev=>{
 });
 document.addEventListener("change",ev=>{if(ev.target.matches?.("[data-cal-country]")){CAL.country=ev.target.value;renderCal()}});
 document.addEventListener("click",ev=>{const c=ev.target.closest("[data-cal-copy]");if(c){ev.stopPropagation();copyAsIdea(c);return}if(ev.target.closest("[data-cal-country-back]")){CAL.country="";renderCal()}});
-document.addEventListener("change",ev=>{if(ev.target.id!=="fTeam")return;CAL.data=null;CAL.ahead=null;CAL.country="";ACC.data=null;S.team=ev.target.value;teamPref(S.team);S.openId=null;S.drafts=[];resetDraftUi();renderTeams();PLAN.reqs=[];EG.posts=[];EG.loaded=false;IB.items=[];IB.open=null;IB.thread=[];AN.data=null;LS.data=null;if(S.view==="listening")loadListening();else if(S.view==="analytics")loadAnalytics();else if(S.view==="inbox")loadInbox();else if(S.view==="calendar")loadCal();else if(S.view==="plan")loadPlan();else if(S.view==="evergreen")loadEvergreen();else renderAll();refreshPosts()});
+document.addEventListener("change",ev=>{if(ev.target.id!=="fTeam")return;CAL.data=null;CAL.ahead=null;CAL.country="";ACC.data=null;S.team=ev.target.value;teamPref(S.team);S.openId=null;S.drafts=[];resetDraftUi();renderTeams();PLAN.reqs=[];EG.posts=[];EG.loaded=false;IB.items=[];IB.open=null;IB.thread=[];AN.data=null;LS.data=null;TL.links=null;TL.health=null;TL.made=null;if(S.view==="listening")loadListening();else if(S.view==="analytics")loadAnalytics();else if(S.view==="inbox")loadInbox();else if(S.view==="calendar")loadCal();else if(S.view==="plan")loadPlan();else if(S.view==="evergreen")loadEvergreen();else renderAll();refreshPosts()});
 (async()=>{
   const [db,user,downloads,sample,assets,mcp]=await Promise.all(["db","user","downloads","sample","assets","mcp"].map(n=>window.claude?.use?window.claude.use(n).catch(()=>null):Promise.resolve(null)));
   S.downloads=downloads;S.sample=sample;S.user=user;S.assets=assets;S.mcp=mcp;
@@ -3905,7 +3992,7 @@ document.addEventListener("change",ev=>{if(ev.target.id!=="fTeam")return;CAL.dat
   const saved=teamPref();S.team=(S.teams.find(t=>t.id===saved)||S.teams.find(t=>t.id!=="global")||S.teams[0]).id;
   renderTeams();renderConnect();renderPause();
   S.db=engineStore(db);
-  if(db)db.collection("videoRequests").onSnapshot(snap=>{S.requests={};snap.docs.forEach(x=>S.requests[x.id]=x.data());if(!(S.editing&&$("#editText"))&&!busy())renderDetail();else S.renderWaiting=true},()=>{});
+  if(db)db.collection("videoRequests").onSnapshot(snap=>{S.requests={};snap.docs.forEach(x=>S.requests[x.id]=x.data());if(S.view==="tools"&&TL.tab==="make"&&!document.activeElement?.closest?.("#toolsView"))renderTools();if(!(S.editing&&$("#editText"))&&!busy())renderDetail();else S.renderWaiting=true},()=>{});
   await refreshPosts();loadInbox();renderSide();
   if(db)try{db.collection("analyticsGroups").onSnapshot(snap=>{AN.groups=snap.docs.map(x=>x.data());if(S.view==="analytics")renderAnalytics()},()=>{})}catch(e){}
   if(db)try{db.collection("listenVoices").onSnapshot(snap=>{LS.voices=snap.docs.map(x=>x.data())},()=>{})}catch(e){}

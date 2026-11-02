@@ -991,6 +991,112 @@ async function countriesCompute(store, ctx, days, now = Date.now()) {
   return json({ scope: 'countries', days, to: ymd(now), weeks: weekly.weeks, teams: out });
 }
 
+// Tools section (Nov 2026). Page Inviter results: the extension's own daily
+// reports per Page, the window before, the Pages' new follows over the same
+// days, and each Page's most-reacted posts of the last 30 days.
+async function engineInviter(store, args, { who }) {
+  const ctx = await context(store, who);
+  if (!ctx.maintainer && !Object.keys(ctx.myTeams).length) throw err('Join a Content Engine team first.', 'ENGINE_NOT_MEMBER');
+  const days = [7, 30, 90].includes(Number(args.days)) ? Number(args.days) : 30;
+  const T = require('../lib/tools-extra');
+  const { TOOLS } = require('./tools');
+  const run = (name, a) => TOOLS.find((t) => t.name === name).handler(store, a);
+  const ymd = (t) => new Date(t).toISOString().slice(0, 10);
+  const now = Date.now();
+  const all = store.inviterUsage ? await store.inviterUsage({ since: ymd(now - (2 * days - 1) * 864e5) }).catch(() => []) : [];
+  const cut = ymd(now - (days - 1) * 864e5);
+  const rows = all.filter((r) => r.day >= cut), prev = all.filter((r) => r.day < cut);
+  const growth = ((await run('page_growth', { days }).catch(() => ({}))).data || {}).facebook || [];
+  const follows = Object.fromEntries(growth.map((g) => [g.name, { follows: g.newFollows ?? null, net: g.netFollows ?? null }]));
+  const out = T.inviterSummary(rows, prev, follows);
+  const tp = (((await run('top_posts', { days: 30, sort: 'recent', compact: true, limit: 1000 }).catch(() => ({}))).data || {}).rows || []);
+  const ids = new Set(out.pages.map((p) => p.page_id));
+  const posts = tp.filter((r) => ids.has(r.page_id) && typeof r.reactions_total === 'number').sort((a, b) => b.reactions_total - a.reactions_total).slice(0, 8)
+    .map((r) => ({ page: r.page_name, text: String(r.message || '').slice(0, 120), url: r.permalink_url, created_time: r.created_time, reactions: r.reactions_total, comments: r.comments_total }));
+  return json({ days, ...out, posts });
+}
+
+// Tracked links: every link the team's posts carry (made by the morning run)
+// and links made here, with the signatures Looker counted for each code.
+// action make: one Copilot link per network for a petition, saved for the list.
+async function engineLinks(store, args, { who }) {
+  const ctx = await context(store, who);
+  const team = String(args.team || '');
+  if (!E.canEditTeam(ctx, team)) throw err('You are not in that team.', 'ENGINE_NOT_MEMBER');
+  const T = require('../lib/tools-extra');
+  const D = require('../lib/desk');
+  if (args.action === 'make') {
+    const pet = T.petitionOf(String(args.url || ''));
+    if (!pet) return json({ ok: false, error: 'Paste a citizengo.org petition link (with its number in it).' });
+    const plats = (Array.isArray(args.platforms) ? args.platforms : []).filter((p) => ['facebook', 'instagram', 'x'].includes(p));
+    if (!plats.length) return json({ ok: false, error: 'Pick at least one network.' });
+    const series = Math.min(5, Math.max(1, Number(args.series) || 1));
+    const made = [];
+    for (const platform of plats) {
+      const a = T.copilotArgs(pet, { platform, series, scope: args.scope, title: args.title });
+      try {
+        const r = await copilot.call(store, 'generate_social_url', { channel: 'social', trafficType: 'organic', ...a });
+        if (!r || !r.shortUrl) { made.push({ platform, error: 'Copilot gave no short link.' }); continue; }
+        const doc = { team, platform, series, short: r.shortUrl, long: r.fullUrl, campaign: String(r.campaignName || '').toLowerCase(), petition_url: pet.url, petition_title: args.title ? String(args.title).slice(0, 200) : null, reused: !!r.reused, by: who, at: new Date().toISOString() };
+        await D.docsPut('toolLinks', `${team}-${doc.campaign || platform + Date.now()}`.slice(0, 190), doc, who).catch(() => {});
+        made.push(doc);
+      } catch (e) {
+        made.push({ platform, error: e.code === 'COPILOT_SIGNED_OUT' ? 'The engine is not signed in to Campaign Copilot: Chris runs npm run copilot:adopt.' : `Copilot: ${e.message}` });
+      }
+    }
+    return json({ ok: made.some((m) => !m.error), links: made });
+  }
+  const since = new Date(Date.now() - 90 * 864e5).toISOString();
+  const posts = store.enginePosts ? await store.enginePosts({ team_ids: [team], statuses: ['posted', 'scheduled', 'approved'], limit: 500 }).catch(() => []) : [];
+  const list = [];
+  for (const p of posts) {
+    const doc = p.doc || {}; const at = (doc.posted && doc.posted.at) || p.post_at || p.updated_at || '';
+    if (at < since) continue;
+    for (const [plat, l] of Object.entries(doc.links || {})) if (l && (l.short || l.campaign)) list.push({ short: l.short || null, long: l.long || null, campaign: String(l.campaign || '').toLowerCase() || null, platform: plat, used_in: p.title, post_id: p.id, status: p.status, petition_title: (doc.action && doc.action.title) || null, petition_url: (doc.action && doc.action.url) || null, by: l.via === 'copilot' ? 'Morning run' : null, at: l.at || at });
+  }
+  const mine = (await D.docsList('toolLinks', { team }).catch(() => [])).map((r) => r.data || {}).filter((d) => d.team === team);
+  for (const d of mine) if (!list.some((x) => x.short && x.short === d.short)) list.push({ ...d, used_in: null, made_here: true });
+  const sig = store.engineSignatures ? await store.engineSignatures({ codes: list.map((l) => l.campaign).filter(Boolean) }).catch(() => []) : [];
+  const by = {}; let pulled = null;
+  for (const r of sig) { const k = r.campaign_code; const o = by[k] = by[k] || { signatures: 0, new_members: 0 }; o.signatures += Number(r.signatures) || 0; o.new_members += Number(r.new_members) || 0; if (!pulled || r.pulled_at > pulled) pulled = r.pulled_at; }
+  for (const l of list) Object.assign(l, by[l.campaign] || { signatures: 0, new_members: 0 });
+  list.sort((a, b) => String(b.at).localeCompare(String(a.at)));
+  return json({ team, links: list.slice(0, 300), pulled_at: pulled });
+}
+
+// Health check for a team: who can post where, pauses, and how fresh each
+// data feed is. Nothing is changed.
+async function engineHealth(store, args, { who }) {
+  const ctx = await context(store, who);
+  const team = teamById(ctx, String(args.team || ''));
+  if (!team || !E.canEditTeam(ctx, team.id)) throw err('You are not in that team.', 'ENGINE_NOT_MEMBER');
+  const now = Date.now();
+  const keys = new Set((team.accounts || []).map((a) => a.key));
+  const pageIds = (team.accounts || []).filter((a) => a.platform === 'facebook' && a.page_id).map((a) => a.page_id);
+  const pagesAll = (await store.loadAll().catch(() => ({ pages: [] }))).pages || [];
+  const nameOf = Object.fromEntries(pagesAll.map((p) => [p.page_id, p.name]));
+  const twoDays = new Date(now - 2 * 864e5).toISOString();
+  const [tokens, rights, pauses, runs, peers, media, news, usage, sig] = await Promise.all([
+    store.engineConnectedTokens ? store.engineConnectedTokens().catch(() => []) : [],
+    store.engineMetaRights ? store.engineMetaRights().catch(() => []) : [],
+    store.enginePauses ? store.enginePauses().catch(() => []) : [],
+    store.latestRuns ? store.latestRuns(pageIds).catch(() => []) : [],
+    store.peerAccounts ? store.peerAccounts().catch(() => []) : [],
+    store.listenHashtagMedia ? store.listenHashtagMedia({ since: twoDays }).catch(() => []) : [],
+    store.listenNews ? store.listenNews({ since: twoDays }).catch(() => []) : [],
+    store.inviterUsage ? store.inviterUsage({ since: new Date(now - 90 * 864e5).toISOString().slice(0, 10) }).catch(() => []) : [],
+    store.engineSignatures ? store.engineSignatures({ markers: true }).catch(() => []) : [],
+  ]);
+  const inviterLast = {};
+  for (const r of usage) if (!inviterLast[r.page_id] || r.day > inviterLast[r.page_id]) inviterLast[r.page_id] = r.day;
+  const T = require('../lib/tools-extra');
+  const myPauses = pauses.filter((p) => p.scope === 'all' || p.team_id === team.id || (p.account_keys || []).some((k) => keys.has(k)));
+  const checks = T.healthChecks({ team, tokens: tokens.filter((t) => keys.has(t.account_key)), rights: rights.filter((r) => keys.has(r.account_key)), pauses: myPauses,
+    runs: runs.map((r) => ({ ...r, name: nameOf[r.page_id] })), sigPulled: sig.map((r) => r.pulled_at).filter(Boolean).sort().pop() || null,
+    peersChecked: peers.map((a) => a.last_checked_at).filter(Boolean).sort().pop() || null, listenRows: media.length, newsRows: news.length, inviterLast, now });
+  return json({ team: team.id, checked_at: new Date(now).toISOString(), checks });
+}
+
 // Listening [slice 3, 1 Nov]: posts beating their own normal, as data.
 // citizengo: other CitizenGO Pages' posts (not your team's), views against that
 // Page's 90-day median. allies / opponents: the watched Instagram accounts
@@ -1352,6 +1458,16 @@ async function engineVideo(store, args, { who }) {
 // the desk (collector/video-preview.js puts them in the post's own folder).
 async function enginePreview(store, args, { who }) {
   const ctx = await context(store, who);
+  // Tools › Clip a video: a team's own clips, cut on the Mini into <team>/clips/<id>/.
+  if (args.clip) {
+    const team = String(args.team || '');
+    if (!E.canEditTeam(ctx, team)) throw err('You are not in that team.', 'ENGINE_NOT_MEMBER');
+    const prefix = `${team}/clips/${String(args.clip).replace(/[^a-z0-9-]/gi, '-')}/`;
+    const p = String(args.path || '');
+    if (!p.startsWith(prefix) || p.includes('..') || !/\.mp4$/.test(p)) return json({ ok: false, error: 'That file is not part of this clip.' });
+    const url = await store.engineMediaUrl(p, 3600);
+    return url ? json({ ok: true, url, expires_in: 3600 }) : json({ ok: false, error: 'The clip could not be found.' });
+  }
   const post = await editablePost(store, ctx, args.id);
   const prefix = `${post.team_id}/${String(post.id).replace(/[^a-z0-9-]/gi, '-')}/preview-`;
   const p = String(args.path || '');
@@ -1412,6 +1528,9 @@ const ENGINE_TOOLS = [
   { name: 'engine_inbox_rule', description: 'Content Engine Inbox: add to or remove from a team\'s auto-hide list (team admins). add: kind word (whole word), phrase (anywhere), links (any link that isn\'t citizengo.org or cgo.ac) or scams (the built-in scam phrases), with value for word and phrase. remove: id. New comments that match are hidden (never deleted) as you, and labelled auto-hidden.', inputSchema: obj({ action: { type: 'string', enum: ['add', 'remove'] }, team: { type: 'string' }, kind: { type: 'string', enum: ['word', 'phrase', 'links', 'scams'] }, value: { type: 'string' }, id: { type: 'number' } }, ['action', 'team']), handler: engineInboxRule },
   { name: 'engine_inbox_alert', description: 'Content Engine Inbox: mark a pile-on alert (from engine_inbox alerts) as seen, so it leaves the desk for everyone in the team.', inputSchema: obj({ team: { type: 'string' }, id: { type: 'number' } }, ['team', 'id']), handler: engineInboxAlert },
   { name: 'engine_access', description: "Content Engine Settings › Team and access for one of your teams: each person's role, initials (used in tracked links) and, per Facebook and Instagram account, whether they can post, reply and DM, and moderate (from their own Facebook connection, or set up by hand), plus Analytics per team. Team admins narrow access (action limit: who, account_key or '*' for Analytics, post / reply / moderate / analytics true or false; turning one back on only restores what Facebook already allows, it never widens). Anyone sets their own initials, admins anyone's (action initials: who, initials).", inputSchema: obj({ action: { type: 'string', enum: ['list', 'limit', 'initials'] }, team: { type: 'string' }, who: { type: 'string' }, account_key: { type: 'string' }, post: { type: 'boolean' }, reply: { type: 'boolean' }, moderate: { type: 'boolean' }, analytics: { type: 'boolean' }, initials: { type: 'string' } }, ['team']), handler: engineAccess },
+  { name: 'engine_inviter', description: 'Content Engine Tools: Page Inviter results as data: invites per Page and person (from the extension\'s reports) for the last 7, 30 or 90 days against the window before, the Pages\' new follows over the same days, and the most-reacted posts of the last 30 days on those Pages.', inputSchema: obj({ days: { type: 'number', enum: [7, 30, 90] } }), handler: engineInviter },
+  { name: 'engine_links', description: 'Content Engine Tools: tracked links. action list (default): a team\'s links from its posts (90 days) and links made here, each with Looker signatures by campaign code. action make: url (citizengo.org petition), title, platforms [facebook, instagram, x], series 1-5, scope LO/IN/GL: one Campaign Copilot link per network, saved for the list.', inputSchema: obj({ action: { type: 'string', enum: ['list', 'make'] }, team: { type: 'string' }, url: { type: 'string' }, title: { type: 'string' }, platforms: { type: 'array', items: { type: 'string' } }, series: { type: 'number' }, scope: { type: 'string' } }), handler: engineLinks },
+  { name: 'engine_health', description: 'Content Engine Tools: health check for a team: who can post to each account, pauses, and how fresh the Facebook figures, Looker signatures, ally and opponent watch, hashtags and news, and Page Inviter runs are. Read only.', inputSchema: obj({ team: { type: 'string' } }), handler: engineHealth },
   { name: 'engine_copilot_link', description: "Content Engine: make one Campaign Copilot tracked link with the engine's Copilot sign-in. args = one copilotArgs object from make_links.py --dry-run (assetType petition, petitionId, ctaFamilyCode, platformCode, seriesFlow FB1-5/IG1-5/TW1-5, listCode, topicCode, scopeCode, campaignTitle). Returns link {short, long, campaign, linkId, via, at} to write into the post's links for that platform. Asking twice with the same args returns the same link.", inputSchema: obj({ args: { type: 'object' } }, ['args']), handler: engineCopilotLink },
   { name: 'engine_desk_docs', description: "Content Engine desk documents (formerly the board artifact's collections): feedback (reviewers' decisions and notes), videoRequests (requested video cuts) and results (one row per checked post). action list: collection, optional since (ISO time; newer only), status, limit; newest first. action put: collection, id (omit to create), data, merge (true updates fields, e.g. a video request's status).", inputSchema: obj({ action: { type: 'string', enum: ['list', 'put'] }, collection: { type: 'string', enum: ['feedback', 'videoRequests', 'results'] }, since: { type: 'string' }, status: { type: 'string' }, limit: { type: 'number' }, id: { type: 'string' }, data: { type: 'object' }, merge: { type: 'boolean' } }, ['collection']), handler: engineDeskDocs },
   { name: 'engine_ai_job', description: "Content Engine Desk AI helper: the web desk's AI requests are answered with the requester's own Claude. action get (id): the request's prompt (yours only). action complete (id, text): save the answer for the desk. action fail (id, error).", inputSchema: obj({ action: { type: 'string', enum: ['get', 'complete', 'fail'] }, id: { type: 'string' }, text: { type: 'string' }, error: { type: 'string' } }, ['id']), handler: engineAiJob },
@@ -1429,7 +1548,7 @@ const ENGINE_TOOLS = [
   { name: 'engine_request', description: 'Content Engine Plan: ask the daily engine to draft a post for a date (action create: team, for_date YYYY-MM-DD, title, optional angle, source key_date or idea), cancel an open request (action cancel: id), or record that it was drafted (action drafted: id, post_id).', inputSchema: obj({ action: { type: 'string', enum: ['create', 'cancel', 'drafted'] }, id: { type: 'number' }, team: { type: 'string' }, for_date: { type: 'string' }, title: { type: 'string' }, angle: { type: 'string' }, source: { type: 'string', enum: ['key_date', 'idea', 'evergreen'] }, evergreen_id: { type: 'number' }, post_id: { type: 'string' } }, ['action']), handler: engineRequest },
   { name: 'engine_evergreen', description: 'Content Engine evergreen bank for one of your teams: past winners with their state (due, coming, resting, retired), due date and any open fresh-draft request. Due 10 weeks after a post last went out.', inputSchema: obj({ team: { type: 'string' } }, ['team']), handler: engineEvergreen },
   { name: 'engine_evergreen_update', description: 'Content Engine evergreen bank: add a past winner (action add: team, title, last_out YYYY-MM-DD, optional url, format, account_key, result, why), or snooze it 4 weeks, retire, restore, or record that a fresh version went out (went_out, optional last_out) by id.', inputSchema: obj({ action: { type: 'string', enum: ['add', 'snooze', 'retire', 'restore', 'went_out'] }, id: { type: 'number' }, team: { type: 'string' }, title: { type: 'string' }, last_out: { type: 'string' }, url: { type: 'string' }, format: { type: 'string' }, account_key: { type: 'string' }, result: { type: 'string' }, why: { type: 'string' }, source_post: { type: 'string' } }, ['action']), handler: engineEvergreenUpdate },
-  { name: 'engine_preview', description: "Content Engine: a 1-hour signed link to play a video preview stored for a post (path from the post's video.preview or a videoSuggestions entry's preview), for the desk's trimmer.", inputSchema: obj({ id: { type: 'string' }, path: { type: 'string' } }, ['id', 'path']), handler: enginePreview },
+  { name: 'engine_preview', description: "Content Engine: a 1-hour signed link to play a video preview stored for a post (path from the post's video.preview or a videoSuggestions entry's preview), for the desk's trimmer. Or clip + team: a file from that team's clip (Tools › Clip a video).", inputSchema: obj({ id: { type: 'string' }, clip: { type: 'string' }, team: { type: 'string' }, path: { type: 'string' } }, ['path']), handler: enginePreview },
   { name: 'engine_media', description: 'Content Engine: store one finished image (base64 JPEG or PNG, up to 3 MB) for a post you can edit, for Facebook or Instagram (index 0-9 for carousels), or platform story for the Instagram Story frames (index 0-9, in order). Returns its path for the post\'s final snapshot.', inputSchema: obj({ id: { type: 'string' }, platform: { type: 'string', enum: ['facebook', 'instagram', 'story'] }, index: { type: 'number' }, mime: { type: 'string', enum: ['image/jpeg', 'image/png'] }, data: { type: 'string' } }, ['id', 'platform', 'mime', 'data']), handler: engineMedia },
   { name: 'engine_connect', description: 'Content Engine: a ten-minute link that connects your own Facebook account, so the Pages you can post to become your publishing rights.', inputSchema: obj({}), handler: engineConnect },
   { name: 'engine_calendar', description: 'Content Engine calendar: every team\'s scheduled and posted items (read-only for teams you are not in) plus your own teams\' drafts and holds, and the key dates (CitizenGO-wide and your teams\' own), between from and to (YYYY-MM-DD).', inputSchema: obj({ from: { type: 'string' }, to: { type: 'string' } }), handler: engineCalendar },

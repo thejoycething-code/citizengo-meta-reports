@@ -92,6 +92,15 @@ const reqWith = (cookie, headers = {}) => ({ headers: { cookie, ...headers } });
     await D.emitEvent({ topic: 'secret', by: 'x' }).then(() => 'ok', (e) => e.status),
   ], [0, [['chris', true, 'c1'], ['tobias', false, 'c1']], [['assigned', 'tobias', 'chris']], 0, 400]);
 
+  {
+    // Every engine tool the desk page calls must be on the web desk's allowlist.
+    const fs = require('fs');
+    const h = fs.readFileSync(require('path').join(__dirname, '..', 'desk', 'index.html'), 'utf8');
+    const used = new Set([...h.matchAll(/eng\("([a-z_]+)"/g)].map((m) => m[1]).concat([...h.matchAll(/callTool\(ENGINE,"([a-z_]+)"/g)].map((m) => m[1])));
+    const a = fs.readFileSync(require('path').join(__dirname, '..', 'api', 'desk.js'), 'utf8');
+    const allow = new Set([...a.match(/DESK_TOOLS = new Set\(\[([\s\S]*?)\]\)/)[1].matchAll(/'([a-z_]+)'/g)].map((m) => m[1]));
+    eq('desk: every tool the page calls is allowed for the web desk', [...used].filter((t) => !allow.has(t)).join(','), '');
+  }
   console.log(`\n${pass} passed, ${fail} failed`);
   process.exit(fail ? 1 : 0);
 })().catch((e) => { console.error(e); process.exit(1); });
