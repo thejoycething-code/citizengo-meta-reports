@@ -18,6 +18,14 @@
     {
       "source": "/.well-known/openid-configuration",
       "destination": "/api/oauth/metadata?doc=authorization-server"
+    },
+    {
+      "source": "/links/:slug/go/:go",
+      "destination": "/api/bio?slug=:slug&go=:go"
+    },
+    {
+      "source": "/links/:slug",
+      "destination": "/api/bio?slug=:slug"
     }
   ],
   "headers": [

@@ -810,6 +810,36 @@ async function engineInboxHistory(store, args, { who }) {
   return json({ team, actions: await store.engineInboxActions({ team_ids: [team], limit: Math.min(500, Number(args.limit) || 200) }) });
 }
 
+// Tools › Link in bio [Phase 3, chosen 2 Nov]: the team's public page
+// (/links/<slug>) and its buttons. action get (default): settings, every
+// button with whether it shows and its clicks in the last 30 days. action
+// save: slug, title, intro, auto and the saved buttons (pinned, featured,
+// hidden, retitled, dated or added by hand).
+async function engineBio(store, args, { who }) {
+  const B = require('../lib/bio');
+  const ctx = await context(store, who);
+  const team = teamById(ctx, String(args.team || ''));
+  if (!team || !E.canEditTeam(ctx, team.id)) throw err('You are not in that team.', 'ENGINE_NOT_MEMBER');
+  let bio = await store.engineBio({ team_id: team.id });
+  if (args.action === 'save') {
+    const set = B.checkSettings({ slug: args.slug || (bio && bio.slug) || team.id, title: args.title != null ? args.title : bio && bio.title, intro: args.intro != null ? args.intro : bio && bio.intro, auto: args.auto != null ? args.auto : !(bio && bio.auto === false) });
+    if (set.error) throw err(set.error, 'ENGINE_REFUSED');
+    const items = Array.isArray(args.items) ? args.items.slice(0, 40).map(B.cleanItem).filter(Boolean) : (bio && bio.items) || [];
+    try { bio = await store.engineSaveBio({ team_id: team.id, ...set, items, updated_at: new Date().toISOString(), updated_by: who }); }
+    catch (e) { if (e.status === 409) throw err('Another team already uses that page address.', 'ENGINE_REFUSED'); throw e; }
+  }
+  bio = bio || { team_id: team.id, slug: team.id, title: `CitizenGO ${team.name || ''}`.trim(), intro: '', auto: true, items: [], unsaved: true };
+  const L = await B.load(store, { team, bio });
+  const since = new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10);
+  const clicks = {};
+  if (!bio.unsaved) for (const c of await store.engineBioClicks({ slug: bio.slug, since }).catch(() => [])) clicks[c.item_id] = (clicks[c.item_id] || 0) + (c.clicks || 0);
+  const shown = new Set(L.shown.map((i) => i.id));
+  const savedIds = new Set(((!bio.unsaved && bio.items) || []).map((i) => String(i.id)));
+  return json({ team: team.id, bio: { slug: bio.slug, title: bio.title, intro: bio.intro || '', auto: bio.auto !== false, saved: !bio.unsaved, updated_at: bio.updated_at || null, updated_by: bio.updated_by || null },
+    path: `/links/${bio.slug}`, items: L.all.map((i) => ({ ...i, saved: savedIds.has(i.id), shown: shown.has(i.id), clicks: clicks[i.id] || 0, last_posted: (L.auto.find((a) => a.id === i.id) || {}).last_posted || null })),
+    total_clicks: Object.values(clicks).reduce((a, b) => a + b, 0), auto_days: B.AUTO_DAYS });
+}
+
 // Calendar › Instagram grid [Phase 3, chosen 2 Nov]: each of the team's
 // Instagram accounts with its latest posts from the nightly collection, so
 // the desk can lay the planned posts on top of the live profile.
@@ -1589,6 +1619,7 @@ const ENGINE_TOOLS = [
   { name: 'engine_ai_job', description: "Content Engine Desk AI helper: the web desk's AI requests are answered with the requester's own Claude. action get (id): the request's prompt (yours only). action next: your newest unanswered request from the last 30 minutes, with its id. action complete (id, text): save the answer for the desk. action fail (id, error).", inputSchema: obj({ action: { type: 'string', enum: ['get', 'next', 'complete', 'fail'] }, id: { type: 'string' }, text: { type: 'string' }, error: { type: 'string' } }, []), handler: engineAiJob },
   { name: 'engine_automations', description: 'Content Engine comment-to-DM automations for one of your teams: each rule\'s keywords, private message, public replies (taking turns), what it applies to (one post, a post type, or every post; the most specific wins), Facebook and/or Instagram, tag and hand-over, whether it is on, and its last 7 days (queued, sent, failed, and per step). paused: Pause everything is holding the team\'s accounts, so automations are held too.', inputSchema: obj({ team: { type: 'string' } }, ['team']), handler: engineAutomationsList },
   { name: 'engine_automation', description: 'Content Engine: add or update a comment-to-DM automation (team admins; name, keywords (whole words), dm_text with the real cgo.ac link, reply_texts (up to 5 public replies, taking turns), scope all / type (post_type petition, prayer, reel, wins, news) / post (thread_id), platforms facebook and/or instagram, skip_repeat (someone who already got the link just gets a like; default on), tag, hand_to (who to assign the comment to)), or pause, resume or remove one (id). A new comment with a keyword gets the private message (and a public reply) as you, through the Mini, at most one per comment and 200 per rule a day; Pause everything holds them too.', inputSchema: obj({ action: { type: 'string', enum: ['add', 'update', 'pause', 'resume', 'remove'] }, team: { type: 'string' }, id: { type: 'number' }, name: { type: 'string' }, keywords: { type: 'array', items: { type: 'string' } }, dm_text: { type: 'string' }, reply_text: { type: 'string' }, reply_texts: { type: 'array', items: { type: 'string' } }, scope: { type: 'string', enum: ['all', 'type', 'post'] }, post_type: { type: 'string', enum: ['petition', 'prayer', 'reel', 'wins', 'news'] }, thread_id: { type: 'string' }, platforms: { type: 'array', items: { type: 'string', enum: ['facebook', 'instagram'] } }, skip_repeat: { type: 'boolean' }, tag: { type: 'string' }, hand_to: { type: 'string' } }, ['action', 'team']), handler: engineAutomation },
+  { name: 'engine_bio', description: 'Content Engine Tools › Link in bio for one of your teams: its public page (/links/<slug>), filled with the petitions the team linked to in the last 30 days plus saved buttons. action get (default) lists every button, whether it shows and its clicks in 30 days; action save sets slug, title, intro, auto (fill with recent campaigns) and items (id, title, url, petition_id, pinned, featured, hidden, starts, ends, auto).', inputSchema: obj({ team: { type: 'string' }, action: { type: 'string', enum: ['get', 'save'] }, slug: { type: 'string' }, title: { type: 'string' }, intro: { type: 'string' }, auto: { type: 'boolean' }, items: { type: 'array', items: { type: 'object' } } }, ['team']), handler: engineBio },
   { name: 'engine_ig_grid', description: 'Content Engine Calendar › Instagram grid for one of your teams: each Instagram account with its latest 12 posts (type, caption start, link, preview image, time) from the nightly collection.', inputSchema: obj({ team: { type: 'string' } }, ['team']), handler: engineIgGrid },
   { name: 'engine_inbox_team', description: 'Content Engine Inbox › Team for one of your teams: open conversations per person and unassigned, each person\'s replies and median first-reply time, what has waited over 2 hours, and comments arriving by hour (UK time) against reply times, over the last 7 days (days up to 30).', inputSchema: obj({ team: { type: 'string' }, days: { type: 'number' } }, ['team']), handler: engineInboxTeam },
   { name: 'engine_inbox_history', description: 'Content Engine Inbox moderation history for one of your teams: every reply, hide, delete, like, assignment, label and done, by whom, newest first.', inputSchema: obj({ team: { type: 'string' }, limit: { type: 'number' } }, ['team']), handler: engineInboxHistory },

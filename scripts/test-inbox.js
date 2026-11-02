@@ -70,6 +70,9 @@ function engine() {
     async engineInsertAutomation(row) { const a = { id: db.autos.length + 1, active: true, ...row }; db.autos.push(a); return clone(a); },
     async engineUpdateAutomation(id, team, fields) { const i = db.autos.findIndex((a) => a.id === id && a.team_id === team); if (i < 0) return null; if (fields === null) return db.autos.splice(i, 1)[0]; Object.assign(db.autos[i], fields); return clone(db.autos[i]); },
     async engineInboxAutomationUnchecked({ team_ids, since }) { return clone(db.inbox.filter((r) => team_ids.includes(r.team_id) && r.kind === 'comment' && r.platform === 'facebook' && !r.from_us && !r.automation_checked_at && r.created_at >= since)); },
+    async engineBio() { return null; },
+    async engineBioClicks() { return []; },
+    async linkPostsSince() { return []; },
     async engineInboxRules({ team_ids }) { return clone(db.rules.filter((r) => team_ids.includes(r.team_id))); },
     async engineInboxUnchecked({ team_ids, since }) { return clone(db.inbox.filter((r) => team_ids.includes(r.team_id) && r.kind === 'comment' && !r.from_us && !r.auto_checked_at && r.created_at >= since)); },
     async engineInsertInboxRule(row) { const r = { id: db.rules.length + 1, ...row }; db.rules.push(r); return clone(r); },
@@ -347,6 +350,8 @@ function fakeMeta() {
     eq('by post: the comments\' tone', ps.posts.find((p) => p.thread_id === '105_9').tone, { positive: 0, negative: 1, mixed: 0, neutral: 0 });
     const tm = await call(g, 'engine_inbox_team', { team: 'uk' }, 'chris');
     eq('team tool: answers with people, hours and waiting', [Array.isArray(tm.people), tm.hours.length, typeof tm.waiting.over_2h, tm.days], [true, 24, 'number', 7]);
+    const bio = await call(g, 'engine_bio', { team: 'uk' }, 'chris');
+    eq('bio tool: an unsaved page defaults to the team id', [bio.path, bio.bio.saved, Array.isArray(bio.items)], ['/links/uk', false, true]);
   }
 
   // Inbox › Team [Phase 3]: who has what, first-reply times, arrivals by hour.
