@@ -572,7 +572,7 @@ mark.new{background:var(--ok-soft);color:var(--fg);border-radius:3px}
 <div class="help" id="pvDlg" hidden role="dialog" aria-modal="true" aria-label="Preview"><div class="helpbox" id="pvBox" style="max-width:min(760px,96vw);max-height:92vh;overflow:auto"></div></div>
 <div class="toast" id="toast" hidden role="status"></div>
 <div class="zoom" id="zoom" hidden role="dialog" aria-modal="true" aria-label="Graphic preview"></div>
-<div class="help" id="help" hidden role="dialog" aria-label="Keyboard shortcuts"><div class="helpbox"><b>Keyboard shortcuts</b><dl><dt>← →</dt><dd>Previous or next draft</dd><dt>A</dt><dd>Approve</dd><dt>C</dt><dd>Request changes</dd><dt>R</dt><dd>Reject</dd><dt>E</dt><dd>Edit the text</dd><dt>1–9</dt><dd>Pick a graphic option</dd><dt>Z</dt><dd>Zoom the graphic</dd><dt>Esc</dt><dd>Close</dd><dt>?</dt><dd>Show or hide this list</dd></dl><button class="btn small" data-act="help">Close</button></div></div>
+<div class="help" id="help" hidden role="dialog" aria-label="Keyboard shortcuts"><div class="helpbox"><b>Keyboard shortcuts</b><dl><dt>← →</dt><dd>Previous or next draft</dd><dt>A</dt><dd>Schedule</dd><dt>C</dt><dd>Request changes</dd><dt>R</dt><dd>Reject</dd><dt>E</dt><dd>Edit the text</dd><dt>1–9</dt><dd>Pick a graphic option</dd><dt>Z</dt><dd>Zoom the graphic</dd><dt>Esc</dt><dd>Close</dd><dt>?</dt><dd>Show or hide this list</dd></dl><button class="btn small" data-act="help">Close</button></div></div>
 <input type="file" id="gfile" accept="image/jpeg,image/png,image/webp" hidden>
 <input type="file" id="gfiles" accept="image/jpeg,image/png,image/webp" multiple hidden>
 
@@ -698,9 +698,9 @@ function slotChips(dests){const ds=dests||[];const leads=[["fb","FB"],["ig","IG"
 /* K3: what kind of option each graphic is */
 function optKind(o){const id=String(o.id||"");if(id.startsWith("prev-"))return["Previous","prev"];if(id.startsWith("ai-"))return["AI","ai"];if(id.startsWith("set-"))return["Set","set"];if(o.card?.template==="free")return["Fresh","fresh"];return["Default","def"]}
 /* M: phone action bar */
-function mobileBar(d,st){if(!S.db||!["pending","changes"].includes(st)||S.mode)return"";return `<div class="mbar" role="group" aria-label="Decide"><button class="btn bad" data-act="reject">Reject</button><button class="btn warn" data-act="changes">Changes</button><button class="btn primary" data-act="approve"${hasChecks(d)&&!S.factsOk?" disabled title=\"Tick the facts to check first\"":""}>Approve</button></div>`}
+function mobileBar(d,st){if(!S.db||!["pending","changes"].includes(st)||S.mode)return"";return `<div class="mbar" role="group" aria-label="Decide"><button class="btn bad" data-act="reject">Reject</button><button class="btn warn" data-act="changes">Changes</button><button class="btn primary" data-act="approve"${hasChecks(d)&&!S.factsOk?" disabled title=\"Tick the facts to check first\"":""}>Schedule</button></div>`}
 
-/* 5: facts to check, ticked one by one beside Approve */
+/* 5: facts to check, ticked one by one beside Schedule */
 function factCheck(d){const list=checkFacts(d);return `<div class="fcheck"><div class="fhead"><span class="eyebrow">Check before approving</span><span class="src" id="fcount">${S.factTicks.size} of ${list.length} ticked</span></div>${list.map(({f,i})=>`<label class="fitem"><input type="checkbox" data-fact="${i}"${S.factTicks.has(i)?" checked":""}><span>${esc(f.claim)}<small>${f.url?`<a href="${esc(f.url)}" target="_blank" rel="noopener">${esc(f.source||"source")}</a>`:esc(f.source||"")}</small></span></label>`).join("")}<a class="src" href="#facts">All facts and sources</a></div>`}
 /* 8: what changed since the last version */
 function revisedBox(d,st){if(!["pending","changes"].includes(st))return"";const h=(d.history||[]).slice(-1)[0];if(!d.revisionNote&&!h)return"";
@@ -770,7 +770,7 @@ function refreshReady(){rememberPick();const d=S.drafts.find(x=>x.id===S.openId)
 function approveSplit(d,checks){const t=(()=>{const pk=pickFor();if(pk){const pt=pk.times&&Object.values(pk.times).sort()[0];const x=pt?new Date(pt):pk.day&&pk.time?new Date(`${pk.day}T${pk.time}:00`):null;if(x&&!isNaN(x))return x}const p=d.posting||{};const v=p.at||p.suggestedAt;const x=v?new Date(v):null;return x&&x.getTime()>Date.now()?x:bestSlot(p.destinations||defaultDests(d))})();
   const dis=checks&&!S.factsOk?" disabled":"";const dests=(d.posting||{}).destinations||defaultDests(d);
   const slots=[["fb","Facebook"],["ig","Instagram"],["x","X"]].filter(([k])=>dests.some(x=>x.endsWith(k))).map(([k,l])=>[bestFor(k),l]).filter(x=>x[0]).sort((a,b)=>a[0]-b[0]);
-  return `<div class="apsplit"><button class="btn primary apmain" data-act="approve"${dis}>Approve · <span id="apWhen">${esc(t.toLocaleString("en-GB",{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}))}</span></button><button class="btn primary apmore" data-act="apMenu" aria-label="Approve at another time" aria-expanded="${!!S.apMenu}"${dis}>▾</button></div>
+  return `<div class="apsplit"><button class="btn primary apmain" data-act="approve"${dis}>Schedule · <span id="apWhen">${esc(t.toLocaleString("en-GB",{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}))}</span></button><button class="btn primary apmore" data-act="apMenu" aria-label="Schedule at another time" aria-expanded="${!!S.apMenu}"${dis}>▾</button></div>
   <div class="src" id="apTimes" style="margin-top:4px"></div>${S.apMenu?`<div class="apmenu" role="menu">${slots.map(([t2,l])=>`<button class="apitem" role="menuitem" data-act="apSlot" data-at="${t2.toISOString()}"><span>${esc(t2.toLocaleString("en-GB",{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}))}</span><small>★ best for ${l}</small></button>`).join("")}<button class="apitem" role="menuitem" data-act="apNow"><span>Post now</span><small>Goes out within 5 minutes</small></button><button class="apitem" role="menuitem" data-act="apQueue"><span>Add to queue</span><small>The next free best slot</small></button><button class="apitem" role="menuitem" data-act="apPick"><span>Choose a time…</span></button><button class="apitem" role="menuitem" data-act="approve" data-hold="1"><span>Approve and hold</span><small>Ready, but not scheduled yet</small></button></div>`:""}`}
 
 function setPicker(t){const ds=$("#postDay"),ts=$("#postTime");if(!ds||!ts)return;const dk=dayKey(t),tk=`${String(t.getHours()).padStart(2,"0")}:${String(t.getMinutes()).padStart(2,"0")}`;
@@ -1043,7 +1043,7 @@ function decideBar(d,st,checks){
   if(st!=="pending"){
     const r=d.review||{};
     const why=[...(r.reasons||[]),r.note].filter(Boolean).join(" · ");
-    return `<div class="row"><span class="state"><b>${esc(STATUS.find(s=>s.key===st).label)}</b> by ${esc(nameOf(r.by))}${r.at?" · "+esc(fmtWhen(r.at)):""}${why?` · ${esc(why)}`:""}</span>${st==="hold"?`<button class="btn small primary" data-act="approve" title="Schedules it for the time in Where and when">Approve</button>`:""}${st==="hold"||st==="scheduled"?`<button class="btn small${st==="scheduled"?" primary":""}" data-act="posting" title="One click: the morning run finds the links itself">Mark as posted</button>`:""}${st==="posted"?"":`<button class="btn small" data-act="undo">Move back to review</button>`}</div>`;
+    return `<div class="row"><span class="state"><b>${esc(STATUS.find(s=>s.key===st).label)}</b> by ${esc(nameOf(r.by))}${r.at?" · "+esc(fmtWhen(r.at)):""}${why?` · ${esc(why)}`:""}</span>${st==="hold"?`<button class="btn small primary" data-act="approve" title="Schedules it for the time in Where and when">Schedule</button>`:""}${st==="hold"||st==="scheduled"?`<button class="btn small${st==="scheduled"?" primary":""}" data-act="posting" title="One click: the morning run finds the links itself">Mark as posted</button>`:""}${st==="posted"?"":`<button class="btn small" data-act="undo">Move back to review</button>`}</div>`;
   }
   if(S.mode==="reject"||S.mode==="changes"){
     const isRej=S.mode==="reject";
@@ -1179,7 +1179,7 @@ function pill(ctx,text,x,y,s,bg,fg){ctx.font=`700 ${s}px Roboto`;const tw=ctx.me
   const r=ph/2;ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+pw,y,x+pw,y+ph,r);ctx.arcTo(x+pw,y+ph,x,y+ph,r);ctx.arcTo(x,y+ph,x,y,r);ctx.arcTo(x,y,x+pw,y,r);ctx.fill();
   ctx.fillStyle=fg;ctx.fillText(text,x+s*0.7,y+ph*0.68);return y+ph}
 const PHOTOS={};
-function photo(url){if(!url)return null;let im=PHOTOS[url];if(!im){im=new Image();im.onload=()=>{const d=S.drafts.find(x=>x.id===S.openId);if(d){drawCard(d);drawThumbs(d)}};im.src=url;PHOTOS[url]=im}return im.complete&&im.naturalWidth?im:null}
+function photo(url){if(!url)return null;let im=PHOTOS[url];if(!im){im=new Image();if(/^https?:/.test(url)){im.crossOrigin="anonymous";im.onerror=()=>{if(im.crossOrigin){im.onerror=null;im.removeAttribute("crossorigin");im.src=url}}}im.onload=()=>{const d=S.drafts.find(x=>x.id===S.openId);if(d){drawCard(d);drawThumbs(d)}};im.src=url;PHOTOS[url]=im}return im.complete&&im.naturalWidth?im:null}
 function drawPhoto(ctx,url,x,y,w,h,fx=0.5,fy=0.3,z=1){const im=photo(url);
   if(!im){ctx.fillStyle=C.light;ctx.fillRect(x,y,w,h);ctx.fillStyle=C.dark;ctx.font=`500 ${Math.round(Math.min(w,h)*0.06)}px Roboto`;ctx.textAlign="center";ctx.fillText(url?"Loading photo…":"Add a photo",x+w/2,y+h/2);ctx.textAlign="left";return false}
   const sc=Math.max(w/im.naturalWidth,h/im.naturalHeight)*Math.max(1,z||1),sw=w/sc,sh=h/sc;ctx.drawImage(im,(im.naturalWidth-sw)*fx,(im.naturalHeight-sh)*fy,sw,sh,x,y,w,h);return true}
@@ -1834,7 +1834,7 @@ function postingPanel(d,st){const p=d.posting||{};const dests=p.destinations||de
   const links=[p.asanaUrl?`<a href="${esc(p.asanaUrl)}" target="_blank" rel="noopener">Asana task</a>`:"",d.canva?.url?`<a href="${esc(d.canva.url)}" target="_blank" rel="noopener">Open in Canva</a>`:""].filter(Boolean).join(" · ");
   return `${isVideoPost(d)&&dests.some(k=>["facebook","instagram"].includes(platOfKey(k)))?videoUploadBox(d):""}<div class="posting"><span class="eyebrow">Posting</span>
   <div class="dests">${teamDests().map(([k,l])=>{const lock=locked(k);const on=dests.includes(k);return `<label class="dest"${lock?` title="You can't post to this Page yourself. Connect Facebook if you manage it, or leave it for someone who does."`:""}><input type="checkbox" data-dest="${k}" ${on?"checked":""}${lock&&!on?" disabled":""}> ${lock?"🔒 ":""}${l}</label>`}).join("")}</div>
-  ${teamDests().some(([k])=>locked(k)&&dests.includes(k))?`<div class="row"><span class="src">🔒 You can't post to a ticked Page, so Approve will be refused until you untick it or someone who manages it approves.</span></div>`:""}
+  ${teamDests().some(([k])=>locked(k)&&dests.includes(k))?`<div class="row"><span class="src">🔒 You can't post to a ticked Page, so Schedule will be refused until you untick it or someone who manages it approves.</span></div>`:""}
   ${storyRow(d,dests)}${collabRow(d,dests)}${bioRow(d,dests)}${signRow(d)}${perAcctRow(d,dests,at)}<div class="row"><span class="src">${p.why?esc(p.why)+" · ":""}${esc(BEST_HINT)}</span></div>
   ${st==="hold"||st==="scheduled"?`<div class="row"><button class="btn small" data-act="savePosting">Update where and when</button>${links?`<span class="src">${links}</span>`:`<span class="src">The Asana task appears here once it’s created.</span>`}</div>`:""}
   ${S.db?`<div class="row"><button class="btn small" data-act="canvaReq" ${d.canvaRequest?"disabled":""}>${d.canva?.url?"Refresh Canva copy":d.canvaRequest?"Canva copy requested":"Send to Canva"}</button></div>`:""}</div>`}
@@ -2073,7 +2073,7 @@ Return only the new post text, nothing else.`;
   if(act==="showDiff"){S.showDiff=!S.showDiff;renderDetail();return}
   if(act==="copyP"){const p=b.dataset.p;const t=asPosts(textFor(d,p)).map(x=>withLink(x,d,p)).join("\n\n");try{await navigator.clipboard.writeText(t);toast("Copied")}catch(e){failToast(e,"Couldn't copy. Select the text instead")}return}
   if(act==="apMenu"){S.apMenu=!S.apMenu;renderDetail();return}
-  if(act==="apPick"){S.apMenu=false;renderDetail();$("#postDay")?.focus();toast("Pick a day and time, then Approve");return}
+  if(act==="apPick"){S.apMenu=false;renderDetail();$("#postDay")?.focus();toast("Pick a day and time, then Schedule");return}
   if(act==="apSlot"){S.apMenu=false;setPicker(new Date(b.dataset.at));refreshReady();document.querySelector('.decide [data-act="approve"]')?.click();return}
   if(act==="slot"){const t=new Date(b.dataset.at);const ds=$("#postDay"),ts=$("#postTime");if(!ds||!ts)return;const dk=dayKey(t),tk=`${String(t.getHours()).padStart(2,"0")}:${String(t.getMinutes()).padStart(2,"0")}`;
     if(![...ds.options].some(o=>o.value===dk))ds.add(new Option(t.toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"}),dk));if(![...ts.options].some(o=>o.value===tk))ts.add(new Option(tk,tk));ds.value=dk;ts.value=tk;refreshReady();toast("Set to "+b.textContent.replace(/★.*/,"").trim());return}
@@ -2429,7 +2429,7 @@ async function dropPost(id,day,slot){const d=S.drafts.find(x=>x.id===id);if(!d)r
   if(d.status==="scheduled"){const p=d.posting||{};const delta=t.getTime()-Date.parse(d.post_at||p.at);const times=p.times&&Object.keys(p.times).length?Object.fromEntries(Object.entries(p.times).map(([k,v])=>[k,new Date(Date.parse(v)+delta).toISOString()])):null;
     try{await S.db.doc("drafts/"+d.id).update({posting:{...p,at:t.toISOString(),...(times?{times}:{}),changedBy:S.me,changedAt:new Date().toISOString()}});toast(`Moved to ${when}`);renderCal()}catch(e){failToast(e,"Couldn't move it")}return}
   S.status=d.status||"pending";S.openId=d.id;resetDraftUi();S.perAcct=false;setView("posts");await new Promise(r=>setTimeout(r,60));setPicker(t);refreshReady();
-  if(d.status==="hold"){S.apMenu=false;document.querySelector('#detail [data-act="approve"]:not([data-hold])')?.click()}else toast(`Set to ${when}: check it and press Approve`)}
+  if(d.status==="hold"){S.apMenu=false;document.querySelector('#detail [data-act="approve"]:not([data-hold])')?.click()}else toast(`Set to ${when}: check it and press Schedule`)}
 document.addEventListener("dragstart",ev=>{const p=ev.target.closest&&ev.target.closest("[data-drag],[data-drag-eg],.qside.tray .item[draggable]");if(!p)return;
   const v=p.dataset.drag?"post:"+p.dataset.drag:p.dataset.dragEg?"eg:"+p.dataset.dragEg:"idea:"+(p.querySelector("[data-plan-ask]")?.dataset.title||"")+"|"+(p.querySelector("[data-plan-ask]")?.dataset.angle||"");ev.dataTransfer.setData("text/plain",v);ev.dataTransfer.effectAllowed="move"});
 document.addEventListener("dragover",ev=>{const z=ev.target.closest&&ev.target.closest("[data-day]");if(z){ev.preventDefault();z.classList.add("dropok")}});
