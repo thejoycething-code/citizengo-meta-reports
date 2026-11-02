@@ -810,6 +810,29 @@ async function engineInboxHistory(store, args, { who }) {
   return json({ team, actions: await store.engineInboxActions({ team_ids: [team], limit: Math.min(500, Number(args.limit) || 200) }) });
 }
 
+// Listening › Parliament [Phase 3, chosen 2 Nov]: UK parliaments' triaged
+// items on our issues, read-only from the Parliamentary Monitor (lib/parl.js).
+// Ten-minute memory per team and window.
+const PARL_MEMO = new Map();
+async function engineParliament(store, args, { who }) {
+  const ctx = await context(store, who);
+  const team = String(args.team || '');
+  if (!E.canEditTeam(ctx, team)) throw err('You are not in that team.', 'ENGINE_NOT_MEMBER');
+  const P = require('../lib/parl');
+  if (!P.TEAM_PARLIAMENTS[team]) return json({ team, covered: [], items: [], upcoming: [], note: 'The Parliamentary Monitor feed covers the UK team for now.' });
+  const days = Math.min(60, Math.max(1, Number(args.days) || 21));
+  const key = `${team}:${days}`; const hit = PARL_MEMO.get(key);
+  if (hit && !args.fresh && Date.now() - hit.at < 10 * 60e3) return json({ ...hit.data, cached_at: new Date(hit.at).toISOString() });
+  try {
+    const data = await P.feed(team, { days });
+    PARL_MEMO.set(key, { at: Date.now(), data });
+    return json(data);
+  } catch (e) {
+    if (e.code === 'PARL_NOT_CONFIGURED') return json({ team, configured: false, covered: [], items: [], upcoming: [], note: e.message });
+    throw err(e.message, 'ENGINE_UNAVAILABLE');
+  }
+}
+
 // Tools › Link in bio [Phase 3, chosen 2 Nov]: the team's public page
 // (/links/<slug>) and its buttons. action get (default): settings, every
 // button with whether it shows and its clicks in the last 30 days. action
@@ -1619,6 +1642,7 @@ const ENGINE_TOOLS = [
   { name: 'engine_ai_job', description: "Content Engine Desk AI helper: the web desk's AI requests are answered with the requester's own Claude. action get (id): the request's prompt (yours only). action next: your newest unanswered request from the last 30 minutes, with its id. action complete (id, text): save the answer for the desk. action fail (id, error).", inputSchema: obj({ action: { type: 'string', enum: ['get', 'next', 'complete', 'fail'] }, id: { type: 'string' }, text: { type: 'string' }, error: { type: 'string' } }, []), handler: engineAiJob },
   { name: 'engine_automations', description: 'Content Engine comment-to-DM automations for one of your teams: each rule\'s keywords, private message, public replies (taking turns), what it applies to (one post, a post type, or every post; the most specific wins), Facebook and/or Instagram, tag and hand-over, whether it is on, and its last 7 days (queued, sent, failed, and per step). paused: Pause everything is holding the team\'s accounts, so automations are held too.', inputSchema: obj({ team: { type: 'string' } }, ['team']), handler: engineAutomationsList },
   { name: 'engine_automation', description: 'Content Engine: add or update a comment-to-DM automation (team admins; name, keywords (whole words), dm_text with the real cgo.ac link, reply_texts (up to 5 public replies, taking turns), scope all / type (post_type petition, prayer, reel, wins, news) / post (thread_id), platforms facebook and/or instagram, skip_repeat (someone who already got the link just gets a like; default on), tag, hand_to (who to assign the comment to)), or pause, resume or remove one (id). A new comment with a keyword gets the private message (and a public reply) as you, through the Mini, at most one per comment and 200 per rule a day; Pause everything holds them too.', inputSchema: obj({ action: { type: 'string', enum: ['add', 'update', 'pause', 'resume', 'remove'] }, team: { type: 'string' }, id: { type: 'number' }, name: { type: 'string' }, keywords: { type: 'array', items: { type: 'string' } }, dm_text: { type: 'string' }, reply_text: { type: 'string' }, reply_texts: { type: 'array', items: { type: 'string' } }, scope: { type: 'string', enum: ['all', 'type', 'post'] }, post_type: { type: 'string', enum: ['petition', 'prayer', 'reel', 'wins', 'news'] }, thread_id: { type: 'string' }, platforms: { type: 'array', items: { type: 'string', enum: ['facebook', 'instagram'] } }, skip_repeat: { type: 'boolean' }, tag: { type: 'string' }, hand_to: { type: 'string' } }, ['action', 'team']), handler: engineAutomation },
+  { name: 'engine_parliament', description: 'Content Engine Listening › Parliament for one of your teams (UK for now): Westminster and Scottish Parliament items on our issues that the Parliamentary Monitor triaged as worth a line or worth acting on (score 2 or 3), newest first, with why it matters, issue areas, kind and date, plus coming deadlines; last 21 days by default (days up to 60).', inputSchema: obj({ team: { type: 'string' }, days: { type: 'number' }, fresh: { type: 'boolean' } }, ['team']), handler: engineParliament },
   { name: 'engine_bio', description: 'Content Engine Tools › Link in bio for one of your teams: its public page (/links/<slug>), filled with the petitions the team linked to in the last 30 days plus saved buttons. action get (default) lists every button, whether it shows and its clicks in 30 days; action save sets slug, title, intro, auto (fill with recent campaigns) and items (id, title, url, petition_id, pinned, featured, hidden, starts, ends, auto).', inputSchema: obj({ team: { type: 'string' }, action: { type: 'string', enum: ['get', 'save'] }, slug: { type: 'string' }, title: { type: 'string' }, intro: { type: 'string' }, auto: { type: 'boolean' }, items: { type: 'array', items: { type: 'object' } } }, ['team']), handler: engineBio },
   { name: 'engine_ig_grid', description: 'Content Engine Calendar › Instagram grid for one of your teams: each Instagram account with its latest 12 posts (type, caption start, link, preview image, time) from the nightly collection.', inputSchema: obj({ team: { type: 'string' } }, ['team']), handler: engineIgGrid },
   { name: 'engine_inbox_team', description: 'Content Engine Inbox › Team for one of your teams: open conversations per person and unassigned, each person\'s replies and median first-reply time, what has waited over 2 hours, and comments arriving by hour (UK time) against reply times, over the last 7 days (days up to 30).', inputSchema: obj({ team: { type: 'string' }, days: { type: 'number' } }, ['team']), handler: engineInboxTeam },
