@@ -455,7 +455,8 @@ header.top .filters{padding-block:0;margin-left:auto}
 .anhab{display:flex;flex-direction:column;gap:2px;border-top:1px solid var(--line);padding-top:7px;font-size:13px}.rsbox h3+.anhab{border-top:0;padding-top:0}.anhab .good{color:var(--ok)}.anhab .bad{color:var(--bad)}
 .ancountries{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}.antn{display:flex;justify-content:space-between;gap:8px;align-items:baseline}.ancountries .btn{align-self:flex-start;margin-top:4px}
 .tlgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}.tlcard{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px;display:flex;flex-direction:column;gap:6px;min-width:0}.tlcard.dim{opacity:.6}.tlcard .btn{align-self:flex-start;margin-top:auto}.tlicon{font-size:24px}.tlst{font-size:12px;font-weight:600;color:var(--ok)}.tlst .bad,.tlst b.bad{color:var(--warn)}
-.tlsplit{display:grid;grid-template-columns:minmax(0,420px) minmax(0,1fr);gap:12px;align-items:start}@media(max-width:1000px){.tlsplit{grid-template-columns:minmax(0,1fr)}}.tlform{min-width:0}.tlform input,.tlform textarea,.tlform select{max-width:100%;box-sizing:border-box;min-width:0}.tlrow{display:flex;gap:10px}.tlrow .wsf{flex:1}.tlform select{font:inherit;border:1px solid var(--line);border-radius:8px;padding:6px 8px;background:var(--surface);color:var(--fg)}
+.tlsplit{display:grid;grid-template-columns:minmax(0,420px) minmax(0,1fr);gap:12px;align-items:start}@media(max-width:1000px){.tlsplit{grid-template-columns:minmax(0,1fr)}}.tlform{min-width:0}.tlform input,.tlform textarea,.tlform select{max-width:100%;box-sizing:border-box;min-width:0}.tlrow{display:flex;gap:10px;flex-wrap:wrap}.tlrow .wsf{flex:1 1 140px;min-width:0}
+.tlrow .wsf input{min-width:0;width:100%;box-sizing:border-box}.tlform select{font:inherit;border:1px solid var(--line);border-radius:8px;padding:6px 8px;background:var(--surface);color:var(--fg)}
 .tlq{margin-left:auto;font:inherit;font-size:13px;border:1px solid var(--line);border-radius:8px;padding:5px 9px;background:var(--surface);color:var(--fg);min-width:0}
 .mkprev{background:var(--sunk);border-radius:8px;padding:8px;display:flex;justify-content:center}.mkprev canvas{max-width:100%;max-height:420px;width:auto;height:auto;border-radius:4px}
 .tlcheck{display:flex;gap:12px;align-items:flex-start;border-top:1px solid var(--line);padding:10px 2px;font-size:13px}.rsbox h3+.tlcheck,.rsbox>.tlcheck:first-child{border-top:0}.tli{font-size:16px;width:20px;flex:none;text-align:center}.tlcheck.bad .tli{color:var(--bad)}.tlcheck.warn .tli{color:var(--warn)}.tlcheck.ok .tli{color:var(--ok)}.tlcheck.info .tli{color:var(--accent)}
@@ -2631,7 +2632,8 @@ async function tlLoad(k,fn){if(TL.loading[k]||!S.mcp)return;TL.loading[k]=true;T
 function loadTools(){renderTools();const t=TL.tab;
   if((t==="home"||t==="inviter")&&!TL.inv)tlLoad("inv",()=>eng("engine_inviter",{days:TL.days}));
   if((t==="home"||t==="links")&&(!TL.links||TL.links.team!==S.team))tlLoad("links",()=>eng("engine_links",{team:S.team}));
-  if((t==="home"||t==="health")&&(!TL.health||TL.health.team!==S.team))tlLoad("health",()=>eng("engine_health",{team:S.team}))}
+  if((t==="home"||t==="health")&&(!TL.health||TL.health.team!==S.team))tlLoad("health",()=>eng("engine_health",{team:S.team}));
+  if(t==="health"&&(!TL.acc||TL.acc.team!==S.team))tlLoad("acc",()=>eng("engine_access",{action:"list",team:S.team}).then(r=>({...r,team:S.team})))}
 function tlCard(icon,title,desc,status,go,dim){return `<article class="tlcard${dim?" dim":""}"><span class="tlicon" aria-hidden="true">${icon}</span><b>${esc(title)}</b><span class="src">${esc(desc)}</span><span class="tlst">${status}</span>${go?`<button class="btn small${dim?"":" primary"}" data-tl-tab="${go}">Open</button>`:`<span class="src">Phase 3</span>`}</article>`}
 function tlHome(){const I=TL.inv,L=TL.links,H=TL.health;const bad=H?H.checks.filter(c=>c.level==="bad"||c.level==="warn").length:null;
   const sig=L?L.links.reduce((a,l)=>a+(l.signatures||0),0):null;
@@ -2683,7 +2685,9 @@ function tlMake(){const k=TL.mk;const clips=Object.entries(S.requests||{}).map((
     <label class="wsf">Line underneath <small>(optional)</small><input id="mkSub" value="${esc(k.sub)}"></label>
     <label class="wsf">Photo <small>(optional, stays on your computer)</small><input type="file" id="mkPhoto" accept="image/*"></label>
     <div class="mkprev"><canvas id="mkCanvas" aria-label="Preview of the graphic"></canvas></div>
-    <div class="tpacts"><button class="btn small primary" data-mk-dl>Download</button></div></section>`;
+    <div class="tpacts"><button class="btn small primary" data-mk-dl>Download</button></div>
+    <div class="tlrow"><label class="wsf">Or ask for a post on<input type="date" id="mkDay" min="${dayKey(new Date())}" value="${esc(k.day||dayKey(new Date(Date.now()+864e5)))}"></label><button class="btn small" data-mk-draft style="align-self:flex-end"${S.db?"":" disabled"}>Make it a draft</button></div>
+    <span class="src">The morning run drafts a post with this headline into Review for that day; the graphic is made there, so pick the design again if it matters.</span></section>`;
   const c=`<section class="rsbox tlform"><h3>Clip a video</h3><span class="src">Paste a parliamentlive.tv, YouTube or TV link we're allowed to use and the moment you want. The next morning run cuts it on the Mini and it appears below.</span>
     <label class="wsf">Link<input id="clUrl" placeholder="https://parliamentlive.tv/event/index/..."></label>
     <div class="tlrow"><label class="wsf">From <small>(h:mm:ss)</small><input id="clFrom" placeholder="14:32"></label><label class="wsf">To<input id="clTo" placeholder="16:46"></label></div>
@@ -2697,8 +2701,13 @@ const TL_ICON={bad:"⛔",warn:"⚠",info:"ℹ",ok:"✓"};
 function tlHealth(){const H=TL.health;if(TL.err.health)return `<p class="offline">Couldn't run the check (${esc(whyFailed(TL.err.health))}).</p>`;if(!H)return `<p class="src">${TL.loading.health?"Checking…":""}</p>`;
   const t=(S.teams||[]).find(x=>x.id===S.team);const n=H.checks.filter(c=>c.level==="bad"||c.level==="warn").length;
   return `<div class="rsbar"><b>${esc(t?((t.flag||"")+" "+t.name).trim():S.team)}: ${n?`${n} thing${n===1?"":"s"} to look at`:"all good"}</b><span class="src">Checked ${esc(new Date(H.checked_at).toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"}))}</span><button class="btn small" data-tl-recheck>Check again</button></div>
-    <section class="rsbox">${H.checks.map(c=>`<div class="tlcheck ${c.level}"><b class="tli" aria-hidden="true">${TL_ICON[c.level]}</b><span><b>${esc(c.title)}</b><br><span class="src">${esc(c.detail)}</span></span></div>`).join("")}</section>
-    <p class="src" style="margin:0">Who can post, reply and moderate is in Settings › Team and access. Nothing here changes anything.</p>`}
+    <div class="angrid"><section class="rsbox">${H.checks.map(c=>`<div class="tlcheck ${c.level}"><b class="tli" aria-hidden="true">${TL_ICON[c.level]}</b><span><b>${esc(c.title)}</b><br><span class="src">${esc(c.detail)}</span></span></div>`).join("")}</section><div class="rsside">${tlWho()}</div></div>
+    <p class="src" style="margin:0">Nothing here changes anything.</p>`}
+/* Who can do what (Tools mock-up E): a read-only summary of Settings › Team and access. */
+function tlWho(){const A=TL.acc;const box=b=>`<section class="rsbox"><h3>Who can do what</h3>${b}<span class="src">Change it in <button class="btn small" data-nav="settings">Settings › Team and access</button></span><span class="src"></span></section>`;
+  if(TL.err.acc)return box(`<p class="src">Couldn't load it (${esc(whyFailed(TL.err.acc))}).</p>`);if(!A)return box(`<p class="src">${TL.loading.acc?"Loading…":""}</p>`);
+  const n=A.accounts.length;const cell=(p,k)=>{const c=p.accounts.filter(a=>a.source&&a[k]).length;return `<td class="n">${!c?'<span class="src">—</span>':c===n?"✓":`${c} of ${n}`}</td>`};
+  return box(`<div class="awrap"><table class="atbl"><thead><tr><th>Person</th><th class="n">Post</th><th class="n">Reply and DM</th><th class="n">Moderate</th></tr></thead><tbody>${A.people.map(p=>`<tr><td>${esc(p.who)}${p.accounts.some(a=>a.source==="hand")?' <small class="src" title="Set up by hand until they connect Facebook">✎</small>':""}</td>${cell(p,"post")}${cell(p,"reply")}${cell(p,"moderate")}</tr>`).join("")}</tbody></table></div><span class="src">Across ${n} account${n===1?"":"s"}.</span>`)}
 function renderTools(){const el=$("#toolsView");if(!el||el.hidden)return;
   const body=TL.tab==="inviter"?tlInviter():TL.tab==="links"?tlLinks():TL.tab==="make"?tlMake():TL.tab==="health"?tlHealth():tlHome();
   el.innerHTML=`<div><h2>${esc((TL_TABS.find(x=>x[0]===TL.tab)||[])[1]||"Tools")}</h2></div><div class="egbar"><span class="tabs">${TL_TABS.map(([k,l])=>`<button class="tab" data-tl-tab="${k}" aria-pressed="${TL.tab===k}">${l}</button>`).join("")}</span></div>`+body;
@@ -2713,6 +2722,10 @@ document.addEventListener("click",async ev=>{const tb=ev.target.closest("[data-t
     if(!TL.lf.url){toast("Paste the petition link first");return}b.disabled=true;b.textContent="Making…";
     try{const r=await eng("engine_links",{action:"make",team:S.team,...TL.lf});TL.made=r.links||[];if(r.ok===false&&!(r.links||[]).length)toast(r.error||"Couldn't make the links");else{TL.links=null;loadTools()}}catch(e){failToast(e,"Couldn't make the links")}renderTools();return}
   if(ev.target.closest("[data-mk-dl]")){const cv=$("#mkCanvas");if(!cv)return;cv.toBlob(async b=>{if(!b)return;const name=`citizengo-${TL.mk.T}-${Date.now()}.png`;try{if(S.downloads)await S.downloads.save({filename:name,data:b,mimeType:"image/png"});else{const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download=name;a.click()}}catch(e){failToast(e,"Couldn't download it")}},"image/png");return}
+  if(ev.target.closest("[data-mk-draft]")){const b=ev.target.closest("[data-mk-draft]");const hl=String(TL.mk.headline||"").replace(/\*/g,"").trim();const day=$("#mkDay")?.value;
+    if(!hl){toast("Type the headline first");return}if(!day){toast("Pick the day");return}TL.mk.day=day;b.disabled=true;
+    const lbl=(SWITCH_T.find(x=>x[0]===TL.mk.T)||[])[1]||TL.mk.T;const angle=["Made in Tools › Make: design "+lbl,TL.mk.kicker&&"small line: "+TL.mk.kicker,TL.mk.sub&&"line underneath: "+TL.mk.sub].filter(Boolean).join(" · ");
+    try{const r=await eng("engine_request",{action:"create",team:S.team,for_date:day,title:hl.slice(0,120),angle,source:"idea"});toast(r&&r.ok?"Asked for: the draft lands in Review for "+new Date(day).toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"}):(r&&r.error)||"Couldn't ask for the draft")}catch(e){failToast(e,"Couldn't ask for the draft")}b.disabled=false;return}
   if(ev.target.closest("[data-cl-go]")){const url=$("#clUrl").value.trim(),from=$("#clFrom").value.trim(),to=$("#clTo").value.trim();const versions=[...document.querySelectorAll("[data-cl-v]")].filter(x=>x.checked).map(x=>x.dataset.clV);
     if(!/^https:\/\//.test(url)){toast("Paste the video's https link");return}if(!/^\d{1,2}(:\d{2}){1,2}$/.test(from)||!/^\d{1,2}(:\d{2}){1,2}$/.test(to)){toast("Give From and To as minutes:seconds, e.g. 14:32");return}if(!versions.length){toast("Pick at least one version");return}
     if(!$("#clRights").checked){toast("Tick that we can use this footage first");return}if(!S.db){toast("Can't save requests here");return}
