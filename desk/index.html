@@ -219,6 +219,7 @@ textarea{width:100%;min-height:220px;font:inherit;font-size:14px;line-height:1.5
 .pchips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
 .pchip{font:600 12px/1 var(--body,inherit);padding:6px 10px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--fg);cursor:pointer}
 .pchip:hover,.pchip:focus-visible{border-color:var(--accent);color:var(--accent);outline:none}
+.pchip.late{background:var(--bad-soft);border-color:var(--bad);color:var(--bad)}
 .gai{margin-top:10px;padding-top:10px;border-top:1px dashed var(--line)}
 .gpv{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:8px;font-size:13px;background:var(--sunk);padding:8px 10px;border-radius:8px}
 .lint{border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:13px;display:flex;flex-direction:column;gap:4px}
@@ -1129,8 +1130,10 @@ queueSnapshot.t={};
 function publishBox(d){const pub=d.published||{},errs=d.publishErrors||{};const keys=Object.keys(pub).concat(Object.keys(errs).filter(k=>errs[k]&&!pub[k]));
   const held=d.status==="scheduled"?((d.posting||{}).destinations||[]).filter(k=>!pub[k]&&pauseOf(k)):[];
   const heldRow=held.length?`<div class="row"><span class="src">‖ Held: publishing is paused for ${esc(held.map(accLabel).join(", "))} (${esc(pauseOf(held[0]).reason)}). It keeps its time and goes out after the pause.</span></div>`:"";
-  if(!keys.length&&!heldRow)return"";
-  return `<div class="posting"><span class="eyebrow">Publishing</span>${heldRow}${keys.map(k=>{const p=pub[k],e=errs[k];const l=esc(accLabel(k));
+  const late=lateSlots().filter(x=>x.d.id===d.id&&!errs[x.k]);
+  const lateRow=late.length?`<div class="row"><span class="src" style="color:var(--bad)">⚠ Late: ${esc(late.map(x=>accLabel(x.k)).join(", "))} not out yet, ${Math.round((Date.now()-late[0].t)/60e3)} minutes after its time. The publisher may be down: post it by hand, then mark it Posted.</span></div>`:"";
+  if(!keys.length&&!heldRow&&!lateRow)return"";
+  return `<div class="posting"><span class="eyebrow">Publishing</span>${heldRow}${lateRow}${keys.map(k=>{const p=pub[k],e=errs[k];const l=esc(accLabel(k));
     return p?`<div class="row"><span class="src">✓ ${l}: ${p.url?`<a href="${esc(p.url)}" target="_blank" rel="noopener">published</a>`:"published"}${p.at?" "+esc(fmtWhen(p.at)):""}${p.comment_error?` · <b>${esc(p.comment_error)}</b>`:""}</span></div>`
       :`<div class="row"><span class="src">✗ ${l}: ${esc(e.message||"failed")}${e.tries>=3?"":" Trying again shortly."}</span></div>`}).join("")}</div>`}
 const CRC_T=(()=>{const t=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;t[n]=c>>>0}return t})();
@@ -1530,11 +1533,19 @@ function myPauseKeys(teamId){const ts=(S.teams||[]).filter(t=>!teamId||t.id===te
 function heldCount(keys){return S.drafts.filter(d=>d.status==="scheduled"&&((d.posting||{}).destinations||[]).some(k=>!keys||keys.includes(k))).length}
 function pauseWhen(p){return new Date(p.paused_at).toLocaleString("en-GB",{weekday:"short",hour:"2-digit",minute:"2-digit"})}
 function pauseUntil(p){return p.until?"until "+new Date(p.until).toLocaleString("en-GB",{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}):"until someone resumes"}
-function renderPause(){const on=(S.pauses||[]).length;const chip=$("#pauseChip");
+/* Late: a Facebook or Instagram destination still not out 20 minutes after its time
+   (the Mini runs every 5 minutes, the cloud backup every 15 once 10 minutes late). */
+const LATE_MS=20*60e3;
+function lateSlots(){const now=Date.now();const out=[];
+  for(const d of S.drafts){if(d.status!=="scheduled")continue;const p=d.posting||{};
+    for(const k of p.destinations||[]){const pl=platOfKey(k);if(pl!=="facebook"&&pl!=="instagram")continue;if((d.published||{})[k])continue;if(isHeld&&isHeld(d))continue;
+      const t=Date.parse((p.times&&p.times[k])||p.at||d.post_at||"");if(t&&now-t>LATE_MS)out.push({d,k,t})}}
+  return out}
+function renderPause(){const on=(S.pauses||[]).length;const chip=$("#pauseChip");const late=on?[]:lateSlots();
   const atOf=d=>d.post_at||(d.posting&&d.posting.at)||null;
   const sch=S.drafts.filter(d=>d.status==="scheduled"&&atOf(d)&&Date.parse(atOf(d))>Date.now()).sort((a,b)=>String(atOf(a)).localeCompare(String(atOf(b))));
   const nx=sch[0]?new Date(atOf(sch[0])):null;const nxt=nx?(nx.toDateString()===new Date().toDateString()?nx.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"}):nx.toLocaleString("en-GB",{weekday:"short",hour:"2-digit",minute:"2-digit"})):"";
-  if(chip)chip.innerHTML=!S.mcp||!S.teams?"":on?`<button class="pchip on" data-pause="where" title="${esc(S.pauses.map(p=>`${p.reason} (${p.paused_by})`).join("; "))}">‖ Paused · ${S.drafts.filter(isHeld).length} held</button>`:`<button class="pchip" data-pause="where" title="Pause it from the Calendar.">● Publishing live · ${sch.length} scheduled${nxt?` · next at ${esc(nxt)}`:""}</button>`;
+  if(chip)chip.innerHTML=!S.mcp||!S.teams?"":on?`<button class="pchip on" data-pause="where" title="${esc(S.pauses.map(p=>`${p.reason} (${p.paused_by})`).join("; "))}">‖ Paused · ${S.drafts.filter(isHeld).length} held</button>`:late.length?`<button class="pchip late" data-late="${esc(late[0].d.id)}" title="Not out 20 minutes after its time. The Mac Mini and the cloud backup may both be down, or Facebook refused it: open it to see why, or post it by hand.">⚠ ${late.length} late · not posted yet</button>`:`<button class="pchip" data-pause="where" title="Pause it from the Calendar.">● Publishing live · ${sch.length} scheduled${nxt?` · next at ${esc(nxt)}`:""}</button>`;
   if(typeof renderSide==="function")renderSide();
   $("#pauseLine").hidden=!on}
 function pauseSwitchHtml(){const ps=S.pauses||[];
@@ -1553,6 +1564,8 @@ function openPause(){const t=(S.teams||[]).find(x=>x.id===S.team);const mine=myP
     <small style="color:var(--muted)">Scheduled posts wait and keep their times. If a pause runs more than 6 hours past a post's time, that post asks for a new time when you resume.</small>
     <div class="row"><button class="btn small" data-pause="cancel">Cancel</button><button class="btn small primary" data-pause="go" style="background:var(--bad);border-color:var(--bad)">Pause</button></div>`;
   $("#pauseDlg").hidden=false;setTimeout(()=>$("#pReason")?.focus(),0)}
+document.addEventListener("click",ev=>{const b=ev.target.closest("[data-late]");if(!b)return;const d=S.drafts.find(x=>x.id===b.dataset.late);if(!d)return;S.status="scheduled";S.openId=d.id;resetDraftUi();setView("posts");renderAll()});
+setInterval(()=>{if(document.visibilityState==="visible")renderPause()},60e3);
 document.addEventListener("click",async ev=>{const b=ev.target.closest("[data-pause]");
   if(!b){if(ev.target.id==="pauseDlg")$("#pauseDlg").hidden=true;return}
   const a=b.dataset.pause;

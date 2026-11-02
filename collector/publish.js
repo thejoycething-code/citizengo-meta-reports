@@ -29,7 +29,27 @@ async function patchDoc(store, id, change, extra = () => ({})) {
   throw new Error(`post ${id} kept changing; try again next run`);
 }
 
-async function run({ store, privateKey, live, now = Date.now(), log = console.log, fetchImpl, wait }) {
+// Claim one destination for this run. Only one run can win: the write is
+// checked against the post's version, and a fresh claim by another run, or a
+// destination already out, means hands off.
+async function claimSlot(store, id, slot, at, runner, now) {
+  for (let i = 0; i < 3; i++) {
+    const cur = await store.enginePost(id);
+    if (!cur || cur.status !== 'scheduled') return false;
+    const d = cur.doc || {};
+    if (d.published && d.published[slot]) return false;
+    const c = d.publishing && d.publishing[slot];
+    if (c && now - Date.parse(c.at) < P.CLAIM_MS) return false;
+    const doc = E.mergeDoc(d, { publishing: { [slot]: { at, by: runner } } });
+    if (await store.engineUpdatePost(id, cur.version, { doc, post_at: E.postAt(doc), updated_by: 'publisher' })) return true;
+  }
+  return false;
+}
+
+// runner: 'mini' (every 5 minutes) or 'cloud' (the Vercel backup, every 15).
+// minLateMs: leave anything due more recently than this to the other runner,
+// so the backup only steps in when the Mini hasn't.
+async function run({ store, privateKey, live, now = Date.now(), log = console.log, fetchImpl, wait, runner = 'mini', minLateMs = 0 }) {
   const [teams, posts, pauses] = await Promise.all([store.engineTeams(), store.enginePosts({ statuses: ['scheduled'], limit: 500 }), store.enginePauses()]);
   const items = P.plan(posts, teams, now, pauses);
   const tally = { published: 0, held: 0, failed: 0, would: 0 };
@@ -47,6 +67,7 @@ async function run({ store, privateKey, live, now = Date.now(), log = console.lo
   };
 
   for (const item of items) {
+    if (minLateMs && now - Date.parse(item.at) < minLateMs) continue;
     const label = `${item.post.id} → ${item.slot}`;
     if (item.action === 'paused') { tally.held++; log(`  ‖ ${label}: paused by ${item.pause.paused_by} (${item.pause.reason})`); continue; }
     if (item.action === 'busy' || item.action === 'gave_up') { tally.held++; log(`  … ${label}: ${item.action === 'busy' ? 'being published by another run' : 'stopped after 3 tries; waiting for a person'}`); continue; }
@@ -64,8 +85,8 @@ async function run({ store, privateKey, live, now = Date.now(), log = console.lo
 
     if (!live) { tally.would++; log(`  → ${label}: would publish as ${who} (${content.story ? `Story, ${content.media.length} frame${content.media.length === 1 ? '' : 's'}` : content.video ? `video, ${Math.round(content.video.size / 1048576)} MB` : `${content.media.length} image${content.media.length === 1 ? '' : 's'}`}${content.comment ? ', first comment' : ''}${(content.collaborators || []).length ? `, collab with ${content.collaborators.map((h) => '@' + h).join(' ')}` : ''})`); continue; }
 
-    // Claim it, so a second run can't publish it too.
-    await patchDoc(store, item.post.id, () => ({ publishing: { [item.slot]: { at: stamp() } } }));
+    // Claim it, so a second run (the other runner) can't publish it too.
+    if (!(await claimSlot(store, item.post.id, item.slot, stamp(), runner, now))) { tally.held++; log(`  … ${label}: taken by another run`); continue; }
     try {
       const token = xauth.open(privateKey, tok.sealed);
       let out;
@@ -88,7 +109,7 @@ async function run({ store, privateKey, live, now = Date.now(), log = console.lo
           : await P.publishInstagram({ igId: tok.ig_id, token, text: content.text, comment: content.comment, urls, collaborators: content.collaborators, fetchImpl });
       }
       await patchDoc(store, item.post.id, () => ({ publishing: { [item.slot]: null }, publishErrors: { [item.slot]: null }, published: { [item.slot]: { ...out, at: stamp(), by: who } } }));
-      await event(item, 'published', { id: out.id, url: out.url });
+      await event(item, 'published', { id: out.id, url: out.url, via: runner });
       tally.published++;
       log(`  ✓ ${label}: ${out.url || out.id}`);
     } catch (e) {
@@ -116,6 +137,8 @@ async function run({ store, privateKey, live, now = Date.now(), log = console.lo
       log(`  ✓ ${id}: everything is out, marked Posted`);
     }
   }
+  // Heartbeat: when each runner last checked, for the desk's warning.
+  try { await store.engineCacheSet(`publisher:${runner}`, { at: stamp(), live: !!live, tally }); } catch (e) { log(`  ! heartbeat not saved (${e.message})`); }
   return tally;
 }
 
