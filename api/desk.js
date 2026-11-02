@@ -21,7 +21,7 @@ const E = require('../lib/engine');
 const DESK_TOOLS = new Set(['engine_me', 'engine_posts', 'engine_save', 'engine_status', 'engine_calendar', 'engine_requests', 'engine_request',
   'engine_evergreen', 'engine_evergreen_update', 'engine_connect', 'engine_media', 'engine_pause', 'engine_video', 'engine_inbox', 'engine_inbox_act',
   'engine_inbox_undo', 'engine_inbox_history', 'engine_inbox_person', 'engine_inbox_posts', 'engine_inbox_rules', 'engine_inbox_rule', 'engine_inbox_alert',
-  'engine_inbox_bulk', 'engine_analytics', 'engine_listening', 'engine_automations', 'engine_automation', 'engine_access', 'page_inviter_usage']);
+  'engine_inbox_bulk', 'engine_analytics', 'engine_listening', 'engine_automations', 'engine_automation', 'engine_access', 'page_inviter_usage', 'engine_inviter', 'engine_links', 'engine_health', 'engine_preview', 'engine_trash']);
 
 function send(res, status, body, cookie) {
   res.statusCode = status;

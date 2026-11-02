@@ -382,6 +382,19 @@ const callErr = async (store, name, args, who) => { try { await tool(name)(store
     const c = require('../lib/analytics-extra').campaigns(r.linked, {});
     eq('analytics: signatures per linked post, with its petition and live link', [r.total, r.linked[0].action_title, r.linked[0].urls[0], c[0].title, c[0].signatures], [7, 'Free Isabel', 'https://www.facebook.com/1/posts/123456789012', 'Free Isabel', 7]);
   }
+  {
+    const T = require('../lib/tools-extra');
+    const s = T.inviterSummary([{ day: '2026-11-01', user_email: 'a', device_id: 'd1', page_id: 'p1', page_name: 'UK', invites: 50, extension_version: '2.13.19', updated_at: '2026-11-01T10:00Z' }, { day: '2026-10-30', user_email: 'b', device_id: 'd2', page_id: 'p1', invites: 10, extension_version: '2.13.18', updated_at: '2026-10-30T10:00Z' }],
+      [{ day: '2026-10-01', page_id: 'p1', invites: 20 }], { UK: { follows: 30, net: 25 } });
+    eq('tools: inviter results per Page and person', [s.invites, s.before, s.pages[0].name, s.pages[0].last, s.pages[0].follows, s.people.map((p) => p.who + ':' + p.version).join(',')], [60, 20, 'UK', '2026-11-01', 30, 'a:2.13.19,b:2.13.18']);
+    const pet = T.petitionOf('citizengo.org/en-gb/fr/17968-stop-the-ban');
+    eq('tools: Copilot args from a petition link, like make_links.py', JSON.stringify(T.copilotArgs(pet, { platform: 'x', series: 2, title: "Stop the banning of church outreach in Colchester's high street now" })),
+      JSON.stringify({ assetType: 'petition', petitionId: 17968, ctaFamilyCode: 'AA', platformCode: 'tw', seriesFlow: 'TW2', listCode: 'EN_GB', topicCode: 'FR', scopeCode: 'LO', campaignTitle: 'Stop The Banning Of Church Outreach In Colchesters High' }));
+    eq('tools: only citizengo.org petitions with a number', [T.petitionOf('https://example.com/en-gb/fr/123'), T.petitionOf('https://citizengo.org/en-gb')], [null, null]);
+    const now = Date.parse('2026-11-02T12:00:00Z');
+    const h = T.healthChecks({ team: { accounts: [{ key: 'uk-fb', platform: 'facebook', page_id: 'p1', label: 'UK Facebook' }, { key: 'uk-ig', platform: 'instagram' }] }, rights: [{ who: 'chris', account_key: 'uk-fb', checked_at: '2026-11-02T03:00:00Z' }], runs: [{ page_id: 'p1', started_at: '2026-11-02T04:30:00Z', status: 'ok' }], sigPulled: '2026-10-28T08:00:00Z', listenRows: 5, inviterLast: { p1: '2026-10-20' }, now });
+    eq('tools: health puts problems first', h.slice(0, 3).map((c) => c.level + ':' + c.title).join(' | '), 'bad:Nobody can post to uk-ig | warn:Only chris can post to UK Facebook | warn:Signatures are late');
+  }
   console.log(`\n${passed} passed, ${failed} failed`);
   process.exit(failed ? 1 : 0);
 })().catch((e) => { console.error(e); process.exit(1); });
