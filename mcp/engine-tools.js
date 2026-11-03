@@ -580,6 +580,57 @@ async function engineInboxPerson(store, args, { who }) {
   });
 }
 
+// 10A (Priority Two, 3 Nov): the post a conversation is on, with its newest
+// nightly figures (reactions by type, shares, comments, views) and the post's
+// own tone. Facebook pictures can't be shown (Meta's stored picture links
+// expire); Instagram thumbnails can.
+async function engineInboxPost(store, args, { who }) {
+  const ctx = await context(store, who);
+  const team = String(args.team || '');
+  if (!E.canEditTeam(ctx, team)) throw err('You are not in that team.', 'ENGINE_NOT_MEMBER');
+  const thread = String(args.thread_id || '');
+  if (!thread) return json({ ok: false, error: 'thread_id is needed.' });
+  const rows = await store.engineInbox({ team_ids: [team], thread_id: thread, limit: 1000 });
+  if (!rows.length) return json({ ok: false, error: 'No conversation with that id in this team.' });
+  const r0 = rows[0];
+  const fig = store.postFigures ? await store.postFigures({ platform: r0.platform, id: thread }).catch(() => null) : null;
+  const text = (fig && fig.text) || r0.post_text || '';
+  const t = text ? SENT.toneOf(text, { lang: langOf(text) }) : null;
+  const theirs = rows.filter((r) => !r.from_us);
+  return json({
+    team, thread_id: thread, platform: r0.platform, account_key: r0.account_key, is_ad: !!r0.is_ad,
+    text: String(text).slice(0, 600), url: (fig && fig.url) || r0.post_url || null, img: (fig && fig.img) || null, type: (fig && fig.type) || null, at: (fig && fig.at) || null,
+    figures: fig && fig.collected_date ? { as_of: fig.collected_date, views: fig.views ?? null, reactions: fig.reactions, shares: fig.shares ?? null, comments: fig.comments ?? null, saved: fig.saved ?? null } : null,
+    tone: (t && t.tone) || 'neutral',
+    here: { comments: theirs.length, open: theirs.filter((r) => r.status === 'open').length, ours: rows.length - theirs.length },
+  });
+}
+
+// 35A (Priority Two, 3 Nov): the team's own past replies to comments like
+// this one, matched by shared words (no AI). Up to three, best first.
+const SIM_STOP = new Set('the and for you your our are was this that with have has had not but they them their what when where who why how can could would will just about from into its is be been being a an to of in on at by or as if so do does did i me my we us he she his her him all any more most some such than too very also there here then now only own same other out up down off over under again once yes no ok please thanks thank'.split(' '));
+const simWords = (t) => new Set(String(t || '').toLowerCase().normalize('NFKD').replace(/https?:\S+/g, ' ').split(/[^\p{L}\p{N}']+/u).filter((w) => w.length > 2 && !SIM_STOP.has(w)));
+function simScore(a, b) { if (!a.size || !b.size) return 0; let n = 0; for (const w of a) if (b.has(w)) n++; return n / Math.min(a.size, b.size) * (n >= 2 ? 1 : 0.5); }
+async function engineInboxSimilar(store, args, { who }) {
+  const ctx = await context(store, who);
+  const team = String(args.team || '');
+  if (!E.canEditTeam(ctx, team)) throw err('You are not in that team.', 'ENGINE_NOT_MEMBER');
+  const item = args.id && store.engineInboxItem ? await store.engineInboxItem(String(args.id)) : null;
+  const text = String(args.text || (item && item.team_id === team ? item.text : '') || '');
+  const mine = simWords(text);
+  if (!mine.size) return json({ team, replies: [] });
+  const acts = (await store.engineInboxActions({ team_ids: [team], limit: 1000 })).filter((a) => a.action === 'reply' && a.status === 'done' && a.text && a.item_id !== args.id);
+  const parents = store.engineInboxByIds ? await store.engineInboxByIds(acts.map((a) => a.item_id)) : [];
+  const byId = Object.fromEntries(parents.map((p) => [p.id, p]));
+  const seen = new Set();
+  const out = acts.map((a) => { const p = byId[a.item_id]; return p ? { a, p, score: simScore(mine, simWords(p.text)) } : null; })
+    .filter((x) => x && x.score >= 0.34).sort((x, y) => y.score - x.score || String(y.a.created_at).localeCompare(String(x.a.created_at)))
+    .filter((x) => { const k = String(x.a.text).toLowerCase().replace(/\s+/g, ' ').trim(); if (seen.has(k)) return false; seen.add(k); return true; })
+    .slice(0, 3)
+    .map((x) => ({ text: x.a.text, by: x.a.by, at: x.a.created_at, to: String(x.p.text || '').slice(0, 160), to_name: x.p.author_name || null, platform: x.p.platform, score: Math.round(x.score * 100) / 100 }));
+  return json({ team, replies: out });
+}
+
 // By post: the last 7 days' comments grouped by the post or ad they're on,
 // busiest unanswered first.
 async function engineInboxPosts(store, args, { who }) {
@@ -1889,6 +1940,8 @@ const ENGINE_TOOLS = [
   { name: 'engine_inbox', description: 'Content Engine Inbox: comments and DMs on one of your teams\' Facebook Pages and Instagram accounts, newest first (status open by default, or done, or all; optional platform facebook/instagram, kind comment/message, before an ISO time), each with its tone from its words (positive, negative, mixed, neutral; tone of the words, not whether they agree with us), with open counts, the open items\' tone, actions still in their undo window and pile-on alerts from the last 24 hours. thread returns one post\'s comments or one conversation, oldest first. q searches the words, the person\'s name and the post; accounts limits to some account keys; since an ISO time. Also lists actions waiting for a check (checks) and whether yours need one (me).', inputSchema: obj({ team: { type: 'string' }, status: { type: 'string', enum: ['open', 'done', 'all'] }, platform: { type: 'string', enum: ['facebook', 'instagram'] }, kind: { type: 'string', enum: ['comment', 'message', 'mention'] }, thread: { type: 'string' }, before: { type: 'string' }, since: { type: 'string' }, accounts: { type: 'array', items: { type: 'string' } }, q: { type: 'string' }, limit: { type: 'number' } }, ['team']), handler: engineInbox },
   { name: 'engine_inbox_act', description: 'Content Engine Inbox: act on a comment or message. done, reopen, assign (assign_to, or empty to unassign) and label (labels) apply at once. reply, private_reply (Facebook comments, within 7 days), like (Facebook only), hide, unhide, delete and ban / unban (block the author from the Facebook Page; threats can be hidden but not deleted) go to Meta from the Mini with your own Page token after 10 seconds, so they can be undone; message replies only within 24 hours of their last message. If your actions need a check, they wait for a team admin instead (check). tone (positive, neutral, negative, mixed) fixes a wrong tone by hand.', inputSchema: obj({ id: { type: 'string' }, action: { type: 'string', enum: ['reply', 'private_reply', 'like', 'hide', 'unhide', 'delete', 'ban', 'unban', 'done', 'reopen', 'assign', 'label', 'tone'] }, text: { type: 'string' }, assign_to: { type: 'string' }, labels: { type: 'array', items: { type: 'string' } }, tone: { type: 'string', enum: ['positive', 'neutral', 'negative', 'mixed'] } }, ['id', 'action']), handler: engineInboxAct },
   { name: 'engine_inbox_check', description: 'Content Engine Inbox checks (team admins): approve or send back (decision approve / reject, optional note) a teammate\'s reply, hide, delete or ban waiting for a check (action_id from engine_inbox checks), or switch checks on or off for a teammate (person, needs_check).', inputSchema: obj({ team: { type: 'string' }, action_id: { type: 'number' }, decision: { type: 'string', enum: ['approve', 'reject'] }, note: { type: 'string' }, person: { type: 'string' }, needs_check: { type: 'boolean' } }, ['team']), handler: engineInboxCheck },
+  { name: 'engine_inbox_post', description: "Content Engine Inbox: the post a conversation is on (thread_id from engine_inbox), with its newest nightly figures (reactions by type, shares, comments, views), the post's own tone and how many comments are open on it.", inputSchema: obj({ team: { type: 'string' }, thread_id: { type: 'string' } }, ['team', 'thread_id']), handler: engineInboxPost },
+  { name: 'engine_inbox_similar', description: "Content Engine Inbox: up to three of the team's own past replies to comments like this one (id of an inbox item, or text), matched by shared words, best first. No AI.", inputSchema: obj({ team: { type: 'string' }, id: { type: 'string' }, text: { type: 'string' } }, ['team']), handler: engineInboxSimilar },
   { name: 'engine_bell', description: 'Content Engine: what needs you in one team (the desk bell): Inbox items assigned to you, teammates\' actions waiting for your check, your actions checked, sent back or failed, your posts approved or sent back, publishing failures, and your Facebook connection running out. Read state is engine_prefs bell_seen.', inputSchema: obj({ team: { type: 'string' } }, ['team']), handler: engineBell },
   { name: 'engine_prefs', description: 'Content Engine: your own desk settings and saved Inbox views. No set reads them; set merges keys (inbox_views, settings; null removes one).', inputSchema: obj({ set: { type: 'object' } }), handler: enginePrefsTool },
   { name: 'engine_inbox_undo', description: 'Content Engine Inbox: undo a reply, like, hide, unhide or delete you did while it is still in its window (action_id from engine_inbox_act), or a whole bulk action (action_ids from engine_inbox_bulk).', inputSchema: obj({ action_id: { type: 'number' }, action_ids: { type: 'array', items: { type: 'number' } } }), handler: engineInboxUndo },
