@@ -103,7 +103,7 @@ const quiet = () => {};
     eq('assemble: a mismatch is refused', /doesn't match/.test(bad || ''), true);
     const vfinal = { facebook: { text: 'Watch.', comment: 'Sign: https://cgo.ac/z', media: [], video }, instagram: { text: 'Watch. Link in bio', comment: '', media: [], video, cover: 'uk/pv/instagram-0-cover.jpg' } };
     addPost(sv, 'pv', { review: approved, final: vfinal, posting: { destinations: ['uk-fb', 'uk-ig'], at: '2026-11-03T14:00:00Z' } });
-    const calls = []; let polls = 0;
+    const calls = []; let polls = 0, vpolls = 0;
     const fetchImpl = async (u, opts = {}) => {
       const url = new URL(u); const ok = (b) => ({ ok: true, status: 200, json: async () => b });
       const body = opts.body instanceof FormData ? Object.fromEntries([...opts.body.entries()].map(([k, v]) => [k, typeof v === 'string' ? v : `blob:${v.size}`])) : opts.body instanceof Buffer ? { bytes: opts.body.length } : Object.fromEntries(new URLSearchParams(opts.body || url.search));
@@ -115,13 +115,19 @@ const quiet = () => {};
       if (url.pathname.endsWith('/178/media_publish')) return ok({ id: 'ig42' });
       if (url.pathname.endsWith('/ig42')) return ok({ permalink: 'https://www.instagram.com/reel/xyz/' });
       if (url.pathname.endsWith('/comments')) return ok({ id: 'cm1' });
+      if (url.pathname.endsWith('/v777')) return ok({ status: { video_status: ++vpolls < 2 ? 'processing' : 'ready' } });
       return { ok: false, status: 404, json: async () => ({ error: { message: 'unexpected ' + url.pathname } }) };
     };
     const tv = await run({ store: sv, privateKey: keys.privateKey, live: true, now: NOW, log: quiet, fetchImpl, wait: async () => {} });
     const pv = sv.db.posts.find((x) => x.id === 'pv');
     const fbUp = calls.find((c) => c.host === 'graph-video.facebook.com');
     const igUp = calls.find((c) => c.host === 'rupload.facebook.com');
-    eq('video: Facebook gets the whole file as a Page video with the text, then the first comment', [tv.published, fbUp.path, fbUp.body.description, fbUp.body.source, calls.some((c) => c.path === 'v777/comments')], [2, '105/videos', 'Watch.', `blob:${file.length}`, true]);
+    eq('video: Facebook gets the whole file as a Page video with the text; the first comment waits while Facebook processes it', [tv.published, fbUp.path, fbUp.body.description, fbUp.body.source, calls.some((c) => c.path === 'v777/comments'), pv.doc.published['uk-fb'].comment_pending], [2, '105/videos', 'Watch.', `blob:${file.length}`, false, true]);
+    await run({ store: sv, privateKey: keys.privateKey, live: true, now: NOW + 300_000, log: quiet, fetchImpl, wait: async () => {} });
+    const pvc = sv.db.posts.find((x) => x.id === 'pv').doc.published['uk-fb'];
+    eq('video: once Facebook says it is ready, the first comment goes up once', [calls.filter((c) => c.path === 'v777/comments').length, calls.find((c) => c.path === 'v777/comments').body.message, pvc.comment_id, pvc.comment_pending, pvc.comment_claim], [1, 'Sign: https://cgo.ac/z', 'cm1', null, null]);
+    await run({ store: sv, privateKey: keys.privateKey, live: true, now: NOW + 600_000, log: quiet, fetchImpl, wait: async () => {} });
+    eq('video: never a second comment', calls.filter((c) => c.path === 'v777/comments').length, 1);
     eq('video: Instagram gets a resumable Reel, waits until it is processed, then publishes', [calls.find((c) => c.path === '178/media').body.media_type, igUp.body.bytes, igUp.headers.file_size, polls, pv.doc.published['uk-ig'].url], ['REELS', file.length, String(file.length), 2, 'https://www.instagram.com/reel/xyz/']);
     eq('video: no public link to the file was ever made', calls.some((c) => JSON.stringify(c.body).includes('signed') && !c.body.cover_url), false);
     eq('video: once everything is out the stored pieces are removed, and it is Posted', [sv.removed, pv.doc.videoPieces.removed, pv.status], [['uk/pv/video-abcdefgh/000.part', 'uk/pv/video-abcdefgh/001.part', 'uk/pv/video-abcdefgh/002.part', 'uk/pv/video-old12345/000.part'], 4, 'posted']);
@@ -281,6 +287,14 @@ const quiet = () => {};
   await run({ store: s6, privateKey: keys.privateKey, live: true, now: NOW + 600_000, log: quiet, fetchImpl: fb6b.fetchImpl });
   const pub6 = s6.db.posts[0].doc.published['uk-fb'];
   eq('first comment fails: the post counts as published, the comment is flagged, nothing is posted twice', [!!pub6.id, /Add it by hand/.test(pub6.comment_error), fb6b.calls.length, s6.db.posts[0].status], [true, true, 0, 'posted']);
+
+  // A Facebook video still processing after 2 hours: the comment is left for a person.
+  const sw = engine();
+  addPost(sw, 'pw', { review: approved, final, published: { 'uk-fb': { id: 'v9', url: 'u', at: '2026-11-03T11:00:00Z', by: 'chris', comment_id: null, comment_pending: true } }, posting: { destinations: ['uk-fb'], at: '2026-11-03T11:00:00Z' } }, 'posted');
+  const fbw = fakeFacebook();
+  await run({ store: sw, privateKey: keys.privateKey, live: true, now: NOW, log: quiet, fetchImpl: fbw.fetchImpl });
+  const pw = sw.db.posts[0].doc.published['uk-fb'];
+  eq('video still processing after 2 hours: no comment, flagged to add by hand', [fbw.calls.length, pw.comment_pending, /Add it by hand/.test(pw.comment_error)], [0, null, true]);
 
   // engine_media: the desk's finished images.
   const tool = ENGINE_TOOLS.find((t) => t.name === 'engine_media').handler;
