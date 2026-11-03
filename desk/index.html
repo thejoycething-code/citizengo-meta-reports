@@ -79,6 +79,8 @@ h1{font-family:var(--display);font-weight:800;font-size:34px;line-height:1;margi
 .tab.tabicon[aria-pressed="true"]{color:var(--bg)}
 .filters{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding-block:12px}
 .filters label{font-size:12.5px;color:var(--muted);display:flex;gap:6px;align-items:center}
+.filters .fq input{min-width:0;width:170px;font:inherit;font-size:13px;padding:5px 9px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--fg)}
+@media (max-width:640px){.filters .fq{flex:1 1 100%}.filters .fq input{width:100%}}
 select{font:inherit;font-size:13.5px;background:var(--surface);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:5px 8px}
 .notice{font-size:13px;color:var(--muted);margin-left:auto}
 
@@ -350,15 +352,42 @@ header.top .filters{padding-block:0;margin-left:auto}
 .cmonth .mcell{min-height:104px}.cmonth .mcell .cchip{padding:2px}.mcell.quiet .n{color:var(--fg)}
 .qhint{margin-top:auto;font-family:var(--mono);font-size:10.5px;color:var(--muted)}
 .mcell.dropok,.cwtrack.dropok,.clday.dropok{outline:2px dashed var(--accent);outline-offset:-2px}
-.cweek{display:grid;grid-template-columns:34px repeat(7,minmax(0,1fr));gap:6px}.cwhead{min-height:46px;display:flex;flex-direction:column;gap:2px;font-size:12.5px}.cwcol.today .cwhead b{color:var(--accent)}
+.cweek{display:grid;grid-template-columns:34px repeat(var(--n,7),minmax(0,1fr));gap:6px}.cwhead{min-height:46px;display:flex;flex-direction:column;gap:2px;font-size:12.5px}.cwcol.today .cwhead b{color:var(--accent)}
 .cwkd{font-size:10.5px;border-left:3px solid var(--accent);padding-left:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.cwkd.rqk{border-color:var(--ok)}
 .cwtrack{position:relative;height:620px;background:var(--surface);border:1px solid var(--line);border-radius:8px}.cwruler .cwtrack{background:none;border:0;font-family:var(--mono);font-size:10.5px;color:var(--muted)}.cwruler span{position:absolute;right:2px;transform:translateY(-50%)}
 .cwbest{position:absolute;left:0;right:0;background:repeating-linear-gradient(135deg,var(--accent-soft) 0 6px,transparent 6px 10px);pointer-events:none}.cwnow{position:absolute;left:0;right:0;border-top:2px solid var(--bad);pointer-events:none;z-index:2}
 .cwblock{position:absolute;left:3px;right:3px;z-index:1}.cwblock .cchip{box-shadow:0 1px 3px rgba(0,0,0,.08)}
 .clist{display:flex;flex-direction:column;gap:2px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:4px 12px 10px}
 .clday{padding:6px 0;border-bottom:1px solid var(--line)}.clday.today .cldh b{color:var(--accent)}.cldh{display:flex;gap:10px;align-items:baseline;padding:4px 0}
-.clrow{display:grid;grid-template-columns:52px minmax(0,1fr) 80px 90px 160px 120px;gap:10px;align-items:center;padding:3px 0;font-size:13px}.clrow .cchip{font-size:12.5px}.clst.scheduled{color:var(--ok)}.clst.pending,.clst.changes{color:var(--warn)}.cllinks a{font-size:12.5px;margin-right:6px}
-@media (max-width:820px){.clrow{grid-template-columns:44px minmax(0,1fr) 70px}.clrow>:nth-child(n+4){display:none}.cweek{overflow-x:auto;grid-template-columns:30px repeat(7,minmax(120px,1fr))}}
+.clrow{display:grid;grid-template-columns:22px 48px minmax(0,1fr) 80px 96px 150px 120px;gap:10px;align-items:center;padding:3px 4px;font-size:13px;border-radius:6px}.clrow .cchip{font-size:12.5px}.cllinks a{font-size:12.5px;margin-right:6px}
+.clrow.sel{background:var(--accent-soft)}.clrow.past{opacity:.62}.cltk{display:inline-flex;width:22px;justify-content:center}.cltk input{margin:0;width:15px;height:15px;accent-color:var(--accent)}
+.clst{justify-self:start;font-size:12px;padding:1px 8px;border-radius:999px;background:var(--sunk);color:var(--muted);white-space:nowrap}.clst.scheduled{background:var(--accent-soft);color:var(--accent)}.clst.pending,.clst.changes{background:var(--warn-soft);color:var(--warn)}.clst.posted{background:var(--ok-soft);color:var(--ok)}
+.clnow{position:relative;height:18px;margin:2px 0}.clnow::before{content:"";position:absolute;left:0;right:0;top:50%;border-top:2px solid var(--bad)}.clnow span{position:relative;background:var(--surface);color:var(--bad);font-size:11.5px;font-weight:600;padding:0 6px;margin-left:28px}
+.calbulk{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:8px 12px;margin-bottom:8px;background:var(--accent-soft);border:1px solid var(--accent);border-radius:var(--r);position:sticky;top:0;z-index:3}.calbulk .sp{flex:1}.calbulk label{display:flex;gap:6px;align-items:center;font-size:13px}.calbulk input[type=date]{font:inherit;font-size:13px;padding:3px 6px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--fg)}
+.caltz{display:flex;flex-wrap:wrap;gap:8px 10px;align-items:center;padding:8px 12px;margin:6px 0 8px;background:var(--accent-soft);border:1px solid var(--accent);border-radius:var(--r);font-size:13.5px;color:var(--fg)}.caltz svg{width:18px;height:18px;fill:none;stroke:var(--accent);stroke-width:1.8;stroke-linecap:round;flex:none}.caltz>span{flex:1 1 220px;min-width:0}
+.caltzq{margin-left:10px;white-space:nowrap}.lnk{font:inherit;font-size:inherit;background:none;border:0;padding:0;color:var(--accent);text-decoration:underline;cursor:pointer}
+.bellbtn{position:relative;display:inline-flex;align-items:center;padding:4px 7px}.bellbtn svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linejoin:round;stroke-linecap:round}
+.bellbtn .bn{position:absolute;top:-6px;right:-7px;min-width:17px;height:17px;padding:0 4px;border-radius:9px;background:var(--bad);color:#fff;font-size:10.5px;font-weight:700;line-height:17px;text-align:center}
+@media (max-width:960px){header.top{position:relative}}.bellpop{position:absolute;right:8px;top:calc(100% - 4px);z-index:40;width:min(380px,calc(100vw - 24px));max-height:min(70vh,560px);overflow:auto;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:0 10px 30px rgba(0,0,0,.18);padding:10px 10px 6px}
+.bellhd{display:flex;align-items:center;gap:10px;padding:0 4px 6px}.bellhd b{flex:1}.bellpop h4{margin:8px 4px 4px;font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
+.bellrow{display:flex;gap:9px;align-items:flex-start;width:100%;text-align:left;font:inherit;font-size:13px;color:var(--fg);background:none;border:0;border-radius:8px;padding:7px 6px;cursor:pointer}.bellrow:hover{background:var(--sunk)}.bellrow.unread{background:var(--accent-soft)}.bellrow.unread .btx>span{font-weight:600}
+.btx{display:flex;flex-direction:column;gap:1px;min-width:0;overflow-wrap:anywhere}.btx small{color:var(--muted);font-size:11.5px}
+.bic{flex:none;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:12px;background:var(--sunk);color:var(--muted)}.bic.k-failed{background:var(--bad-soft);color:var(--bad);font-weight:700}.bic.k-approved{background:var(--ok-soft);color:var(--ok)}.bic.k-connection,.bic.k-sent_back{background:var(--warn-soft);color:var(--warn)}.bic.k-check,.bic.k-ask{background:var(--accent-soft);color:var(--accent)}
+.bellft{margin:8px 4px 2px;font-size:11.5px}
+.renewbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin:10px 0 0;padding:9px 14px;border:1px solid var(--warn);background:var(--warn-soft);color:var(--fg);border-radius:var(--r);font-size:13.5px}.renewbar[hidden]{display:none}.renewbar.urgent{border-color:var(--bad);background:var(--bad-soft)}.renewbar svg{width:18px;height:18px;fill:none;stroke:var(--warn);stroke-width:1.8;stroke-linecap:round;flex:none}.renewbar>span{flex:1 1 260px;min-width:0}
+.stmine h3{margin:0 0 4px}.stmine h4{margin:14px 0 6px;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
+.stcols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,400px);gap:20px;align-items:start}@media (max-width:820px){.stcols{grid-template-columns:minmax(0,1fr)}}
+.stkv{display:grid;grid-template-columns:140px minmax(0,1fr);gap:8px 12px;align-items:center;font-size:13.5px}@media (max-width:480px){.stkv{grid-template-columns:minmax(0,1fr)}.stkv>span:empty{display:none}}
+.stseg{display:inline-flex;flex-wrap:wrap;border:1px solid var(--line);border-radius:8px;overflow:hidden;width:max-content;max-width:100%}.stseg button{font:inherit;font-size:13px;padding:5px 11px;border:0;background:var(--surface);color:var(--fg);cursor:pointer}.stseg button+button{border-left:1px solid var(--line)}.stseg button[aria-pressed=true]{background:var(--accent);color:var(--accent-fg)}
+#stSaved{margin:14px 0 0}#stSaved.bad{color:var(--bad)}
+.stprev{margin:0;display:flex;flex-direction:column;gap:6px;padding:10px;border:1px solid var(--line);border-radius:var(--r);background:var(--bg)}
+.stpcal{display:grid;grid-template-columns:repeat(var(--n,7),minmax(0,1fr));gap:3px;font-size:10.5px}.stph{font-weight:600;color:var(--muted);text-align:center}.stpd{min-height:76px;background:var(--surface);border:1px solid var(--line);border-radius:5px;padding:2px;display:flex;flex-direction:column;gap:2px}.stpc{background:var(--accent-soft);border-left:2px solid var(--accent);border-radius:3px;padding:1px 3px;line-height:1.25;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}.stpc b{display:block;font-variant-numeric:tabular-nums}
+.side .me{cursor:pointer}.side .me:hover span{text-decoration:underline}
+.wsrow.new p{font-weight:600}.wsrow p mark{background:var(--launch-bg);color:var(--launch-fg);border-radius:3px;padding:0 1px}
+.cnote-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--launch-line);margin-left:5px;vertical-align:middle}
+.cnotes{display:flex;flex-direction:column;gap:8px;padding-bottom:12px;margin-bottom:4px;border-bottom:1px solid var(--line)}.cnotes h3{margin:0}.cnday{display:flex;flex-direction:column;gap:4px;font-size:13px}.cnote{background:var(--launch-bg);border-left:3px solid var(--launch-line);border-radius:6px;padding:6px 8px;display:flex;flex-wrap:wrap;gap:2px 8px;align-items:baseline}.cnote p{margin:0;flex:1 1 100%;color:var(--launch-fg,var(--fg));white-space:pre-wrap;overflow-wrap:anywhere}.cnote .src{font-size:12px}.cnote .lnk{font-size:12px;margin-left:auto}
+.cnform{display:flex;flex-direction:column;gap:6px}.cnform label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--muted)}.cnform input,.cnform textarea{font:inherit;font-size:13px;padding:5px 8px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--fg);resize:vertical}.cnform .btn{align-self:flex-start}.tray .cnform textarea{min-height:0;height:auto}.tray label.lg{flex-direction:row;align-items:center;gap:6px;font-size:12.5px}.tray label.lg input{padding:0;width:auto}
+@media (max-width:820px){.clrow{grid-template-columns:22px 44px minmax(0,1fr) auto}.clrow>:nth-child(4),.clrow>:nth-child(n+6){display:none}.cweek{overflow-x:auto;grid-template-columns:30px repeat(var(--n,7),minmax(120px,1fr))}}
 .cpeek{position:absolute;z-index:30;width:340px;max-width:calc(100vw - 32px);background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:0 10px 30px rgba(15,25,50,.22);padding:12px;display:flex;flex-direction:column;gap:8px;font-size:13px}
 .cpeek .cprow{display:flex;gap:10px;align-items:flex-start}.cpeek .cprow>div{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}.cpeek small{color:var(--muted)}
 .cpmove{display:flex;flex-wrap:wrap;gap:6px 8px;align-items:center;background:var(--accent-soft);border-radius:8px;padding:8px}.cpmove small{flex-basis:100%}.cpmove select{font:inherit;font-size:13px;padding:3px 6px}
@@ -576,7 +605,41 @@ header.top .filters{padding-block:0;margin-left:auto}
 .kd.kc-cgo{border-left:3px solid var(--accent)}.kd.kc-church{border-left:3px solid #8a6d1f}.kd.kc-aware{border-left:3px solid var(--ok)}.kd.kc-country{border-left:3px solid #7a4fbf}.kd.kc-new{border-left:3px dashed var(--muted)}
 .kdlegend{display:flex;flex-wrap:wrap;gap:10px;font-size:11.5px;color:var(--muted);margin-top:8px}.kdlegend span{border-left:3px solid;padding-left:5px}.kdlegend .kc-cgo{border-color:var(--accent)}.kdlegend .kc-church{border-color:#8a6d1f}.kdlegend .kc-aware{border-color:var(--ok)}.kdlegend .kc-country{border-color:#7a4fbf}.kdlegend .kc-new{border-left-style:dashed;border-color:var(--muted)}
 .mthumb{width:54px;height:auto;border-radius:3px;margin:2px;cursor:pointer;display:inline-block}
-.ibrow{display:grid;grid-template-columns:24px minmax(0,1fr);align-items:start;border-top:1px solid var(--line)}.ibrow:first-child{border-top:0}.ibrow .ibi{border-top:0}.ibtick{margin:14px 0 0 8px}
+.ibrow{display:grid;grid-template-columns:24px minmax(0,1fr);align-items:start;border-top:1px solid var(--line)}
+/* Priority One, Inbox (3 Nov): search, accounts, filters drawer, quick buttons, tone, checks */
+.vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.ibtools{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:4px 0 10px}
+.ibsearch{flex:1 1 260px;min-width:0;max-width:440px;display:flex;align-items:center;gap:7px;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:0 8px;color:var(--muted)}
+.ibsearch:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.ibsearch svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2;flex:none}
+.ibsearch input{flex:1;min-width:0;border:0;background:none;color:var(--fg);font:inherit;font-size:13.5px;padding:7px 0;outline:none}
+.ibsearch kbd{font:11px var(--mono);border:1px solid var(--line);border-radius:4px;padding:0 4px}
+.ibacc{position:relative}
+.ibmenu{position:absolute;z-index:30;top:calc(100% + 6px);left:0;width:min(320px,86vw);background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:0 10px 28px rgba(0,0,0,.18);padding:8px;display:flex;flex-direction:column;gap:2px}
+.ibmrow{display:flex;align-items:center;gap:8px;padding:6px;border-radius:6px;font-size:13px;cursor:pointer}.ibmrow:hover{background:var(--sunk)}.ibmrow span:not(.n){flex:1;min-width:0}.ibmrow b{flex:1}
+.ibmfoot{display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--line);padding-top:6px;margin-top:4px}
+.btn.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+.btn.ok{color:var(--ok);border-color:var(--ok)}
+.linkish{border:0;background:none;padding:0;color:var(--accent);text-decoration:underline;font:inherit;cursor:pointer}
+.ibscrim{position:fixed;inset:0;background:rgba(10,14,24,.35);z-index:40}
+.ibdrawer{position:fixed;z-index:41;top:0;right:0;bottom:0;width:min(360px,100%);background:var(--surface);border-left:1px solid var(--line);padding:16px max(16px,env(safe-area-inset-right,0px)) 16px 16px;overflow:auto;display:flex;flex-direction:column;gap:8px;box-shadow:-10px 0 28px rgba(0,0,0,.18)}
+.ibdh{display:flex;align-items:center;justify-content:space-between}.ibdh h3{margin:0;font-family:var(--display);font-size:22px}
+.ibpills{display:flex;flex-wrap:wrap;gap:6px}
+.ibpill{border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:99px;padding:4px 11px;font:inherit;font-size:12.5px;cursor:pointer}
+.ibpill.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent);font-weight:600}
+.ibdf{display:flex;gap:8px;align-items:center;border-bottom:1px solid var(--line);padding-bottom:10px}
+.ibsave{display:flex;gap:6px}.ibsave input{flex:1;min-width:0;font:inherit;font-size:13px;padding:5px 8px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg)}
+.ibquick{grid-column:2;display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:0 12px 10px 50px}
+.ibtone select{font:inherit;font-size:12px;border:1px solid var(--line);border-radius:99px;padding:2px 6px;background:var(--surface);color:var(--muted)}
+.ibtone.t-positive select{background:var(--ok-soft);color:var(--ok);border-color:transparent}.ibtone.t-negative select{background:var(--bad-soft);color:var(--bad);border-color:transparent}.ibtone.t-mixed select{background:var(--warn-soft);color:var(--warn);border-color:transparent}
+.ibd .ibtone{display:inline-block;margin:0 4px}
+.ibchk{padding:12px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:6px}.ibchk:first-child{border-top:0}
+.ibchkh{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline}.ibchkh .w{color:var(--muted);font-size:11.5px;font-family:var(--mono)}
+.ibchk input[type=text]{flex:1 1 180px;min-width:0;font:inherit;font-size:13px;padding:4px 8px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg)}
+.ibafter{border-color:var(--accent);background:var(--accent-soft)}
+.ibcheckt{display:inline-flex;gap:6px;align-items:center;font-size:12.5px}
+.ibi mark,.ibl mark{background:var(--launch-bg);color:var(--launch-fg);border-radius:3px;padding:0 1px}
+@media (max-width:560px){.ibquick{padding-left:12px}.ibsearch{max-width:none;flex-basis:100%}}.ibrow:first-child{border-top:0}.ibrow .ibi{border-top:0}.ibtick{margin:14px 0 0 8px}
 .ibassign,[data-ib-saved],[data-ib-petition],[data-ib-hf],[data-ib-psort],#ibSort{font:inherit;font-size:12.5px;padding:4px 6px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--fg)}
 .egnotes{font-size:13px;color:var(--muted);margin:0;padding-left:18px}.egnotes li{margin:2px 0}
 .egform{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px}
@@ -1008,10 +1071,16 @@ body.cpopen{overflow:hidden}
     <div class="filters">
       <label for="fIssue">Issue <select id="fIssue"><option value="">All</option></select></label>
       <label for="fType">Type <select id="fType"><option value="">All</option></select></label>
+      <label for="fBy">Created by <select id="fBy"><option value="">Anyone</option></select></label>
+      <label for="fLabel">Labels <select id="fLabel"><option value="">All</option></select></label>
+      <label class="fq" for="fQ"><span class="vh">Search drafts</span><input type="search" id="fQ" placeholder="Search drafts" autocomplete="off"></label>
       <span class="notice" id="who"></span>
+      <button class="btn small bellbtn" id="bellBtn" aria-label="For you" aria-haspopup="dialog" aria-expanded="false" title="For you"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg><span class="bn" id="bellN" hidden></span></button>
       <button class="btn small" data-act="help" aria-label="Keyboard shortcuts" title="Keyboard shortcuts (?)">?</button>
     </div>
+    <div class="bellpop" id="bellPop" role="dialog" aria-label="For you" hidden></div>
   </header>
+  <div class="renewbar" id="renewBar" role="status" hidden></div>
   <div id="offline" class="offline" hidden>Not connected to the Content Engine, so posts can't load or be saved from this view. Open the page signed in to claude.ai to review.</div>
   <main class="desk">
     <nav class="queue" id="queue" aria-label="Drafts"></nav>
@@ -1024,7 +1093,7 @@ body.cpopen{overflow:hidden}
   <section id="anView" class="egv" hidden aria-label="Analytics"></section>
   <section id="toolsView" class="egv" hidden aria-label="Tools"></section>
   <section id="lsView" class="egv" hidden aria-label="Listening"></section>
-  <section id="stView" class="egv" hidden aria-label="Settings"><div><h2>Settings</h2><p class="lede">Your access, and your Facebook connection.</p></div><div id="stBody"></div><div class="ibd"><b>Facebook connection</b><p class="src" style="margin:0">Connect your own Facebook account so the Pages you manage there become the accounts you can approve posts for and reply as. Reconnect to refresh them.</p><div><span id="fbConnect"></span></div></div></section>
+  <section id="stView" class="egv" hidden aria-label="Settings"><div><h2>Settings</h2><p class="lede">Your own settings, your access, and your Facebook connection.</p></div><div id="stMine"></div><div id="stBody"></div><div class="ibd"><b>Facebook connection</b><p class="src" style="margin:0">Connect your own Facebook account so the Pages you manage there become the accounts you can approve posts for and reply as. Reconnect to refresh them.</p><div><span id="fbConnect"></span></div></div></section>
 </div>
 <div class="pauseline" id="pauseLine" hidden></div>
 <div class="help" id="pauseDlg" hidden role="dialog" aria-modal="true" aria-label="Pause publishing"><div class="helpbox pdlg" id="pauseBox"></div></div>
@@ -1096,7 +1165,8 @@ function xLen(t){return [...String(t).replace(/https?:\/\/\S+/g,"x".repeat(23))]
 
 /* ---------- render ---------- */
 function filtered(){
-  const list=S.drafts.filter(d=>(d.status||"pending")===S.status && (!S.issue||d.issue===S.issue) && (!S.type||d.type===S.type));
+  const q=String(S.q||"").trim().toLowerCase();
+  const list=S.drafts.filter(d=>(d.status||"pending")===S.status && (!S.issue||d.issue===S.issue) && (!S.type||d.type===S.type) && (!S.by||draftBy(d)===S.by) && (!S.label||draftLabels(d).includes(S.label)) && (!q||draftText(d).includes(q)));
   if(["posted","rejected"].includes(S.status)){const t=d=>Date.parse(d.posted?.at||d.review?.at||d.createdAt||"")||0;return list.sort((a,b)=>t(b)-t(a))}
   return list.sort((a,b)=>{const ga=GROUPS.indexOf(groupOf(a)),gb=GROUPS.indexOf(groupOf(b));if(ga!==gb)return ga-gb;const ta=whenOf(a)?.getTime()??0,tb=whenOf(b)?.getTime()??0;if(ta!==tb)return ta-tb;return (a.order??99)-(b.order??99)});
 }
@@ -1112,10 +1182,17 @@ function renderTabs(){
   $("#statusTabs").innerHTML=tabs.map(t=>`<button class="tab st-${t.key}" aria-pressed="${S.status===t.key}" data-status="${t.key}"${t.title?` title="${esc(t.title)}"`:""}>${esc(t.label)}${t.n||t.key!=="rejected"?`<span class="n">${t.n}</span>`:""}</button>`).join("");
 }
 function renderFilters(){
-  const fill=(id,vals,cur)=>{const el=$(id);const opts=['<option value="">All</option>'].concat([...new Set(vals)].sort().map(v=>`<option${v===cur?" selected":""}>${esc(v)}</option>`));el.innerHTML=opts.join("")};
+  const fill=(id,vals,cur,all="All")=>{const el=$(id);if(!el)return;const opts=[`<option value="">${all}</option>`].concat([...new Set(vals.concat(cur||[]).filter(Boolean))].sort().map(v=>`<option${v===cur?" selected":""}>${esc(v)}</option>`));el.innerHTML=opts.join("")};
   fill("#fIssue",S.drafts.map(d=>d.issue),S.issue);
   fill("#fType",S.drafts.map(d=>d.type),S.type);
+  fill("#fBy",S.drafts.map(draftBy),S.by,"Anyone");
+  fill("#fLabel",S.drafts.flatMap(draftLabels),S.label);
+  const q=$("#fQ");if(q&&document.activeElement!==q)q.value=S.q||"";
 }
+/* Drafts board [Priority One 9A]: who made a draft, its labels, and the words search reads. */
+function draftBy(d){return d.own?(d.own.name||d.own.by||"A teammate"):"The engine"}
+function draftLabels(d){const l=[];if(d.launch)l.push("Launch pack");if(d.own)l.push(d.own.translatedFrom?"Translated":"Own post");if(d.action&&d.action.title)l.push(d.action.title);if(d.evergreen_id||/evergreen/i.test(d.type||""))l.push("Evergreen");return l}
+function draftText(d){const p=d.platforms||{};return [d.title,d.issue,d.type,d.rationale,p.facebook,p.instagram,p.x,p.facebookComment,(d.source||{}).label,(d.action||{}).title,...(d.notes||[]).map(n=>n&&n.text)].filter(Boolean).join(" \n").toLowerCase()}
 function hasChecks(d){return (d.facts||[]).some(f=>f.status==="check")}
 function renderQueue(){
   if(S.status==="evergreen"){renderEgQueue();return}
@@ -1240,8 +1317,8 @@ function openZoom(d,optId){const z=$("#zoom");const cur=curCard(d);const o=optId
 function closeZoom(){const z=$("#zoom");if(z&&!z.hidden){z.hidden=true;z.innerHTML=""}}
 function toggleHelp(){const h=$("#help");h.hidden=!h.hidden}
 /* 11: remember where you were */
-function savePrefs(){try{localStorage.setItem("board.prefs",JSON.stringify({status:S.status,issue:S.issue,type:S.type,openId:S.openId,platform:S.platform}))}catch(e){}}
-function loadPrefs(){try{const p=JSON.parse(localStorage.getItem("board.prefs")||"null");if(!p)return;["status","issue","type","openId","platform"].forEach(k=>{if(p[k]!=null)S[k]=p[k]})}catch(e){}}
+function savePrefs(){try{localStorage.setItem("board.prefs",JSON.stringify({status:S.status,issue:S.issue,type:S.type,openId:S.openId,platform:S.platform,by:S.by,label:S.label}))}catch(e){}}
+function loadPrefs(){try{const p=JSON.parse(localStorage.getItem("board.prefs")||"null");if(!p)return;["status","issue","type","openId","platform","by","label"].forEach(k=>{if(p[k]!=null)S[k]=p[k]})}catch(e){}}
 /* 6: keyboard shortcuts */
 document.addEventListener("keydown",ev=>{if(ev.altKey||ev.ctrlKey||ev.metaKey)return;
   if(ev.key==="Escape"){closeZoom();const h=$("#help");if(h&&!h.hidden)h.hidden=true;return}
@@ -2257,6 +2334,87 @@ document.addEventListener("click",async ev=>{const b=ev.target.closest("[data-co
 document.addEventListener("visibilitychange",async()=>{if(document.visibilityState!=="visible"||!S.connectUrl)return;
   // Back from Facebook: refresh what this person can post to.
   try{const me=await eng("engine_me",{});S.rights=me.publish_rights||[];S.connected=me.connected_rights||[];S.connectUrl=null;renderConnect();if(S.view==="posts")renderDetail()}catch(e){}});
+/* ---------- Priority One, across the desk [chosen 3 Nov] ----------
+   21A The bell: what needs you, in the desk only (no email, phone or Slack).
+   Today and Earlier, each line opens what it's about, Mark all as read.
+   20C The renewal banner: only for the person whose Facebook connection is
+   ending (7 days out), across every page, snoozable for a day.
+   22A My settings: clock, week start, calendar times, weekends, theme, with a
+   live preview; saved to the person (engine_prefs settings). */
+const BELL={items:[],live:[],seen:null,connections:[],open:false,err:null,url:null};
+async function loadBell(){if(!S.mcp||!S.team)return;const team=S.team;
+  try{const r=await eng("engine_bell",{team});if(S.team!==team)return;BELL.items=r.items||[];BELL.seen=r.seen||BELL.seen;BELL.connections=r.connections||[];BELL.err=null}catch(e){BELL.err=e}
+  renderBell();renderRenew()}
+const bellAll=()=>BELL.live.filter(x=>x.team===S.team).concat(BELL.items).sort((a,b)=>String(b.at).localeCompare(String(a.at)));
+const bellUnread=i=>!BELL.seen||String(i.at)>BELL.seen;
+const BELL_IC={assigned:"💬",check:"☑",sent_back:"↩",approved:"✓",failed:"!",connection:"🔌",ask:"✎",mention:"@"};
+function bellPush(kind,text,go,ref){BELL.live.unshift({id:"lv:"+Date.now()+Math.random(),kind,text,go,ref,team:S.team,at:new Date().toISOString()});BELL.live=BELL.live.slice(0,20);renderBell()}
+function renderBell(){const n=bellAll().filter(bellUnread).length;const b=$("#bellN"),btn=$("#bellBtn");if(!btn)return;
+  if(b){b.hidden=!n;b.textContent=n>9?"9+":String(n)}btn.setAttribute("aria-label",n?`For you, ${n} unread`:"For you");btn.setAttribute("aria-expanded",String(BELL.open));
+  document.title=(n?`(${n}) `:"")+document.title.replace(/^\(\d+\+?\) /,"");
+  const pop=$("#bellPop");if(!pop)return;pop.hidden=!BELL.open;if(!BELL.open)return;
+  const all=bellAll();const today=dayKey(new Date());const row=i=>`<button class="bellrow${bellUnread(i)?" unread":""}" data-bell-go="${esc(i.go||"")}" data-ref="${esc(i.ref||"")}"><span class="bic k-${esc(i.kind)}" aria-hidden="true">${BELL_IC[i.kind]||"•"}</span><span class="btx"><span>${esc(i.text)}</span><small>${esc(new Date(i.at).toLocaleString("en-GB",dayKey(new Date(i.at))===today?{hour:"2-digit",minute:"2-digit"}:{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}))}</small></span></button>`;
+  const t=all.filter(i=>dayKey(new Date(i.at))===today),e=all.filter(i=>dayKey(new Date(i.at))!==today);
+  pop.innerHTML=`<div class="bellhd"><b>For you</b>${all.some(bellUnread)?`<button class="lnk" data-bell-read>Mark all as read</button>`:""}<button class="btn small" data-bell-close aria-label="Close">✕</button></div>
+    ${BELL.err&&!all.length?`<p class="src">${esc("Couldn't load: "+whyFailed(BELL.err))}</p>`:""}${t.length?`<h4>Today</h4>${t.map(row).join("")}`:""}${e.length?`<h4>Earlier</h4>${e.map(row).join("")}`:""}${all.length?"":`<p class="src">Nothing needs you right now. Things assigned to you, checks, approvals, failed posts and your connection show here.</p>`}
+    <p class="src bellft">Only here in the desk: nothing is emailed or sent to Slack.</p>`}
+async function bellRead(){const at=new Date().toISOString();BELL.seen=at;renderBell();try{await eng("engine_prefs",{set:{bell_seen:at}})}catch(e){}}
+async function bellGo(go,ref){BELL.open=false;renderBell();
+  if(go==="renew"){renewStart();return}
+  if(go==="post"||go==="ask"){const d=S.drafts.find(x=>x.id===ref);if(!d){toast("That post isn't on the desk any more");return}S.status=d.status||"pending";S.openId=d.id;resetDraftUi();setView("posts");renderSide();return}
+  if(go==="inbox:check"){navGo("inbox:inbox");IB.status="check";loadInbox();return}
+  if(go)navGo(go)}
+document.addEventListener("click",ev=>{
+  if(ev.target.closest("#bellBtn")){BELL.open=!BELL.open;renderBell();if(BELL.open){$("#bellPop .bellrow,#bellPop [data-bell-read]")?.focus();loadBell()}return}
+  if(ev.target.closest("[data-bell-close]")){BELL.open=false;renderBell();$("#bellBtn")?.focus();return}
+  if(ev.target.closest("[data-bell-read]")){bellRead();return}
+  const g=ev.target.closest("[data-bell-go]");if(g){bellGo(g.dataset.bellGo,g.dataset.ref);return}
+  if(BELL.open&&!ev.target.closest("#bellPop")){BELL.open=false;renderBell()}});
+document.addEventListener("keydown",ev=>{if(ev.key==="Escape"&&BELL.open){BELL.open=false;renderBell();$("#bellBtn")?.focus()}});
+setInterval(()=>{if(document.visibilityState==="visible")loadBell()},120e3);
+/* 20C */
+const renewEnding=()=>(BELL.connections||[]).filter(c=>c.days_left<=7);
+function renderRenew(){const el=$("#renewBar");if(!el)return;const end=renewEnding();const snooze=lsGet("desk.renewSnooze","");
+  if(!end.length||snooze===dayKey(new Date())&&end[0].days_left>1){el.hidden=true;el.innerHTML="";return}
+  const c=end[0];const accs=end.map(x=>accLabel(x.account_key)).join(", ");const when=new Date(c.ends_at).toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"});
+  el.hidden=false;el.className="renewbar"+(c.days_left<=1?" urgent":"");
+  el.innerHTML=`<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3v5M15 3v5M7 8h10v3a5 5 0 0 1-10 0z"/><path d="M12 16v5"/></svg><span><b>${c.days_left>0?`Your Facebook connection ends in ${c.days_left} day${c.days_left===1?"":"s"}`:"Your Facebook connection has ended"}</b> (${esc(accs)}). ${c.days_left>0?`Posts you approved stop going out after ${esc(when)} unless you renew.`:"Posts you approved can't go out until you renew."}</span>${BELL.url?`<a class="btn small primary" href="${esc(BELL.url)}" target="_blank" rel="noopener">Continue to Facebook ↗</a>`:`<button class="btn small primary" data-renew>Renew</button>`}${c.days_left>1?`<button class="btn small" data-renew-snooze>Tomorrow</button>`:""}`}
+async function renewStart(){try{const r=await eng("engine_connect",{});if(r&&r.ok&&r.url){BELL.url=r.url;renderRenew();if($("#renewBar").hidden){S.connectUrl=r.url;renderConnect();navGo("settings")}setTimeout(()=>{BELL.url=null;renderRenew()},9*60e3)}else toast((r&&r.error)||"Couldn't start Connect Facebook")}catch(e){failToast(e,"Couldn't start Connect Facebook")}}
+document.addEventListener("click",ev=>{if(ev.target.closest("[data-renew]")){ev.target.closest("[data-renew]").disabled=true;renewStart();return}
+  if(ev.target.closest("[data-renew-snooze]")){lsSet("desk.renewSnooze",dayKey(new Date()));renderRenew()}});
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"&&BELL.url){BELL.url=null;loadBell()}});
+/* 22A My settings */
+const SET0={clock:"24",weekStart:"mon",tz:"",weekends:true,theme:""};
+async function loadSettings(){try{const r=await eng("engine_prefs",{});IB.prefs=IB.prefs||r.prefs||{};S.settings={...SET0,...((r.prefs||{}).settings||{})}}catch(e){S.settings=S.settings||{...SET0}}
+  if(S.settings.theme){lsSet("desk.theme",S.settings.theme);applyTheme(S.settings.theme)}
+  if(S.view==="calendar")renderCal();if(S.view==="settings")renderMine()}
+let setT=0;function saveSettings(){clearTimeout(setT);setT=setTimeout(async()=>{try{const r=await eng("engine_prefs",{set:{settings:S.settings}});const n=$("#stSaved");if(n){n.textContent=r&&r.ok===false?(r.error||"Couldn't save"):"✓ Saved";n.classList.toggle("bad",!!(r&&r.ok===false))}}catch(e){const n=$("#stSaved");if(n){n.textContent="Couldn't save: "+whyFailed(e);n.classList.add("bad")}}},400)}
+function seg(k,opts){const v=(S.settings||SET0)[k];return `<span class="stseg" role="group">${opts.map(([x,l])=>`<button data-set="${k}" data-v="${esc(String(x))}" aria-pressed="${String(v)===String(x)}">${esc(l)}</button>`).join("")}</span>`}
+function mineHtml(){const st=S.settings||SET0;const team=calTeamName(S.team);const city=tzCity(teamTz());const differs=tzGapMin()!==0;
+  const tzv=st.tz||(lsGet("desk.calTzMine",false)?"mine":"team");
+  return `<div class="ibd stmine"><div class="stcols"><div class="stform">
+    <h3>My settings</h3>
+    <h4>Time and dates</h4>
+    <div class="stkv"><span>Clock</span>${seg("clock",[["24","24 hour"],["12","12 hour"]])}
+    <span>Calendar times</span><span class="stseg" role="group"><button data-set="tz" data-v="team" aria-pressed="${tzv==="team"}">${esc(city)} time</button><button data-set="tz" data-v="mine" aria-pressed="${tzv==="mine"}">My computer's time</button></span>
+    <span></span><small class="src">${differs?`Your computer is on ${esc(tzCity(myTz()))} time, ${esc(tzGapText().replace("yours","the team's").replace(/ahead of|behind/,m=>m==="behind"?"ahead of":"behind"))}.`:`Your computer is on the same time as ${esc(team)}.`}</small></div>
+    <h4>Calendar</h4>
+    <div class="stkv"><span>Week starts</span>${seg("weekStart",[["mon","Monday"],["sun","Sunday"]])}
+    <span>Weekends in Week</span>${seg("weekends",[[true,"Show"],[false,"Hide"]])}</div>
+    <h4>Look</h4>
+    <div class="stkv"><span>Theme</span>${seg("theme",[["light","Light"],["dark","Dark"],["","Auto"]])}</div>
+    <p class="src" id="stSaved" aria-live="polite">Saves as you change it. Follows you to any computer.</p></div>
+    <figure class="stprev" aria-label="Preview">${minePreview()}<figcaption class="src">How a week of posts will look</figcaption></figure></div></div>`}
+function minePreview(){const st=S.settings||SET0;const mine=(st.tz||(lsGet("desk.calTzMine",false)?"mine":"team"))==="mine";
+  const shift=mine?-tzGapMin():0;const fmt=(h,m)=>{const t=new Date(2026,0,5,h,m+shift);return st.clock==="12"?t.toLocaleTimeString("en-GB",{hour:"numeric",minute:"2-digit",hour12:true}).replace(" ",""):t.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"})};
+  let days=st.weekStart==="sun"?["Sun","Mon","Tue","Wed","Thu","Fri","Sat"]:["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];if(st.weekends===false)days=days.filter(d=>d!=="Sat"&&d!=="Sun");
+  const P={Mon:[[9,30,"Burnham"]],Tue:[[7,30,"Explainer"],[14,0,"Write to MP"]],Wed:[[10,0,"Questions"]],Thu:[[12,0,"The bill"]],Sat:[[18,0,"Weekly wins"]],Sun:[[19,0,"Reflection"]]};
+  return `<div class="stpcal" style="--n:${days.length}">${days.map(d=>`<span class="stph">${d}</span>`).join("")}${days.map(d=>`<span class="stpd">${(P[d]||[]).map(([h,m,l])=>`<span class="stpc"><b>${esc(fmt(h,m))}</b> ${esc(l)}</span>`).join("")}</span>`).join("")}</div>`}
+function renderMine(){const el=$("#stMine");if(!el)return;const a=document.activeElement;const k=a&&a.dataset&&a.dataset.set?a.dataset.set+":"+a.dataset.v:null;el.innerHTML=mineHtml();if(k){const b=el.querySelector(`[data-set="${k.split(":")[0]}"][data-v="${k.split(":").slice(1).join(":")}"]`);b&&b.focus()}}
+document.addEventListener("click",ev=>{const b=ev.target.closest("[data-set]");if(!b)return;S.settings=S.settings||{...SET0};const k=b.dataset.set;let v=b.dataset.v;if(k==="weekends")v=v==="true";
+  S.settings[k]=v;if(k==="tz")lsSet("desk.calTzMine",v==="mine");if(k==="theme"){lsSet("desk.theme",v||"auto");applyTheme(v||"auto")}
+  renderMine();const n=$("#stSaved");if(n)n.textContent="Saving…";saveSettings()});
+document.addEventListener("click",ev=>{if(ev.target.closest("#sideMe")){navGo("settings");setTimeout(()=>$("#stMine")?.scrollIntoView({block:"start"}),50)}});
 function defaultDests(d){return d.account==="scotland"?["sc-fb","sc-ig"]:["uk-fb","uk-ig","uk-x"]}
 function nextSlot(){const t=new Date();t.setHours(18,0,0,0);if(new Date()>t)t.setDate(t.getDate()+1);while([0,6].includes(t.getDay()))t.setDate(t.getDate()+1);return t}
 function toLocalInput(iso){const t=iso?new Date(iso):nextSlot();const p=n=>String(n).padStart(2,"0");return `${t.getFullYear()}-${p(t.getMonth()+1)}-${p(t.getDate())}T${p(t.getHours())}:${p(t.getMinutes())}`}
@@ -2824,12 +2982,18 @@ Return only the new post text, nothing else.`;
     await setStatus(d,act==="confirmReject"?"rejected":"changes",{reasons,note});return}
   if(act==="undo"){await setStatus(d,"pending");return}
 });
+let fQT=0;
+document.addEventListener("input",ev=>{
+  if(ev.target.id!=="fQ")return;clearTimeout(fQT);const v=ev.target.value;
+  fQT=setTimeout(()=>{S.q=v.trim();S.openId=null;resetDraftUi();renderAll();const q=$("#fQ");if(q&&document.activeElement!==q){q.focus();q.setSelectionRange(q.value.length,q.value.length)}},200)});
 document.addEventListener("change",ev=>{
   if(ev.target.id==="fIssue"){S.issue=ev.target.value;S.openId=null;resetDraftUi();renderAll()}
   if(ev.target.id==="fType"){S.type=ev.target.value;S.openId=null;resetDraftUi();renderAll()}
+  if(ev.target.id==="fBy"){S.by=ev.target.value;S.openId=null;resetDraftUi();renderAll()}
+  if(ev.target.id==="fLabel"){S.label=ev.target.value;S.openId=null;resetDraftUi();renderAll()}
   if(ev.target.id==="factsOk"){S.factsOk=ev.target.checked;document.querySelectorAll('[data-act="approve"]').forEach(a=>a.disabled=!S.factsOk)}
   if(ev.target.dataset.fact!=null){const i=+ev.target.dataset.fact;ev.target.checked?S.factTicks.add(i):S.factTicks.delete(i);const d=S.drafts.find(x=>x.id===S.openId);const n=d?checkFacts(d).length:0;S.factsOk=S.factTicks.size>=n;document.querySelectorAll('[data-act="approve"]').forEach(a=>a.disabled=!S.factsOk);const c=$("#fcount");if(c)c.textContent=`${S.factTicks.size} of ${n} ticked`}
-  if(ev.target.id==="fIssue"||ev.target.id==="fType")savePrefs()
+  if(["fIssue","fType","fBy","fLabel"].includes(ev.target.id))savePrefs()
   if(ev.target.id==="postDay"||ev.target.id==="postTime"||ev.target.dataset.dest||ev.target.dataset.fact!=null)refreshReady()
 });
 
@@ -2909,7 +3073,8 @@ function sideCounts(){const c=IB.counts||{};return{
   posts:S.drafts.filter(d=>(d.status||"pending")==="pending").length,
   evergreen:(EG.posts||[]).filter(p=>p.state==="due").length,
   "inbox:inbox":Math.max(0,(c.open||0)-(c.mentions||0)),"inbox:mine":c.mine||0,
-  "inbox:history":(IB.alerts||[]).length,"listening:mentions":c.mentions||0}}
+  "inbox:history":(IB.alerts||[]).length,"listening:mentions":c.mentions||0,
+  "listening:watches":LS.wby?wsMine().reduce((n,w)=>n+wsNew(w,LS.wby[w.id]),0):0}}
 function sideActive(){const v=S.view||"posts";
   if(v==="posts"&&S.status==="evergreen")return "evergreen";
   if(v==="calendar")return CAL.view==="month"?"plan":"calendar:"+CAL.view;
@@ -2932,7 +3097,7 @@ function applyTheme(t){const r=document.documentElement;if(t==="light"||t==="dar
   const sw=$("#themeSw");if(sw)sw.innerHTML=[["light","Light"],["dark","Dark"],["auto","Auto"]].map(([k,l])=>`<button data-theme-set="${k}" aria-pressed="${(t||"auto")===k}" title="${l} theme">${sideSvg(k,13)}<span>${l}</span></button>`).join("");
   try{const d=S.drafts?.find(x=>x.id===S.openId);if(d){drawCard(d);drawThumbs(d)}}catch(e){}}
 function applyFold(){document.querySelector(".shell")?.classList.toggle("folded",!!SIDE.fold);const b=document.querySelector(".sfold");if(b){b.setAttribute("aria-label",SIDE.fold?"Open the sidebar":"Fold the sidebar to icons");b.title=SIDE.fold?"Open the sidebar":"Fold to icons";b.classList.toggle("flip",!!SIDE.fold)}}
-document.addEventListener("click",ev=>{const t=ev.target.closest("[data-theme-set]");if(t){lsSet("desk.theme",t.dataset.themeSet);applyTheme(t.dataset.themeSet);return}
+document.addEventListener("click",ev=>{const t=ev.target.closest("[data-theme-set]");if(t){lsSet("desk.theme",t.dataset.themeSet);applyTheme(t.dataset.themeSet);if(S.settings){S.settings.theme=t.dataset.themeSet==="auto"?"":t.dataset.themeSet;saveSettings();renderMine()}return}
   if(ev.target.closest('[data-act="sideFold"]')){SIDE.fold=!SIDE.fold;lsSet("desk.sideFold",SIDE.fold);applyFold();return}
   const sc=ev.target.closest("[data-sec]");if(sc){const k=sc.dataset.sec;if(SIDE.fold){const it=SIDE_NAV.find(x=>x[0]===k)[2];navGo(it[0][0]);return}SIDE.open[k]=!(sc.getAttribute("aria-expanded")==="true");lsSet("desk.sideOpen",SIDE.open);renderSide()}});
 applyTheme(lsGet("desk.theme","auto"));
@@ -3174,7 +3339,7 @@ document.addEventListener("input",ev=>{const t=ev.target;if(t.id==="tlQ"){TL.q=t
   const map={mkKick:"kicker",mkHl:"headline",mkSub:"sub"};if(map[t.id]){TL.mk[map[t.id]]=t.value;mkDraw()}});
 document.addEventListener("change",ev=>{const t=ev.target;if(t.id==="mkT"){TL.mk.T=t.value;mkDraw()}else if(t.id==="mkPhoto"&&t.files&&t.files[0]){const r=new FileReader();r.onload=()=>{TL.mk.photo=r.result;mkDraw();setTimeout(mkDraw,300)};r.readAsDataURL(t.files[0])}});
 document.addEventListener("click",async ev=>{if(!ev.target.closest("[data-pi-dl]"))return;try{const r=await window.deskFile(PI_INFO.zip);location.href=r.url}catch(e){toast(e.message||"Couldn't get the download")}});
-function renderSettings(){const el=$("#stBody");if(!el)return;const rights=new Set(S.rights||[]),conn=new Set(S.connected||[]);
+function renderSettings(){renderMine();const el=$("#stBody");if(!el)return;const rights=new Set(S.rights||[]),conn=new Set(S.connected||[]);
   el.innerHTML=(S.teams||[]).map(t=>`<div class="ibd"><b>${esc(((t.flag||"")+" "+t.name).trim())}</b><span class="src">Your role: ${esc(t.role||"editor")}${t.role==="admin"?" (you can change this team's auto-hide list and automations)":""}</span>
     <div class="awrap"><table class="atbl"><thead><tr><th>Account</th><th>Can you post and reply?</th></tr></thead><tbody>${(t.accounts||[]).map(a=>`<tr><td>${esc(a.name||a.key)} <small class="src">${esc(a.platform)}</small></td><td>${a.platform==="x"?"Posted by hand: copy the text from the post":conn.has(a.key)?"✓ Yes, through your Facebook connection":rights.has(a.key)?"✓ Yes, set up by hand (connect Facebook to confirm it)":"🔒 No: you need a role on this Page in Facebook"}</td></tr>`).join("")}</tbody></table></div></div>`).join("")||`<p class="src">You aren't in a Content Engine team yet.</p>`;
   if(!$("#stAccess")){const d=document.createElement("div");d.id="stAccess";el.after(d)}
@@ -3200,10 +3365,47 @@ function renderTeams(){
    items, and the key dates, come from engine_calendar. */
 const CAL={view:"month",best:true,filter:{},anchor:new Date(),others:false,data:null,ahead:null,err:null,loading:false};
 const accLabel=k=>{const [c,p]=String(k).split("-");return `${c==="sc"?"Scot":c==="global"?"CGO":c.toUpperCase()} ${({fb:"FB",ig:"IG",x:"X"})[p]||p||""}`.trim()};
-const hhmm=t=>new Date(t).toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"});
+const hhmm=t=>(S.settings||{}).clock==="12"?new Date(t).toLocaleTimeString("en-GB",{hour:"numeric",minute:"2-digit",hour12:true}).replace(" ",""):new Date(t).toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"});
+const wkOff=d=>(S.settings||{}).weekStart==="sun"?d.getDay():(d.getDay()+6)%7;
+const dowNames=()=>(S.settings||{}).weekStart==="sun"?["Sun","Mon","Tue","Wed","Thu","Fri","Sat"]:["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+/* Priority One 6E [chosen 3 Nov]: the calendar runs on the team's own clock.
+   Nothing changes for anyone whose computer is in that zone; anyone else gets
+   a one-line heads-up with "Show my time". Z() turns a real instant into a Date
+   whose local fields read as team wall time; unZ() goes back. Calendar only. */
+const TEAM_TZ={uk:"Europe/London",mx:"America/Mexico_City"}; // fallback; engine_teams.tz wins
+const teamTz=()=>{const t=(S.teams||[]).find(x=>x.id===S.team);const z=t&&t.tz;if(z){try{new Intl.DateTimeFormat("en-GB",{timeZone:z});return z}catch(e){}}return TEAM_TZ[S.team]||"Europe/London"};
+const myTz=()=>{try{return Intl.DateTimeFormat().resolvedOptions().timeZone||""}catch(e){return""}};
+const TZF={};
+function tzOff(tz,d){try{const f=TZF[tz]=TZF[tz]||new Intl.DateTimeFormat("en-US",{timeZone:tz,hourCycle:"h23",year:"numeric",month:"numeric",day:"numeric",hour:"numeric",minute:"numeric"});const p={};f.formatToParts(d).forEach(x=>{p[x.type]=x.value});return Math.round((Date.UTC(+p.year,+p.month-1,+p.day,+p.hour%24,+p.minute)-Math.floor(d.getTime()/6e4)*6e4)/6e4)}catch(e){return -d.getTimezoneOffset()}}
+const tzGapMin=()=>{const n=new Date();return tzOff(teamTz(),n)+n.getTimezoneOffset()};
+const calMine=()=>{const s=(S.settings||{}).tz;return s==="mine"?true:s==="team"?false:!!lsGet("desk.calTzMine",false)};
+const calTeamTime=()=>S.view==="calendar"&&teamTz()!==myTz()&&!calMine();
+function Z(t){const d=new Date(t);if(isNaN(d)||!calTeamTime())return d;return new Date(d.getTime()+(tzOff(teamTz(),d)+d.getTimezoneOffset())*6e4)}
+function unZ(w){const d=new Date(w);if(isNaN(d)||!calTeamTime())return d;let g=new Date(d.getTime()-(tzOff(teamTz(),d)+d.getTimezoneOffset())*6e4);g=new Date(d.getTime()-(tzOff(teamTz(),g)+g.getTimezoneOffset())*6e4);return g}
+const calHM=t=>hhmm(Z(t));
+const calToday=()=>dayKey(Z(Date.now()));
+const tzCity=tz=>String(tz||"").split("/").pop().replace(/_/g," ");
+function tzGapText(){const m=tzGapMin();const h=Math.abs(m)/60;const hs=(Number.isInteger(h)?h===1?"one":h:h.toFixed(1))+" hour"+(h===1?"":"s");return m<0?`${hs} behind yours`:`${hs} ahead of yours`}
+function tzBanner(){if(tzGapMin()===0)return"";const mine=calMine();const team=calTeamName(S.team);const city=tzCity(teamTz());
+  const seen=lsGet("desk.calTzSeen","")===teamTz()+"|"+myTz();
+  if(!seen)return `<div class="caltz" role="status"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg><span>You're in <b>${esc(tzCity(myTz())||"another time zone")}</b>. ${mine?`This calendar shows <b>your</b> times, not ${esc(city)}'s.`:`This calendar shows <b>${esc(city)} times</b>, ${esc(tzGapText())}.`}</span><button class="btn small" data-cal-tz="${mine?"team":"mine"}">${mine?"Show "+esc(city)+" time":"Show my time"}</button><button class="btn small primary" data-cal-tz="seen">Got it</button></div>`;
+  return `<span class="caltzq">${mine?`Your times (${esc(tzCity(myTz()))})`:`${esc(city)} times`} · <button class="lnk" data-cal-tz="${mine?"team":"mine"}">${mine?"Show "+esc(city)+" time":"Show my time"}</button></span>`}
+/* Priority One 7C [chosen 3 Nov]: notes on calendar days, in a side panel,
+   shared by the team (Away, embargo, PMQs…), with a dot on days that have one. */
+let calNotesSub=null;
+function calNotesLoad(){if(calNotesSub||!S.db)return;try{calNotesSub=S.db.collection("calNotes").onSnapshot(snap=>{CAL.notes=snap.docs.map(x=>({...x.data(),id:x.id})).filter(x=>x&&!x.gone&&x.day&&x.text);if(S.view==="calendar"&&!document.activeElement?.closest?.("#calNoteForm"))renderCal()},()=>{})}catch(e){}}
+const calNotesOn=k=>(CAL.notes||[]).filter(n=>n.team===S.team&&n.day===k).sort((a,b)=>String(a.at).localeCompare(String(b.at)));
+const calShowNotes=()=>lsGet("desk.calNotesShow",true)!==false;
+function noteDot(k){if(!calShowNotes())return"";const n=calNotesOn(k);return n.length?`<span class="cnote-dot" title="${esc(n.map(x=>x.text).join("\n"))}" aria-label="${n.length} note${n.length===1?"":"s"}"></span>`:""}
+function calNotesPanel(days){const ks=new Set(days.map(dayKey));const list=(CAL.notes||[]).filter(n=>n.team===S.team&&ks.has(n.day)).sort((a,b)=>(a.day+a.at).localeCompare(b.day+b.at));
+  const by={};list.forEach(n=>{(by[n.day]=by[n.day]||[]).push(n)});const def=CAL.noteDay&&ks.has(CAL.noteDay)?CAL.noteDay:(ks.has(calToday())?calToday():dayKey(days[0]||new Date()));
+  const lbl=CAL.view==="week"?"this week":"this month";
+  return `<section class="cnotes" aria-label="Notes"><h3>Notes ${lbl}</h3>${Object.keys(by).length?Object.entries(by).map(([k,ns])=>`<div class="cnday"><b>${esc(new Date(k+"T12:00:00").toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"}))}</b>${ns.map(n=>`<div class="cnote"><p>${esc(n.text)}</p><span class="src">${esc(n.name||nameOf(n.by)||"")}</span><button class="lnk" data-cal-note-del="${esc(n.id)}" aria-label="Delete this note">Delete</button></div>`).join("")}</div>`).join(""):`<p class="src" style="margin:0">No notes ${lbl}. Add one for an embargo, someone away, or what to watch for.</p>`}
+    <form id="calNoteForm" class="cnform"><label>Day<input type="date" name="day" value="${esc(def)}" required></label><label>Note<textarea name="text" rows="2" maxlength="280" required placeholder="e.g. Embargo till 10am on the NHS figures"></textarea></label><button class="btn small" type="submit">+ Add note</button></form>
+    <label class="lg"><input type="checkbox" data-cal-notes-show${calShowNotes()?" checked":""}> Show on calendar</label></section>`}
 function calRange(){const a=new Date(CAL.anchor);a.setHours(0,0,0,0);
-  if(CAL.view==="week"){const s=new Date(a);s.setDate(a.getDate()-((a.getDay()+6)%7));const e=new Date(s);e.setDate(s.getDate()+7);return{s,e}}
-  const f=new Date(a.getFullYear(),a.getMonth(),1);const s=new Date(f);s.setDate(f.getDate()-((f.getDay()+6)%7));const e=new Date(s);e.setDate(s.getDate()+42);return{s,e,month:a.getMonth()}}
+  if(CAL.view==="week"){const s=new Date(a);s.setDate(a.getDate()-wkOff(a));const e=new Date(s);e.setDate(s.getDate()+7);return{s,e}}
+  const f=new Date(a.getFullYear(),a.getMonth(),1);const s=new Date(f);s.setDate(f.getDate()-wkOff(f));const e=new Date(s);e.setDate(s.getDate()+42);return{s,e,month:a.getMonth()}}
 async function loadCal(){
   const {s,e}=calRange();const now=new Date();now.setHours(0,0,0,0);const ahead=new Date(now);ahead.setDate(now.getDate()+28);
   const ticket=CAL.ticket=(CAL.ticket||0)+1;CAL.loading=true;CAL.err=null;renderCal();
@@ -3226,9 +3428,9 @@ function ownItems(){
 function calPins(){if(!CAL.pins){try{CAL.pins=JSON.parse(localStorage.getItem("calPins")||"[]")}catch(e){CAL.pins=[]}}return CAL.pins}
 function savePins(){try{localStorage.setItem("calPins",JSON.stringify(CAL.pins||[]))}catch(e){}}
 function otherAll(){if(!CAL.data)return[];const flag=id=>(CAL.data.teams||[]).find(t=>t.id===id)?.flag||"";
-  return (CAL.data.items||[]).filter(i=>i.team_id!==S.team&&i.at&&["scheduled","posted"].includes(i.status)).map(i=>({id:i.id,at:i.at,status:i.status,title:`${flag(i.team_id)} ${i.title}`.trim(),raw:i.title,team:i.team_id,day:dayKey(new Date(i.at)),dests:i.destinations||[],mine:false,thumb:i.thumb||null,links:i.links||[]}))}
+  return (CAL.data.items||[]).filter(i=>i.team_id!==S.team&&i.at&&["scheduled","posted"].includes(i.status)).map(i=>({id:i.id,at:i.at,status:i.status,title:`${flag(i.team_id)} ${i.title}`.trim(),raw:i.title,team:i.team_id,day:dayKey(Z(i.at)),dests:i.destinations||[],mine:false,thumb:i.thumb||null,links:i.links||[]}))}
 function otherItems(){const c=CAL.country||"";if(!CAL.data)return[];if(!c||c===S.team){const pins=calPins();return otherAll().filter(i=>pins.includes(i.team)).map(i=>({...i,ghost:true}))}const flag=id=>(CAL.data.teams||[]).find(t=>t.id===id)?.flag||"";
-  return (CAL.data.items||[]).filter(i=>i.team_id!==S.team&&i.at&&(c==="all"||i.team_id===c)).map(i=>({id:i.id,at:i.at,status:i.status,title:`${flag(i.team_id)} ${i.title}`.trim(),raw:i.title,team:i.team_id,day:dayKey(new Date(i.at)),dests:i.destinations||[],mine:false}))}
+  return (CAL.data.items||[]).filter(i=>i.team_id!==S.team&&i.at&&(c==="all"||i.team_id===c)).map(i=>({id:i.id,at:i.at,status:i.status,title:`${flag(i.team_id)} ${i.title}`.trim(),raw:i.title,team:i.team_id,day:dayKey(Z(i.at)),dests:i.destinations||[],mine:false}))}
 function calTeamName(id){const t=(CAL.data?.teams||[]).find(x=>x.id===id)||(S.teams||[]).find(x=>x.id===id);return t?`${t.flag||""} ${t.name}`.trim():id}
 /* Another country's post as an idea in my team's Plan, for the same day (or tomorrow if that has passed). */
 async function copyAsIdea(btn){const today=dayKey(new Date()),tom=dayKey(new Date(Date.now()+864e5));const day=btn.dataset.day>today?btn.dataset.day:tom;
@@ -3285,7 +3487,7 @@ function calChip(i,mode){const d=i.mine?S.drafts.find(x=>x.id===i.id):null;const
   const cls=i.status==="posted"?"posted":["pending","changes"].includes(i.status)?"draft":"sch";
   const drag=i.mine&&i.status!=="posted"?` draggable="true" data-drag="${esc(i.id)}"`:"";
   const thumb=i.mine?`<canvas class="cthumb" data-cthumb="${esc(i.id)}" width="10" height="10" aria-hidden="true"></canvas>`:"";
-  const meta=`${i.status==="posted"?"✓ ":cls==="draft"?"Review · ":""}${hhmm(i.at)} · ${calNets(i)}`;
+  const meta=`${i.status==="posted"?"✓ ":cls==="draft"?"Review · ":""}${calHM(i.at)} · ${calNets(i)}`;
   if(!i.mine)return `<button class="cchip other${i.ghost?" ghost":""}${mode?" "+mode:""}" data-cal-others="${esc(i.day)}" data-only="${esc(i.id)}" title="${esc(i.title)}">${i.thumb&&/^https:/.test(i.thumb)?`<img class="cthumb" src="${esc(i.thumb)}" alt="" loading="lazy">`:""}<span class="cbody"><b>${esc(i.title)}</b><small>${esc(meta)}</small></span></button>`;
   return `<button class="cchip ${cls}${mode?" "+mode:""}" data-cal-peek="${esc(i.id)}"${drag}${cc?` style="--cc:${cc}"`:""} title="${esc(i.title)}">${thumb}<span class="cbody"><b>${esc(i.title)}</b><small>${esc(meta)}</small></span></button>`}
 function calHeader(label,count){const v=CAL.view;const f=CAL.filter||{};const nets=["fb","ig","x"];
@@ -3298,54 +3500,87 @@ function calHeader(label,count){const v=CAL.view;const f=CAL.filter||{};const ne
     <input type="search" data-cal-q placeholder="Search" value="${esc(f.q||"")}" aria-label="Search posts">
     <label class="lg"><input type="checkbox" data-cal-best${CAL.best!==false?" checked":""}> Best slots</label></span></div>
     ${!CAL.country||CAL.country===S.team?`<div class="calpins"><span class="src">Also show:</span>${((CAL.data&&CAL.data.teams)||[]).filter(t=>t.id!==S.team).map(t=>`<button class="tab small" data-cal-pin="${esc(t.id)}" aria-pressed="${calPins().includes(t.id)}">${esc(`${t.flag||""} ${t.name}`.trim())}</button>`).join("")}<span class="src">Pinned countries show faintly in your calendar; the rest as 🌍 badges.</span></div>`:""}
-    <div class="calnote">${CAL.loading?"Loading the calendar…":CAL.err?esc("Couldn't load key dates and other teams: "+whyFailed(CAL.err)):esc(count)}</div>`}
+    <div class="calnote">${CAL.loading?"Loading the calendar…":CAL.err?esc("Couldn't load key dates and other teams: "+whyFailed(CAL.err)):esc(count)}${lsGet("desk.calTzSeen","")===teamTz()+"|"+myTz()?tzBanner():""}</div>${lsGet("desk.calTzSeen","")===teamTz()+"|"+myTz()?"":tzBanner()}`}
 /* ---- month ---- */
-function calMonth(days,month,byDay){const today=dayKey(new Date());const reqOn=k=>(PLAN.reqs||[]).filter(r=>r.for_date===k);
-  return `<div class="month cmonth">${["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map(x=>`<div class="dow">${x}</div>`).join("")}${days.map(d=>{const k=dayKey(d);const list=byDay[k]||[];const rq=reqOn(k);
+function calMonth(days,month,byDay){const today=calToday();const reqOn=k=>(PLAN.reqs||[]).filter(r=>r.for_date===k);
+  return `<div class="month cmonth">${dowNames().map(x=>`<div class="dow">${x}</div>`).join("")}${days.map(d=>{const k=dayKey(d);const list=byDay[k]||[];const rq=reqOn(k);
     const quiet=k>=today&&!list.some(i=>i.mine)&&!rq.length;
     const best=CAL.best!==false&&k>=today?bestChip(d,list):"";
-    return `<div class="mcell${d.getMonth()!==month?" out":""}${k===today?" today":""}${quiet?" quiet":""}" data-day="${k}"><span class="n">${d.getDate()}</span>${k>=today?keyDatesOn(k).filter(x=>x.starts===k||d.getDay()===1).map(x=>kdHtml(x,k)).join(""):""}${rq.map(rqHtml).join("")}${list.map(i=>calChip(i)).join("")}${badgeHtml(k)}${best&&list.filter(i=>i.mine).length<2?`<span class="qhint" title="Our best slot that day is free">${best} free</span>`:""}</div>`}).join("")}</div>`}
+    return `<div class="mcell${d.getMonth()!==month?" out":""}${k===today?" today":""}${quiet?" quiet":""}" data-day="${k}"><span class="n">${d.getDate()}${noteDot(k)}</span>${k>=today?keyDatesOn(k).filter(x=>x.starts===k||d.getDay()===1).map(x=>kdHtml(x,k)).join(""):""}${rq.map(rqHtml).join("")}${list.map(i=>calChip(i)).join("")}${badgeHtml(k)}${best&&list.filter(i=>i.mine).length<2?`<span class="qhint" title="Our best slot that day is free">${best} free</span>`:""}</div>`}).join("")}</div>`}
 function bestChip(d,list){const t=(S.teams||[]).find(x=>x.id===S.team);const lead=((t&&t.accounts)||[]).some(a=>a.platform==="facebook")?"fb":"ig";const we=[0,6].includes(d.getDay());const [h,m]=BEST[lead][we?"we":"wd"];const c=new Date(d);c.setHours(h,m,0,0);
-  if(c.getTime()<Date.now()+30*60e3||list.some(i=>i.mine&&Math.abs(Date.parse(i.at)-c.getTime())<90*60e3))return"";return `★ ${hhmm(c)}`}
+  const real=unZ(c).getTime();if(real<Date.now()+30*60e3||list.some(i=>i.mine&&Math.abs(Date.parse(i.at)-real)<90*60e3))return"";return `★ ${hhmm(c)}`}
 function rqHtml(r){if(r.status!=="drafted"&&r.for_date<dayKey(new Date()))return"";return r.status==="drafted"?`<div class="rq done" title="${esc(r.angle||"")}">✎ Drafted: ${esc(r.title)}</div>`:`<div class="rq" title="${esc(r.angle||"")}"><span>✎ Asked: ${esc(r.title)}</span><button data-plan-cancel="${esc(r.id)}" aria-label="Cancel the request for ${esc(r.title)}">Cancel</button></div>`}
 /* ---- week by the hour ---- */
 const CW_FROM=6,CW_TO=23;
-function calWeek(days,byDay){const today=dayKey(new Date());const pct=t=>((t.getHours()+t.getMinutes()/60)-CW_FROM)/(CW_TO-CW_FROM)*100;
+function calWeek(days,byDay){const today=calToday();if((S.settings||{}).weekends===false)days=days.filter(d=>![0,6].includes(d.getDay()));const pct=t=>((t.getHours()+t.getMinutes()/60)-CW_FROM)/(CW_TO-CW_FROM)*100;
   const ruler=[];for(let h=CW_FROM;h<CW_TO;h+=2)ruler.push(`<span style="top:${(h-CW_FROM)/(CW_TO-CW_FROM)*100}%">${String(h).padStart(2,"0")}</span>`);
   const t=(S.teams||[]).find(x=>x.id===S.team);const lead=((t&&t.accounts)||[]).some(a=>a.platform==="facebook")?"fb":"ig";
   const cols=days.map(d=>{const k=dayKey(d);const we=[0,6].includes(d.getDay());const [bh,bm]=BEST[lead][we?"we":"wd"];const b0=new Date(d);b0.setHours(bh-1,bm,0,0);const b1=new Date(d);b1.setHours(bh+2,bm,0,0);
-    const list=(byDay[k]||[]);const now=new Date();
-    const blocks=list.map(i=>`<div class="cwblock" style="top:${Math.max(0,Math.min(96,pct(new Date(i.at))))}%">${calChip(i,"wk")}</div>`).join("");
+    const list=(byDay[k]||[]);const now=Z(Date.now());
+    const blocks=list.map(i=>`<div class="cwblock" style="top:${Math.max(0,Math.min(96,pct(Z(i.at))))}%">${calChip(i,"wk")}</div>`).join("");
     const head=(k>=today?keyDatesOn(k):[]).filter(x=>x.starts===k).map(x=>`<span class="cwkd kc-${kdCat(x)}">${esc(x.title)}</span>`).join("")+(PLAN.reqs||[]).filter(r=>r.for_date===k).map(r=>`<span class="cwkd rqk">✎ ${esc(r.title)}</span>`).join("");
-    return `<div class="cwcol${k===today?" today":""}"><div class="cwhead"><b>${esc(d.toLocaleDateString("en-GB",{weekday:"short",day:"numeric"}))}</b>${head}${badgeHtml(k)}</div>
+    return `<div class="cwcol${k===today?" today":""}"><div class="cwhead"><b>${esc(d.toLocaleDateString("en-GB",{weekday:"short",day:"numeric"}))}${noteDot(k)}</b>${head}${badgeHtml(k)}</div>
       <div class="cwtrack" data-day="${k}" data-week="1">${CAL.best!==false&&k>=today?`<span class="cwbest" style="top:${pct(b0)}%;height:${pct(b1)-pct(b0)}%" title="Our best window"></span>`:""}${k===today?`<span class="cwnow" style="top:${pct(now)}%"></span>`:""}${blocks}</div></div>`}).join("");
-  return `<div class="cweek"><div class="cwruler"><div class="cwhead"></div><div class="cwtrack">${ruler.join("")}</div></div>${cols}</div>`}
-/* ---- list ---- */
-function calList(days,byDay){const today=dayKey(new Date());
-  return `<div class="clist">${days.map(d=>{const k=dayKey(d);const list=(byDay[k]||[]);const kd=k>=today?keyDatesOn(k).filter(x=>x.starts===k).map(x=>x.title).join(" · "):"";
+  return `<div class="cweek" style="--n:${days.length}"><div class="cwruler"><div class="cwhead"></div><div class="cwtrack">${ruler.join("")}</div></div>${cols}</div>`}
+/* ---- list: Priority One 8A [chosen 3 Nov] ----
+   A tick on every post still to go out and on every day, a red Now line,
+   and a bulk bar: Move…, Pause (On hold) and Back to Review. */
+function calList(days,byDay){const today=calToday();const nowZ=Z(Date.now());const sel=CAL.sel||(CAL.sel=new Set());
+  const tickable=i=>i.mine&&i.status!=="posted";
+  const nowRow=`<div class="clnow" role="separator" aria-label="Now"><span>Now ${esc(hhmm(nowZ))}</span></div>`;
+  const rows=days.map(d=>{const k=dayKey(d);const list=(byDay[k]||[]);const kd=k>=today?keyDatesOn(k).filter(x=>x.starts===k).map(x=>x.title).join(" · "):"";
     if(!list.length&&k<today)return"";
-    return `<div class="clday${k===today?" today":""}" data-day="${k}"><div class="cldh"><b>${esc(d.toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"}))}</b>${kd?`<span class="src">${esc(kd)}</span>`:""}${badgeHtml(k)}${list.length?"":`<span class="src">Nothing booked${CAL.best!==false&&bestChip(d,list)?" · "+bestChip(d,list)+" free":""}</span>`}</div>
-      ${list.map(i=>{const dd=i.mine?S.drafts.find(x=>x.id===i.id):null;const links=dd?liveLinks(dd):(i.links||[]).map(x=>[accLabel(x.account),x.url]);const st=i.status==="posted"?"Posted":["pending","changes"].includes(i.status)?"In review":i.mine?"Scheduled":calTeamName(i.team);
-        return `<div class="clrow"><b class="clt">${esc(hhmm(i.at))}</b>${calChip(i,"ls")}<span class="src">${esc(calNets(i))}</span><span class="clst ${i.status}">${esc(st)}</span><span class="src">${esc(dd?campOf(dd):"")}</span><span class="cllinks">${links.map(([l,u])=>`<a href="${esc(u)}" target="_blank" rel="noopener">${esc(l)} ↗</a>`).join(" ")}</span></div>`}).join("")}</div>`}).join("")}</div>`}
+    const ids=list.filter(tickable).map(i=>i.id);const n=ids.filter(id=>sel.has(id)).length;const dl=d.toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"});
+    let nowDone=k!==today;
+    const items=list.map(i=>{let pre="";if(!nowDone&&Z(i.at)>nowZ){pre=nowRow;nowDone=true}
+      const dd=i.mine?S.drafts.find(x=>x.id===i.id):null;const links=dd?liveLinks(dd):(i.links||[]).map(x=>[accLabel(x.account),x.url]);const st=i.status==="posted"?"Posted":["pending","changes"].includes(i.status)?"In review":i.mine?"Scheduled":calTeamName(i.team);
+      return pre+`<div class="clrow${sel.has(i.id)?" sel":""}${i.status==="posted"?" past":""}"><span class="cltk">${tickable(i)?`<input type="checkbox" data-cal-tick="${esc(i.id)}"${sel.has(i.id)?" checked":""} aria-label="Tick ${esc(i.title||"this post")}">`:""}</span><b class="clt">${esc(calHM(i.at))}</b>${calChip(i,"ls")}<span class="src">${esc(calNets(i))}</span><span class="clst ${esc(i.status)}">${esc(st)}</span><span class="src">${esc(dd?campOf(dd):"")}</span><span class="cllinks">${links.map(([l,u])=>`<a href="${esc(u)}" target="_blank" rel="noopener">${esc(l)} ↗</a>`).join(" ")}</span></div>`}).join("")+(nowDone?"":nowRow);
+    return `<div class="clday${k===today?" today":""}" data-day="${k}"><div class="cldh"><span class="cltk">${ids.length?`<input type="checkbox" data-cal-tickday="${k}"${n&&n===ids.length?" checked":""}${n&&n<ids.length?" data-some":""} aria-label="Tick every post on ${esc(dl)}">`:""}</span><b>${esc(dl)}</b>${k===today?'<span class="src">today</span>':""}${noteDot(k)}${kd?`<span class="src">${esc(kd)}</span>`:""}${badgeHtml(k)}${list.length?"":`<span class="src">Nothing booked${CAL.best!==false&&bestChip(d,list)?" · "+bestChip(d,list)+" free":""}</span>`}</div>
+      ${items}</div>`}).join("");
+  return calBulkBar()+`<div class="clist">${rows}</div>`}
+function calBulkBar(){const sel=CAL.sel;if(!sel||!sel.size)return"";const ds=[...sel].map(id=>S.drafts.find(x=>x.id===id)).filter(Boolean);const sch=ds.filter(d=>d.status==="scheduled").length;
+  return `<div class="calbulk" role="region" aria-label="Ticked posts"><b>${sel.size} ticked</b>${CAL.bulkMove?`<label>Move to <input type="date" id="calBulkDay" min="${esc(calToday())}" value="${esc(CAL.bulkDay||"")}" aria-label="Day to move them to"></label><button class="btn small primary" data-cal-bulk="moveGo">Move ${sch} scheduled</button><button class="btn small" data-cal-bulk="moveCancel">Cancel</button>`
+    :`<button class="btn small" data-cal-bulk="move"${sch?"":" disabled title=\"Only scheduled posts can be moved from here\""}>Move…</button><button class="btn small" data-cal-bulk="hold"${sch?"":" disabled"}>Pause</button><button class="btn small" data-cal-bulk="pending">Back to Review</button>`}<span class="sp"></span><button class="btn small" data-cal-bulk="clear">Clear</button></div>`}
+async function calBulk(act){const sel=CAL.sel||new Set();const ds=[...sel].map(id=>S.drafts.find(x=>x.id===id)).filter(Boolean);
+  if(act==="clear"){sel.clear();CAL.bulkMove=false;renderCal();return}
+  if(act==="move"){CAL.bulkMove=true;renderCal();$("#calBulkDay")?.focus();return}
+  if(act==="moveCancel"){CAL.bulkMove=false;renderCal();return}
+  if(act==="moveGo"){const day=$("#calBulkDay")?.value;if(!day){toast("Pick a day");$("#calBulkDay")?.focus();return}
+    const sch=ds.filter(d=>d.status==="scheduled");let ok=0,past=0,bad=0;const prev=[];
+    for(const d of sch){const p=d.posting||{};const cur=Z(d.post_at||p.at);const w=new Date(day+"T12:00:00");w.setHours(cur.getHours(),cur.getMinutes(),0,0);const t=unZ(w);
+      if(t.getTime()<Date.now()+60e3){past++;continue}const delta=t.getTime()-Date.parse(d.post_at||p.at);
+      const times=p.times&&Object.keys(p.times).length?Object.fromEntries(Object.entries(p.times).map(([k,v])=>[k,new Date(Date.parse(v)+delta).toISOString()])):null;
+      const was=JSON.parse(JSON.stringify(p));try{await S.db.doc("drafts/"+d.id).update({posting:{...p,at:t.toISOString(),...(times?{times}:{}),changedBy:S.me,changedAt:new Date().toISOString()}});ok++;prev.push([d.id,was])}catch(e){bad++}}
+    sel.clear();CAL.bulkMove=false;renderCal();
+    const left=ds.length-sch.length;
+    toast(`Moved ${ok} post${ok===1?"":"s"} to ${new Date(day+"T12:00:00").toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"})}, same times${bad?` · ${bad} couldn't be moved, try again`:""}${past?` · ${past} would land in the past, left as they were`:""}${left?` · ${left} in Review left: open them to set a time`:""}`,ok?async()=>{for(const [id,posting] of prev){try{await S.db.doc("drafts/"+id).update({posting})}catch(e){}}toast("Undone")}:null);return}
+  if(act==="hold"||act==="pending"){const pick=ds.filter(d=>act==="hold"?d.status==="scheduled":["scheduled","hold","changes"].includes(d.status));if(!pick.length){toast("None of those can do that");return}
+    const prev=[];let ok=0,bad=0;
+    for(const d of pick){const review=act==="pending"?{}:{by:S.me,at:new Date().toISOString()};const was=[d,d.status||"pending",JSON.parse(JSON.stringify(d.review||{}))];try{await S.db.doc("drafts/"+d.id).update({status:act,review});await logFeedback({draftId:d.id,action:act==="pending"?"reopen":"hold",type:d.type,issue:d.issue});ok++;prev.push(was)}catch(e){bad++}}
+    sel.clear();renderCal();
+    toast(`${ok} ${act==="hold"?"paused (On hold)":"moved back to Review"}${bad?` · ${bad} couldn't be changed, try again`:""}`,ok?async()=>{for(const [d,st,rv] of prev){try{await S.db.doc("drafts/"+d.id).update({status:st,review:rv})}catch(e){}}toast("Undone")}:null)}}
 function renderCal(){
   const el=$("#calView");if(!el||el.hidden)return;
   if(CAL.view==="list"&&!CAL.listFrom)CAL.listFrom=true;
   if(CAL.view==="grid"){el.innerHTML=`<div>${calGrid()}${calPeekHtml()}</div>`;drawCalThumbs();return}
   const {s,e,month}=calRange();
-  const items=calItems();const byDay={};items.forEach(i=>{const k=dayKey(new Date(i.at));(byDay[k]=byDay[k]||[]).push(i)});
+  calNotesLoad();
+  const items=calItems();const byDay={};items.forEach(i=>{const k=dayKey(Z(i.at));(byDay[k]=byDay[k]||[]).push(i)});
   Object.values(byDay).forEach(l=>l.sort((a,b)=>String(a.at).localeCompare(String(b.at))));
+  if(CAL.sel){const ok=new Set(items.filter(i=>i.mine&&i.status!=="posted").map(i=>i.id));[...CAL.sel].forEach(id=>{if(!ok.has(id))CAL.sel.delete(id)})}
   CAL.badges={};badgeItems().forEach(i=>{(CAL.badges[i.day]=CAL.badges[i.day]||[]).push(i)});
   const days=[];for(const d=new Date(s);d<e;d.setDate(d.getDate()+1))days.push(new Date(d));
   const inRange=CAL.view==="week"?days:days.filter(d=>d.getMonth()===month);
   const count=inRange.reduce((n,d)=>n+(byDay[dayKey(d)]||[]).filter(i=>i.mine&&i.status!=="posted").length,0);
-  const quietN=inRange.filter(d=>dayKey(d)>=dayKey(new Date())&&!(byDay[dayKey(d)]||[]).some(i=>i.mine)).length;
+  const quietN=inRange.filter(d=>dayKey(d)>=calToday()&&!(byDay[dayKey(d)]||[]).some(i=>i.mine)).length;
   const label=CAL.view==="week"?`${s.toLocaleDateString("en-GB",{day:"numeric",month:"short"})} – ${new Date(e-864e5).toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"})}`:new Date(CAL.anchor).toLocaleDateString("en-GB",{month:"long",year:"numeric"});
   const ctry=CAL.country||"";const foreign=ctry&&ctry!=="all"&&ctry!==S.team;
   const camps=[...new Set(inRange.flatMap(d=>(byDay[dayKey(d)]||[]).filter(i=>i.mine).map(i=>campOf(S.drafts.find(x=>x.id===i.id))).filter(Boolean)))];
   const campRow=camps.length?`<div class="camprow">${camps.map(c=>{const n=inRange.reduce((a,d)=>a+(byDay[dayKey(d)]||[]).filter(i=>i.mine&&campOf(S.drafts.find(x=>x.id===i.id))===c).length,0);return `<span class="camp" style="--cc:${campColor(c)}">${esc(c)} · ${n} post${n===1?"":"s"}</span>`}).join("")}</div>`:"";
   const head=calHeader(label,`${count} post${count===1?"":"s"} to go out · ${quietN} quiet day${quietN===1?"":"s"} ahead`)+(foreign?`<div class="callock">🔒 ${esc(calTeamName(ctry))}'s calendar is read-only for you. Use “→ copy as an idea” on a post to add it to ${esc(calTeamName(S.team))}'s calendar. <button class="btn small" data-cal-country-back>Back to my team</button></div>`:"");
   const grid=CAL.view==="week"?calWeek(days,byDay):CAL.view==="list"?calList(inRange,byDay):calMonth(days,month,byDay);
-  el.innerHTML=`<div>${head}${campRow}${grid}<div class="kdlegend">${Object.entries(KD_CATS).map(([k,l])=>`<span class="kc-${k}">${l}</span>`).join("")}</div>${calPeekHtml()}</div>${calSide(days,items)}`;
+  el.innerHTML=`<div>${head}${campRow}${grid}<div class="kdlegend">${Object.entries(KD_CATS).map(([k,l])=>`<span class="kc-${k}">${l}</span>`).join("")}</div>${calPeekHtml()}</div>${calSide(CAL.view==="week"?days:inRange,items)}`;
+  document.querySelectorAll("[data-cal-tickday][data-some]").forEach(x=>{x.indeterminate=true});
   drawCalThumbs();
 }
 /* Calendar › Instagram grid [Phase 3, chosen 2 Nov]: the posts going to an
@@ -3374,9 +3609,9 @@ function calGrid(){const G=CAL.ig;const head=`<div class="calbar"><h2>Instagram 
   return head+pick+`</div><div class="iggrid-wrap"><div class="igphone"><div class="iggrid">${tiles||'<p class="src">Nothing to show yet.</p>'}</div></div><div class="rsside"><section class="rsbox"><h3>How it reads</h3>${notes.map(n=>`<p class="src" style="margin:0">${n}</p>`).join("")||'<p class="src" style="margin:0">Looks fine.</p>'}</section><section class="rsbox"><h3>How it works</h3><p class="src" style="margin:0">Newest first, like the profile. Planned posts sit on top of the ${acc.media.length} latest live ones from last night's collection. Click a planned post to open it; to change its place, change its time in Month or Week.</p></section></div></div>`}
 function drawCalThumbs(){document.querySelectorAll("canvas[data-cthumb]").forEach(cv=>{const d=S.drafts.find(x=>x.id===cv.dataset.cthumb);if(!d||!d.card)return;const c=d.card.template==="carousel"&&HOUSE_T.has(d.card.slides?.[0]?.template)?d.card.slides[0]:d.card;try{const k=S.slide;S.slide=0;drawCard(d,cv,c);S.slide=k}catch(e){}})}
 /* The side: pause switch, then the Plan's ideas to drag onto a day. */
-function calSide(days,items){const today=dayKey(new Date());const reqOn=k=>(PLAN.reqs||[]).filter(r=>r.for_date===k);
+function calSide(days,items){const today=calToday();const reqOn=k=>(PLAN.reqs||[]).filter(r=>r.for_date===k);
   const ideas=[];const seen=new Set();
-  for(const d of days){const k=dayKey(d);if(k<today)continue;if(items.some(i=>i.mine&&dayKey(new Date(i.at))===k)||reqOn(k).length)continue;keyDatesOn(k).filter(x=>x.starts===k&&!seen.has(x.title)).forEach(x=>{seen.add(x.title);ideas.push({...x,day:d})})}
+  for(const d of days){const k=dayKey(d);if(k<today)continue;if(items.some(i=>i.mine&&dayKey(Z(i.at))===k)||reqOn(k).length)continue;keyDatesOn(k).filter(x=>x.starts===k&&!seen.has(x.title)).forEach(x=>{seen.add(x.title);ideas.push({...x,day:d})})}
   const held=S.drafts.filter(d=>d.status==="hold");const eg=(EG.posts||[]).filter(p=>["due","coming"].includes(p.state));
   const tab=(k,l,n)=>`<button class="tab" data-plan-tray="${k}" aria-pressed="${PLAN.tray===k}">${l}${n!=null?` <span class="n">${n}</span>`:""}</button>`;
   const T=PLAN.tray;let body;
@@ -3385,14 +3620,14 @@ function calSide(days,items){const today=dayKey(new Date());const reqOn=k=>(PLAN
   else if(T==="hold")body=held.length?held.map(d=>`<div class="item" draggable="true" data-drag="${esc(d.id)}"><b>${esc(d.title||d.id)}</b><small>Approved, waiting for a time: drag it onto a day</small></div>`).join(""):`<p>Nothing on hold.</p>`;
   else if(T==="year")body=yearList();
   else body=`<form id="planIdea"><label>Date<input type="date" name="for_date" min="${today}" required></label><label>What's it about?<input type="text" name="title" maxlength="200" placeholder="e.g. Thank supporters for 20,000 signatures" required></label><label>Angle or notes (optional)<textarea name="angle" rows="3" maxlength="1000" placeholder="Sources, tone, a photo you have in mind"></textarea></label><button class="btn primary" type="submit"${PLAN.busy?" disabled":""}>Ask for a draft</button></form>`;
-  return `<aside class="qside tray">${pauseSwitchHtml()}<h3>Ideas to place</h3><span class="tabs">${tab("key","Key dates",ideas.length)}${tab("eg","Evergreen",eg.length)}${tab("hold","On hold",held.length)}${tab("own","Own idea")}${tab("year","Year")}</span><p class="src" style="margin:0">Drag onto a day: the morning run drafts it into Review for that date.</p>${body}</aside>`}
+  return `<aside class="qside tray">${pauseSwitchHtml()}${calNotesPanel(days)}<h3>Ideas to place</h3><span class="tabs">${tab("key","Key dates",ideas.length)}${tab("eg","Evergreen",eg.length)}${tab("hold","On hold",held.length)}${tab("own","Own idea")}${tab("year","Year")}</span><p class="src" style="margin:0">Drag onto a day: the morning run drafts it into Review for that date.</p>${body}</aside>`}
 /* ---- the small card: peek at a post, or confirm a move after a drag ---- */
 function calOthersPeek(P){const all=otherAll().filter(i=>i.day===P.day&&(!P.only||i.id===P.only));if(!all.length){CAL.peek=null;return""}
   const day=new Date(P.day+"T12:00:00").toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"});
   return `<div class="cpeek" id="calPeek" role="dialog" aria-label="Other countries on ${esc(day)}" style="left:${P.x}px;top:${P.y}px"><div class="cprow"><div><b>${esc(day)} · ${P.only?esc(calTeamName(all[0].team)):`${new Set(all.map(i=>i.team)).size} other countr${new Set(all.map(i=>i.team)).size===1?"y":"ies"}`}</b><small>Read-only. Copy one as an idea for your own calendar.</small></div><button class="btn small" data-cal-peekclose aria-label="Close">✕</button></div>
-    ${all.map(i=>`<div class="cpother">${i.thumb&&/^https:/.test(i.thumb)?`<img class="cthumb big" src="${esc(i.thumb)}" alt="" loading="lazy">`:`<span class="cthumb big"></span>`}<div><b>${esc(i.title)}</b><small>${esc(hhmm(i.at))} · ${esc(calNets(i))} · ${i.status==="posted"?"posted":"scheduled"}</small><span class="cplinks">${(i.links||[]).map(x=>`<a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(accLabel(x.account))} ↗</a>`).join(" ")}<button class="kdask" data-cal-copy="${esc(i.id)}" data-team="${esc(i.team||"")}" data-day="${esc(i.day||"")}" data-title="${esc(i.raw||i.title)}">→ copy as an idea</button></span></div></div>`).join("")}</div>`}
+    ${all.map(i=>`<div class="cpother">${i.thumb&&/^https:/.test(i.thumb)?`<img class="cthumb big" src="${esc(i.thumb)}" alt="" loading="lazy">`:`<span class="cthumb big"></span>`}<div><b>${esc(i.title)}</b><small>${esc(calHM(i.at))} · ${esc(calNets(i))} · ${i.status==="posted"?"posted":"scheduled"}</small><span class="cplinks">${(i.links||[]).map(x=>`<a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(accLabel(x.account))} ↗</a>`).join(" ")}<button class="kdask" data-cal-copy="${esc(i.id)}" data-team="${esc(i.team||"")}" data-day="${esc(i.day||"")}" data-title="${esc(i.raw||i.title)}">→ copy as an idea</button></span></div></div>`).join("")}</div>`}
 function calPeekHtml(){const P=CAL.peek;if(!P)return"";if(P.others)return calOthersPeek(P);const d=S.drafts.find(x=>x.id===P.id);if(!d){CAL.peek=null;return""}
-  const it=ownItems().find(i=>i.id===d.id);const at=it?new Date(it.at):null;const links=liveLinks(d);const st=STATUS.find(x=>x.key===(d.status||"pending"));
+  const it=ownItems().find(i=>i.id===d.id);const at=it?Z(it.at):null;const links=liveLinks(d);const st=STATUS.find(x=>x.key===(d.status||"pending"));
   const to=P.to?new Date(P.to):null;const tt=to?`${String(to.getHours()).padStart(2,"0")}:${String(to.getMinutes()).padStart(2,"0")}`:"";
   const text=asPosts(textFor(d,"facebook")||textFor(d,"instagram")||"")[0]||"";
   const fmt=t=>t.toLocaleString("en-GB",{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"});
@@ -3403,7 +3638,7 @@ function calPeekHtml(){const P=CAL.peek;if(!P)return"";if(P.others)return calOth
     <div class="row">${P.to?`<button class="btn small primary" data-cal-move>${d.status==="scheduled"?"Move it":"Set this time and open"}</button>`:""}<button class="btn small" data-cal-open="${esc(d.id)}">Open in Posts</button>${!P.to&&d.status!=="posted"?`<span class="src">Drag it to another day to move it</span>`:""}</div></div>`}
 function openPeek(id,x,y,to){const box=$("#calView").getBoundingClientRect();const W=340;CAL.peek={id,to:to?to.toISOString():null,x:Math.max(8,Math.min(x-box.left,box.width-W-8)),y:Math.max(8,y-box.top+8)};renderCal();document.querySelector("#calPeek [data-cal-move],#calPeek [data-cal-open]")?.focus()}
 function monthHtml(days,month,byDay,extra){const today=dayKey(new Date());
-  return `<div class="month">${["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map(x=>`<div class="dow">${x}</div>`).join("")}${days.map(d=>{const k=dayKey(d);return `<div class="mcell${d.getMonth()!==month?" out":""}${k===today?" today":""}" data-day="${k}"><span class="n">${d.getDate()}</span>${keyDatesOn(k).filter(x=>x.starts===k||d.getDay()===1).map(x=>kdHtml(x,k)).join("")}${extra?extra(k):""}${PLAN.images&&S.view==="plan"?(byDay[k]||[]).map(i=>`<canvas class="mthumb" data-thumb="${esc(i.id)}" width="108" height="135" title="${esc(i.title)}" data-cal-open="${esc(i.id)}"></canvas>`).join(""):(byDay[k]||[]).map(itemHtml).join("")}</div>`}).join("")}</div>`}
+  return `<div class="month">${dowNames().map(x=>`<div class="dow">${x}</div>`).join("")}${days.map(d=>{const k=dayKey(d);return `<div class="mcell${d.getMonth()!==month?" out":""}${k===today?" today":""}" data-day="${k}"><span class="n">${d.getDate()}</span>${keyDatesOn(k).filter(x=>x.starts===k||d.getDay()===1).map(x=>kdHtml(x,k)).join("")}${extra?extra(k):""}${PLAN.images&&S.view==="plan"?(byDay[k]||[]).map(i=>`<canvas class="mthumb" data-thumb="${esc(i.id)}" width="108" height="135" title="${esc(i.title)}" data-cal-open="${esc(i.id)}"></canvas>`).join(""):(byDay[k]||[]).map(itemHtml).join("")}</div>`}).join("")}</div>`}
 
 /* ---------- plan (Plan C): the month, and an ideas tray beside it ----------
    Picking an idea asks the daily engine to draft it for that date
@@ -3453,10 +3688,10 @@ function yearList(){const Y=PLAN.year;if(!Y)return `<p class="src">Loading the y
 async function loadYear(){const now=new Date();const to=new Date(now);to.setDate(now.getDate()+365);try{PLAN.year=await eng("engine_calendar",{from:dayKey(now),to:dayKey(to)})}catch(e){PLAN.year={key_dates:[]};failToast(e,"Couldn't load the year")}renderPlan()}
 function drawMonthThumbs(){document.querySelectorAll("canvas[data-thumb]").forEach(cv=>{const d=S.drafts.find(x=>x.id===cv.dataset.thumb);if(!d)return;try{const big=document.createElement("canvas");drawCard(d,big,curCard(d));const c=cv.getContext("2d");c.drawImage(big,0,0,cv.width,cv.height)}catch(e){}})}
 /* Drag and drop: posts onto a day or a free slot; Plan ideas onto a day. */
-function dropTime(d,day,slot){if(slot)return new Date(slot);const dests=(d.posting||{}).destinations||defaultDests(d);const cur=d.post_at||(d.posting&&d.posting.at);const t=new Date(day+"T12:00:00");
-  if(cur){const c=new Date(cur);t.setHours(c.getHours(),c.getMinutes(),0,0)}else{const we=[0,6].includes(t.getDay());const [h,m]=BEST[leadOf(dests[0]||"uk-fb")][we?"we":"wd"];t.setHours(h,m,0,0)}return t}
-async function dropPost(id,day,slot,at){const d=S.drafts.find(x=>x.id===id);if(!d)return;const t=at||dropTime(d,day,slot);if(t.getTime()<Date.now()+60e3){toast("That time has passed: pick a later day");return}
-  const when=t.toLocaleString("en-GB",{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"});
+function dropTime(d,day,slot){if(slot)return Z(slot);const dests=(d.posting||{}).destinations||defaultDests(d);const cur=d.post_at||(d.posting&&d.posting.at);const t=new Date(day+"T12:00:00");
+  if(cur){const c=Z(cur);t.setHours(c.getHours(),c.getMinutes(),0,0)}else{const we=[0,6].includes(t.getDay());const [h,m]=BEST[leadOf(dests[0]||"uk-fb")][we?"we":"wd"];t.setHours(h,m,0,0)}return t}
+async function dropPost(id,day,slot,at){const d=S.drafts.find(x=>x.id===id);if(!d)return;const t=unZ(at||dropTime(d,day,slot));if(t.getTime()<Date.now()+60e3){toast("That time has passed: pick a later day");return}
+  const when=Z(t).toLocaleString("en-GB",{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"});
   if(d.status==="scheduled"){const p=d.posting||{};const delta=t.getTime()-Date.parse(d.post_at||p.at);const times=p.times&&Object.keys(p.times).length?Object.fromEntries(Object.entries(p.times).map(([k,v])=>[k,new Date(Date.parse(v)+delta).toISOString()])):null;
     try{await S.db.doc("drafts/"+d.id).update({posting:{...p,at:t.toISOString(),...(times?{times}:{}),changedBy:S.me,changedAt:new Date().toISOString()}});toast(`Moved to ${when}`);CAL.peek=null;renderCal()}catch(e){failToast(e,"Couldn't move it")}return}
   S.status=d.status||"pending";S.openId=d.id;resetDraftUi();S.perAcct=false;setView("posts");await new Promise(r=>setTimeout(r,60));setPicker(t);refreshReady();
@@ -3466,7 +3701,7 @@ document.addEventListener("dragstart",ev=>{const p=ev.target.closest&&ev.target.
 document.addEventListener("dragover",ev=>{const z=ev.target.closest&&ev.target.closest("[data-day]");if(z){ev.preventDefault();z.classList.add("dropok")}});
 document.addEventListener("dragleave",ev=>{const z=ev.target.closest&&ev.target.closest("[data-day]");if(z)z.classList.remove("dropok")});
 document.addEventListener("drop",async ev=>{const z=ev.target.closest&&ev.target.closest("[data-day]");if(!z)return;ev.preventDefault();z.classList.remove("dropok");const v=ev.dataTransfer.getData("text/plain")||"";const day=z.dataset.day;
-  if(day<dayKey(new Date())){toast("That day has passed");return}
+  if(day<(S.view==="calendar"?calToday():dayKey(new Date()))){toast("That day has passed");return}
   if(v.startsWith("post:")){const id=v.slice(5);const d=S.drafts.find(x=>x.id===id);if(!d)return;let t;
     if(z.dataset.week){const r=z.getBoundingClientRect();const f=Math.max(0,Math.min(1,(ev.clientY-r.top)/r.height));let m=Math.round((CW_FROM*60+f*(CW_TO-CW_FROM)*60)/15)*15;t=new Date(day+"T00:00:00");t.setHours(Math.floor(m/60),m%60,0,0)}else t=dropTime(d,day,z.dataset.slot);
     if(S.view==="calendar"){openPeek(id,ev.clientX,ev.clientY,t);return}return dropPost(id,day,z.dataset.slot)}
@@ -3502,14 +3737,25 @@ document.addEventListener("click",async ev=>{
   if(ev.target.closest("[data-cal-copy]")&&CAL.peek){return}
   const pk=ev.target.closest("[data-cal-peek]");if(pk){ev.preventDefault();openPeek(pk.dataset.calPeek,ev.clientX,ev.clientY);return}
   if(ev.target.closest("[data-cal-peekclose]")){CAL.peek=null;renderCal();return}
+  const tz=ev.target.closest("[data-cal-tz]");if(tz){const k=tz.dataset.calTz;if(k==="seen")lsSet("desk.calTzSeen",teamTz()+"|"+myTz());else{lsSet("desk.calTzMine",k==="mine");if(S.settings&&S.settings.tz){S.settings.tz=k;if(typeof saveSettings==="function")saveSettings()}}renderCal();return}
+  const bk=ev.target.closest("[data-cal-bulk]");if(bk){await calBulk(bk.dataset.calBulk);return}
+  const nd=ev.target.closest("[data-cal-note-del]");if(nd){const id=nd.dataset.calNoteDel;const n=(CAL.notes||[]).find(x=>x.id===id);try{await S.db.doc("calNotes/"+id).update({gone:true,goneBy:S.whoId||""});CAL.notes=(CAL.notes||[]).filter(x=>x.id!==id);renderCal();toast("Note deleted",n?async()=>{try{await S.db.doc("calNotes/"+id).update({gone:false});CAL.notes=(CAL.notes||[]).concat(n);renderCal()}catch(e){}}:null)}catch(e){failToast(e,"Couldn't delete it")}return}
   const mv=ev.target.closest("[data-cal-move]");if(mv&&CAL.peek&&CAL.peek.to){const t=new Date(CAL.peek.to);const [h,m]=($("#cpTime")?.value||"12:00").split(":").map(Number);t.setHours(h,m,0,0);mv.disabled=true;const id=CAL.peek.id;await dropPost(id,dayKey(t),null,t);if(S.view==="calendar"){CAL.peek=null;renderCal()}return}
   if(ev.target.closest("[data-cal-open]")){CAL.peek=null;return}
   const n=ev.target.closest("[data-cal-net]");if(n){const f=CAL.filter;f.net=f.net||[];const k=n.dataset.calNet;f.net=f.net.includes(k)?f.net.filter(x=>x!==k):f.net.concat(k);renderCal();return}
   if(CAL.peek&&S.view==="calendar"&&!ev.target.closest("#calPeek")){CAL.peek=null;renderCal()}
 },true);
-document.addEventListener("change",ev=>{const t=ev.target;if(!t.matches)return;if(t.matches("[data-cal-status]")){CAL.filter.status=t.value;renderCal()}else if(t.matches("[data-cal-best]")){CAL.best=t.checked;renderCal()}});
+document.addEventListener("change",ev=>{const t=ev.target;if(!t.matches)return;
+  if(t.matches("[data-cal-tick]")){const s=CAL.sel||(CAL.sel=new Set());t.checked?s.add(t.dataset.calTick):s.delete(t.dataset.calTick);renderCal();return}
+  if(t.matches("[data-cal-tickday]")){const s=CAL.sel||(CAL.sel=new Set());const k=t.dataset.calTickday;calItems().filter(i=>i.mine&&i.status!=="posted"&&dayKey(Z(i.at))===k).forEach(i=>t.checked?s.add(i.id):s.delete(i.id));renderCal();return}
+  if(t.id==="calBulkDay"){CAL.bulkDay=t.value;return}
+  if(t.matches("[data-cal-notes-show]")){lsSet("desk.calNotesShow",t.checked);renderCal();return}
+  if(t.matches("[data-cal-status]")){CAL.filter.status=t.value;renderCal()}else if(t.matches("[data-cal-best]")){CAL.best=t.checked;renderCal()}});
 document.addEventListener("input",ev=>{if(ev.target.matches&&ev.target.matches("[data-cal-q]")){CAL.filter.q=ev.target.value;clearTimeout(CAL._qt);CAL._qt=setTimeout(()=>{renderCal();const q=document.querySelector("[data-cal-q]");if(q){q.focus();q.setSelectionRange(q.value.length,q.value.length)}},250)}});
 document.addEventListener("keydown",ev=>{if(ev.key==="Escape"&&CAL.peek&&S.view==="calendar"){CAL.peek=null;renderCal()}});
+document.addEventListener("submit",async ev=>{if(ev.target.id!=="calNoteForm")return;ev.preventDefault();const f=new FormData(ev.target);const day=String(f.get("day")||"");const text=String(f.get("text")||"").trim().slice(0,280);if(!day||!text)return;
+  const b=ev.target.querySelector("button");b.disabled=true;
+  try{const r=await S.db.collection("calNotes").add({team:S.team,day,text,by:S.whoId||"",name:S.meName||"",at:new Date().toISOString()});CAL.noteDay=day;CAL.notes=(CAL.notes||[]).concat({id:r&&r.id,team:S.team,day,text,by:S.whoId||"",name:S.meName||"",at:new Date().toISOString()});document.activeElement?.blur();renderCal();toast("Note added for the team")}catch(e){failToast(e,"Couldn't add the note");b.disabled=false}});
 /* ---------- evergreen bank (A) ----------
    Past winners come back up 10 weeks after they last went out. Suggest only:
    "Make a fresh draft" files a Plan request for a date you pick; nothing is
@@ -3525,9 +3771,20 @@ async function loadEvergreen(){EG.err=null;renderEvergreen();
 const IB={topics:null,topicSel:new Set(),posts:[],postsAds:false,post:null,person:null,items:[],counts:null,pending:[],filter:"all",status:"open",open:null,thread:[],tab:"inbox",history:[],drafts:null,loading:false,confirmDel:false};
 const IB_FILTERS=[["all","All","open"],["fbc","Facebook","fb_comments"],["messenger","Messenger","messenger"],["igc","Instagram","ig_comments"],["igdm","Instagram DMs","ig_dms"],["mention","Mentions","mentions"],["mine","Assigned to me","mine"]];
 const IB_CHAN={fbc:{platform:"facebook",kind:"comment"},messenger:{platform:"facebook",kind:"message"},igc:{platform:"instagram",kind:"comment"},igdm:{platform:"instagram",kind:"message"},mention:{kind:"mention"},message:{kind:"message"}};
-async function loadInbox(){if(!S.team)return;if(IB.loading){IB.again=true;renderInbox();return}IB.loading=true;IB.again=false;renderInbox();
-  try{const f=IB.filter,args={team:S.team,status:IB.status==="moderated"?"all":IB.status,limit:300};Object.assign(args,IB_CHAN[f]||{});
-    const r=await eng("engine_inbox",args);IB.items=r.items||[];IB.counts=r.counts;IB.tone=r.tone||null;IB.pending=r.pending||[];IB.alerts=r.alerts||[];IB.people=r.people||IB.people||[];IB.err=null;
+/* Priority One (3 Nov): search, account picker, filters and saved views, tone fixes, checks. */
+const IBF0={days:0,tone:"",label:"",hidden:""};
+function ibAcctsKey(){return "desk.ibAccts."+(S.team||"")}
+function ibAcctsLoad(){if(IB.acctsTeam===S.team)return;IB.acctsTeam=S.team;try{IB.accts=JSON.parse(localStorage.getItem(ibAcctsKey())||"[]")}catch(e){IB.accts=[]}}
+function ibAcctsSave(){try{localStorage.setItem(ibAcctsKey(),JSON.stringify(IB.accts||[]))}catch(e){}}
+function ibTeamAccts(){const t=(S.teams||[]).find(x=>x.id===S.team)||{};return (t.accounts||[]).filter(a=>a.platform==="facebook"||a.platform==="instagram")}
+const ibAccName=k=>accLabel(k).replace(/ FB$/," Facebook").replace(/ IG$/," Instagram");
+function ibSince(days){if(!days)return null;const d=new Date();if(days===1){d.setHours(0,0,0,0);return d.toISOString()}return new Date(Date.now()-days*864e5).toISOString()}
+async function ibPrefsLoad(){if(IB.prefs)return;try{IB.prefs=(await eng("engine_prefs",{})).prefs||{}}catch(e){IB.prefs={}}}
+function ibViews(){return ((IB.prefs||{}).inbox_views||{})[S.team]||[]}
+async function loadInbox(){if(!S.team)return;if(IB.loading){IB.again=true;renderInbox();return}IB.loading=true;IB.again=false;ibAcctsLoad();IB.f=IB.f||{...IBF0};renderInbox();
+  try{const f=IB.filter,args={team:S.team,status:IB.status==="moderated"?"all":IB.status==="check"?"open":IB.qAll&&IB.q?"all":IB.status,limit:300};Object.assign(args,IB_CHAN[f]||{});
+    if((IB.q||"").trim().length>=2)args.q=IB.q.trim();if((IB.accts||[]).length)args.accounts=IB.accts;const since=ibSince(IB.f.days);if(since)args.since=since;
+    const [r]=await Promise.all([eng("engine_inbox",args),ibPrefsLoad()]);IB.items=r.items||[];IB.counts=r.counts;IB.tone=r.tone||null;IB.pending=r.pending||[];IB.alerts=r.alerts||[];IB.people=r.people||IB.people||[];IB.checks=r.checks||[];IB.me=r.me||{};IB.err=null;
     if(IB.tab==="history"&&(IB.modTab||"flagged")==="flagged"){const fl=await eng("engine_inbox",{team:S.team,status:"all",limit:500});IB.flagged=(fl.items||[]).filter(ibFlagged)}
     if(IB.tab==="history"){const [h,ru]=await Promise.all([eng("engine_inbox_history",{team:S.team,limit:200}),eng("engine_inbox_rules",{team:S.team})]);IB.history=h.actions||[];IB.rules=ru}
     if(IB.tab==="autos"){const [au,ps]=await Promise.all([eng("engine_automations",{team:S.team}),(IB.posts||[]).length?null:eng("engine_inbox_posts",{team:S.team}).catch(()=>null)]);IB.autos=au;if(ps)IB.posts=ps.posts||[]}
@@ -3539,6 +3796,8 @@ async function loadThread(){const it=IB.open;if(!it)return;try{const r=await eng
   if(it.author_id&&!it.from_us&&(!IB.person||IB.person.author_id!==it.author_id)){try{IB.person=await eng("engine_inbox_person",{team:S.team,author_id:it.author_id})}catch(e){IB.person=null}}}
 function ibVisible(){const me=String(S.whoId||"").toLowerCase();let l=IB.items.filter(i=>IB.filter!=="mine"||String(i.assigned_to||"").toLowerCase()===me);
   if(IB.status==="moderated")l=l.filter(i=>i.hidden);if(IB.ads==="ads")l=l.filter(i=>i.is_ad);
+  const F=IB.f||IBF0;if(F.tone)l=l.filter(i=>F.tone==="neutral"?!i.tone:i.tone===F.tone);if(F.label)l=l.filter(i=>(i.labels||[]).some(x=>String(x).toLowerCase()===F.label.toLowerCase()));
+  if(F.hidden==="only")l=l.filter(i=>i.hidden);else if(F.hidden==="hide")l=l.filter(i=>!i.hidden);
   if(IB.status==="open"&&(IB.sort||"priority")==="priority")l=l.slice().sort((a,b)=>ibScore(b)-ibScore(a));
   if(IB.sort==="supporters"){const n={};IB.items.forEach(i=>{if(i.author_id)n[i.author_id]=(n[i.author_id]||0)+1});const sc=i=>(ibTags(i).includes("Supporter")?100:0)+(n[i.author_id]||0);l=l.slice().sort((a,b)=>sc(b)-sc(a)||String(b.created_at).localeCompare(String(a.created_at)))}
   if(IB.sort==="negative"){const r={negative:0,mixed:1};l=l.slice().sort((a,b)=>(r[a.tone]??2)-(r[b.tone]??2)||String(b.created_at).localeCompare(String(a.created_at)))}
@@ -3551,7 +3810,12 @@ function ibTags(i){if(i.from_us||i.kind==="mention")return[];const t=String(i.te
   return out.concat((i.labels||[]).filter(l=>!out.map(x=>x.toLowerCase()).includes(String(l).toLowerCase())))}
 /* Tone from the engine (lib/sentiment.js, word lists, no paid AI): the tone of the words, not whether they agree with us. */
 const IB_TONE={positive:["Positive","q"],negative:["Negative","hid"],mixed:["Mixed",""]};
-function ibToneChip(i){const t=IB_TONE[i.tone];if(!t||(i.tone==="negative"&&ibIntent(i).has("hostile")))return"";return `<span class="ibtag${t[1]?" "+t[1]:""}" title="Tone of the words, not whether they agree with us">${t[0]}</span>`}
+function ibToneChip(i){const t=IB_TONE[i.tone];if(!t||(i.tone==="negative"&&ibIntent(i).has("hostile")))return"";return `<span class="ibtag${t[1]?" "+t[1]:""}" title="${i.tone_fixed?"Set by "+esc(i.tone_set_by||"a teammate"):"Tone of the words, not whether they agree with us"}">${t[0]}${i.tone_fixed?" ✎":""}</span>`}
+/* 5A: the tone as a small menu anyone can change; the fix is kept and recorded. */
+function ibToneSel(i){if(i.from_us||i.kind==="mention")return"";const v=i.tone_fixed?(i.tone||"neutral"):(i.tone||"neutral");
+  return `<label class="ibtone t-${esc(v)}" title="${i.tone_fixed?"Set by "+esc(i.tone_set_by||"a teammate")+(i.tone_rule?" · the words read "+esc(i.tone_rule):""):"Set by the word lists. Change it if it's wrong: the fix is kept."}"><span class="vh">Tone</span><select data-ib-tone="${esc(i.id)}">${["positive","neutral","negative","mixed"].map(t=>`<option value="${t}"${t===v?" selected":""}>${t[0].toUpperCase()+t.slice(1)}${i.tone_fixed&&t===v?" ✎":""}</option>`).join("")}</select></label>`}
+function ibHl(t){const e=esc(t);const q=String(IB.q||"").trim();if(q.length<2)return e;const qe=esc(q).replace(/[.*+?^${}()|[\]\\]/g,"\\$&");return e.replace(new RegExp(qe,"gi"),m=>`<mark>${m}</mark>`)}
+function ibWaiting(i){return (IB.checks||[]).filter(a=>a.item_id===i.id)}
 function ibToneLine(t){if(!t)return"";const p=[t.positive?`${t.positive} positive`:"",t.negative?`${t.negative} negative`:"",t.mixed?`${t.mixed} mixed`:""].filter(Boolean);return p.length?p.join(", "):""}
 function ibFlagged(i){return i.hidden||(i.labels||[]).some(l=>/^(auto-hidden|threat|abuse)/i.test(l))}
 function ibWhen(t){const d=new Date(t),m=(Date.now()-d)/6e4;return m<60?Math.max(1,Math.round(m))+" min ago":m<1440?Math.round(m/60)+" h ago":d.toLocaleDateString("en-GB",{day:"numeric",month:"short"})}
@@ -3563,10 +3827,10 @@ function ibPending(i){return IB.pending.filter(a=>a.item_id===i.id)}
 const ibMins=m=>m==null?"—":m<60?`${m} min`:`${Math.floor(m/60)} h${m%60?` ${String(m%60).padStart(2,"0")}`:""}`;
 function ibTeam(){const T=IB.team;if(!T)return '<p class="src">Loading…</p>';const me=String(S.whoId||"").toLowerCase();
   const days=`<span class="tabs">${[7,30].map(d=>`<button class="tab" data-ib-tdays="${d}" aria-pressed="${(IB.teamDays||7)===d}">${d} days</button>`).join("")}</span>`;
-  const rows=T.people.map(p=>`<tr><td><b>${esc(p.who)}</b>${p.who.toLowerCase()===me?' <small class="src">you</small>':""}</td><td class="num">${p.assigned_open||"—"}</td><td class="num">${p.replies_today||"—"}</td><td class="num">${p.replies||"—"}</td><td class="num">${p.done||"—"}</td><td class="num">${ibMins(p.median_reply_min)}</td></tr>`).join("");
+  const rows=T.people.map(p=>`<tr><td><b>${esc(p.who)}</b>${p.who.toLowerCase()===me?' <small class="src">you</small>':""}</td><td class="num">${p.assigned_open||"—"}</td><td class="num">${p.replies_today||"—"}</td><td class="num">${p.replies||"—"}</td><td class="num">${p.done||"—"}</td><td class="num">${ibMins(p.median_reply_min)}</td><td>${T.checker&&p.who.toLowerCase()!==me?`<label class="ibcheckt"><input type="checkbox" data-ib-needcheck="${esc(p.who)}"${p.needs_check?" checked":""}> ${p.needs_check?"Yes":"No"}</label>`:p.needs_check?"Yes":'<span class="src">No</span>'}</td></tr>`).join("");
   const un=T.unassigned||{};const w=T.waiting||{};
-  const who=`<section class="rsbox"><h3>Who has what</h3><div class="awrap"><table class="atbl"><tr><th>Person</th><th class="num" title="Open conversations assigned to them">Assigned</th><th class="num" title="Replies sent today">Today</th><th class="num" title="Replies sent in the last ${T.days} days">${T.days} days</th><th class="num" title="Marked done in the last ${T.days} days">Done</th><th class="num" title="Median time to the first reply">First reply</th></tr>${rows}
-    <tr><td><b>Nobody yet</b></td><td class="num"><b>${un.count||0}</b></td><td colspan="4">${un.oldest_at?`<span class="src">oldest ${esc(ibWhen(un.oldest_at))}</span> <button class="btn small" data-nav="inbox:inbox">Open Conversations</button>`:'<span class="src">Nothing waiting.</span>'}</td></tr></table></div>
+  const who=`<section class="rsbox"><h3>Who has what</h3><div class="awrap"><table class="atbl"><tr><th>Person</th><th class="num" title="Open conversations assigned to them">Assigned</th><th class="num" title="Replies sent today">Today</th><th class="num" title="Replies sent in the last ${T.days} days">${T.days} days</th><th class="num" title="Marked done in the last ${T.days} days">Done</th><th class="num" title="Median time to the first reply">First reply</th><th title="Their replies, likes, hides, deletes and bans wait for a team admin to approve them">Needs a check</th></tr>${rows}
+    <tr><td><b>Nobody yet</b></td><td class="num"><b>${un.count||0}</b></td><td colspan="5">${un.oldest_at?`<span class="src">oldest ${esc(ibWhen(un.oldest_at))}</span> <button class="btn small" data-nav="inbox:inbox">Open Conversations</button>`:'<span class="src">Nothing waiting.</span>'}</td></tr></table></div>
     <span class="src">Today and ${T.days} days count replies sent. First reply is the median time from arrival to the first reply sent from the desk. Replies made in Facebook or Instagram directly aren't counted.</span></section>`;
   const wait=`<section class="rsbox"><h3>Waiting too long</h3>${w.over_2h||w.hostile_unassigned?`<div class="ibwait">${w.over_2h?`<span class="pill warn">${w.over_2h} open over 2 hours</span>`:""}${w.hostile_unassigned?`<span class="pill bad">${w.hostile_unassigned} hostile, unassigned</span>`:""}</div>`:'<span class="src">Nothing has waited over 2 hours.</span>'}<span class="src">${T.open} open in all · team median first reply ${ibMins(T.median_reply_min)}. Shown here only, no Slack or email alerts.</span></section>`;
   const H=T.hours||[];const max=Math.max(1,...H.map(h=>h.arrived));const slow=H.filter(h=>h.arrived>=3&&h.median_reply_min!=null).sort((a,b)=>b.median_reply_min-a.median_reply_min)[0];
@@ -3584,15 +3848,58 @@ function renderInbox(){renderSide();ibPresence();const el=$("#ibView");const c=I
   if(IB.tab==="posts"){el.innerHTML=head+ibPosts();return}
   if(IB.tab==="team"){el.innerHTML=head+ibTeam();return}
   const filt=`<div class="egbar"><span class="tabs">${IB_FILTERS.map(([k,l,ck])=>`<button class="tab" data-ib-filter="${k}" aria-pressed="${IB.filter===k}">${l}${c&&c[ck]!=null?` <span class="n">${c[ck]}</span>`:""}</button>`).join("")}<button class="tab" disabled title="X replies need X's paid API">X · later</button></span></div>
-  <div class="egbar"><span class="tabs">${[["open","Open"],["done","Done"],["moderated","Moderated"]].map(([k,l])=>`<button class="tab" data-ib-status="${k}" aria-pressed="${IB.status===k}">${l}</button>`).join("")}</span><span class="tabs">${[["all","Organic and ads"],["ads","Ads only"]].map(([k,l])=>`<button class="tab" data-ib-ads="${k}" aria-pressed="${(IB.ads||"all")===k}">${l}</button>`).join("")}</span><label class="lg">Sort <select id="ibSort"><option value="priority"${(IB.sort||"priority")==="priority"?" selected":""}>Needs a reply first</option><option value="newest"${IB.sort==="newest"?" selected":""}>Newest</option><option value="supporters"${IB.sort==="supporters"?" selected":""}>Supporters first</option><option value="negative"${IB.sort==="negative"?" selected":""}>Negative first</option></select></label>${IB.tone&&ibToneLine(IB.tone)?`<span class="src" title="Tone of the words in open items, not whether they agree with us">Open: ${esc(ibToneLine(IB.tone))}</span>`:""}<button class="btn small" data-ib-clean="on">🧹 Clean up${ibCleanGroups().length?` <span class="n">${ibCleanGroups().reduce((a,g)=>a+g.ids.length,0)}</span>`:""}</button>${S.sample&&IB.status==="open"?(IB.topics?`<button class="btn small" data-ib-topics="off">Back to the list</button>`:`<button class="btn small" data-ib-topics="on">✨ Sort by topic</button>`):""}</div>`;
+  <div class="egbar"><span class="tabs">${[["open","Open"],...(((IB.counts||{}).check)||(IB.me||{}).checker?[["check","To check",(IB.counts||{}).check||0]]:[]),["done","Done"],["moderated","Moderated"]].map(([k,l,n])=>`<button class="tab" data-ib-status="${k}" aria-pressed="${IB.status===k}">${l}${n?` <span class="n">${n}</span>`:""}</button>`).join("")}</span><span class="tabs">${[["all","Organic and ads"],["ads","Ads only"]].map(([k,l])=>`<button class="tab" data-ib-ads="${k}" aria-pressed="${(IB.ads||"all")===k}">${l}</button>`).join("")}</span><label class="lg">Sort <select id="ibSort"><option value="priority"${(IB.sort||"priority")==="priority"?" selected":""}>Needs a reply first</option><option value="newest"${IB.sort==="newest"?" selected":""}>Newest</option><option value="supporters"${IB.sort==="supporters"?" selected":""}>Supporters first</option><option value="negative"${IB.sort==="negative"?" selected":""}>Negative first</option></select></label>${IB.tone&&ibToneLine(IB.tone)?`<span class="src" title="Tone of the words in open items, not whether they agree with us">Open: ${esc(ibToneLine(IB.tone))}</span>`:""}<button class="btn small" data-ib-clean="on">🧹 Clean up${ibCleanGroups().length?` <span class="n">${ibCleanGroups().reduce((a,g)=>a+g.ids.length,0)}</span>`:""}</button>${S.sample&&IB.status==="open"?(IB.topics?`<button class="btn small" data-ib-topics="off">Back to the list</button>`:`<button class="btn small" data-ib-topics="on">✨ Sort by topic</button>`):""}</div>`;
+  const tools=ibToolbar();
+  if(IB.status==="check"){el.innerHTML=head+tools+filt+ibChecksHtml()+ibDrawer();return}
   if(IB.topics){el.innerHTML=head+filt+ibTopics();return}
   if(IB.clean){el.innerHTML=head+filt+ibCleanHtml();return}
   const list=ibVisible();
   const sel=IB.sel||(IB.sel=new Set());
   const bulk=sel.size?`<div class="pswitch" style="flex-direction:row;flex-wrap:wrap;align-items:center"><b>${sel.size} ticked</b>${IB.bulkLabel?`<input type="text" id="ibBulkLabel" placeholder="label, e.g. press" style="font:inherit;font-size:13px;padding:4px 8px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg)"><button class="btn small primary" data-ib-bulklabel>Add label</button>`:""}<button class="btn small" data-ib-bulkrow="like">👍 Like</button><button class="btn small" data-ib-bulkrow="hide">Hide</button><button class="btn small" data-ib-bulkrow="label">Label…</button><button class="btn small" data-ib-bulkrow="assign">Assign to me</button><button class="btn small" data-ib-bulkrow="done">Done</button><button class="btn small" data-ib-bulkrow="delete" style="color:var(--bad)">Delete…</button><button class="btn small" data-ib-bulkrow="clear">Clear</button></div>`:"";
-  const rows=list.length?list.map(i=>`<div class="ibrow"><input type="checkbox" class="ibtick" data-ib-tick="${esc(i.id)}" aria-label="Tick ${esc(i.author_name||"this")}"${sel.has(i.id)?" checked":""}><button class="ibi" data-ib-open="${esc(i.id)}" aria-current="${IB.open&&IB.open.id===i.id}"><span class="av">${esc((i.author_name||"?").slice(0,1).toUpperCase())}</span><span><b>${esc(i.author_name||"Someone")}</b>${i.is_ad?'<span class="ibtag ad">AD</span>':""}${i.hidden?'<span class="ibtag hid">hidden</span>':""}${ibPending(i).length?'<span class="ibtag q">sending…</span>':""}${ibTags(i).map(l=>`<span class="ibtag${l==="Supporter"?" q":""}">${esc(l)}</span>`).join("")}${ibIntent(i).has("press")?'<span class="ibtag pr">Press</span>':""}${ibIntent(i).has("hostile")?'<span class="ibtag hid">Hostile</span>':""}${ibToneChip(i)}${ibWaitChip(i)}<span class="w">${esc(ibWhere(i))} · ${esc(ibWhen(i.created_at))}${i.assigned_to?" · → "+esc(i.assigned_to):""}</span><span class="tx">${esc(i.text||"(no text)")}</span></span></button></div>`).join("")
+  const rows=list.length?list.map(i=>`<div class="ibrow"><input type="checkbox" class="ibtick" data-ib-tick="${esc(i.id)}" aria-label="Tick ${esc(i.author_name||"this")}"${sel.has(i.id)?" checked":""}><button class="ibi" data-ib-open="${esc(i.id)}" aria-current="${IB.open&&IB.open.id===i.id}"><span class="av">${esc((i.author_name||"?").slice(0,1).toUpperCase())}</span><span><b>${ibHl(i.author_name||"Someone")}</b>${ibWaiting(i).length?'<span class="ibtag warn">waiting for a check</span>':""}${i.is_ad?'<span class="ibtag ad">AD</span>':""}${i.hidden?'<span class="ibtag hid">hidden</span>':""}${ibPending(i).length?'<span class="ibtag q">sending…</span>':""}${ibTags(i).map(l=>`<span class="ibtag${l==="Supporter"?" q":""}">${esc(l)}</span>`).join("")}${ibIntent(i).has("press")?'<span class="ibtag pr">Press</span>':""}${ibIntent(i).has("hostile")?'<span class="ibtag hid">Hostile</span>':""}${ibToneChip(i)}${ibWaitChip(i)}<span class="w">${esc(ibWhere(i))} · ${esc(ibWhen(i.created_at))}${i.assigned_to?" · → "+esc(i.assigned_to):""}</span><span class="tx">${ibHl(i.text||"(no text)")}</span>${IB.q&&IB.q.length>=2&&i.post_text&&String(i.post_text).toLowerCase().includes(IB.q.trim().toLowerCase())?`<span class="w">on “${ibHl(String(i.post_text).slice(0,70))}”</span>`:""}</span></button>${ibQuick(i)}</div>`).join("")
+    :(IB.q||ibFilterCount()||(IB.accts||[]).length)&&!IB.loading?`<div style="padding:14px;color:var(--muted)">Nothing matches${IB.q?` “${esc(IB.q)}”`:""}${ibFilterCount()?" with these filters":""}. ${IB.q&&IB.status==="open"&&!IB.qAll?'<button class="btn small" data-ib-qall>Search Done too</button> ':""}<button class="btn small" data-ib-clearall>Clear search and filters</button></div>`
     :`<p style="padding:14px;margin:0;color:var(--muted)">${IB.loading?"Loading…":IB.status==="open"?"Nothing open. New comments and messages appear here within a few minutes; if nobody in the team has connected Facebook yet, nothing can be read.":"Nothing marked done yet."}</p>`;
-  el.innerHTML=head+filt+bulk+`<div class="ibx ibx3"><div class="ibl">${rows}</div><div>${IB.open?ibDetail(IB.open):`<div class="ibd"><p style="margin:0;color:var(--muted)">Pick a comment or message to read it in context and reply. Keys: J / K move, R reply, E done, H hide.</p></div>`}</div>${IB.open?ibPersonPanel(IB.open):""}</div>`;drawIbThumbs()}
+  el.innerHTML=head+tools+filt+ibAfterHtml()+bulk+`<div class="ibx ibx3"><div class="ibl">${rows}</div><div>${IB.open?ibDetail(IB.open):`<div class="ibd"><p style="margin:0;color:var(--muted)">Pick a comment or message to read it in context and reply. Keys: J / K move, R reply, E done, H hide.</p></div>`}</div>${IB.open?ibPersonPanel(IB.open):""}</div>`+ibDrawer();drawIbThumbs();ibRefocus()}
+/* 1A search, 2A accounts, 3A filters and saved views: one row above the tabs. */
+function ibFilterCount(){const F=IB.f||IBF0;return (F.days?1:0)+(F.tone?1:0)+(F.label?1:0)+(F.hidden?1:0)}
+function ibToolbar(){const accs=ibTeamAccts();const c=(IB.counts||{}).accounts||{};const sel=IB.accts||[];const tot=(IB.counts||{}).all_open;
+  const lab=!sel.length?"All my accounts":sel.length===1?ibAccName(sel[0]):`${sel.length} accounts`;const n=sel.length?sel.reduce((a,k)=>a+(c[k]||0),0):tot;
+  const menu=IB.acctOpen?`<div class="ibmenu" role="dialog" aria-label="Accounts"><label class="ibmrow"><input type="checkbox" data-ib-acct="__all"${sel.length?"":" checked"}><b>All my accounts</b><span class="n">${tot??""}</span></label>${accs.map(a=>`<label class="ibmrow"><input type="checkbox" data-ib-acct="${esc(a.key)}"${sel.includes(a.key)?" checked":""}><span>${esc(ibAccName(a.key))}</span><span class="n">${c[a.key]||0}</span></label>`).join("")}<div class="ibmfoot"><span class="src">Remembered on this device</span><button class="btn small" data-ib-acctmenu>Close</button></div></div>`:"";
+  const views=ibViews();const nf=ibFilterCount();
+  return `<div class="ibtools"><label class="ibsearch"><span class="vh">Search the inbox</span><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></svg><input type="search" id="ibQ" placeholder="Search words, names or posts" value="${esc(IB.q||"")}" autocomplete="off"><kbd>/</kbd></label>
+    <span class="ibacc"><button class="btn small${sel.length?" on":""}" data-ib-acctmenu aria-expanded="${!!IB.acctOpen}">${esc(lab)} <span class="n">${n??""}</span> ▾</button>${menu}</span>
+    <button class="btn small${nf?" on":""}" data-ib-drawer aria-expanded="${!!IB.fOpen}">Filters${nf?` · ${nf}`:""}</button>
+    ${views.length?`<select data-ib-view aria-label="Saved views"><option value="">${IB.viewName?esc(IB.viewName):"Saved views…"}</option>${views.map((v,n)=>`<option value="${n}">${esc(v.name)}</option>`).join("")}${IB.viewName?'<option value="__del">Delete this view</option>':""}</select>`:""}
+    ${IB.q&&IB.q.length>=2?`<span class="src">${ibVisible().length} match${ibVisible().length===1?"":"es"}${IB.status==="open"?IB.qAll?' · Open and Done <button class="linkish" data-ib-qall>Open only</button>':' in Open · <button class="linkish" data-ib-qall>search Done too</button>':""}</span>`:""}</div>`}
+function ibDrawer(){if(!IB.fOpen)return"";const F=IB.f||IBF0;const labels=[...new Set(IB.items.flatMap(i=>i.labels||[]))].slice(0,30);
+  const pills=(k,opts)=>`<div class="ibpills">${opts.map(([v,l])=>`<button class="ibpill${String(F[k])===String(v)?" on":""}" data-ib-f="${k}" data-v="${esc(String(v))}" aria-pressed="${String(F[k])===String(v)}">${l}</button>`).join("")}</div>`;
+  return `<div class="ibscrim" data-ib-drawer></div><aside class="ibdrawer" aria-label="Filters"><div class="ibdh"><h3>Filters</h3><button class="btn small" data-ib-drawer>Close</button></div>
+    <span class="eyebrow">When</span>${pills("days",[[0,"Any time"],[1,"Today"],[7,"7 days"],[30,"30 days"]])}
+    <span class="eyebrow">Tone</span>${pills("tone",[["","Any"],["positive","Positive"],["neutral","Neutral"],["negative","Negative"],["mixed","Mixed"]])}
+    <span class="eyebrow">Where</span><div class="ibpills">${[["all","Organic and ads"],["ads","Ads only"]].map(([k,l])=>`<button class="ibpill${(IB.ads||"all")===k?" on":""}" data-ib-ads="${k}">${l}</button>`).join("")}</div>
+    <span class="eyebrow">Label</span>${labels.length?pills("label",[["","Any"],...labels.map(l=>[l,esc(l)])]):'<span class="src">No labels on these yet.</span>'}
+    <span class="eyebrow">Hidden by us</span>${pills("hidden",[["","Show"],["hide","Leave out"],["only","Only hidden"]])}
+    <span class="src">Comments Facebook removed itself never reach the desk, so they can't be filtered.</span>
+    <div class="ibdf"><button class="btn small" data-ib-fclear>Clear</button><span class="sp"></span></div>
+    <span class="eyebrow">Save this view</span><div class="ibsave"><input type="text" id="ibViewName" placeholder="e.g. Negative on ads this week" maxlength="40" value="${esc(IB.viewName||"")}"><button class="btn small primary" data-ib-saveview>Save view</button></div>
+    <span class="src">Saves the search, accounts, tabs and filters. Your views are yours; they follow you to any device.</span></aside>`}
+/* 4D: Like, Done and Reply under each comment, plus the tone (5A). */
+function ibQuick(i){if(i.from_us)return"";const can=(S.rights||[]).includes(i.account_key)&&i.kind!=="mention";const fb=i.platform==="facebook",msg=i.kind==="message";
+  const b=[];if(can&&fb&&!msg)b.push(`<button class="btn small" data-ib-q="like" data-id="${esc(i.id)}" title="Facebook lets a Page send a Like on a comment, not other reactions">👍 Like</button>`);
+  b.push(i.status==="open"?`<button class="btn small ok" data-ib-q="done" data-id="${esc(i.id)}">✓ Done</button>`:`<button class="btn small" data-ib-q="reopen" data-id="${esc(i.id)}">Reopen</button>`);
+  if(can)b.push(`<button class="btn small" data-ib-q="reply" data-id="${esc(i.id)}">Reply</button>`);
+  return `<div class="ibquick">${b.join("")}${ibToneSel(i)}</div>`}
+/* After a reply: offer Hide and Ban for that comment. */
+function ibAfterHtml(){const a=IB.after;if(!a)return"";const it=IB.items.find(x=>x.id===a.id)||a.item;if(!it)return"";
+  return `<div class="pswitch ibafter"><b>Replied to ${esc(it.author_name||"them")}.</b><span class="src">Anything else for this comment?</span><div class="ibacts">${it.hidden?"":`<button class="btn small" data-ib-after="hide">Hide their comment</button>`}${it.platform==="facebook"&&it.author_id?(IB.afterBan?`<button class="btn small" data-ib-after="ban" style="color:var(--bad)">Yes, ban ${esc(it.author_name||"them")}</button><button class="btn small" data-ib-after="noban">Don't</button>`:`<button class="btn small" data-ib-after="askban">Ban ${esc(it.author_name||"them")}…</button>`):""}<button class="btn small" data-ib-after="close">Nothing else</button></div></div>`}
+/* 25C: actions waiting for a check. */
+function ibChecksHtml(){const L=IB.checks||[];const me=String(S.whoId||"").toLowerCase();const checker=(IB.me||{}).checker;
+  if(!L.length)return `<p class="src" style="padding:6px 2px">Nothing waiting for a check. ${checker?"Switch checks on for a new teammate under Talk › Team.":""}</p>`;
+  const verb={reply:"reply",private_reply:"send a private message",like:"like",hide:"hide",unhide:"unhide",delete:"delete",ban:"ban the author of",unban:"unban the author of"};
+  return `<div class="ibl">${L.map(a=>{const it=a.item||{};const mine=String(a.by).toLowerCase()===me;return `<div class="ibchk"><div class="ibchkh"><b>${esc(a.by)} wants to ${esc(verb[a.action]||a.action)}</b><span class="w">${esc(ibWhen(a.created_at))} · ${esc(ibWhere(it.account_key?it:{account_key:a.account_key,kind:"comment"}))}</span></div>
+    <div class="ibmsg">${esc(it.text||"(the comment is no longer in the inbox)")}<small>${esc(it.author_name||"")}</small></div>${a.text?`<div class="ibmsg us">${esc(a.text)}<small>${esc(a.by)}'s reply</small></div>`:""}
+    <div class="ibacts">${mine?`<button class="btn small" data-ib-withdraw="${a.id}">Withdraw</button><span class="src">Waiting for a team admin</span>`:checker?`<button class="btn small primary" data-ib-check="approve" data-id="${a.id}">Approve</button><input type="text" id="ibNote${a.id}" placeholder="Note if you send it back" maxlength="300"><button class="btn small" data-ib-check="reject" data-id="${a.id}">Send back</button>`:'<span class="src">Waiting for a team admin</span>'}</div></div>`}).join("")}</div>`}
+function ibRefocus(){if(IB._focusQ){const q=$("#ibQ");if(q){q.focus();const n=q.value.length;try{q.setSelectionRange(n,n)}catch(e){}}IB._focusQ=false}}
 function ibChecks(i,text){const out=[];const t=String(text||"");
   if(i.is_ad)out.push(`<span class="w">! shows under an ad, to everyone who sees it</span>`);
   {const ours=/citizengo\.org\/[a-z]{2}-[a-z]{2}\/[a-z]{2,3}\/\d|cgo\.ac\//i.test(t),other=(t.match(/https?:\/\/\S+/gi)||[]).some(u=>!/citizengo\.org|cgo\.ac/i.test(u));
@@ -3621,7 +3928,7 @@ function ibDetail(i){const mention=i.kind==="mention";const canAct=(S.rights||[]
   if(canAct&&!msg&&!i.from_us){if(fb)acts.push(`<button class="btn small" data-ib-act="like">👍 Like</button>`);acts.push(`<button class="btn small" data-ib-act="${i.hidden?"unhide":"hide"}">${i.hidden?"Unhide":"Hide"}</button>`);
     acts.push(IB.confirmDel?`<button class="btn small" data-ib-act="delete" style="color:var(--bad)">Yes, delete it</button><button class="btn small" data-ib-act="nodelete">Keep it</button>`:`<button class="btn small" data-ib-act="askdelete">Delete…</button>`);
     if(fb&&i.author_id)acts.push(IB.confirmBan?`<button class="btn small" data-ib-act="ban" style="color:var(--bad)">Yes, ban ${esc(i.author_name||"them")}</button><button class="btn small" data-ib-act="noban">Don't</button>`:`<button class="btn small" data-ib-act="askban">Ban…</button>`)}
-  return `<div class="ibd"><div><b>${esc(i.author_name||"Someone")}</b> <span class="src">${esc(ibWhere(i))} · ${esc(new Date(i.created_at).toLocaleString("en-GB",{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}))}</span>${i.is_ad?'<span class="ibtag ad">AD</span>':""}${i.hidden?'<span class="ibtag hid">hidden</span>':""}</div>
+  return `<div class="ibd"><div><b>${esc(i.author_name||"Someone")}</b> ${ibToneSel(i)} <span class="src">${esc(ibWhere(i))} · ${esc(new Date(i.created_at).toLocaleString("en-GB",{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}))}</span>${i.is_ad?'<span class="ibtag ad">AD</span>':""}${i.hidden?'<span class="ibtag hid">hidden</span>':""}</div>
     ${ibViewers(i)}${i.is_ad?`<div class="pswitch" style="border-color:var(--warn);background:var(--warn-soft)"><b>On the ad “${esc(String(i.post_text||"").slice(0,70))}” · ${esc(accLabel(i.account_key))} · ${IB.items.filter(x=>x.thread_id===i.thread_id).length} comment${IB.items.filter(x=>x.thread_id===i.thread_id).length===1?"":"s"} here</b><span class="src">Replies under an ad are seen by everyone the ad reaches.</span><div class="ibacts"><button class="btn small" data-ib-adall="${esc(i.thread_id)}">Open all comments on this ad</button></div></div>`:""}${mention?`<div class="ctx">${esc(i.author_name||"Someone")} tagged ${esc(accLabel(i.account_key))} in their own post.${i.post_url?` <a href="${esc(i.post_url)}" target="_blank" rel="noopener">Open their post ↗</a>`:""} Replying means commenting there, so do it on ${i.platform==="instagram"?"Instagram":"Facebook"}.</div>`:""}${ibPostCard(i)}
     <div style="display:flex;flex-direction:column;gap:6px">${(thread.length?thread:[i]).map(m=>`<div class="ibmsg${m.from_us?" us":""}">${esc(m.text||"(no text)")}<small>${esc(m.from_us?"Us":m.author_name||"")} · ${esc(ibWhen(m.created_at))}</small></div>`).join("")}</div>
     ${pend.length?`<div class="src">${pend.map(a=>`Sending ${esc(a.action.replace("_"," "))}… <button class="btn small" data-ib-undo="${a.id}">Undo</button>`).join(" ")}</div>`:""}
@@ -3892,10 +4199,13 @@ Write three short alternative replies. Answer only with JSON: {"replies":[{"labe
   catch(e){IB.drafts={id:i.id,error:"Couldn't draft: "+whyFailed(e)}}
   if(IB.open&&IB.open.id===i.id)renderInbox()}
 function ibPresence(){try{if(IB.room)IB.room.presence({name:S.meName||S.whoId||"",view:S.view,item:S.view==="inbox"&&IB.open?IB.open.id:null})}catch(e){}}
-async function ibAct(action,extra){const i=IB.open;if(!i)return;try{if(IB.room)IB.room.emit("inbox",{team:S.team})}catch(e){}
+async function ibAct(action,extra,item){const i=item||IB.open;if(!i)return;try{if(IB.room)IB.room.emit("inbox",{team:S.team})}catch(e){}
   try{const r=await eng("engine_inbox_act",{id:i.id,action,...extra});
     if(!r||!r.ok){toast((r&&r.error)||"That didn't work.");return false}
     if(r.item){Object.assign(i,r.item);const li=IB.items.find(x=>x.id===i.id);if(li)Object.assign(li,r.item)}
+    if((action==="reply")&&i.kind==="comment"&&!i.from_us){IB.after={id:i.id,item:{...i}};IB.afterBan=false}
+    if(r.check){IB.checks=(IB.checks||[]).concat([{...r.check,item:i}]);if(IB.counts)IB.counts.check=(IB.counts.check||0)+1;const cid=r.check.id;
+      toast(`Sent for a check: a team admin approves it before it goes out.`,async()=>{const u=await eng("engine_inbox_undo",{action_id:cid});toast(u&&u.ok?"Withdrawn. Nothing was sent.":(u&&u.error)||"Couldn't withdraw");loadInbox()})}
     if(r.queued){IB.pending.push(r.queued);const aid=r.queued.id;const tl=(r.links||[]).map(l=>l.via==="copilot"?`✓ tracked ${l.to.replace(/^https?:\/\//,"")}`:"✓ tracked (long link: Copilot didn't answer)").join(" · ");toast(`${{reply:"Reply",private_reply:"Private reply",like:"Like",hide:"Hide",unhide:"Unhide",delete:"Delete"}[action]} goes out in 10 seconds.${tl?" "+tl:""}`,async()=>{const u=await eng("engine_inbox_undo",{action_id:aid});toast(u&&u.ok?"Undone. Nothing was sent.":(u&&u.error)||"Couldn't undo");IB.pending=IB.pending.filter(a=>a.id!==aid);renderInbox()});
       setTimeout(()=>{if(S.view==="inbox")loadInbox()},75000)}
     return true}
@@ -3979,6 +4289,37 @@ document.addEventListener("click",async ev=>{
   if(a==="delete"){IB.confirmDel=false}
   ibAct(a);
 });
+/* Priority One handlers (3 Nov). */
+document.addEventListener("input",ev=>{if(ev.target.id!=="ibQ")return;IB.q=ev.target.value;IB.viewName=null;clearTimeout(IB._qt);IB._qt=setTimeout(()=>{IB._focusQ=true;loadInbox()},300)});
+document.addEventListener("keydown",ev=>{if(S.view!=="inbox"||ev.key!=="/"||ev.metaKey||ev.ctrlKey)return;const a=document.activeElement;if(a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))return;const q=$("#ibQ");if(q){ev.preventDefault();q.focus()}});
+document.addEventListener("change",async ev=>{const t=ev.target;if(!t.matches)return;
+  if(t.matches("[data-ib-acct]")){const k=t.dataset.ibAcct;let a=IB.accts||[];if(k==="__all")a=[];else a=t.checked?[...new Set(a.concat(k))]:a.filter(x=>x!==k);IB.accts=a;IB.viewName=null;ibAcctsSave();loadInbox();return}
+  if(t.matches("[data-ib-tone]")){const it=IB.items.find(x=>x.id===t.dataset.ibTone)||(IB.open&&IB.open.id===t.dataset.ibTone?IB.open:null);if(!it)return;const v=t.value;if(await ibAct("tone",{tone:v},it))toast(`Tone set to ${v}. The fix is kept and helps tune the word lists.`);return}
+  if(t.matches("[data-ib-view]")){const v=t.value;t.value="";if(v==="__del"){const vs=ibViews().filter(x=>x.name!==IB.viewName);await ibSaveViews(vs);IB.viewName=null;toast("View deleted");renderInbox();return}
+    const vw=ibViews()[Number(v)];if(!vw)return;IB.q=vw.q||"";IB.accts=vw.accts||[];ibAcctsSave();IB.f={...IBF0,...(vw.f||{})};IB.filter=vw.filter||"all";IB.status=vw.status||"open";IB.ads=vw.ads||"all";IB.sort=vw.sort||IB.sort;IB.viewName=vw.name;IB.open=null;loadInbox();return}
+  if(t.matches("[data-ib-needcheck]")){const r=await eng("engine_inbox_check",{team:S.team,person:t.dataset.ibNeedcheck,needs_check:t.checked}).catch(e=>({ok:false,error:whyFailed(e)}));toast(r&&r.ok?(r.needs_check?`${r.person}'s replies, hides and deletes now wait for a check`:`${r.person} no longer needs a check`):(r&&r.error)||"Couldn't change that");IB.team=null;loadInbox();return}});
+async function ibSaveViews(vs){const all={...((IB.prefs||{}).inbox_views||{}),[S.team]:vs};const r=await eng("engine_prefs",{set:{inbox_views:all}});if(r&&r.ok)IB.prefs=r.prefs;else throw new Error((r&&r.error)||"Couldn't save")}
+document.addEventListener("click",async ev=>{const t=ev.target.closest("[data-ib-acctmenu],[data-ib-drawer],[data-ib-f],[data-ib-fclear],[data-ib-saveview],[data-ib-q],[data-ib-after],[data-ib-check],[data-ib-withdraw],[data-ib-qall],[data-ib-clearall]");
+  if(!t){if(IB.acctOpen&&!ev.target.closest(".ibacc")){IB.acctOpen=false;renderInbox()}return}
+  if(t.dataset.ibAcctmenu!=null){IB.acctOpen=!IB.acctOpen;renderInbox();return}
+  if(t.dataset.ibDrawer!=null){IB.fOpen=!IB.fOpen;renderInbox();return}
+  if(t.dataset.ibF){const k=t.dataset.ibF;IB.f={...(IB.f||IBF0),[k]:k==="days"?Number(t.dataset.v):t.dataset.v};IB.viewName=null;k==="days"?loadInbox():renderInbox();return}
+  if(t.dataset.ibFclear!=null){IB.f={...IBF0};IB.ads="all";IB.viewName=null;loadInbox();return}
+  if(t.dataset.ibSaveview!=null){const name=String($("#ibViewName")?.value||"").trim().slice(0,40);if(!name){toast("Give the view a name");$("#ibViewName")?.focus();return}
+    const vw={name,q:IB.q||"",accts:IB.accts||[],f:IB.f||IBF0,filter:IB.filter,status:IB.status==="check"?"open":IB.status,ads:IB.ads||"all",sort:IB.sort||"priority"};
+    try{await ibSaveViews(ibViews().filter(x=>x.name!==name).concat([vw]).slice(-20));IB.viewName=name;IB.fOpen=false;toast(`Saved “${name}”`);renderInbox()}catch(e){failToast(e,"Couldn't save the view")}return}
+  if(t.dataset.ibQall!=null){IB.qAll=!IB.qAll;loadInbox();return}
+  if(t.dataset.ibClearall!=null){IB.q="";IB.qAll=false;IB.f={...IBF0};IB.accts=[];ibAcctsSave();IB.viewName=null;loadInbox();return}
+  if(t.dataset.ibQ){const it=IB.items.find(x=>x.id===t.dataset.id);if(!it)return;const a=t.dataset.ibQ;
+    if(a==="reply"){document.querySelector(`[data-ib-open="${CSS.escape(it.id)}"]`)?.click();setTimeout(()=>$("#ibText")?.focus(),300);return}
+    t.disabled=true;await ibAct(a,{},it);if(a==="done"&&IB.status==="open"){IB.items=IB.items.filter(x=>x.id!==it.id);if(IB.open&&IB.open.id===it.id)IB.open=null;renderInbox()}return}
+  if(t.dataset.ibAfter){const a=t.dataset.ibAfter;const A=IB.after;if(!A)return;const it=IB.items.find(x=>x.id===A.id)||A.item;
+    if(a==="close"){IB.after=null;renderInbox();return}if(a==="askban"){IB.afterBan=true;renderInbox();return}if(a==="noban"){IB.afterBan=false;renderInbox();return}
+    if(await ibAct(a,{},it)){if(a==="hide")it.hidden=true;if(a==="ban"){IB.after=null}}IB.afterBan=false;renderInbox();return}
+  if(t.dataset.ibCheck){const id=Number(t.dataset.id);const note=String($("#ibNote"+id)?.value||"").trim();t.disabled=true;
+    const r=await eng("engine_inbox_check",{team:S.team,action_id:id,decision:t.dataset.ibCheck,note}).catch(e=>({ok:false,error:whyFailed(e)}));
+    toast(r&&r.ok?(r.queued?"Approved: it goes out in 10 seconds.":"Sent back. Nothing was sent to Facebook or Instagram."):(r&&r.error)||"Couldn't do that");loadInbox();return}
+  if(t.dataset.ibWithdraw){const u=await eng("engine_inbox_undo",{action_id:Number(t.dataset.ibWithdraw)}).catch(e=>({ok:false,error:whyFailed(e)}));toast(u&&u.ok?"Withdrawn. Nothing was sent.":(u&&u.error)||"Couldn't withdraw");loadInbox();return}});
 setInterval(()=>{if(S.view==="inbox"&&!IB.topics&&document.visibilityState==="visible"&&!(document.activeElement&&document.activeElement.id==="ibText"))loadInbox()},60000);
 /* ---------- Listening (slice 3) ----------
    engine_listening: posts beating their own normal. "Rework for…" files a Plan
@@ -4107,7 +4448,18 @@ function wsMine(){return (LS.watches||[]).filter(w=>w.team===S.team&&!w.deleted)
 function wsSplit(v){return String(v||"").split(/[,\n]/).map(x=>x.trim()).filter(Boolean).slice(0,20)}
 async function loadWatches(){const ws=wsMine();const [m,ov]=await Promise.all([ws.length?eng("engine_listening",{tab:"watches",watches:ws.map(w=>({id:w.id,words:w.words,not:w.not,sources:w.sources})),...(LS.fresh?{fresh:true}:{})}):Promise.resolve({watches:[]}),eng("engine_listening",{tab:"overview"}).catch(()=>null)]);
   const by={};for(const r of m.watches||[])by[r.id]=r;return{tab:"watches",by,overview:ov,cached_at:m.cached_at||null,sig:ws.map(w=>w.id+":"+(w.words||[]).join("|")+":"+(w.not||[]).join("|")+":"+(w.sources||[]).join("|")).join(";")}}
-function wsNew(w,r){const seen=wsSeen()[w.id]||w.at||"";return ((r&&r.matches)||[]).filter(p=>String(p.created_time)>seen).length}
+/* Priority One 24 [chosen 3 Nov, A with C]: a new count per watch and in the
+   sidebar, unseen posts bold with a dot, matched words marked, Mark all seen,
+   and opening a post marks that one seen. Seen is kept per person, per browser. */
+function wsSeenUrls(){try{return new Set(JSON.parse(localStorage.getItem("lsWatchSeenUrls")||"[]"))}catch(e){return new Set()}}
+function wsSeeUrl(u){if(!u)return;const s=[...wsSeenUrls()].filter(x=>x!==u).concat(u).slice(-400);try{localStorage.setItem("lsWatchSeenUrls",JSON.stringify(s))}catch(e){}}
+function wsIsNew(w,p,seen,urls){return !!w&&String(p.created_time)>(seen[w.id]||w.at||"")&&!(p.url&&urls.has(p.url))}
+function wsNew(w,r){const seen=wsSeen(),urls=wsSeenUrls();return ((r&&r.matches)||[]).filter(p=>wsIsNew(w,p,seen,urls)).length}
+function wsMark(text,words){const t=esc(text);const ws=(words||[]).map(x=>String(x).trim()).filter(x=>x.length>1).sort((a,b)=>b.length-a.length).slice(0,20);if(!ws.length)return t;
+  const re=new RegExp("("+ws.map(x=>esc(x).replace(/[.*+?^${}()|[\]\\]/g,"\\$&")).join("|")+")","gi");return t.replace(re,"<mark>$1</mark>")}
+async function lsWatchTotals(){const ws=wsMine();if(!ws.length||!S.mcp){LS.wby=null;renderSide();return}
+  try{const m=await eng("engine_listening",{tab:"watches",watches:ws.map(w=>({id:w.id,words:w.words,not:w.not,sources:w.sources}))});const by={};for(const r of m.watches||[])by[r.id]=r;LS.wby=by;renderSide()}catch(e){}}
+setInterval(()=>{if(document.visibilityState==="visible")lsWatchTotals()},10*60e3);
 function wsSuggest(){const D=LS.data,ov=D&&D.overview,have=new Set(wsMine().flatMap(w=>(w.words||[]).map(x=>x.toLowerCase())));const out=[];
   for(const t of (ov&&ov.topics)||[])if(t.gap)out.push({src:"⚠ GAP TO FILL",name:t.name,why:t.gap.text+".",words:wsSplit(t.terms)});
   for(const c of ((ov&&ov.trending)||[]).slice(0,4))out.push({src:"📈 PICKING UP",name:tpLbl(c),why:`${c.accounts} accounts this week${c.before?` (${c.before} the week before)`:", new"}.`,words:[c.key]});
@@ -4130,8 +4482,8 @@ function renderWatches(el,head){const D=LS.data,ws=wsMine(),sel=LS.wsel||"all",b
       <div class="tpacts"><button class="btn small" data-ws-check>Check last 14 days</button><button class="btn small primary" data-ws-save>Save watch</button><button class="btn small" data-ws-cancel>Cancel</button>${f.id?`<button class="btn small" data-ws-del style="margin-left:auto">Delete</button>`:""}</div>
       ${pv?`<div class="wsprev"><b>${pv.total} match${pv.total===1?"":"es"} in the last 14 days</b>${pv.matches.slice(0,5).map(p=>`<div class="src"><span class="rsdot" data-src="${p.src}"></span> ${esc(p.who)}: ${esc(String(p.text||"").slice(0,110))}</div>`).join("")}</div>`:""}</section>`}
   else{const list=sel==="all"?ws.flatMap(w=>((by[w.id]||{}).matches||[]).map(p=>({...p,w}))).sort((a,b)=>String(b.created_time).localeCompare(String(a.created_time))):(((by[sel]||{}).matches)||[]).map(p=>({...p,w:ws.find(x=>x.id===sel)}));
-    const seen=wsSeen(),W=ws.find(x=>x.id===sel);LS.wlist=list;
-    const row=(p,i)=>{const nw=p.w&&String(p.created_time)>(seen[p.w.id]||p.w.at||"");return `<div class="wsrow${nw?" new":""}"><div class="rsmeta"><span class="rsdot" data-src="${p.src}"></span><b>${esc(p.who)}</b><span class="src">${esc(rsAge(p.created_time))}</span>${sel==="all"&&p.w?`<span class="wstag">${esc(p.w.name)}</span>`:""}${nw?`<span class="wsnew">● new</span>`:""}${p.x!=null?`<b class="tpx">${anN(p.x)}×</b>`:""}</div><p>${esc(p.text||"(no text)")}</p><div class="tpacts">${p.url?`<a class="btn small" href="${esc(p.url)}" target="_blank" rel="noopener">Open ↗</a>`:""}${tm?(LS.done.has(p.url||p.text)?`<span class="src">✓ Requested</span>`:`<button class="btn small" data-ws-ask="${i}">${p.src==="opponents"?"Counter with facts":"Rework for "+esc(tm.name)}</button>`):""}</div></div>`};
+    const seen=wsSeen(),urls=wsSeenUrls(),W=ws.find(x=>x.id===sel);LS.wlist=list;if(D&&D.by)LS.wby=D.by;
+    const row=(p,i)=>{const nw=wsIsNew(p.w,p,seen,urls);return `<div class="wsrow${nw?" new":""}"><div class="rsmeta"><span class="rsdot" data-src="${p.src}"></span><b>${esc(p.who)}</b><span class="src">${esc(rsAge(p.created_time))}</span>${sel==="all"&&p.w?`<span class="wstag">${esc(p.w.name)}</span>`:""}${nw?`<span class="wsnew">● new</span>`:""}${p.x!=null?`<b class="tpx">${anN(p.x)}×</b>`:""}</div><p>${p.text?wsMark(p.text,p.w&&p.w.words):"(no text)"}</p><div class="tpacts">${p.url?`<a class="btn small" href="${esc(p.url)}" target="_blank" rel="noopener" data-ws-open="${esc(p.url)}">Open ↗</a>`:""}${tm?(LS.done.has(p.url||p.text)?`<span class="src">✓ Requested</span>`:`<button class="btn small" data-ws-ask="${i}">${p.src==="opponents"?"Counter with facts":"Rework for "+esc(tm.name)}</button>`):""}</div></div>`};
     mid=`<section class="rsbox wsm"><div class="rsbar"><b class="wsh">${sel==="all"?"All watches":esc(W?W.name:"")}</b>${W?`<span class="src">${esc((W.words||[]).join(", "))}${(W.not||[]).length?" · not "+esc(W.not.join(", ")):""}</span><button class="btn small" data-ws-edit="${esc(W.id)}">Edit</button>`:""}${list.length?`<button class="btn small" data-ws-seen style="margin-left:auto">Mark all seen</button>`:""}</div>
       ${!D?`<span class="src">${LS.loading?"Loading…":""}</span>`:list.length?list.slice(0,60).map(row).join(""):`<span class="src">${ws.length?"Nothing matched in the last 14 days.":"Your watches' matches will show here."}</span>`}</section>`}
   const sug=wsSuggest();
@@ -4240,7 +4592,8 @@ document.addEventListener("click",async ev=>{const mo=ev.target.closest("[data-l
     try{await S.db.doc(`listenWatches/${id}`).set(doc);LS.watches=[...(LS.watches||[]).filter(w=>w.id!==id),doc];LS.wform=null;LS.wprev=null;LS.wsel=id;LS.data=null;toast("Watch saved");loadListening()}catch(e){failToast(e,"Couldn't save it");wsv.disabled=false}return}
   const wdl=ev.target.closest("[data-ws-del]");if(wdl&&LS.wform&&LS.wform.id){if(wdl.dataset.sure!=="1"){wdl.dataset.sure="1";wdl.textContent="Delete for the whole team?";return}
     try{await S.db.doc(`listenWatches/${LS.wform.id}`).update({deleted:true});LS.watches=(LS.watches||[]).map(w=>w.id===LS.wform.id?{...w,deleted:true}:w);LS.wform=null;LS.wsel="all";toast("Watch deleted");renderListening()}catch(e){failToast(e,"Couldn't delete it")}return}
-  if(ev.target.closest("[data-ws-seen]")){wsSetSeen(LS.wsel&&LS.wsel!=="all"?[LS.wsel]:wsMine().map(w=>w.id));renderListening();return}
+  const wo=ev.target.closest("[data-ws-open]");if(wo){wsSeeUrl(wo.dataset.wsOpen);setTimeout(()=>{renderListening();renderSide()},50);return}
+  if(ev.target.closest("[data-ws-seen]")){wsSetSeen(LS.wsel&&LS.wsel!=="all"?[LS.wsel]:wsMine().map(w=>w.id));renderListening();renderSide();return}
   const wak=ev.target.closest("[data-ws-ask]");if(wak&&LS.wlist){const p=LS.wlist[Number(wak.dataset.wsAsk)];if(p)lsAsk(p,wak);return}
   const tpo=ev.target.closest("[data-tp-open]");if(tpo){LS.openTopic=tpo.dataset.tpOpen||null;LS.tpSrc="";LS.tpMore=false;renderListening();$("#lsView").scrollIntoView({block:"start"});return}
   const gp=ev.target.closest("[data-ls-gap],[data-ls-trend]");if(gp&&LS.data&&LS.data.tab==="topics"){const isG=gp.hasAttribute("data-ls-gap");const c=isG?LS.data.topics[Number(gp.dataset.lsGap)]:LS.data.trending[Number(gp.dataset.lsTrend)];if(!c)return;const tm=new Date();tm.setDate(tm.getDate()+1);gp.disabled=true;
@@ -4703,7 +5056,7 @@ document.addEventListener("submit",async ev=>{if(ev.target.id!=="egAdd")return;e
   catch(e){failToast(e,"Couldn't add it")}
   EG.busy=false;renderEvergreen()});
 function setView(v){if(v==="plan"){v="calendar";CAL.view="month"}if(v==="evergreen"){S.status="evergreen";S.openId=null;resetDraftUi();if(!EG.loaded)loadEvergreen();v="posts"}S.view=v;document.querySelectorAll("#viewTabs [data-view]").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.view===v)));
-  const off=v!=="posts";$("main.desk").hidden=off;$("#calView").hidden=v!=="calendar";$("#planView").hidden=v!=="plan";$("#egView").hidden=v!=="evergreen";$("#ibView").hidden=v!=="inbox";$("#anView").hidden=v!=="analytics";$("#lsView").hidden=v!=="listening";$("#stView").hidden=v!=="settings";$("#toolsView").hidden=v!=="tools";$("#statusTabs").hidden=off;document.querySelector(".filters label[for=fIssue]").hidden=off;document.querySelector(".filters label[for=fType]").hidden=off;
+  const off=v!=="posts";$("main.desk").hidden=off;$("#calView").hidden=v!=="calendar";$("#planView").hidden=v!=="plan";$("#egView").hidden=v!=="evergreen";$("#ibView").hidden=v!=="inbox";$("#anView").hidden=v!=="analytics";$("#lsView").hidden=v!=="listening";$("#stView").hidden=v!=="settings";$("#toolsView").hidden=v!=="tools";$("#statusTabs").hidden=off;["fIssue","fType","fBy","fLabel","fQ"].forEach(id=>{const l=document.querySelector(`.filters label[for=${id}]`);if(l)l.hidden=off});
   if(v==="calendar"){renderCal();loadCal()}else if(v==="plan")loadPlan();else if(v==="evergreen")loadEvergreen();else if(v==="inbox")loadInbox();else if(v==="analytics")loadAnalytics();else if(v==="listening")loadListening();else if(v==="settings")renderSettings();else if(v==="tools")loadTools();else renderAll();renderSide()}
 document.addEventListener("click",ev=>{
   const v=ev.target.closest("[data-view]");if(v){setView(v.dataset.view);return}
@@ -5260,7 +5613,7 @@ window.addEventListener("beforeunload",ev=>{if(CP.open&&CP.state&&/Unsaved|Savin
   renderTeams();renderConnect();renderPause();
   S.db=engineStore(db);
   if(db)db.collection("videoRequests").onSnapshot(snap=>{S.requests={};snap.docs.forEach(x=>S.requests[x.id]=x.data());if(S.view==="tools"&&TL.tab==="make"&&!document.activeElement?.closest?.("#toolsView"))renderTools();if(!(S.editing&&$("#editText"))&&!busy())renderDetail();else S.renderWaiting=true},()=>{});
-  await refreshPosts();loadInbox();renderSide();
+  loadSettings();await refreshPosts();loadInbox();renderSide();loadBell();setTimeout(lsWatchTotals,4000);
   if(db)try{db.collection("analyticsGroups").onSnapshot(snap=>{AN.groups=snap.docs.map(x=>x.data());if(S.view==="analytics")renderAnalytics()},()=>{})}catch(e){}
   if(db)try{db.collection("analyticsViews").onSnapshot(snap=>{AN.views=snap.docs.map(x=>x.data());if(S.view==="analytics")renderAnalytics()},()=>{})}catch(e){}
   if(db)try{db.collection("listenVoices").onSnapshot(snap=>{LS.voices=snap.docs.map(x=>x.data())},()=>{})}catch(e){}
@@ -5269,9 +5622,9 @@ window.addEventListener("beforeunload",ev=>{if(CP.open&&CP.state&&/Unsaved|Savin
   if(db)try{db.collection("savedReplies").onSnapshot(snap=>{IB.saved=snap.docs.map(x=>x.data()).filter(r=>r.team===S.team);if(S.view==="inbox")renderInbox()},()=>{})}catch(e){}
   try{const room=await window.claude.use("room");if(room){IB.room=room;room.onPeers(ps=>{IB.peers=ps;if(S.view==="inbox"&&IB.open)renderInbox()});
     room.on("inbox",m=>{if(m&&m.team===S.team&&S.view==="inbox"&&!$("#ibText")?.matches(":focus"))loadInbox()});
-    room.on("composeAsk",m=>{const me=String(S.whoId||"").toLowerCase();if(m&&m.team===S.team&&(m.to==="*"||String(m.to||"").toLowerCase()===me)&&String(m.by||"").toLowerCase()!==me){toast(`${m.by||"Someone"} asked you to check “${m.title||"a post"}”`);refreshPosts()}});
-    room.on("composeNote",m=>{if(m&&m.to&&String(m.to).toLowerCase()===String(S.whoId||"").toLowerCase())toast(`${m.by||"Someone"} mentioned you on “${m.title||"a post"}”`)});
-    room.on("assigned",m=>{if(m&&m.to&&String(m.to).toLowerCase()===String(S.whoId||"").toLowerCase())toast(`${m.by||"Someone"} assigned you “${m.text||"a conversation"}”`)})}}catch(e){}try{if(!EG.loaded)loadEvergreen()}catch(e){}
+    room.on("composeAsk",m=>{const me=String(S.whoId||"").toLowerCase();if(m&&m.team===S.team&&(m.to==="*"||String(m.to||"").toLowerCase()===me)&&String(m.by||"").toLowerCase()!==me){toast(`${m.by||"Someone"} asked you to check “${m.title||"a post"}”`);bellPush("ask",`${m.by||"Someone"} asked you to check “${m.title||"a post"}”`,"post",m.id||m.post||"");refreshPosts()}});
+    room.on("composeNote",m=>{if(m&&m.to&&String(m.to).toLowerCase()===String(S.whoId||"").toLowerCase()){toast(`${m.by||"Someone"} mentioned you on “${m.title||"a post"}”`);bellPush("mention",`${m.by||"Someone"} mentioned you on “${m.title||"a post"}”`,"post",m.id||m.post||"")}});
+    room.on("assigned",m=>{if(m&&m.to&&String(m.to).toLowerCase()===String(S.whoId||"").toLowerCase()){toast(`${m.by||"Someone"} assigned you “${m.text||"a conversation"}”`);loadBell()}})}}catch(e){}try{if(!EG.loaded)loadEvergreen()}catch(e){}
   setInterval(()=>{if(document.visibilityState==="visible"&&!busy()&&!S.editing&&!S.gedit&&!S.inline)refreshPosts()},45000);
   document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"&&!busy())refreshPosts()});
 })();

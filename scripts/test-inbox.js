@@ -47,11 +47,13 @@ function engine() {
     async engineEvent(e) { (db.events = db.events || []).push(e); },
     async engineSetInitials(who, initials) { db.people = (db.people || []).filter((p) => p.who !== who).concat([{ who, initials }]); },
     async engineConnectedTokens() { return clone(db.tokens); },
+    async engineMyConnections(who) { return clone(db.tokens.filter((t) => t.who === who).map((t) => ({ account_key: t.account_key, connected_at: t.connected_at }))); },
     async enginePageToken({ who, account_key }) { return clone(db.tokens.find((t) => t.who === who && t.account_key === account_key) || null); },
     async enginePauses() { return clone(db.pauses || []); },
     async enginePosts({ team_ids } = {}) { return clone((db.posts || []).filter((p) => !team_ids || team_ids.includes(p.team_id))); },
-    async engineInbox({ team_ids, statuses, thread_id, platform, kind, author_id, since }) {
-      const rows = db.inbox.filter((r) => (!team_ids || team_ids.includes(r.team_id)) && (!statuses || statuses.includes(r.status)) && (!thread_id || r.thread_id === thread_id) && (!platform || r.platform === platform) && (!kind || r.kind === kind) && (!author_id || r.author_id === author_id) && (!since || r.created_at >= since) && !r.deleted_at);
+    async engineInbox({ team_ids, statuses, thread_id, platform, kind, author_id, since, account_keys, q }) {
+      const ql = String(q || '').toLowerCase();
+      const rows = db.inbox.filter((r) => (!account_keys || account_keys.includes(r.account_key)) && (!ql || [r.text, r.author_name, r.post_text].some((x) => String(x || '').toLowerCase().includes(ql))) && (!team_ids || team_ids.includes(r.team_id)) && (!statuses || statuses.includes(r.status)) && (!thread_id || r.thread_id === thread_id) && (!platform || r.platform === platform) && (!kind || r.kind === kind) && (!author_id || r.author_id === author_id) && (!since || r.created_at >= since) && !r.deleted_at);
       return clone(rows.sort((a, b) => (thread_id ? a.created_at.localeCompare(b.created_at) : b.created_at.localeCompare(a.created_at))));
     },
     async engineInboxItem(id) { return clone(db.inbox.find((r) => r.id === id) || null); },
@@ -78,6 +80,9 @@ function engine() {
     async engineInsertInboxRule(row) { const r = { id: db.rules.length + 1, ...row }; db.rules.push(r); return clone(r); },
     async engineDeleteInboxRule(id, team) { const i = db.rules.findIndex((r) => r.id === id && r.team_id === team); if (i < 0) return null; return db.rules.splice(i, 1)[0]; },
     async engineInboxInsertAction(row) { const a = { id: ++aid, created_at: new Date().toISOString(), detail: {}, ...row }; db.actions.push(a); return clone(a); },
+    async engineSetNeedsCheck(team_id, who, v) { const m = db.members.find((x) => x.team_id === team_id && x.who === who); if (!m) return null; m.needs_check = v; return clone(m); },
+    async enginePrefs(who) { return clone((db.prefs || {})[who] || {}); },
+    async engineSavePrefs(who, prefs) { (db.prefs = db.prefs || {})[who] = clone(prefs); return prefs; },
     async engineInboxUpdateAction(id, from, fields) { const a = db.actions.find((x) => x.id === id && x.status === from); if (!a) return null; Object.assign(a, fields); return clone(a); },
   };
 }
@@ -136,7 +141,7 @@ function fakeMeta() {
   eq('collector: our own comments arrive done, the ad is marked, nothing is posted to Meta', [s.db.inbox.filter((r) => r.status === 'done').map((r) => r.id).sort(), s.db.inbox.find((r) => r.id === 'fbc_c9').is_ad, meta.calls.every((c) => c.method === 'GET')], [['fbc_c2', 'fbm_mm2', 'igc_i2'], true, true]);
 
   // People's columns survive a re-read.
-  eq('tool: an open inbox with counts', (await call(s, 'engine_inbox', { team: 'uk' }, 'sam')).counts, { open: 6, facebook: 4, instagram: 2, messages: 1, mentions: 2, mine: 0, fb_comments: 2, messenger: 1, ig_comments: 1, ig_dms: 0, flagged: 0 });
+  eq('tool: an open inbox with counts', (await call(s, 'engine_inbox', { team: 'uk' }, 'sam')).counts, { open: 6, facebook: 4, instagram: 2, messages: 1, mentions: 2, mine: 0, fb_comments: 2, messenger: 1, ig_comments: 1, ig_dms: 0, flagged: 0, accounts: { 'uk-fb': 4, 'uk-ig': 2 }, all_open: 6, check: 0 });
   await call(s, 'engine_inbox_act', { id: 'fbc_c1', action: 'assign', assign_to: 'sam' }, 'chris');
   await call(s, 'engine_inbox_act', { id: 'igc_i1', action: 'done' }, 'sam');
   await call(s, 'engine_inbox_act', { id: 'fbc_c9', action: 'label', labels: ['critic', 'critic', 'ad'] }, 'sam');
@@ -170,6 +175,47 @@ function fakeMeta() {
     ['done', true, ['assign:done', 'done:done', 'hide:cancelled', 'label:done', 'reply:done', 'reply:done'].sort()]);
   const w2 = await worker.run({ store: s, privateKey: keys.privateKey, live: true, now: later + 60_000, log: () => {}, fetchImpl: fm.fetchImpl });
   eq('worker: never twice', [w2.sent, fm.calls.length], [0, 2]);
+
+  // Priority One [3 Nov]: search, accounts, tone fixed by hand, checks, own settings.
+  eq('search finds words, names and the post; accounts narrows to some', [(await call(s, 'engine_inbox', { team: 'uk', status: 'all', q: 'MARGARET' }, 'sam')).items.length > 0, (await call(s, 'engine_inbox', { team: 'uk', status: 'all', accounts: ['uk-ig'] }, 'sam')).items.every((i) => i.account_key === 'uk-ig')], [true, true]);
+  const tn = await call(s, 'engine_inbox_act', { id: 'fbc_c9', action: 'tone', tone: 'positive' }, 'sam');
+  const tnRead = (await call(s, 'engine_inbox', { team: 'uk', status: 'all' }, 'sam')).items.find((i) => i.id === 'fbc_c9');
+  eq('tone: anyone fixes it, it is kept with who, the history records it', [tn.ok, tnRead.tone, tnRead.tone_fixed, tnRead.tone_set_by, s.db.actions.some((a) => a.action === 'tone' && a.detail.tone === 'positive')], [true, 'positive', true, 'sam', true]);
+  eq('tone: only the four tones', (await call(s, 'engine_inbox_act', { id: 'fbc_c9', action: 'tone', tone: 'angry' }, 'sam')).ok, false);
+  s.db.members.push({ team_id: 'uk', who: 'jo', role: 'editor' });
+  s.db.rights.push({ who: 'jo', account_key: 'uk-fb', source: 'meta' });
+  eq('checks: only admins switch them on', [(await call(s, 'engine_inbox_check', { team: 'uk', person: 'jo', needs_check: true }, 'sam')).ok, (await call(s, 'engine_inbox_check', { team: 'uk', person: 'jo', needs_check: true }, 'chris')).needs_check], [false, true]);
+  const jh = await call(s, 'engine_inbox_act', { id: 'fbc_c9', action: 'hide' }, 'jo');
+  const seen = await call(s, 'engine_inbox', { team: 'uk' }, 'jo');
+  eq('checks: jo\'s hide waits for a check, and shows in To check', [jh.ok, !!jh.check, jh.check.status, seen.counts.check, seen.checks[0].item.id, seen.me.needs_check, seen.me.checker], [true, true, 'check', 1, 'fbc_c9', true, false]);
+  const fm2 = fakeMeta();
+  await worker.run({ store: s, privateKey: keys.privateKey, live: true, now: Date.now() + 60_000, log: () => {}, fetchImpl: fm2.fetchImpl });
+  eq('checks: the worker never sends a waiting action', fm2.calls.length, 0);
+  eq('checks: not on your own, not by an editor', [(await call(s, 'engine_inbox_check', { team: 'uk', action_id: jh.check.id, decision: 'approve' }, 'jo')).ok, (await call(s, 'engine_inbox_check', { team: 'uk', action_id: jh.check.id, decision: 'approve' }, 'sam')).ok], [false, false]);
+  const ap = await call(s, 'engine_inbox_check', { team: 'uk', action_id: jh.check.id, decision: 'approve' }, 'chris');
+  eq('checks: an admin approves, it is queued with the usual undo, and the check is recorded', [ap.ok, ap.queued.status, ap.queued.detail.checked_by, (await call(s, 'engine_inbox_check', { team: 'uk', action_id: jh.check.id, decision: 'reject' }, 'chris')).ok], [true, 'queued', 'chris', false]);
+  const jr = await call(s, 'engine_inbox_act', { id: 'fbc_c9', action: 'like' }, 'jo');
+  const rj = await call(s, 'engine_inbox_check', { team: 'uk', action_id: jr.check.id, decision: 'reject', note: 'Not this one' }, 'chris');
+  eq('checks: sent back with a note never goes out', [rj.ok, rj.sent_back.status, rj.sent_back.detail.note], [true, 'cancelled', 'Not this one']);
+  const jw = await call(s, 'engine_inbox_act', { id: 'fbc_c9', action: 'delete' }, 'jo');
+  eq('checks: you can withdraw your own waiting action', (await call(s, 'engine_inbox_undo', { action_id: jw.check.id }, 'jo')).ok, true);
+  const pv = await call(s, 'engine_prefs', { set: { inbox_views: { uk: [{ name: 'Negative this week', f: { tone: 'negative', days: 7 } }] } } }, 'sam');
+  eq('settings: saved per person, unknown keys refused', [pv.ok, (await call(s, 'engine_prefs', {}, 'sam')).prefs.inbox_views.uk[0].name, Object.keys((await call(s, 'engine_prefs', {}, 'chris')).prefs).length, (await call(s, 'engine_prefs', { set: { token: 'x' } }, 'sam')).ok], [true, 'Negative this week', 0, false]);
+
+  // The bell [Priority One 21A] and the renewal banner (20C).
+  {
+    s.db.tokens.push({ who: 'jo', account_key: 'uk-fb', page_id: '105', connected_at: new Date(Date.now() - 85 * 864e5).toISOString(), sealed: 'x' });
+    s.db.posts = (s.db.posts || []).concat([{ id: 'bp1', team_id: 'uk', status: 'changes', title: 'Write to your MP', created_by: 'jo', doc: { review: { by: 'chris', at: new Date().toISOString(), note: 'Shorter please' }, publishErrors: {} } },
+      { id: 'bp2', team_id: 'uk', status: 'scheduled', title: 'Weekly wins', created_by: 'chris', doc: { review: { by: 'chris', at: new Date().toISOString() }, publishErrors: { 'uk-ig': { at: new Date().toISOString(), message: 'Token expired' } } } }]);
+    const bj = await call(s, 'engine_bell', { team: 'uk' }, 'jo');
+    const kinds = bj.items.map((i) => i.kind).sort();
+    eq('bell: sent back and approved (inbox and post) and the connection ending, for jo only', [kinds.includes('sent_back'), kinds.includes('approved'), kinds.includes('connection'), bj.items.some((i) => /Shorter please/.test(i.text)), bj.items.some((i) => /Not this one/.test(i.text)), bj.connections[0].days_left], [true, true, true, true, true, 5]);
+    const bc = await call(s, 'engine_bell', { team: 'uk' }, 'chris');
+    eq('bell: chris sees his own failed post, not his own approvals, and no renewal yet', [bc.items.some((i) => i.kind === 'failed' && /Weekly wins/.test(i.text)), bc.items.some((i) => i.kind === 'connection'), bc.items.some((i) => /Shorter/.test(i.text))], [true, false, false]);
+    eq('bell: not for other teams', await callErr(s, 'engine_bell', { team: 'global' }, 'jo'), 'ENGINE_NOT_MEMBER');
+    const seen = new Date().toISOString();
+    eq('bell: read state saved per person', [(await call(s, 'engine_prefs', { set: { bell_seen: seen } }, 'jo')).ok, (await call(s, 'engine_bell', { team: 'uk' }, 'jo')).seen], [true, seen]);
+  }
 
   // Supporter history and By post (the fake Meta's dates are relative to 3 Nov; shift them to now).
   const shift = Date.now() - NOW;
