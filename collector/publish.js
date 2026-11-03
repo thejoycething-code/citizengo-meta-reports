@@ -9,9 +9,7 @@
 //   node collector/publish.js --dry-run  # always a dry run
 //
 // Needs SUPABASE_URL, SUPABASE_SERVICE_KEY and ENGINE_TOKEN_PRIVATE_KEY (the
-// key that opens sealed Page tokens; only on the Mini, scripts/engine-keygen.js).
-// ASANA_TOKEN (optional, Mini only): Post now posts on UK accounts get their
-// Asana calendar task as soon as they are live (lib/asana.js). A dry run reads everything and changes
+// key that opens sealed Page tokens; only on the Mini, scripts/engine-keygen.js). A dry run reads everything and changes
 // nothing: it prints what it would publish, and why anything is held back.
 
 const { loadEnv } = require('../lib/graph');
@@ -19,7 +17,6 @@ const { supabaseStore } = require('../lib/store');
 const xauth = require('../lib/xauth');
 const E = require('../lib/engine');
 const P = require('../lib/publish');
-const A = require('../lib/asana');
 
 async function patchDoc(store, id, change, extra = () => ({})) {
   for (let i = 0; i < 3; i++) {
@@ -49,54 +46,10 @@ async function claimSlot(store, id, slot, at, runner, now) {
   return false;
 }
 
-// Post now posts that are out on every UK Facebook and Instagram account they
-// went to, and have no Asana task yet: one task in each UK calendar.
-async function asanaPass({ store, live, now, log, token, fetchImpl, tally }) {
-  const posts = await store.enginePosts({ team_ids: ['uk'], statuses: ['scheduled', 'posted'], limit: 200 });
-  const stamp = new Date(now).toISOString();
-  const api = A.client(token, fetchImpl);
-  for (const post of posts) {
-    const due = A.ukDue(post, now);
-    if (!due) continue;
-    const p = post.doc.posting || {};
-    const err = p.asanaError || {};
-    if ((err.tries || 0) >= A.MAX_TRIES) continue;
-    if (p.asanaPending && now - Date.parse(p.asanaPending.at) < A.CLAIM_MS) continue;
-    if (p.asanaPending) {
-      log(`  ✗ ${post.id} → Asana: started over 15 minutes ago with no answer; check the UK calendars before trying again`);
-      if (live) await patchDoc(store, post.id, () => ({ posting: { asanaPending: null, asanaError: { at: stamp, message: 'Creating the Asana task got no answer. Check the UK calendars: it may already be there.', tries: A.MAX_TRIES } } }));
-      continue;
-    }
-    const task = A.taskFor(post, due);
-    if (!live) { tally.would++; log(`  → ${post.id} → Asana: would add "${task.name}" to ${task.calendars.map((c) => c.label).join(', ')}${task.completed ? ', completed' : ''}`); continue; }
-    // Claim it, so an overlapping run can't make a second task.
-    const claimed = await patchDoc(store, post.id, (cur) => {
-      const cp = (cur.doc && cur.doc.posting) || {};
-      return cp.asanaTaskGid || (cp.asanaPending && now - Date.parse(cp.asanaPending.at) < A.CLAIM_MS) ? {} : { posting: { asanaPending: { at: stamp } } };
-    });
-    if (!claimed || !(claimed.doc.posting.asanaPending && claimed.doc.posting.asanaPending.at === stamp)) continue;
-    try {
-      const out = await A.createTask(api, task);
-      await patchDoc(store, post.id, () => ({ posting: { asanaPending: null, asanaError: null, asanaTaskGid: out.gid, asanaUrl: out.url, syncedAt: stamp } }));
-      await store.engineEvent({ post_id: post.id, team_id: post.team_id, who: 'publisher', action: 'asana_task', detail: { gid: out.gid, calendars: due.keys } });
-      log(`  ✓ ${post.id} → Asana: ${out.url}`);
-    } catch (e) {
-      if (e.task) {
-        // The task exists but isn't finished: keep it, never make another.
-        await patchDoc(store, post.id, () => ({ posting: { asanaPending: null, asanaTaskGid: e.task.gid, asanaUrl: e.task.url, syncedAt: stamp, asanaError: { at: stamp, message: `The task was made but not finished (${e.message}). The morning run fills in the rest.`, tries: A.MAX_TRIES } } }));
-        log(`  ✗ ${post.id} → Asana: task ${e.task.gid} made, but ${e.message}`);
-        continue;
-      }
-      await patchDoc(store, post.id, () => ({ posting: { asanaPending: null, asanaError: { at: stamp, message: e.message, tries: (err.tries || 0) + 1 } } }));
-      log(`  ✗ ${post.id} → Asana: ${e.message}`);
-    }
-  }
-}
-
 // runner: 'mini' (every 5 minutes) or 'cloud' (the Vercel backup, every 15).
 // minLateMs: leave anything due more recently than this to the other runner,
 // so the backup only steps in when the Mini hasn't.
-async function run({ store, privateKey, live, now = Date.now(), log = console.log, fetchImpl, wait, runner = 'mini', minLateMs = 0, asanaToken = null, asanaFetch }) {
+async function run({ store, privateKey, live, now = Date.now(), log = console.log, fetchImpl, wait, runner = 'mini', minLateMs = 0 }) {
   const [teams, posts, pauses] = await Promise.all([store.engineTeams(), store.enginePosts({ statuses: ['scheduled'], limit: 500 }), store.enginePauses()]);
   const items = P.plan(posts, teams, now, pauses);
   const tally = { published: 0, held: 0, failed: 0, would: 0 };
@@ -184,11 +137,6 @@ async function run({ store, privateKey, live, now = Date.now(), log = console.lo
       log(`  ✓ ${id}: everything is out, marked Posted`);
     }
   }
-  // Post now, UK: the Asana calendar task, straight away (lib/asana.js).
-  if (asanaToken) {
-    try { await asanaPass({ store, live, now, log, token: asanaToken, fetchImpl: asanaFetch || fetchImpl, tally }); }
-    catch (e) { log(`  ! Asana: ${e.message}`); }
-  }
   // Heartbeat: when each runner last checked, for the desk's warning.
   try { await store.engineCacheSet(`publisher:${runner}`, { at: stamp(), live: !!live, tally }); } catch (e) { log(`  ! heartbeat not saved (${e.message})`); }
   return tally;
@@ -201,7 +149,7 @@ if (require.main === module) {
   if (!privateKey) { console.error('ENGINE_TOKEN_PRIVATE_KEY is not set: cannot open sealed Page tokens (scripts/engine-keygen.js).'); process.exit(1); }
   const store = supabaseStore({ url: process.env.SUPABASE_URL, serviceKey: process.env.SUPABASE_SERVICE_KEY });
   console.log(`Content Engine publisher, ${live ? 'LIVE' : 'dry run'}, ${new Date().toISOString()}`);
-  run({ store, privateKey, live, asanaToken: process.env.ASANA_TOKEN || null }).then((t) => console.log(JSON.stringify(t))).catch((e) => { console.error(e.message); process.exit(1); });
+  run({ store, privateKey, live }).then((t) => console.log(JSON.stringify(t))).catch((e) => { console.error(e.message); process.exit(1); });
 }
 
 module.exports = { run };
