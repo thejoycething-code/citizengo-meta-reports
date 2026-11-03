@@ -35,6 +35,12 @@ async function main() {
   jobs.push(['engine_listening', { tab: 'allies', team: teams[0], country: 'UK' }]);
   jobs.push(['engine_listening', { tab: 'overview' }]);
   jobs.push(['engine_listening', { tab: 'beyond' }]);
+  // Teams that read another language or news edition (México: Spanish, Google News México) have their own Topics.
+  const E = require('../lib/engine');
+  for (const team of teams.filter((t) => E.teamLang(t) !== 'en' || E.newsEdition(t) !== 'uk')) {
+    jobs.push(['engine_listening', { tab: 'overview', team }]);
+    jobs.push(['engine_listening', { tab: 'beyond', team }]);
+  }
   for (const days of [7, 14]) jobs.push(['engine_listening', { tab: 'opponents_mix', days }]);
   let ok = 0; const failed = [];
   const t0 = Date.now();

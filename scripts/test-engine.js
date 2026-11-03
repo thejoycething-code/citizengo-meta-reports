@@ -396,6 +396,23 @@ const callErr = async (store, name, args, who) => { try { await tool(name)(store
     const h = T.healthChecks({ team: { accounts: [{ key: 'uk-fb', platform: 'facebook', page_id: 'p1', label: 'UK Facebook' }, { key: 'uk-ig', platform: 'instagram' }] }, rights: [{ who: 'chris', account_key: 'uk-fb', checked_at: '2026-11-02T03:00:00Z' }], runs: [{ page_id: 'p1', started_at: '2026-11-02T04:30:00Z', status: 'ok' }], sigPulled: '2026-10-28T08:00:00Z', listenRows: 5, inviterLast: { p1: '2026-10-20' }, now });
     eq('tools: health puts problems first', h.slice(0, 3).map((c) => c.level + ':' + c.title).join(' | '), 'bad:Nobody can post to uk-ig | warn:Only chris can post to UK Facebook | warn:Signatures are late');
   }
+
+  // México team (3 Nov 2026): its own time zone, language and news edition.
+  {
+    const E = require('../lib/engine');
+    eq('teams: México works in Mexico City time, others in UK time', [E.teamZone({ id: 'mx', tz: 'America/Mexico_City' }), E.teamZone({ id: 'uk' }), E.teamZone(null), E.teamZone({ tz: 'Not/AZone' }).tz],
+      [{ tz: 'America/Mexico_City', label: 'Mexico City' }, { tz: 'Europe/London', label: 'UK' }, { tz: 'Europe/London', label: 'UK' }, 'Europe/London']);
+    eq('teams: México reads Spanish and Google News México', [E.teamLang('mx'), E.newsEdition('mx'), E.teamLang('uk'), E.newsEdition('global')], ['es', 'mx', 'en', 'uk']);
+    const LT = require('../lib/listen-topics');
+    eq('topics: Spanish posts fall into the same topics', ['Diputados aprueban la eutanasia en la CDMX', 'Gran marcha provida en Monterrey', 'La ideología de género en las escuelas', 'Nuevos libros de texto de la SEP', 'Prohibir los vientres de alquiler', 'Violencia de género en aumento'].map((t) => LT.topicsOf(t).join(',')),
+      ['assisted-dying', 'abortion', 'gender', 'sex-education', 'family', '']);
+    const N = require('../collector/listen-news');
+    const now = Date.parse('2026-11-03T12:00:00Z');
+    const xml = `<rss><channel><item><title>Congreso discute la eutanasia - Milenio</title><link>https://example.mx/a</link><pubDate>Mon, 02 Nov 2026 10:00:00 GMT</pubDate><source>Milenio</source></item></channel></rss>`;
+    const rows = N.parseFeed(xml, 'assisted-dying', now, 'mx');
+    eq('news: Mexico edition rows say so', rows.map((r) => [r.edition, r.title, r.source].join('|')), ['mx|Congreso discute la eutanasia|Milenio']);
+    eq('news: two editions, the UK one unchanged', N.EDITIONS.map((e) => e.edition + ':' + e.params), ['uk:hl=en-GB&gl=GB&ceid=GB:en', 'mx:hl=es-419&gl=MX&ceid=MX:es-419']);
+  }
   console.log(`\n${passed} passed, ${failed} failed`);
   process.exit(failed ? 1 : 0);
 })().catch((e) => { console.error(e); process.exit(1); });
