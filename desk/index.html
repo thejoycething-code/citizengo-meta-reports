@@ -4816,7 +4816,7 @@ async function openCP(id){if(!S.db){toast("Sign in to the desk to write a post")
   $("#cpDlg").hidden=false;document.body.classList.add("cpopen");cpRender();
   if(!CP.people&&S.team)eng("engine_access",{action:"list",team:S.team}).then(r=>{CP.people={team:S.team,list:(r&&r.people)||[]};if(CP.open&&!CP.start)cpRenderKeep()}).catch(()=>{CP.people={team:S.team,list:[]}})}
 function cpLoad(d){CP.start=false;CP.id=d.id;CP.d=cpCopy(Object.fromEntries(Object.entries(d).filter(([k])=>!k.startsWith("_")&&!["id","status"].includes(k))));CP.d.platforms={facebook:cpTxt(d,"facebook"),instagram:cpTxt(d,"instagram"),x:textFor(d,"x")||"",...(textFor(d,"facebookComment")!=null?{facebookComment:cpTxt(d,"facebookComment")}:{}),...(textFor(d,"instagramComment")!=null?{instagramComment:cpTxt(d,"instagramComment")}:{})};
-  CP.d.cpType=d.cpType||(d.fbTextOnly?"text":isVideoPost(d)?"reel":d.card?.template==="carousel"?"carousel":"post");CP.saved=cpCopy(CP.d);CP.edited=d.edited||null;
+  delete CP.d.edited;CP.d.cpType=d.cpType||(d.fbTextOnly?"text":isVideoPost(d)?"reel":d.card?.template==="carousel"?"carousel":"post");CP.saved=cpCopy(CP.d);CP.edited=d.edited||null;
   CP.at=new Date((d.posting||{}).at||(d.posting||{}).suggestedAt||bestSlot((d.posting||{}).destinations).toISOString());if(CP.at.getTime()<Date.now()+5*60e3)CP.at=nextFreeSlot((d.posting||{}).destinations);
   CP.check=d.ask?.to||"";CP.capTab=cpTxt(d,"facebook")===cpTxt(d,"instagram")||!cpTxt(d,"instagram")||!cpTxt(d,"facebook")?"same":"facebook"}
 function cpBegin(seed){CP.start=false;CP.id=null;CP.saved=null;CP.edited=null;CP.d=cpBlank(seed);CP.at=nextFreeSlot(CP.d.posting.destinations);CP.check="";cpRender();setTimeout(()=>cpEl("#cpText")?.focus(),0)}
@@ -4832,7 +4832,7 @@ function cpFlush(force){clearTimeout(CP.saveT);CP.save=CP.save.catch(()=>{}).the
 async function cpFlushNow(force){const d=CP.d;if(!d)return;
   if(!CP.id){if(!force&&!cpHasContent(d))return;d.title=cpTitle(d);CP.state="Saving…";cpState();
     const doc=cpCopy(d);const r=await eng("engine_create",{team:S.team,doc});if(!r||r.ok===false||!r.post)throw Object.assign(new Error((r&&r.error)||"The Content Engine refused that"),{code:"engine_refused"});
-    const p=putPost(r.post);CP.id=p.id;CP.saved=cpCopy(d);CP.state="Saved";cpState();return}
+    const p=putPost(r.post);CP.id=p.id;CP.saved=doc;if(cpPatch&&Object.keys(cpPatch()).length){CP.state="Unsaved changes";cpState();CP.saveT=setTimeout(()=>cpFlush().catch(e=>failToast(e,"Couldn't save it")),400)}else{CP.state="Saved";cpState()}return}
   cpHistory();const patch=cpPatch();if(!Object.keys(patch).length){CP.state="Saved";cpState();return}
   /* Words you change here replace any earlier edit, so the post reads what the composer shows. */
   if(patch.platforms&&CP.edited){const ed={};for(const k of Object.keys(CP.edited))ed[k]=null;patch.edited=ed;CP.edited=null}
@@ -4924,7 +4924,7 @@ function cpLibrary(){const seen=new Set(),out=[];const add=(c,from)=>{if(!c)retu
 const cpPhotoSlide=(url,id)=>({template:"free",bg:"#000000",layers:[{type:"photo",x:0,y:0,w:100,h:125,fx:0.5,fy:0.5,...(id?{id}:{}),url}]});
 
 /* Words: one caption for every network, or each its own; Claude, hashtags, snippets, emoji, the link. */
-function cpWords(d){const fb=cpTxt(d,"facebook"),ig=cpTxt(d,"instagram");const tab=CP.capTab;const val=tab==="instagram"?ig:fb;const diff=fb!==ig&&fb&&ig;
+function cpWords(d){const fb=cpTxt(d,"facebook"),ig=cpTxt(d,"instagram");const tab=CP.capTab;const val=tab==="instagram"||(tab==="same"&&!cpHas(d,"facebook"))?ig:fb;const diff=fb!==ig&&fb&&ig;
   const tags=(CP.kit||[]).filter(x=>x.kind==="tags"),snips=(CP.kit||[]).filter(x=>x.kind==="snippet");const link=d.action?.url||d.own?.link||"";
   return `<div class="cp-box"><label class="cp-f grow">Working title <small>for the Review board and calendar; not posted</small><input id="cpTitle" value="${esc(d.title||"")}" maxlength="120" placeholder="${esc(cpTitle(d)==="Untitled post"?"e.g. Thank you: 10,000 in a week":cpTitle(d))}"></label>
   <div class="row cp-captabs"><button class="pill${tab==="same"?" on":""}" data-cp-cap="same">Same text everywhere</button>${cpHas(d,"facebook")?`<button class="pill${tab==="facebook"?" on":""}" data-cp-cap="facebook">📘 Facebook</button>`:""}${cpHas(d,"instagram")&&d.cpType!=="text"?`<button class="pill${tab==="instagram"?" on":""}" data-cp-cap="instagram">📸 Instagram</button>`:""}<span class="sp"></span>${S.sample?`<button class="ai" data-cp="ai" aria-expanded="${CP.ai}">✨ Write with Claude</button>`:""}</div>
@@ -5152,6 +5152,7 @@ function cpType(k){const d=CP.d;const was=d.cpType;if(was===k)return;d.cpType=k;
   if(k==="reel"&&d.card?.template==="carousel"){d.card=(d.card.slides||[])[0]||{template:"reel",caption:""}}
   if(k==="reel"&&!HOUSE_T.has(d.card?.template))d.card={template:"reel",caption:d.card?.headline||""};
   if(k!=="reel"&&d.publishVideo){d.publishVideo=null}
+  if(k!=="reel"&&d.card?.template==="reel")d.card=switchTemplate(d.card,"ig1d");
   cpSaveSoon();cpRenderKeep()}
 
 document.addEventListener("click",async ev=>{const box=ev.target.closest("#cpBox");if(!box){if(ev.target.id==="cpDlg"&&CP.start)closeCP();return}const d=CP.d;
