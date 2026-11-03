@@ -3379,7 +3379,7 @@ const TZF={};
 function tzOff(tz,d){try{const f=TZF[tz]=TZF[tz]||new Intl.DateTimeFormat("en-US",{timeZone:tz,hourCycle:"h23",year:"numeric",month:"numeric",day:"numeric",hour:"numeric",minute:"numeric"});const p={};f.formatToParts(d).forEach(x=>{p[x.type]=x.value});return Math.round((Date.UTC(+p.year,+p.month-1,+p.day,+p.hour%24,+p.minute)-Math.floor(d.getTime()/6e4)*6e4)/6e4)}catch(e){return -d.getTimezoneOffset()}}
 const tzGapMin=()=>{const n=new Date();return tzOff(teamTz(),n)+n.getTimezoneOffset()};
 const calMine=()=>{const s=(S.settings||{}).tz;return s==="mine"?true:s==="team"?false:!!lsGet("desk.calTzMine",false)};
-const calTeamTime=()=>S.view==="calendar"&&tzGapMin()!==0&&!calMine();
+const calTeamTime=()=>S.view==="calendar"&&teamTz()!==myTz()&&!calMine();
 function Z(t){const d=new Date(t);if(isNaN(d)||!calTeamTime())return d;return new Date(d.getTime()+(tzOff(teamTz(),d)+d.getTimezoneOffset())*6e4)}
 function unZ(w){const d=new Date(w);if(isNaN(d)||!calTeamTime())return d;let g=new Date(d.getTime()-(tzOff(teamTz(),d)+d.getTimezoneOffset())*6e4);g=new Date(d.getTime()-(tzOff(teamTz(),g)+g.getTimezoneOffset())*6e4);return g}
 const calHM=t=>hhmm(Z(t));
@@ -3428,9 +3428,9 @@ function ownItems(){
 function calPins(){if(!CAL.pins){try{CAL.pins=JSON.parse(localStorage.getItem("calPins")||"[]")}catch(e){CAL.pins=[]}}return CAL.pins}
 function savePins(){try{localStorage.setItem("calPins",JSON.stringify(CAL.pins||[]))}catch(e){}}
 function otherAll(){if(!CAL.data)return[];const flag=id=>(CAL.data.teams||[]).find(t=>t.id===id)?.flag||"";
-  return (CAL.data.items||[]).filter(i=>i.team_id!==S.team&&i.at&&["scheduled","posted"].includes(i.status)).map(i=>({id:i.id,at:i.at,status:i.status,title:`${flag(i.team_id)} ${i.title}`.trim(),raw:i.title,team:i.team_id,day:dayKey(new Date(i.at)),dests:i.destinations||[],mine:false,thumb:i.thumb||null,links:i.links||[]}))}
+  return (CAL.data.items||[]).filter(i=>i.team_id!==S.team&&i.at&&["scheduled","posted"].includes(i.status)).map(i=>({id:i.id,at:i.at,status:i.status,title:`${flag(i.team_id)} ${i.title}`.trim(),raw:i.title,team:i.team_id,day:dayKey(Z(i.at)),dests:i.destinations||[],mine:false,thumb:i.thumb||null,links:i.links||[]}))}
 function otherItems(){const c=CAL.country||"";if(!CAL.data)return[];if(!c||c===S.team){const pins=calPins();return otherAll().filter(i=>pins.includes(i.team)).map(i=>({...i,ghost:true}))}const flag=id=>(CAL.data.teams||[]).find(t=>t.id===id)?.flag||"";
-  return (CAL.data.items||[]).filter(i=>i.team_id!==S.team&&i.at&&(c==="all"||i.team_id===c)).map(i=>({id:i.id,at:i.at,status:i.status,title:`${flag(i.team_id)} ${i.title}`.trim(),raw:i.title,team:i.team_id,day:dayKey(new Date(i.at)),dests:i.destinations||[],mine:false}))}
+  return (CAL.data.items||[]).filter(i=>i.team_id!==S.team&&i.at&&(c==="all"||i.team_id===c)).map(i=>({id:i.id,at:i.at,status:i.status,title:`${flag(i.team_id)} ${i.title}`.trim(),raw:i.title,team:i.team_id,day:dayKey(Z(i.at)),dests:i.destinations||[],mine:false}))}
 function calTeamName(id){const t=(CAL.data?.teams||[]).find(x=>x.id===id)||(S.teams||[]).find(x=>x.id===id);return t?`${t.flag||""} ${t.name}`.trim():id}
 /* Another country's post as an idea in my team's Plan, for the same day (or tomorrow if that has passed). */
 async function copyAsIdea(btn){const today=dayKey(new Date()),tom=dayKey(new Date(Date.now()+864e5));const day=btn.dataset.day>today?btn.dataset.day:tom;
@@ -3546,17 +3546,17 @@ async function calBulk(act){const sel=CAL.sel||new Set();const ds=[...sel].map(i
   if(act==="move"){CAL.bulkMove=true;renderCal();$("#calBulkDay")?.focus();return}
   if(act==="moveCancel"){CAL.bulkMove=false;renderCal();return}
   if(act==="moveGo"){const day=$("#calBulkDay")?.value;if(!day){toast("Pick a day");$("#calBulkDay")?.focus();return}
-    const sch=ds.filter(d=>d.status==="scheduled");let ok=0,past=0,bad=0;const prev=sch.map(d=>[d.id,JSON.parse(JSON.stringify(d.posting||{}))]);
+    const sch=ds.filter(d=>d.status==="scheduled");let ok=0,past=0,bad=0;const prev=[];
     for(const d of sch){const p=d.posting||{};const cur=Z(d.post_at||p.at);const w=new Date(day+"T12:00:00");w.setHours(cur.getHours(),cur.getMinutes(),0,0);const t=unZ(w);
       if(t.getTime()<Date.now()+60e3){past++;continue}const delta=t.getTime()-Date.parse(d.post_at||p.at);
       const times=p.times&&Object.keys(p.times).length?Object.fromEntries(Object.entries(p.times).map(([k,v])=>[k,new Date(Date.parse(v)+delta).toISOString()])):null;
-      try{await S.db.doc("drafts/"+d.id).update({posting:{...p,at:t.toISOString(),...(times?{times}:{}),changedBy:S.me,changedAt:new Date().toISOString()}});ok++}catch(e){bad++}}
+      const was=JSON.parse(JSON.stringify(p));try{await S.db.doc("drafts/"+d.id).update({posting:{...p,at:t.toISOString(),...(times?{times}:{}),changedBy:S.me,changedAt:new Date().toISOString()}});ok++;prev.push([d.id,was])}catch(e){bad++}}
     sel.clear();CAL.bulkMove=false;renderCal();
     const left=ds.length-sch.length;
     toast(`Moved ${ok} post${ok===1?"":"s"} to ${new Date(day+"T12:00:00").toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"})}, same times${bad?` · ${bad} couldn't be moved, try again`:""}${past?` · ${past} would land in the past, left as they were`:""}${left?` · ${left} in Review left: open them to set a time`:""}`,ok?async()=>{for(const [id,posting] of prev){try{await S.db.doc("drafts/"+id).update({posting})}catch(e){}}toast("Undone")}:null);return}
   if(act==="hold"||act==="pending"){const pick=ds.filter(d=>act==="hold"?d.status==="scheduled":["scheduled","hold","changes"].includes(d.status));if(!pick.length){toast("None of those can do that");return}
-    const prev=pick.map(d=>[d,d.status||"pending",d.review||{}]);let ok=0,bad=0;
-    for(const d of pick){const review=act==="pending"?{}:{by:S.me,at:new Date().toISOString()};try{await S.db.doc("drafts/"+d.id).update({status:act,review});await logFeedback({draftId:d.id,action:act==="pending"?"reopen":"hold",type:d.type,issue:d.issue});ok++}catch(e){bad++}}
+    const prev=[];let ok=0,bad=0;
+    for(const d of pick){const review=act==="pending"?{}:{by:S.me,at:new Date().toISOString()};const was=[d,d.status||"pending",JSON.parse(JSON.stringify(d.review||{}))];try{await S.db.doc("drafts/"+d.id).update({status:act,review});await logFeedback({draftId:d.id,action:act==="pending"?"reopen":"hold",type:d.type,issue:d.issue});ok++;prev.push(was)}catch(e){bad++}}
     sel.clear();renderCal();
     toast(`${ok} ${act==="hold"?"paused (On hold)":"moved back to Review"}${bad?` · ${bad} couldn't be changed, try again`:""}`,ok?async()=>{for(const [d,st,rv] of prev){try{await S.db.doc("drafts/"+d.id).update({status:st,review:rv})}catch(e){}}toast("Undone")}:null)}}
 function renderCal(){
