@@ -46,6 +46,45 @@ async function claimSlot(store, id, slot, at, runner, now) {
   return false;
 }
 
+// Published Facebook videos whose first comment is waiting (comment_pending).
+// Each is claimed before the comment goes up, so two runs can't both add it.
+async function videoComments({ store, privateKey, now, log, fetchImpl, runner }) {
+  const stamp = new Date(now).toISOString();
+  const posts = await store.enginePosts({ statuses: ['scheduled', 'posted'], limit: 200 });
+  for (const post of posts) {
+    for (const [slot, r] of Object.entries((post.doc && post.doc.published) || {})) {
+      if (!r || !r.comment_pending) continue;
+      const platform = (post.doc.final && post.doc.final.facebook) ? 'facebook' : null;
+      const comment = platform && post.doc.final.facebook.comment;
+      const label = `${post.id} → ${slot} first comment`;
+      const give = async (message) => { await patchDoc(store, post.id, () => ({ published: { [slot]: { comment_pending: null, comment_claim: null, comment_error: message } } })); log(`  ✗ ${label}: ${message}`); };
+      if (!comment) { await give('No first comment in the snapshot.'); continue; }
+      if (now - Date.parse(r.at) > P.COMMENT_WAIT_MS) { await give("Facebook was still processing the video after 2 hours, so the first comment wasn't added. Add it by hand."); continue; }
+      if (r.comment_claim && now - Date.parse(r.comment_claim.at) < P.CLAIM_MS) continue;
+      if (r.comment_claim) { await give('Adding the first comment got no answer. Check the video before adding it by hand: it may already be there.'); continue; }
+      const tok = await store.enginePageToken({ who: r.by, account_key: slot });
+      if (!tok) { await give(`${r.by}'s Facebook connection is gone, so the first comment wasn't added. Add it by hand.`); continue; }
+      const claimed = await patchDoc(store, post.id, (cur) => {
+        const c = ((cur.doc.published || {})[slot]) || {};
+        return c.comment_pending && !(c.comment_claim && now - Date.parse(c.comment_claim.at) < P.CLAIM_MS) ? { published: { [slot]: { comment_claim: { at: stamp, by: runner } } } } : {};
+      });
+      const mine = claimed && (((claimed.doc.published || {})[slot] || {}).comment_claim || {}).at === stamp;
+      if (!mine) continue;
+      let out;
+      try { out = await P.videoComment({ videoId: r.id, token: xauth.open(privateKey, tok.sealed), comment, fetchImpl }); }
+      catch (e) { out = { done: false, error: e.message }; }
+      if (!out.done) {
+        await patchDoc(store, post.id, () => ({ published: { [slot]: { comment_claim: null } } }));
+        log(`  … ${label}: ${out.error ? `couldn't check the video (${out.error})` : 'Facebook is still processing the video'}`);
+        continue;
+      }
+      const { done, ...fields } = out;
+      await patchDoc(store, post.id, () => ({ published: { [slot]: { comment_pending: null, comment_claim: null, ...fields } } }));
+      log(fields.comment_id ? `  ✓ ${label}: added` : `  ✗ ${label}: ${fields.comment_error}`);
+    }
+  }
+}
+
 // runner: 'mini' (every 5 minutes) or 'cloud' (the Vercel backup, every 15).
 // minLateMs: leave anything due more recently than this to the other runner,
 // so the backup only steps in when the Mini hasn't.
@@ -136,6 +175,11 @@ async function run({ store, privateKey, live, now = Date.now(), log = console.lo
       await store.engineEvent({ post_id: id, team_id: cur.team_id, who: 'publisher', action: 'posted', detail: {} });
       log(`  ✓ ${id}: everything is out, marked Posted`);
     }
+  }
+  // Facebook videos: their first comment, once Facebook has processed them.
+  if (live) {
+    try { await videoComments({ store, privateKey, now, log, fetchImpl, runner }); }
+    catch (e) { log(`  ! video comments: ${e.message}`); }
   }
   // Heartbeat: when each runner last checked, for the desk's warning.
   try { await store.engineCacheSet(`publisher:${runner}`, { at: stamp(), live: !!live, tally }); } catch (e) { log(`  ! heartbeat not saved (${e.message})`); }

@@ -125,7 +125,7 @@ To switch it on (Chris, in Meta for Developers):
   image or carousel), adds the first comment, and records `published[account]` with the link. X stays manual. When
   every Meta destination is out and nothing is left for X, the post becomes Posted.
 - Never twice: each destination is claimed before the call; a claim older than 15 minutes with no answer is reported
-  ("check the Page"), never retried. A failed first comment is recorded on the published post, never retried.
+  ("check the Page"), never retried. A failed first comment is recorded on the published post, never retried. On a Facebook video the first comment waits (`comment_pending`) until Facebook says the video is processed (`status.video_status` ready), checked each run for up to 2 hours, claimed so it goes up once (3 Nov 2026: posting it straight after the upload was refused).
   Missed by over 6 hours, approver without the right or without a connected Facebook, no snapshot, video: reported
   in the post's Publishing box for a person to act on. Facebook errors are retried up to 3 times.
 - Dry run unless `ENGINE_PUBLISH_LIVE=1` on the Mini; `npm run publish:dry` prints what it would do.
