@@ -311,3 +311,24 @@ and a Listening Mentions tab. Tone (built 2 Nov): each comment, message and ment
 Inbox (conversations, Assistant, bulk by topic, by post, moderation and history, automations flow builder, tracked
 links 1 + 3), Listening (on the phase-2 monitoring tables), Analytics (CitizenGO dashboard by default), Page Inviter
 tab, team and access screens.
+
+### Post now and any-minute times (3 Nov 2026)
+
+- The desk's Decide box has **Post now** beside Schedule, and held or scheduled posts (not yet out) have one too.
+  It asks to confirm, then approves the post for one minute from now with `posting.postNow = {at, by}`; the
+  publisher sends Facebook and Instagram on its next run (within 5 minutes). X is still posted by hand.
+- Times are typed to the minute (`<input type="time">`) in Where and when and in the calendar's Move to, instead
+  of 15-minute lists. Dragging on the day lane and the week grid still snaps to 15 minutes.
+- **UK Asana task, straight away** (Chris chose this 3 Nov; `lib/asana.js`, tests in `npm run test:publish`). Once
+  every UK Facebook and Instagram destination of a Post now post is published, the Mini's publisher creates one
+  task in each UK calendar it went to (uk-fb, uk-ig, uk-x; never Scotland or global), in the run's 1a/1c format:
+  emoji + title, assignee Chris, `due_at` = the real post time, description with Source (live link and time) and
+  Post Text (and First comment), Post Status Scheduled // Posted, Content Type, Priority Medium, Post link, in the
+  Scheduled section, and completed. A UK X destination is added too, left at Ready to Post and not completed, so
+  the run marks it once the X post is found. Fields, options and sections are matched by name. It writes
+  `posting.asanaTaskGid`/`asanaUrl`/`syncedAt`, so the daily run's 1a skips it and 1c matches it. Never twice
+  (`posting.asanaPending` claim; a claim older than 15 minutes is reported, not retried); Asana errors are kept in
+  `posting.asanaError` and tried 3 times, after which the morning run's backfill makes the task as before.
+- Needs `ASANA_TOKEN` (an Asana personal access token for someone who can add tasks to the UK posting calendars)
+  in `~/runner/meta-reports/.env` on the Mini. Without it nothing changes: the morning run's backfill (1c) adds
+  the task. The Vercel backup runner never makes Asana tasks.

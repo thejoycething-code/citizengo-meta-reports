@@ -10,6 +10,7 @@
 const xauth = require('../lib/xauth');
 const E = require('../lib/engine');
 const P = require('../lib/publish');
+const A = require('../lib/asana');
 const { run } = require('../collector/publish');
 const { ENGINE_TOOLS } = require('../mcp/engine-tools');
 
@@ -281,6 +282,70 @@ const quiet = () => {};
   await run({ store: s6, privateKey: keys.privateKey, live: true, now: NOW + 600_000, log: quiet, fetchImpl: fb6b.fetchImpl });
   const pub6 = s6.db.posts[0].doc.published['uk-fb'];
   eq('first comment fails: the post counts as published, the comment is flagged, nothing is posted twice', [!!pub6.id, /Add it by hand/.test(pub6.comment_error), fb6b.calls.length, s6.db.posts[0].status], [true, true, 0, 'posted']);
+
+  // Post now, UK: the Asana calendar task straight away (lib/asana.js).
+  function fakeAsana() {
+    const calls = [];
+    const field = (gid, name, opts, sub = 'enum') => ({ custom_field: { gid, name, resource_subtype: sub, enum_options: opts.map(([g, n]) => ({ gid: g, name: n, enabled: true })) } });
+    const setups = {
+      '1213654674026029': [field('fbS', 'Post Status', [['fbS1', 'Ready to Post'], ['fbS2', 'Scheduled // Posted']]), field('fbT', 'Content Type', [['fbT1', 'Image'], ['fbT2', 'Carousel']]), field('fbP', 'Priority', [['fbP2', 'Medium']]), field('fbL', 'Post link', [], 'text')],
+      '1214467025312064': [field('igS', 'Post Status', [['igS1', 'Ready to Post'], ['igS2', 'Scheduled // Posted']]), field('igT', 'Content Type', [['igT1', 'Image'], ['igT3', 'Carousel']]), field('igP', 'Priority', [['igP2', 'Medium']]), field('igL', 'Post Link', [], 'text')],
+      '1216302259837664': [field('xS', 'Post Status', [['xS1', 'Ready to Post'], ['xS2', 'Scheduled // Posted']]), field('xT', 'Content Type', [['xT1', 'Image'], ['xT2', 'Thread']])],
+    };
+    const fetchImpl = async (u, o = {}) => {
+      const url = new URL(u); const path = url.pathname.replace('/api/1.0', '');
+      const body = o.body ? JSON.parse(o.body).data : null;
+      calls.push({ method: o.method, path, body, auth: (o.headers || {}).Authorization });
+      const ok = (data) => ({ ok: true, status: 200, json: async () => ({ data }) });
+      let m;
+      if ((m = path.match(/^\/projects\/(\d+)\/custom_field_settings$/))) return ok(setups[m[1]] || []);
+      if ((m = path.match(/^\/projects\/(\d+)\/sections$/))) return ok([{ gid: `${m[1]}-week`, name: 'This Week' }, { gid: `${m[1]}-sched`, name: 'Scheduled' }]);
+      if (path === '/tasks' && o.method === 'POST') return ok({ gid: 'T1', permalink_url: 'https://app.asana.com/0/1/T1' });
+      return ok({});
+    };
+    return { calls, fetchImpl };
+  }
+  const nowPost = (dests) => ({ title: 'Pray for Parliament', review: approved, final, posting: { destinations: dests, at: '2026-11-03T14:00:00Z', postNow: { at: '2026-11-03T13:59:00Z', by: 'chris' } } });
+  const sa = engine();
+  addPost(sa, 'pn', nowPost(['uk-fb', 'uk-ig']));
+  addPost(sa, 'sched', { ...nowPost(['uk-fb']), posting: { destinations: ['uk-fb'], at: '2026-11-03T14:00:00Z' } });
+  const asa = fakeAsana();
+  const da = fakeAsana();
+  await run({ store: sa, privateKey: keys.privateKey, live: false, now: NOW, log: quiet, fetchImpl: fakeFacebook().fetchImpl, asanaToken: 'PAT', asanaFetch: da.fetchImpl });
+  eq('Post now, dry run: no Asana calls', da.calls.length, 0);
+  await run({ store: sa, privateKey: keys.privateKey, live: true, now: NOW, log: quiet, fetchImpl: fakeFacebook().fetchImpl, asanaToken: 'PAT', asanaFetch: asa.fetchImpl });
+  const pa = sa.db.posts.find((p) => p.id === 'pn');
+  const create = asa.calls.find((c) => c.path === '/tasks');
+  const put = asa.calls.find((c) => c.method === 'PUT');
+  const adds = asa.calls.filter((c) => /addProject$/.test(c.path)).map((c) => c.body);
+  eq('Post now: one task, created once both UK Meta accounts are out', [asa.calls.filter((c) => c.path === '/tasks').length, pa.status, pa.doc.posting.asanaTaskGid, pa.doc.posting.asanaPending], [1, 'posted', 'T1', null]);
+  eq('Post now: assigned to Chris, due at the real post time, in both UK calendars', [create.body.assignee, create.body.due_at, adds.map((a) => a.project)], [A.ASSIGNEE, '2026-11-03T14:05:00.000Z', ['1213654674026029', '1214467025312064']]);
+  eq('Post now: says what went out, where and when', [/^🖼️ Pray for Parliament$/.test(create.body.name), /UK Facebook, Tue 3 Nov, 14:05: <a href="https:\/\/www.facebook.com\//.test(create.body.html_notes), /Post Text:<\/u><\/strong> Pray with us\. https:\/\/cgo\.ac\/x/.test(create.body.html_notes), /First comment:<\/u><\/strong> Sign here/.test(create.body.html_notes)], [true, true, true, true]);
+  eq('Post now: completed, Scheduled // Posted, carousel on Instagram, link in the Post link field', [put.body.completed, put.body.custom_fields.fbS, put.body.custom_fields.igS, put.body.custom_fields.igT, put.body.custom_fields.fbP, /facebook\.com/.test(put.body.custom_fields.fbL)], [true, 'fbS2', 'igS2', 'igT3', 'fbP2', true]);
+  eq('Post now: lands in the Scheduled section, with the token', [adds.map((a) => a.section), asa.calls.every((c) => c.auth === 'Bearer PAT')], [['1213654674026029-sched', '1214467025312064-sched'], true]);
+  eq('an ordinary scheduled post gets no task from the publisher (the daily run does it)', !!sa.db.posts.find((p) => p.id === 'sched').doc.posting.asanaTaskGid, false);
+  const asb = fakeAsana();
+  await run({ store: sa, privateKey: keys.privateKey, live: true, now: NOW + 300_000, log: quiet, fetchImpl: fakeFacebook().fetchImpl, asanaToken: 'PAT', asanaFetch: asb.fetchImpl });
+  eq('Post now: never a second task', asb.calls.length, 0);
+
+  const sx = engine();
+  addPost(sx, 'pnx', nowPost(['uk-fb', 'uk-x', 'sc-fb']));
+  const asx = fakeAsana();
+  await run({ store: sx, privateKey: keys.privateKey, live: true, now: NOW, log: quiet, fetchImpl: fakeFacebook().fetchImpl, asanaToken: 'PAT', asanaFetch: asx.fetchImpl });
+  const putx = asx.calls.find((c) => c.method === 'PUT');
+  eq('Post now with X: X calendar too, Ready to Post, not completed; no Scotland calendar', [asx.calls.filter((c) => /addProject$/.test(c.path)).map((c) => c.body.project), putx.body.completed, putx.body.custom_fields.xS, /UK X, to post by hand/.test(asx.calls.find((c) => c.path === '/tasks').body.html_notes)], [['1213654674026029', '1216302259837664'], false, 'xS1', true]);
+
+  const sn = engine();
+  addPost(sn, 'pnn', nowPost(['uk-fb']));
+  await run({ store: sn, privateKey: keys.privateKey, live: true, now: NOW, log: quiet, fetchImpl: fakeFacebook().fetchImpl });
+  eq('no ASANA_TOKEN: published, no task, left for the daily run', [sn.db.posts[0].status, sn.db.posts[0].doc.posting.asanaTaskGid], ['posted', undefined]);
+
+  const se = engine();
+  addPost(se, 'pne', nowPost(['uk-fb']));
+  const down = async () => ({ ok: false, status: 500, json: async () => ({ errors: [{ message: 'Server Error' }] }) });
+  for (let i = 0; i < 4; i++) await run({ store: se, privateKey: keys.privateKey, live: true, now: NOW + i * 300_000, log: quiet, fetchImpl: fakeFacebook().fetchImpl, asanaToken: 'PAT', asanaFetch: down });
+  const ee = se.db.posts[0].doc.posting;
+  eq('Asana down: three tries, then it stops and says why', [ee.asanaError.tries, /Server Error/.test(ee.asanaError.message), ee.asanaPending, ee.asanaTaskGid], [3, true, null, undefined]);
 
   // engine_media: the desk's finished images.
   const tool = ENGINE_TOOLS.find((t) => t.name === 'engine_media').handler;

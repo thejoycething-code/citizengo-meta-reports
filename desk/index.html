@@ -266,6 +266,7 @@ textarea{width:100%;min-height:220px;font:inherit;font-size:14px;line-height:1.5
 .extras{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:12px;background:var(--surface)}.extras ul,.extras ol{margin:4px 0 8px;padding-left:18px;font-size:13.5px}.extras p{margin:6px 0 2px}
 .stories{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-bottom:6px}.stories canvas{width:100%;height:auto;border-radius:6px;background:var(--sunk)}
 #postDay,#postTime{font-size:13px;padding:4px 6px}
+input#postTime,input#cpTime{font:inherit;font-size:13px;padding:4px 6px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--fg);font-variant-numeric:tabular-nums;min-width:92px}
 .padj{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;font-size:13px;color:var(--muted);margin-top:6px}
 .allpv{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:8px}.allpv>div{border:1px solid var(--line);border-radius:8px;padding:8px;background:var(--surface);font-size:13px;max-height:260px;overflow:auto}@media (max-width:820px){.allpv{grid-template-columns:minmax(0,1fr)}}
 #tplSwitch{font-size:12.5px;padding:4px 6px}
@@ -645,6 +646,7 @@ mark.new{background:var(--ok-soft);color:var(--fg);border-radius:3px}
 .rbar{height:5px;border-radius:99px;background:var(--line);overflow:hidden}.rbar i{display:block;height:100%;background:var(--ok);transition:width .2s}
 .ritem{display:flex;justify-content:space-between;gap:10px;font-size:13px}
 .ritem span:first-child{font-weight:600}.ritem .y{color:var(--ok);text-align:right}.ritem .n{color:var(--warn);text-align:right}.ritem .o{color:var(--muted);text-align:right}
+.aprow{display:flex;gap:8px;align-items:stretch}.aprow .apsplit{flex:1;min-width:0}.aprow .apnow{padding:10px 14px;border-radius:10px;font-weight:600;white-space:nowrap}
 .apsplit{display:flex;border-radius:10px;overflow:hidden}
 .apsplit .btn{border-radius:0;padding:10px 12px}
 .apsplit .apmain{flex:1;text-align:left;font-variant-numeric:tabular-nums}
@@ -1082,11 +1084,11 @@ function refreshReady(){setTimeout(refreshLane,0);rememberPick();const d=S.draft
 function approveSplit(d,checks){const t=(()=>{const pk=pickFor();if(pk){const pt=pk.times&&Object.values(pk.times).sort()[0];const x=pt?new Date(pt):pk.day&&pk.time?new Date(`${pk.day}T${pk.time}:00`):null;if(x&&!isNaN(x))return x}const p=d.posting||{};const v=p.at||p.suggestedAt;const x=v?new Date(v):null;return x&&x.getTime()>Date.now()?x:bestSlot(p.destinations||defaultDests(d))})();
   const dis=checks&&!S.factsOk?" disabled":"";const dests=(d.posting||{}).destinations||defaultDests(d);
   const slots=[["fb","Facebook"],["ig","Instagram"],["x","X"]].filter(([k])=>dests.some(x=>x.endsWith(k))).map(([k,l])=>[bestFor(k),l]).filter(x=>x[0]).sort((a,b)=>a[0]-b[0]);
-  return `<div class="apsplit"><button class="btn primary apmain" data-act="approve"${dis}>Schedule · <span id="apWhen">${esc(t.toLocaleString("en-GB",{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}))}</span></button><button class="btn primary apmore" data-act="apMenu" aria-label="Schedule at another time" aria-expanded="${!!S.apMenu}"${dis}>▾</button></div>
-  <div class="src" id="apTimes" style="margin-top:4px"></div>${S.apMenu?`<div class="apmenu" role="menu">${slots.map(([t2,l])=>`<button class="apitem" role="menuitem" data-act="apSlot" data-at="${t2.toISOString()}"><span>${esc(t2.toLocaleString("en-GB",{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}))}</span><small>★ best for ${l}</small></button>`).join("")}<button class="apitem" role="menuitem" data-act="apNow"><span>Post now</span><small>Goes out within 5 minutes</small></button><button class="apitem" role="menuitem" data-act="apQueue"><span>Add to queue</span><small>The next free best slot</small></button><button class="apitem" role="menuitem" data-act="apPick"><span>Choose a time…</span></button><button class="apitem" role="menuitem" data-act="approve" data-hold="1"><span>Approve and hold</span><small>Ready, but not scheduled yet</small></button></div>`:""}`}
+  return `<div class="aprow"><div class="apsplit"><button class="btn primary apmain" data-act="approve"${dis}>Schedule · <span id="apWhen">${esc(t.toLocaleString("en-GB",{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}))}</span></button><button class="btn primary apmore" data-act="apMenu" aria-label="Schedule at another time" aria-expanded="${!!S.apMenu}"${dis}>▾</button></div><button class="btn apnow" data-act="apNow" title="Facebook and Instagram go out within 5 minutes"${dis}>Post now</button></div>
+  <div class="src" id="apTimes" style="margin-top:4px"></div>${S.apMenu?`<div class="apmenu" role="menu">${slots.map(([t2,l])=>`<button class="apitem" role="menuitem" data-act="apSlot" data-at="${t2.toISOString()}"><span>${esc(t2.toLocaleString("en-GB",{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}))}</span><small>★ best for ${l}</small></button>`).join("")}<button class="apitem" role="menuitem" data-act="apQueue"><span>Add to queue</span><small>The next free best slot</small></button><button class="apitem" role="menuitem" data-act="apPick"><span>Choose a time…</span></button><button class="apitem" role="menuitem" data-act="approve" data-hold="1"><span>Approve and hold</span><small>Ready, but not scheduled yet</small></button></div>`:""}`}
 
 function setPicker(t){const ds=$("#postDay"),ts=$("#postTime");if(!ds||!ts)return;const dk=dayKey(t),tk=`${String(t.getHours()).padStart(2,"0")}:${String(t.getMinutes()).padStart(2,"0")}`;
-  if(![...ds.options].some(o=>o.value===dk))ds.add(new Option(t.toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"}),dk));if(![...ts.options].some(o=>o.value===tk))ts.add(new Option(tk,tk));ds.value=dk;ts.value=tk}
+  if(![...ds.options].some(o=>o.value===dk))ds.add(new Option(t.toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"}),dk));ds.value=dk;ts.value=tk}
 async function ieSave(d){const ta=$("#ieText");if(!ta||!S.inline)return;const {p,i}=S.inline;const v=ta.value;const before=textFor(d,p);let val;
   if(p==="x"){const arr=[...asPosts(textFor(d,"x"))];arr[i]=v;val=arr}else val=v;
   try{await S.db.doc("drafts/"+d.id).update({edited:{[p]:val}});await logFeedback({draftId:d.id,action:"edit",how:"inline",platform:p,before,after:val,type:d.type,issue:d.issue});S.inline=null;S.inlineVal=null;toast("Saved")}catch(e){failToast(e,"Couldn't save the edit")}}
@@ -1477,7 +1479,7 @@ function decideBar(d,st,checks){
   if(st!=="pending"){
     const r=d.review||{};
     const why=[...(r.reasons||[]),r.note].filter(Boolean).join(" · ");
-    return `<div class="row"><span class="state"><b>${esc(STATUS.find(s=>s.key===st).label)}</b> by ${esc(nameOf(r.by))}${r.at?" · "+esc(fmtWhen(r.at)):""}${why?` · ${esc(why)}`:""}</span>${st==="hold"?`<button class="btn small primary" data-act="approve" title="Schedules it for the time in Where and when">Schedule</button>`:""}${st==="hold"||st==="scheduled"?(()=>{const pub=d.published||{};const auto=((d.posting||{}).destinations||[]).filter(k=>["facebook","instagram"].includes(platOfKey(k)));const waitingOnHand=st==="scheduled"&&auto.every(k=>pub[k]);return `<button class="btn small${waitingOnHand?" primary":""}" data-act="posting" title="${auto.length&&!waitingOnHand?"The publisher marks it posted once Facebook and Instagram are out. Use this only if you posted it yourself.":"One click: the morning run finds the links itself"}">${waitingOnHand?"Mark X as posted":"Mark as posted"}</button>`})():""}${st==="posted"?"":`<button class="btn small" data-act="undo">Move back to review</button>`}</div>`;
+    return `<div class="row"><span class="state"><b>${esc(STATUS.find(s=>s.key===st).label)}</b> by ${esc(nameOf(r.by))}${r.at?" · "+esc(fmtWhen(r.at)):""}${why?` · ${esc(why)}`:""}</span>${st==="hold"?`<button class="btn small primary" data-act="approve" title="Schedules it for the time in Where and when">Schedule</button>`:""}${st==="hold"||(st==="scheduled"&&!Object.keys(d.published||{}).length)?`<button class="btn small" data-act="apNow" title="Facebook and Instagram go out within 5 minutes">Post now</button>${st==="scheduled"?`<button data-act="approve" hidden tabindex="-1" aria-hidden="true"></button>`:""}`:""}${st==="hold"||st==="scheduled"?(()=>{const pub=d.published||{};const auto=((d.posting||{}).destinations||[]).filter(k=>["facebook","instagram"].includes(platOfKey(k)));const waitingOnHand=st==="scheduled"&&auto.every(k=>pub[k]);return `<button class="btn small${waitingOnHand?" primary":""}" data-act="posting" title="${auto.length&&!waitingOnHand?"The publisher marks it posted once Facebook and Instagram are out. Use this only if you posted it yourself.":"One click: the morning run finds the links itself"}">${waitingOnHand?"Mark X as posted":"Mark as posted"}</button>`})():""}${st==="posted"?"":`<button class="btn small" data-act="undo">Move back to review</button>`}</div>`;
   }
   if(S.mode==="reject"||S.mode==="changes"){
     const isRej=S.mode==="reject";
@@ -2146,9 +2148,8 @@ function dayKey(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(
 function ukPicker(at,dests){const pk=pickFor();const t=pk&&pk.day&&pk.time?new Date(`${pk.day}T${pk.time}:00`):at?new Date(at):bestSlot(dests);const base=new Date();base.setHours(0,0,0,0);const days=[];
   for(let i=-1;i<35;i++){const d=new Date(base);d.setDate(base.getDate()+i);days.push(d)}
   const tk=dayKey(t);if(!days.some(d=>dayKey(d)===tk))days.unshift(new Date(t.getFullYear(),t.getMonth(),t.getDate()));
-  const times=[];for(let h=6;h<24;h++)for(let m=0;m<60;m+=15)times.push(`${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`);
-  const tt=`${String(t.getHours()).padStart(2,"0")}:${String(t.getMinutes()).padStart(2,"0")}`;if(!times.includes(tt)){times.push(tt);times.sort()}
-  return `<select id="postDay" aria-label="Day">${days.map(d=>`<option value="${dayKey(d)}"${dayKey(d)===tk?" selected":""}>${esc(d.toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"}))}</option>`).join("")}</select><select id="postTime" aria-label="Time (24-hour)">${times.map(x=>`<option${x===tt?" selected":""}>${x}</option>`).join("")}</select>`}
+  const tt=`${String(t.getHours()).padStart(2,"0")}:${String(t.getMinutes()).padStart(2,"0")}`;
+  return `<select id="postDay" aria-label="Day">${days.map(d=>`<option value="${dayKey(d)}"${dayKey(d)===tk?" selected":""}>${esc(d.toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"}))}</option>`).join("")}</select><input type="time" id="postTime" step="60" required aria-label="Time (24-hour, any minute)" value="${tt}">`}
 /* Add to queue: the next best slot not within 90 minutes of another scheduled post. */
 function nextFreeSlot(dests){const lead=leadOf((dests||[])[0]||"uk-fb");const taken=S.drafts.filter(x=>x.status==="scheduled").map(x=>Date.parse(x.post_at||(x.posting&&x.posting.at)||0)).filter(Boolean);
   for(let i=0;i<21;i++){const c=new Date();c.setDate(c.getDate()+i);const we=[0,6].includes(c.getDay());const [h,m]=BEST[lead][we?"we":"wd"];c.setHours(h,m,0,0);
@@ -2156,7 +2157,11 @@ function nextFreeSlot(dests){const lead=leadOf((dests||[])[0]||"uk-fb");const ta
   return bestSlot(dests)}
 function approveAt(t){S.apMenu=false;S.perAcct=false;renderDetail();setPicker(t);refreshReady();document.querySelector('#detail [data-act="approve"]:not([data-hold])')?.click()}
 document.addEventListener("click",ev=>{const b=ev.target.closest('[data-act="apNow"],[data-act="apQueue"]');if(!b)return;ev.stopPropagation();const d=S.drafts.find(x=>x.id===S.openId);if(!d)return;
-  if(b.dataset.act==="apNow"){approveAt(new Date(Date.now()+3*60e3))}else{const dests=[...document.querySelectorAll("input[data-dest]")].filter(x=>x.checked).map(x=>x.dataset.dest);approveAt(nextFreeSlot(dests.length?dests:(d.posting||{}).destinations||defaultDests(d)))}},true);
+  if(b.dataset.act==="apNow"){const dests=[...document.querySelectorAll("input[data-dest]")].filter(x=>x.checked).map(x=>x.dataset.dest);const names=Object.fromEntries(teamDests());
+    if(!dests.length){toast("Pick at least one place to post it");return}
+    const hand=dests.filter(k=>!["facebook","instagram"].includes(platOfKey(k)));
+    if(!confirm(`Post it now to ${dests.map(k=>names[k]||k).join(", ")}?${hand.length?`\n\n${hand.map(k=>names[k]||k).join(", ")} still needs posting by hand.`:""}`))return;
+    S.postNow=true;approveAt(new Date(Date.now()+60e3))}else{const dests=[...document.querySelectorAll("input[data-dest]")].filter(x=>x.checked).map(x=>x.dataset.dest);approveAt(nextFreeSlot(dests.length?dests:(d.posting||{}).destinations||defaultDests(d)))}},true);
 /* ---------- previews: the post as each platform shows it ---------- */
 function cardURL(d,card){const cv=document.createElement("canvas");try{drawCard(d,cv,card||curCard(d));return cv.toDataURL("image/jpeg",0.85)}catch(e){return ""}}
 const PV_TABS=[["facebook","Facebook"],["instagram","Instagram"],["x","X"],["story","Story"],["places","Every placement"]];
@@ -2289,7 +2294,7 @@ function postingPanel(d,st){const p=d.posting||{};const dests=p.destinations||de
   <div class="dests">${teamDests().map(([k,l])=>{const lock=locked(k);const on=dests.includes(k);return `<label class="dest"${lock?` title="You can't post to this Page yourself. Connect Facebook if you manage it, or leave it for someone who does."`:""}><input type="checkbox" data-dest="${k}" ${on?"checked":""}${lock&&!on?" disabled":""}> ${lock?"🔒 ":""}${l}</label>`}).join("")}</div>
   ${teamDests().some(([k])=>locked(k)&&dests.includes(k))?`<div class="row"><span class="src">🔒 You can't post to a ticked Page, so Schedule will be refused until you untick it or someone who manages it approves.</span></div>`:""}
   ${storyRow(d,dests)}${collabRow(d,dests)}${bioRow(d,dests)}${signRow(d)}${perAcctRow(d,dests,at)}<div class="dlane" id="dayLane" aria-label="The day at a glance"></div><div class="row"><span class="src">${p.why?esc(p.why)+" · ":""}${esc(BEST_HINT)}</span></div>
-  ${st==="hold"||st==="scheduled"?`<div class="row"><button class="btn small" data-act="savePosting">Update where and when</button>${links?`<span class="src">${links}</span>`:`<span class="src">The Asana task appears here once it’s created.</span>`}</div>`:""}
+  ${st==="hold"||st==="scheduled"?`<div class="row"><button class="btn small" data-act="savePosting">Update where and when</button>${links?`<span class="src">${links}</span>`:p.asanaError?`<span class="src">The Asana task couldn’t be made (${esc(p.asanaError.message||"")}). The morning run adds it instead.</span>`:`<span class="src">The Asana task appears here once it’s created.</span>`}</div>`:""}
   ${S.db?`<div class="row"><button class="btn small" data-act="canvaReq" ${d.canvaRequest?"disabled":""}>${d.canva?.url?"Refresh Canva copy":d.canvaRequest?"Canva copy requested":"Send to Canva"}</button></div>`:""}</div>`}
 function readPosting(){const dests=[...document.querySelectorAll("input[data-dest]")].filter(x=>x.checked).map(x=>x.dataset.dest);
   const per=[...document.querySelectorAll("input[data-time]")];
@@ -2405,13 +2410,16 @@ async function logFeedback(entry){
   if(!S.db)return;
   try{await S.db.collection("feedback").add({...entry,by:S.me,at:new Date().toISOString()})}catch(e){}
 }
-async function setStatus(d,status,extra={}){
+/* Post now: what the toast says. UK posts get their Asana calendar task from the publisher once they're live (lib/asana.js). */
+function postNowMsg(dests){const auto=dests.some(k=>["facebook","instagram"].includes(platOfKey(k)));const uk=dests.some(k=>/^uk-/.test(k));
+  return `${auto?"Posting now: Facebook and Instagram go out within 5 minutes":"Ready to post now"}${dests.some(k=>platOfKey(k)==="x")?". Post X by hand":""}${uk?". The UK Asana task is added once it’s live":""}`}
+async function setStatus(d,status,extra={},msgOver=null){
   const review=status==="pending"?{}:{by:S.me,at:new Date().toISOString(),...extra};
   try{
     await S.db.doc("drafts/"+d.id).update({status,review});
     await logFeedback({draftId:d.id,action:status==="pending"?"reopen":status,...extra,type:d.type,issue:d.issue});
     const prev=d.status||"pending",prevReview=d.review||{};
-    const msg=status==="scheduled"?"Approved and scheduled":status==="hold"?"Approved and on hold":status==="rejected"?"Rejected":status==="changes"?"Sent back for changes":"Moved back to review";
+    const msg=msgOver?msgOver:status==="scheduled"?"Approved and scheduled":status==="hold"?"Approved and on hold":status==="rejected"?"Rejected":status==="changes"?"Sent back for changes":"Moved back to review";
     toast(msg,status!=="pending"?async()=>{try{await S.db.doc("drafts/"+d.id).update({status:prev,review:prevReview});await logFeedback({draftId:d.id,action:"undo",undid:status,type:d.type,issue:d.issue});S.status=prev;S.openId=d.id;renderAll();toast("Undone")}catch(e){failToast(e,"Couldn't undo. Move it back by hand")}}:null);
     resetDraftUi();
   }catch(e){failToast(e,"Couldn't save")}
@@ -2544,10 +2552,11 @@ Return only the new post text, nothing else.`;
     try{await S.db.doc("drafts/"+d.id).update(patch);toast(act==="pubRetry"?`Retrying ${accLabel(k)}: the publisher picks it up within 5 minutes`:`${accLabel(k)} marked as posted`)}catch(e){failToast(e,"Couldn't save that")}return}
   if(act==="approve"){const pst=readPosting();if(!pst.destinations.length){toast("Pick at least one place to post it");return}
     {const cl=pst.collaborators||[];const bad=cl.filter(h=>!/^[a-z0-9._]{1,30}$/.test(h));if(bad.length){toast("Not an Instagram handle: "+bad.join(", "));return}if(cl.length>3){toast("Instagram allows 3 collaborators at most");return}}
-    try{await S.db.doc("drafts/"+d.id).update({posting:{...(d.posting||{}),...pst,approvedBy:S.me,approvedAt:new Date().toISOString()}})}catch(e){failToast(e,"Couldn't save where and when");return}
+    const now=!b.dataset.hold&&S.postNow;S.postNow=false;
+    try{await S.db.doc("drafts/"+d.id).update({posting:{...(d.posting||{}),...pst,postNow:now?{at:new Date().toISOString(),by:S.me}:null,approvedBy:S.me,approvedAt:new Date().toISOString()}})}catch(e){failToast(e,"Couldn't save where and when");return}
     if(!b.dataset.hold){const d2=S.drafts.find(x=>x.id===d.id)||d;toast("Preparing what will be published…");
       try{await S.db.doc("drafts/"+d.id).update({final:await snapshotFinal(d2)})}catch(e){failToast(e,"Couldn't prepare the images, so it isn't approved yet");return}}
-    await setStatus(S.drafts.find(x=>x.id===d.id)||d,b.dataset.hold?"hold":"scheduled");return}
+    await setStatus(S.drafts.find(x=>x.id===d.id)||d,b.dataset.hold?"hold":"scheduled",{},now?postNowMsg(pst.destinations):null);return}
   if(act==="quickRedraft"){S.editing=S.platform;renderDetail();const n=$("#redraftNote");if(n){n.value=b.dataset.note;document.querySelector('[data-act="redraft"]')?.click()}return}
   if(act==="redraftChip"){const n=$("#redraftNote");if(n){n.value=b.dataset.note;document.querySelector('[data-act="redraft"]')?.click()}return}
   if(act==="copyAlt"){const c=curCard(d);const alt=c.template==="carousel"?(d.altTexts||[])[S.slide]:d.altText;try{await navigator.clipboard.writeText(alt||"");toast("Alt text copied")}catch(e){failToast(e,"Couldn't copy")}return}
@@ -2564,7 +2573,7 @@ Return only the new post text, nothing else.`;
   if(act==="apPick"){S.apMenu=false;renderDetail();$("#postDay")?.focus();toast("Pick a day and time, then Schedule");return}
   if(act==="apSlot"){S.apMenu=false;setPicker(new Date(b.dataset.at));refreshReady();document.querySelector('.decide [data-act="approve"]')?.click();return}
   if(act==="slot"){const t=new Date(b.dataset.at);const ds=$("#postDay"),ts=$("#postTime");if(!ds||!ts)return;const dk=dayKey(t),tk=`${String(t.getHours()).padStart(2,"0")}:${String(t.getMinutes()).padStart(2,"0")}`;
-    if(![...ds.options].some(o=>o.value===dk))ds.add(new Option(t.toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"}),dk));if(![...ts.options].some(o=>o.value===tk))ts.add(new Option(tk,tk));ds.value=dk;ts.value=tk;refreshReady();toast("Set to "+b.textContent.replace(/★.*/,"").trim());return}
+    if(![...ds.options].some(o=>o.value===dk))ds.add(new Option(t.toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"}),dk));ds.value=dk;ts.value=tk;refreshReady();toast("Set to "+b.textContent.replace(/★.*/,"").trim());return}
   if(act==="cmp"){openZoom(d,b.dataset.opt);return}
   if(act==="zoom"){openZoom(d);return}
   if(act==="cmpPrev"){S.cmpPrev=!S.cmpPrev;renderDetail();return}
@@ -3158,13 +3167,12 @@ function calOthersPeek(P){const all=otherAll().filter(i=>i.day===P.day&&(!P.only
     ${all.map(i=>`<div class="cpother">${i.thumb&&/^https:/.test(i.thumb)?`<img class="cthumb big" src="${esc(i.thumb)}" alt="" loading="lazy">`:`<span class="cthumb big"></span>`}<div><b>${esc(i.title)}</b><small>${esc(hhmm(i.at))} · ${esc(calNets(i))} · ${i.status==="posted"?"posted":"scheduled"}</small><span class="cplinks">${(i.links||[]).map(x=>`<a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(accLabel(x.account))} ↗</a>`).join(" ")}<button class="kdask" data-cal-copy="${esc(i.id)}" data-team="${esc(i.team||"")}" data-day="${esc(i.day||"")}" data-title="${esc(i.raw||i.title)}">→ copy as an idea</button></span></div></div>`).join("")}</div>`}
 function calPeekHtml(){const P=CAL.peek;if(!P)return"";if(P.others)return calOthersPeek(P);const d=S.drafts.find(x=>x.id===P.id);if(!d){CAL.peek=null;return""}
   const it=ownItems().find(i=>i.id===d.id);const at=it?new Date(it.at):null;const links=liveLinks(d);const st=STATUS.find(x=>x.key===(d.status||"pending"));
-  const times=[];for(let h=6;h<24;h++)for(let m=0;m<60;m+=15)times.push(`${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`);
-  const to=P.to?new Date(P.to):null;const tt=to?`${String(to.getHours()).padStart(2,"0")}:${String(to.getMinutes()).padStart(2,"0")}`:"";if(to&&!times.includes(tt)){times.push(tt);times.sort()}
+  const to=P.to?new Date(P.to):null;const tt=to?`${String(to.getHours()).padStart(2,"0")}:${String(to.getMinutes()).padStart(2,"0")}`:"";
   const text=asPosts(textFor(d,"facebook")||textFor(d,"instagram")||"")[0]||"";
   const fmt=t=>t.toLocaleString("en-GB",{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"});
   return `<div class="cpeek" id="calPeek" role="dialog" aria-label="${esc(d.title)}" style="left:${P.x}px;top:${P.y}px">
     <div class="cprow"><canvas class="cthumb big" data-cthumb="${esc(d.id)}" width="10" height="10" aria-hidden="true"></canvas><div><b>${esc(d.title)}</b><small>${esc(st?st.label:"")}${at?" · "+esc(fmt(at)):""} · ${esc(calNets(it||{dests:defaultDests(d)}))}</small></div><button class="btn small" data-cal-peekclose aria-label="Close">✕</button></div>
-    ${P.to?`<div class="cpmove"><span>Move to</span><b>${esc(to.toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"}))}</b><select id="cpTime" aria-label="Time">${times.map(x=>`<option${x===tt?" selected":""}>${x}</option>`).join("")}</select>${at?`<small>from ${esc(fmt(at))}${((d.posting||{}).times&&Object.keys(d.posting.times).length>1)?" · each account keeps its gap":""}</small>`:""}</div>`:`<p class="cptext">${esc(text.slice(0,220))}${text.length>220?"…":""}</p>`}
+    ${P.to?`<div class="cpmove"><span>Move to</span><b>${esc(to.toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"}))}</b><input type="time" id="cpTime" step="60" required aria-label="Time (24-hour, any minute)" value="${esc(tt)}">${at?`<small>from ${esc(fmt(at))}${((d.posting||{}).times&&Object.keys(d.posting.times).length>1)?" · each account keeps its gap":""}</small>`:""}</div>`:`<p class="cptext">${esc(text.slice(0,220))}${text.length>220?"…":""}</p>`}
     ${links.length?`<div class="cplinks">Live: ${links.map(([l,u])=>`<a href="${esc(u)}" target="_blank" rel="noopener">${esc(l)} ↗</a>`).join(" ")}</div>`:""}
     <div class="row">${P.to?`<button class="btn small primary" data-cal-move>${d.status==="scheduled"?"Move it":"Set this time and open"}</button>`:""}<button class="btn small" data-cal-open="${esc(d.id)}">Open in Posts</button>${!P.to&&d.status!=="posted"?`<span class="src">Drag it to another day to move it</span>`:""}</div></div>`}
 function openPeek(id,x,y,to){const box=$("#calView").getBoundingClientRect();const W=340;CAL.peek={id,to:to?to.toISOString():null,x:Math.max(8,Math.min(x-box.left,box.width-W-8)),y:Math.max(8,y-box.top+8)};renderCal();document.querySelector("#calPeek [data-cal-move],#calPeek [data-cal-open]")?.focus()}
