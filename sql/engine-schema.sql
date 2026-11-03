@@ -448,3 +448,16 @@ create table if not exists public.petition_status (
 );
 alter table public.petition_status enable row level security;
 comment on table public.petition_status is 'Link in bio: per petition, Bluebook totals and Asana closed/won hints, nightly from the Mini. Read by lib/bio.js.';
+-- Priority One, Inbox batch [3 Nov 2026]: a tone fixed by hand (kept, and
+-- recorded as a 'tone' action so the word lists can be tuned from the fixes);
+-- teammates whose Meta actions wait for a check (status 'check' until a team
+-- admin approves, then queued as usual); each person's own desk settings and
+-- saved Inbox views.
+alter table public.engine_inbox add column if not exists tone_set text check (tone_set in ('positive', 'neutral', 'negative', 'mixed'));
+alter table public.engine_inbox add column if not exists tone_set_by text;
+alter table public.engine_members add column if not exists needs_check boolean not null default false;
+alter table public.engine_people add column if not exists prefs jsonb not null default '{}'::jsonb;
+alter table public.engine_inbox_actions drop constraint if exists engine_inbox_actions_action_check;
+alter table public.engine_inbox_actions add constraint engine_inbox_actions_action_check check (action in ('reply', 'private_reply', 'like', 'hide', 'unhide', 'delete', 'ban', 'unban', 'done', 'reopen', 'assign', 'label', 'tone'));
+alter table public.engine_inbox_actions drop constraint if exists engine_inbox_actions_status_check;
+alter table public.engine_inbox_actions add constraint engine_inbox_actions_status_check check (status in ('check', 'queued', 'running', 'done', 'failed', 'cancelled'));

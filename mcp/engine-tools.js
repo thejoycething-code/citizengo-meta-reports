@@ -346,7 +346,22 @@ const I = require('../lib/inbox');
 const SENT = require('../lib/sentiment');
 // Each item's tone from its words (lib/sentiment.js, no paid AI); our own
 // replies have none. Worked out as it is read, so nothing is stored.
-const toned = (items) => items.map((i) => (i.from_us ? i : { ...i, tone: (SENT.toneOf(i.text, { lang: langOf(i.text) }) || {}).tone || null }));
+// A tone fixed by hand (tone_set) wins; tone_rule keeps what the words said.
+const ruleTone = (i) => (SENT.toneOf(i.text, { lang: langOf(i.text) }) || {}).tone || null;
+const toned = (items) => items.map((i) => {
+  if (i.from_us) return i;
+  const rule = ruleTone(i);
+  return i.tone_set ? { ...i, tone: i.tone_set === 'neutral' ? null : i.tone_set, tone_rule: rule, tone_fixed: true } : { ...i, tone: rule };
+});
+const TONES = ['positive', 'neutral', 'negative', 'mixed'];
+// Inbox checks [Priority One, 3 Nov]: a teammate marked needs_check has their
+// Facebook and Instagram actions wait (status 'check') until a team admin, or
+// the maintainer, approves; then they're queued like any other.
+const isChecker = (ctx, team) => ctx.maintainer || ctx.myTeams[team] === 'admin';
+async function needsCheck(store, team, who) {
+  const m = (await store.engineMembers({ team_id: team })).find((x) => String(x.who).toLowerCase() === String(who).toLowerCase());
+  return !!(m && m.needs_check);
+}
 async function inboxItem(store, ctx, id) {
   const item = await store.engineInboxItem(String(id || ''));
   if (!item || !E.canEditTeam(ctx, item.team_id)) throw err('No such item in your teams.', 'ENGINE_NOT_FOUND');
@@ -362,15 +377,23 @@ async function engineInbox(store, args, { who }) {
     return json({ team, thread: String(args.thread), items: toned(items) });
   }
   const status = args.status === 'all' ? null : [args.status === 'done' ? 'done' : 'open'];
-  const items = await store.engineInbox({ team_ids: [team], statuses: status, platform: args.platform || null, kind: args.kind || null, before: args.before || null, limit: args.limit || 200 });
-  const open = status && status[0] === 'open' && !args.platform && !args.kind ? items : await store.engineInbox({ team_ids: [team], statuses: ['open'], limit: 1000 });
-  const counts = { open: open.length, facebook: 0, instagram: 0, messages: 0, mentions: 0, mine: 0, fb_comments: 0, messenger: 0, ig_comments: 0, ig_dms: 0, flagged: 0 };
+  const accounts = [].concat(args.accounts || []).map(String).filter(Boolean).slice(0, 30);
+  const q = String(args.q || '').trim();
+  const items = await store.engineInbox({ team_ids: [team], statuses: status, platform: args.platform || null, kind: args.kind || null, before: args.before || null, since: args.since || null, account_keys: accounts.length ? accounts : null, q: q || null, limit: args.limit || 200 });
+  const allOpen = await store.engineInbox({ team_ids: [team], statuses: ['open'], limit: 1000 });
+  // Per-account open counts always cover every account, so the picker can show them.
+  const byAccount = {};
+  for (const i of allOpen) if (!i.from_us) byAccount[i.account_key] = (byAccount[i.account_key] || 0) + 1;
+  const open = accounts.length ? allOpen.filter((i) => accounts.includes(i.account_key)) : allOpen;
+  const counts = { open: open.length, facebook: 0, instagram: 0, messages: 0, mentions: 0, mine: 0, fb_comments: 0, messenger: 0, ig_comments: 0, ig_dms: 0, flagged: 0, accounts: byAccount, all_open: allOpen.length };
   for (const i of open) {
     counts[i.platform]++; if (i.kind === 'message') counts.messages++; if (i.kind === 'mention') counts.mentions++;
     if (i.kind === 'comment') counts[i.platform === 'facebook' ? 'fb_comments' : 'ig_comments']++;
     if (i.kind === 'message') counts[i.platform === 'facebook' ? 'messenger' : 'ig_dms']++;
     if (i.hidden || (i.labels || []).some((l) => /^(auto-hidden|threat|abuse)/i.test(l))) counts.flagged++; if (String(i.assigned_to || '').toLowerCase() === String(who).toLowerCase()) counts.mine++; }
   const pending = await store.engineInboxActions({ team_ids: [team], statuses: ['queued', 'running'], limit: 100 });
+  const waiting = await store.engineInboxActions({ team_ids: [team], statuses: ['check'], limit: 200 });
+  counts.check = waiting.length;
   const alerts = await store.engineInboxAlerts({ team_ids: [team], statuses: ['open'], since: new Date(Date.now() - 24 * 3600_000).toISOString() });
   // Who can reply for each of the team's accounts: the people to assign to.
   const t = teamById(ctx, team);
@@ -378,8 +401,12 @@ async function engineInbox(store, args, { who }) {
   const [members, rights] = await Promise.all([store.engineMembers({ team_id: team }), store.engineAllRights ? store.engineAllRights() : []]);
   const people = members.map((m) => ({ who: m.who, role: m.role, accounts: rights.filter((r) => String(r.who).toLowerCase() === String(m.who).toLowerCase() && keys.has(r.account_key)).map((r) => r.account_key) }));
   const tones = { positive: 0, negative: 0, mixed: 0 };
-  for (const i of open) { if (i.from_us) continue; const r = SENT.toneOf(i.text, { lang: langOf(i.text) }); if (r && tones[r.tone] != null) tones[r.tone]++; }
-  return json({ team, items: toned(items), counts, tone: tones, pending, alerts, people });
+  for (const i of toned(open)) { if (i.from_us) continue; if (i.tone && tones[i.tone] != null) tones[i.tone]++; }
+  // Waiting checks with the comment each one is about, for the To check tab.
+  const checkItems = waiting.length ? await Promise.all([...new Set(waiting.map((a) => a.item_id))].map((id) => store.engineInboxItem(id))) : [];
+  const checks = waiting.map((a) => ({ ...a, item: toned(checkItems.filter(Boolean)).find((i) => i.id === a.item_id) || null }));
+  const mine = members.find((m) => String(m.who).toLowerCase() === String(who).toLowerCase());
+  return json({ team, items: toned(items), counts, tone: tones, pending, alerts, people, checks, me: { needs_check: !!(mine && mine.needs_check), checker: isChecker(ctx, team) } });
 }
 
 async function engineInboxAct(store, args, { who }) {
@@ -394,6 +421,17 @@ async function actOn(store, ctx, item, args, who, undoMs, rightsCache) {
   const action = String(args.action || '');
   const now = new Date();
   const base = { item_id: item.id, team_id: item.team_id, account_key: item.account_key, action, by: who };
+  if (action === 'tone') {
+    const tone = String(args.tone || '');
+    if (!TONES.includes(tone)) return { ok: false, error: 'Tone is positive, neutral, negative or mixed.' };
+    if (item.from_us) return { ok: false, error: 'Our own replies have no tone.' };
+    const rule = ruleTone(item) || 'neutral';
+    // Back to what the words say clears the fix; either way it's in the history.
+    const fields = tone === rule ? { tone_set: null, tone_set_by: null } : { tone_set: tone, tone_set_by: who };
+    const saved = await store.engineInboxUpdate(item.id, { ...fields, updated_at: now.toISOString(), updated_by: who });
+    await store.engineInboxInsertAction({ ...base, detail: { tone, rule }, status: 'done', run_after: now.toISOString(), done_at: now.toISOString() });
+    return { ok: true, item: saved ? toned([saved])[0] : null };
+  }
   if (I.DESK_ACTIONS.includes(action)) {
     let fields;
     if (action === 'done' || action === 'reopen') fields = { status: action === 'done' ? 'done' : 'open' };
@@ -424,6 +462,10 @@ async function actOn(store, ctx, item, args, who, undoMs, rightsCache) {
   // link if Copilot can't be reached) before anything is queued.
   const tr = args.text ? await T.trackForItem(store, item, String(args.text).trim(), { action, who }) : { text: null, links: [] };
   const detail = { ...(recipient ? { recipient } : {}), ...(tr.links.length ? { links: tr.links.map(({ to, code, via }) => ({ to, code, via })) } : {}) };
+  if (await needsCheck(store, item.team_id, who)) {
+    const row = await store.engineInboxInsertAction({ ...base, text: tr.text, detail, run_after: now.toISOString(), status: 'check' });
+    return { ok: true, check: row, links: detail.links || [] };
+  }
   const row = await store.engineInboxInsertAction({
     ...base, text: tr.text, detail,
     run_after: new Date(now.getTime() + undoMs).toISOString(), status: 'queued',
@@ -449,28 +491,74 @@ async function engineInboxBulk(store, args, { who }) {
     if (!item || !E.canEditTeam(ctx, item.team_id)) { refused.push({ id, error: 'Not in your teams.' }); continue; }
     if (item.kind !== 'comment' && !['done', 'reopen', 'assign', 'label'].includes(args.action)) { refused.push({ id, error: 'Messages are answered one by one.' }); continue; }
     const r = await actOn(store, ctx, item, { ...args, text: texts.length ? texts[n % texts.length] : args.text }, who, I.BULK_UNDO_MS, rights);
-    if (r.ok) { done.push(r.queued ? { id, action_id: r.queued.id } : { id }); if (r.queued) n++; } else refused.push({ id, error: r.error });
+    if (r.ok) { done.push(r.queued ? { id, action_id: r.queued.id } : r.check ? { id, check: r.check.id } : { id }); if (r.queued || r.check) n++; } else refused.push({ id, error: r.error });
   }
   const queued = done.filter((d) => d.action_id);
-  return json({ ok: true, done: done.length, refused, action_ids: queued.map((d) => d.action_id), undo_until: queued.length ? new Date(Date.now() + I.BULK_UNDO_MS).toISOString() : null });
+  return json({ ok: true, done: done.length, refused, action_ids: queued.map((d) => d.action_id), undo_until: queued.length ? new Date(Date.now() + I.BULK_UNDO_MS).toISOString() : null, for_check: done.filter((d) => d.check).length });
+}
+
+// Inbox checks: approve or send back a waiting action (team admins, not on
+// their own), or switch checks on or off for a teammate (team admins).
+async function engineInboxCheck(store, args, { who }) {
+  const ctx = await context(store, who);
+  const team = String(args.team || '');
+  if (!E.canEditTeam(ctx, team)) throw err('You are not in that team.', 'ENGINE_NOT_MEMBER');
+  if (!isChecker(ctx, team)) return json({ ok: false, error: 'Only team admins check teammates\' actions.' });
+  if (args.person != null) {
+    const m = (await store.engineMembers({ team_id: team })).find((x) => String(x.who).toLowerCase() === String(args.person).toLowerCase());
+    if (!m) return json({ ok: false, error: 'They are not in that team.' });
+    const row = await store.engineSetNeedsCheck(team, m.who, !!args.needs_check);
+    return json({ ok: true, person: m.who, needs_check: !!(row ? row.needs_check : args.needs_check) });
+  }
+  const a = (await store.engineInboxActions({ team_ids: [team], statuses: ['check'], limit: 500 })).find((r) => Number(r.id) === Number(args.action_id));
+  if (!a) return json({ ok: false, error: 'Already checked, or withdrawn.' });
+  if (String(a.by).toLowerCase() === String(who).toLowerCase()) return json({ ok: false, error: 'Someone else checks your own actions.' });
+  const now = new Date();
+  const note = String(args.note || '').trim().slice(0, 300);
+  if (args.decision === 'approve') {
+    const row = await store.engineInboxUpdateAction(a.id, 'check', { status: 'queued', run_after: new Date(now.getTime() + I.UNDO_MS).toISOString(), detail: { ...(a.detail || {}), checked_by: who, checked_at: now.toISOString() } });
+    return json(row ? { ok: true, queued: row, undo_until: row.run_after } : { ok: false, error: 'Already checked, or withdrawn.' });
+  }
+  if (args.decision === 'reject') {
+    const row = await store.engineInboxUpdateAction(a.id, 'check', { status: 'cancelled', done_at: now.toISOString(), detail: { ...(a.detail || {}), checked_by: who, checked_at: now.toISOString(), sent_back: true, note } });
+    return json(row ? { ok: true, sent_back: row } : { ok: false, error: 'Already checked, or withdrawn.' });
+  }
+  return json({ ok: false, error: 'decision is approve or reject.' });
+}
+
+// A person's own desk settings and saved views. Only the listed keys, each
+// kept small; nothing here is shared with the team.
+const PREF_KEYS = { inbox_views: 20000, settings: 4000 };
+async function enginePrefsTool(store, args, { who }) {
+  await context(store, who);
+  const cur = await store.enginePrefs(who);
+  if (!args.set) return json({ prefs: cur });
+  const next = { ...cur };
+  for (const [k, v] of Object.entries(args.set || {})) {
+    if (!PREF_KEYS[k]) return json({ ok: false, error: `Unknown setting: ${k}.` });
+    if (JSON.stringify(v).length > PREF_KEYS[k]) return json({ ok: false, error: 'That is too much to save.' });
+    if (v == null) delete next[k]; else next[k] = v;
+  }
+  await store.engineSavePrefs(who, next, who);
+  return json({ ok: true, prefs: next });
 }
 
 async function engineInboxUndo(store, args, { who }) {
   const ctx = await context(store, who);
-  const rows = await store.engineInboxActions({ team_ids: Object.keys(ctx.myTeams).concat(ctx.maintainer ? ctx.teams.map((t) => t.id) : []), statuses: ['queued'], limit: 500 });
+  const rows = await store.engineInboxActions({ team_ids: Object.keys(ctx.myTeams).concat(ctx.maintainer ? ctx.teams.map((t) => t.id) : []), statuses: ['queued', 'check'], limit: 500 });
   if (Array.isArray(args.action_ids)) {
     const want = new Set(args.action_ids.map(Number));
     let undone = 0;
     for (const a of rows.filter((r) => want.has(Number(r.id)))) {
       if (String(a.by).toLowerCase() !== String(who).toLowerCase() && !ctx.maintainer) continue;
-      if (await store.engineInboxUpdateAction(a.id, 'queued', { status: 'cancelled', done_at: new Date().toISOString() })) undone++;
+      if (await store.engineInboxUpdateAction(a.id, a.status, { status: 'cancelled', done_at: new Date().toISOString() })) undone++;
     }
     return json({ ok: undone > 0, undone, of: want.size, ...(undone ? {} : { error: 'Too late to undo: they have already gone to Meta.' }) });
   }
   const a = rows.find((r) => Number(r.id) === Number(args.action_id));
   if (!a) return json({ ok: false, error: 'Too late to undo: it has already gone to Meta, or was undone.' });
   if (String(a.by).toLowerCase() !== String(who).toLowerCase() && !ctx.maintainer) return json({ ok: false, error: 'Only the person who did it can undo it.' });
-  const done = await store.engineInboxUpdateAction(a.id, 'queued', { status: 'cancelled', done_at: new Date().toISOString() });
+  const done = await store.engineInboxUpdateAction(a.id, a.status, { status: 'cancelled', done_at: new Date().toISOString() });
   return json(done ? { ok: true, cancelled: done } : { ok: false, error: 'Too late to undo: it has already gone to Meta.' });
 }
 
@@ -962,7 +1050,9 @@ async function engineInboxTeam(store, args, { who }) {
   const stats = I.teamStats({ items: all, actions: recent, people: members.map((m) => m.who), hostile: (i) => I.isHostile(i.text, rules) });
   stats.hours.forEach((h) => { h.arrived = 0; });
   for (const i of items) if (!i.from_us) stats.hours[Number(new Date(i.created_at).toLocaleString('en-GB', { hour: '2-digit', hour12: false, timeZone: 'Europe/London' })) % 24].arrived++;
-  return json({ team, days, ...stats, partial: items.length >= 1000 || actions.length >= 1000 });
+  const checks = Object.fromEntries(members.map((m) => [m.who, !!m.needs_check]));
+  stats.people = (stats.people || []).map((p) => ({ ...p, needs_check: !!checks[p.who] }));
+  return json({ team, days, ...stats, checker: isChecker(ctx, team), partial: items.length >= 1000 || actions.length >= 1000 });
 }
 
 // Analytics [slice 3, chosen 1 Nov]: the desk's dashboard as one structured
@@ -1737,8 +1827,10 @@ const ENGINE_TOOLS = [
   { name: 'engine_save', description: 'Content Engine: save changes to a post (text, graphic, first comment, where and when). patch merges into the post; version must be the one you read, or the save is refused as a conflict.', inputSchema: obj({ id: { type: 'string' }, version: { type: 'number' }, patch: { type: 'object' } }, ['id', 'version', 'patch']), handler: engineSave },
   { name: 'engine_pause', description: 'Content Engine Pause everything: hold every scheduled post at once (action pause: scope mine = every account you can post to, team = one of your teams (team), all = every account, admins only; a reason the team sees; optional hours, otherwise until someone resumes), or resume a pause (action resume: id). Nothing is deleted or changed: the publisher just waits.', inputSchema: obj({ action: { type: 'string', enum: ['pause', 'resume'] }, scope: { type: 'string', enum: ['mine', 'team', 'all'] }, team: { type: 'string' }, reason: { type: 'string' }, hours: { type: 'number' }, id: { type: 'number' } }, ['action']), handler: enginePause },
   { name: 'engine_video', description: 'Content Engine: send a Reel or video for a post you can edit, in pieces of up to 2.5 MB (action part: id, upload (8-32 lowercase letters and digits, the same for every piece), index from 0, data base64), then check them (action done: id, upload, parts, size, sha256 hex, mime video/mp4 or video/quicktime, optional name). done returns the video to save in the post\'s final snapshot. Up to 150 MB.', inputSchema: obj({ action: { type: 'string', enum: ['part', 'done'] }, id: { type: 'string' }, upload: { type: 'string' }, index: { type: 'number' }, data: { type: 'string' }, parts: { type: 'number' }, size: { type: 'number' }, sha256: { type: 'string' }, mime: { type: 'string', enum: ['video/mp4', 'video/quicktime'] }, name: { type: 'string' } }, ['action', 'id', 'upload']), handler: engineVideo },
-  { name: 'engine_inbox', description: 'Content Engine Inbox: comments and DMs on one of your teams\' Facebook Pages and Instagram accounts, newest first (status open by default, or done, or all; optional platform facebook/instagram, kind comment/message, before an ISO time), each with its tone from its words (positive, negative, mixed, neutral; tone of the words, not whether they agree with us), with open counts, the open items\' tone, actions still in their undo window and pile-on alerts from the last 24 hours. thread returns one post\'s comments or one conversation, oldest first.', inputSchema: obj({ team: { type: 'string' }, status: { type: 'string', enum: ['open', 'done', 'all'] }, platform: { type: 'string', enum: ['facebook', 'instagram'] }, kind: { type: 'string', enum: ['comment', 'message', 'mention'] }, thread: { type: 'string' }, before: { type: 'string' }, limit: { type: 'number' } }, ['team']), handler: engineInbox },
-  { name: 'engine_inbox_act', description: 'Content Engine Inbox: act on a comment or message. done, reopen, assign (assign_to, or empty to unassign) and label (labels) apply at once. reply, private_reply (Facebook comments, within 7 days), like (Facebook only), hide, unhide, delete and ban / unban (block the author from the Facebook Page; threats can be hidden but not deleted) go to Meta from the Mini with your own Page token after 10 seconds, so they can be undone; message replies only within 24 hours of their last message.', inputSchema: obj({ id: { type: 'string' }, action: { type: 'string', enum: ['reply', 'private_reply', 'like', 'hide', 'unhide', 'delete', 'ban', 'unban', 'done', 'reopen', 'assign', 'label'] }, text: { type: 'string' }, assign_to: { type: 'string' }, labels: { type: 'array', items: { type: 'string' } } }, ['id', 'action']), handler: engineInboxAct },
+  { name: 'engine_inbox', description: 'Content Engine Inbox: comments and DMs on one of your teams\' Facebook Pages and Instagram accounts, newest first (status open by default, or done, or all; optional platform facebook/instagram, kind comment/message, before an ISO time), each with its tone from its words (positive, negative, mixed, neutral; tone of the words, not whether they agree with us), with open counts, the open items\' tone, actions still in their undo window and pile-on alerts from the last 24 hours. thread returns one post\'s comments or one conversation, oldest first. q searches the words, the person\'s name and the post; accounts limits to some account keys; since an ISO time. Also lists actions waiting for a check (checks) and whether yours need one (me).', inputSchema: obj({ team: { type: 'string' }, status: { type: 'string', enum: ['open', 'done', 'all'] }, platform: { type: 'string', enum: ['facebook', 'instagram'] }, kind: { type: 'string', enum: ['comment', 'message', 'mention'] }, thread: { type: 'string' }, before: { type: 'string' }, since: { type: 'string' }, accounts: { type: 'array', items: { type: 'string' } }, q: { type: 'string' }, limit: { type: 'number' } }, ['team']), handler: engineInbox },
+  { name: 'engine_inbox_act', description: 'Content Engine Inbox: act on a comment or message. done, reopen, assign (assign_to, or empty to unassign) and label (labels) apply at once. reply, private_reply (Facebook comments, within 7 days), like (Facebook only), hide, unhide, delete and ban / unban (block the author from the Facebook Page; threats can be hidden but not deleted) go to Meta from the Mini with your own Page token after 10 seconds, so they can be undone; message replies only within 24 hours of their last message. If your actions need a check, they wait for a team admin instead (check). tone (positive, neutral, negative, mixed) fixes a wrong tone by hand.', inputSchema: obj({ id: { type: 'string' }, action: { type: 'string', enum: ['reply', 'private_reply', 'like', 'hide', 'unhide', 'delete', 'ban', 'unban', 'done', 'reopen', 'assign', 'label', 'tone'] }, text: { type: 'string' }, assign_to: { type: 'string' }, labels: { type: 'array', items: { type: 'string' } }, tone: { type: 'string', enum: ['positive', 'neutral', 'negative', 'mixed'] } }, ['id', 'action']), handler: engineInboxAct },
+  { name: 'engine_inbox_check', description: 'Content Engine Inbox checks (team admins): approve or send back (decision approve / reject, optional note) a teammate\'s reply, hide, delete or ban waiting for a check (action_id from engine_inbox checks), or switch checks on or off for a teammate (person, needs_check).', inputSchema: obj({ team: { type: 'string' }, action_id: { type: 'number' }, decision: { type: 'string', enum: ['approve', 'reject'] }, note: { type: 'string' }, person: { type: 'string' }, needs_check: { type: 'boolean' } }, ['team']), handler: engineInboxCheck },
+  { name: 'engine_prefs', description: 'Content Engine: your own desk settings and saved Inbox views. No set reads them; set merges keys (inbox_views, settings; null removes one).', inputSchema: obj({ set: { type: 'object' } }), handler: enginePrefsTool },
   { name: 'engine_inbox_undo', description: 'Content Engine Inbox: undo a reply, like, hide, unhide or delete you did while it is still in its window (action_id from engine_inbox_act), or a whole bulk action (action_ids from engine_inbox_bulk).', inputSchema: obj({ action_id: { type: 'number' }, action_ids: { type: 'array', items: { type: 'number' } } }), handler: engineInboxUndo },
   { name: 'engine_inbox_bulk', description: 'Content Engine Inbox bulk by topic: one action on up to 100 comments (ids): reply (texts: up to 5 wordings, rotated), like, hide, unhide, delete, done, reopen, assign (assign_to) or label (labels). Same rules as one at a time; refusals are listed. Facebook and Instagram actions wait 30 seconds so the whole batch can be undone with engine_inbox_undo action_ids.', inputSchema: obj({ ids: { type: 'array', items: { type: 'string' } }, action: { type: 'string', enum: ['reply', 'like', 'hide', 'unhide', 'delete', 'ban', 'done', 'reopen', 'assign', 'label'] }, text: { type: 'string' }, texts: { type: 'array', items: { type: 'string' } }, assign_to: { type: 'string' }, labels: { type: 'array', items: { type: 'string' } } }, ['ids', 'action']), handler: engineInboxBulk },
   { name: 'engine_inbox_person', description: 'Content Engine Inbox supporter history: one person\'s comments and messages on your team\'s accounts in the last 90 days (author_id from an inbox item), with counts (comments, messages, hidden, on ads), their labels and the most recent.', inputSchema: obj({ team: { type: 'string' }, author_id: { type: 'string' } }, ['team', 'author_id']), handler: engineInboxPerson },
