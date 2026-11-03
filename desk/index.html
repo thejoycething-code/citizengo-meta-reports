@@ -1458,7 +1458,7 @@ function xTone(x){const n=parseFloat(x);return !Number.isFinite(n)?"":n>=1.2?"up
 function bestX(r){const xs=["facebook","instagram","x"].map(k=>r&&r[k]&&parseFloat(r[k].xMedian)).filter(Number.isFinite);return xs.length?Math.max(...xs):null}
 /* Post now on UK accounts: where its Asana task is, or why it isn't there yet. */
 function asanaLine(d){const g=d.posting||{};if(g.asanaUrl)return `<span class="src"><a href="${esc(g.asanaUrl)}" target="_blank" rel="noopener">Asana task</a>${g.asanaError?` · ${esc(g.asanaError.message||"")}`:""}</span>`;
-  if(g.asanaError)return `<span class="src">The Asana task couldn’t be made (${esc(g.asanaError.message||"")}). The morning run adds it instead.</span>`;return ""}
+  if(g.asanaError)return `<span class="src">The Asana task couldn’t be made (${esc(g.asanaError.message||"")}). The engine run adds it instead.</span>`;return ""}
 function resultsBox(d){
   if(d.status!=="posted"&&!d.results)return"";
   const r=d.results;const p=d.posted||{};
@@ -2297,7 +2297,7 @@ function postingPanel(d,st){const p=d.posting||{};const dests=p.destinations||de
   <div class="dests">${teamDests().map(([k,l])=>{const lock=locked(k);const on=dests.includes(k);return `<label class="dest"${lock?` title="You can't post to this Page yourself. Connect Facebook if you manage it, or leave it for someone who does."`:""}><input type="checkbox" data-dest="${k}" ${on?"checked":""}${lock&&!on?" disabled":""}> ${lock?"🔒 ":""}${l}</label>`}).join("")}</div>
   ${teamDests().some(([k])=>locked(k)&&dests.includes(k))?`<div class="row"><span class="src">🔒 You can't post to a ticked Page, so Schedule will be refused until you untick it or someone who manages it approves.</span></div>`:""}
   ${storyRow(d,dests)}${collabRow(d,dests)}${bioRow(d,dests)}${signRow(d)}${perAcctRow(d,dests,at)}<div class="dlane" id="dayLane" aria-label="The day at a glance"></div><div class="row"><span class="src">${p.why?esc(p.why)+" · ":""}${esc(BEST_HINT)}</span></div>
-  ${st==="hold"||st==="scheduled"?`<div class="row"><button class="btn small" data-act="savePosting">Update where and when</button>${links?`<span class="src">${links}</span>`:p.asanaError?`<span class="src">The Asana task couldn’t be made (${esc(p.asanaError.message||"")}). The morning run adds it instead.</span>`:`<span class="src">The Asana task appears here once it’s created.</span>`}</div>`:""}
+  ${st==="hold"||st==="scheduled"?`<div class="row"><button class="btn small" data-act="savePosting">Update where and when</button>${links?`<span class="src">${links}</span>`:p.asanaError?`<span class="src">The Asana task couldn’t be made (${esc(p.asanaError.message||"")}). The engine run adds it instead.</span>`:`<span class="src">The Asana task appears here once it’s created.</span>`}</div>`:""}
   ${S.db?`<div class="row"><button class="btn small" data-act="canvaReq" ${d.canvaRequest?"disabled":""}>${d.canva?.url?"Refresh Canva copy":d.canvaRequest?"Canva copy requested":"Send to Canva"}</button></div>`:""}</div>`}
 function readPosting(){const dests=[...document.querySelectorAll("input[data-dest]")].filter(x=>x.checked).map(x=>x.dataset.dest);
   const per=[...document.querySelectorAll("input[data-time]")];
@@ -2413,9 +2413,9 @@ async function logFeedback(entry){
   if(!S.db)return;
   try{await S.db.collection("feedback").add({...entry,by:S.me,at:new Date().toISOString()})}catch(e){}
 }
-/* Post now: what the toast says. UK posts get their Asana calendar task from the publisher once they're live (lib/asana.js). */
+/* Post now: what the toast says. UK posts get their Asana calendar task from the engine run (through Chris's own Claude). */
 function postNowMsg(dests){const auto=dests.some(k=>["facebook","instagram"].includes(platOfKey(k)));const uk=dests.some(k=>/^uk-/.test(k));
-  return `${auto?"Posting now: Facebook and Instagram go out within 5 minutes":"Ready to post now"}${dests.some(k=>platOfKey(k)==="x")?". Post X by hand":""}${uk?". The UK Asana task is added once it’s live":""}`}
+  return `${auto?"Posting now: Facebook and Instagram go out within 5 minutes":"Ready to post now"}${dests.some(k=>platOfKey(k)==="x")?". Post X by hand":""}${uk?". The engine run adds the UK Asana task":""}`}
 async function setStatus(d,status,extra={},msgOver=null){
   const review=status==="pending"?{}:{by:S.me,at:new Date().toISOString(),...extra};
   try{
