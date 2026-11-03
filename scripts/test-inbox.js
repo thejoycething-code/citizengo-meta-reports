@@ -251,6 +251,17 @@ function fakeMeta() {
     const bm = await call(s, 'engine_benchmark', { team: 'uk' }, 'sam');
     eq('benchmark: allies with posts, ours marked, sorted by per post, team country by default', [bm.country, bm.rows.map((r) => [r.handle, r.ours, r.posts, r.engagement, r.per_post]), bm.rows[0].top.url], ['UK', [['rtl', false, 2, 420, 210], ['citizengo_uk', true, 1, 60, 60]], 'https://ig/a']);
     eq('benchmark: another team cannot look', await callErr(s, 'engine_benchmark', { team: 'uk' }, 'tamara'), 'ENGINE_NOT_MEMBER');
+    // House rules (33): built-in default, then the team's saved copy over it; each rule says where it applies.
+    s.houseRulesDoc = async () => null;
+    const hd = await call(s, 'engine_house_rules', { team: 'uk' }, 'sam');
+    eq('house rules: the built-in default, every section, prompt text', [hd.is_default, hd.sections_order.length, /^House rules for this team/.test(hd.text), /British spelling/.test(hd.text)], [true, 6, true, true]);
+    s.houseRulesDoc = async () => ({ sections: { voice: 'Bold and kind.' }, rules: [{ id: 'r1', text: 'Say MPs, never politicians', by: 'sam', on: { compose: false, inbox: true } }], updated_by: 'sam' });
+    const hi = await call(s, 'engine_house_rules', { team: 'uk', for: 'inbox' }, 'sam');
+    const hc = await call(s, 'engine_house_rules', { team: 'uk' }, 'sam');
+    eq('house rules: saved sections over the default, rules only where switched on, morning off unless set', [hi.is_default, hi.sections.voice, hi.sections.tone === hd.sections.tone, /Say MPs/.test(hi.text), /Say MPs/.test(hc.text), hi.rules[0].on.morning], [false, 'Bold and kind.', true, true, false, false]);
+    eq('house rules: another team cannot look', await callErr(s, 'engine_house_rules', { team: 'uk' }, 'tamara'), 'ENGINE_NOT_MEMBER');
+    const mx = require('../lib/house-rules').defaults('mx');
+    eq('house rules: Spanish default for Mexico', [/Cercana/.test(mx.sections.voice), mx.rules.length], [true, 7]);
   }
 
   // Auto-hide list.

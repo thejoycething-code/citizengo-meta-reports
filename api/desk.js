@@ -23,7 +23,7 @@ const DESK_TOOLS = new Set(['engine_me', 'engine_posts', 'engine_save', 'engine_
   'engine_evergreen', 'engine_evergreen_update', 'engine_connect', 'engine_media', 'engine_pause', 'engine_video', 'engine_inbox', 'engine_inbox_act',
   'engine_inbox_undo', 'engine_inbox_history', 'engine_inbox_team', 'engine_ig_grid', 'engine_bio', 'engine_parliament', 'engine_inbox_person', 'engine_inbox_posts', 'engine_inbox_rules', 'engine_inbox_rule', 'engine_inbox_alert',
   'engine_inbox_bulk', 'engine_analytics', 'engine_listening', 'engine_automations', 'engine_automation', 'engine_access', 'page_inviter_usage', 'engine_inviter', 'engine_links', 'engine_health', 'engine_preview', 'engine_trash',
-  'engine_create', 'engine_inbox_check', 'engine_prefs', 'engine_bell', 'engine_inbox_post', 'engine_inbox_similar', 'engine_benchmark']);
+  'engine_create', 'engine_inbox_check', 'engine_prefs', 'engine_bell', 'engine_inbox_post', 'engine_inbox_similar', 'engine_benchmark', 'engine_house_rules']);
 
 function send(res, status, body, cookie) {
   res.statusCode = status;

@@ -464,6 +464,18 @@ header.top .filters{padding-block:0;margin-left:auto}
 .psec{break-before:auto;margin-bottom:18px}.psec h2{font:700 20px/1.1 "Barlow Condensed",Arial,sans-serif;border-bottom:1px solid #dfe4ee;padding-bottom:4px}.psec+.psec{break-before:page}.psfoot{border-top:1px solid #dfe4ee;margin-top:16px;padding-top:6px;font-size:11px;color:#5f6673}
 .pscover{min-height:70vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:6px;break-after:page}.pscover h1{font:700 40px/1.05 "Barlow Condensed",Arial,sans-serif;margin:10px 0 0}.pscover p{margin:0;color:#5f6673}
 @media print{.psband{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+/* Settings 36A, labels 30A, house rules 33 (3 Nov) */
+.sthead{display:flex;gap:12px;align-items:flex-end;justify-content:space-between;flex-wrap:wrap}.sthead input{font:inherit;font-size:14px;padding:8px 12px;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--fg);min-width:260px;flex:0 1 340px}
+.stwrap{display:grid;grid-template-columns:190px minmax(0,1fr);gap:20px;align-items:start}.stnav{position:sticky;top:12px;display:flex;flex-direction:column;gap:2px}.stnav button{font:inherit;font-size:13.5px;text-align:left;background:none;border:0;border-radius:8px;padding:7px 10px;color:var(--fg);cursor:pointer}.stnav button:hover{background:var(--surface)}.stnav button[aria-current]{background:var(--surface);font-weight:700;box-shadow:inset 3px 0 0 var(--accent)}
+.stmain{display:flex;flex-direction:column;gap:22px;min-width:0}.stsec{display:flex;flex-direction:column;gap:10px;scroll-margin-top:12px}.stsec>h3{margin:0;font-size:17px}.stsec>div{display:flex;flex-direction:column;gap:10px}
+.stlinks{gap:0!important;padding:4px 0!important}.stlink{display:grid;grid-template-columns:1fr auto;grid-template-rows:auto auto;column-gap:10px;text-align:left;font:inherit;background:none;border:0;border-top:1px solid var(--line);padding:10px 14px;color:var(--fg);cursor:pointer}.stlink:first-child{border-top:0}.stlink:hover{background:var(--bg)}.stlink span{grid-column:1;font-size:13px;color:var(--muted)}.stlink i{grid-row:1/3;grid-column:2;align-self:center;font-style:normal;font-size:20px;color:var(--muted)}
+.lblgrp{display:flex;flex-direction:column;gap:6px}.lblgrp>small{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}.lblgrp>div{display:flex;flex-wrap:wrap;gap:6px}.lbl{font:inherit;font-size:12.5px;font-weight:600;border:1px solid var(--line);border-left:4px solid var(--cc);background:var(--bg);color:var(--fg);border-radius:6px;padding:3px 8px;cursor:pointer}.lbl small{color:var(--muted);font-weight:600;margin-left:3px}
+.hrtop{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.hrtop .sp{flex:1}.hrghost{background:transparent!important;color:var(--fg)!important;border:1px solid var(--line)!important}
+.hrsecs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.hrsec{display:flex;flex-direction:column;gap:4px}.hrh{display:flex;gap:8px;align-items:baseline}.hrh small{font-size:11.5px;color:var(--muted)}.hrh small.chg{color:var(--accent);font-weight:700}.hrh .lnk{font-size:12px;margin-left:auto}
+.hrsec textarea{font:inherit;font-size:13.5px;line-height:1.45;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg);resize:vertical;min-height:70px}
+.hrrules{display:flex;flex-direction:column;gap:8px}.hrrh{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}.hrtbl td:nth-child(n+3),.hrtbl th:nth-child(n+3){text-align:center;width:1%;white-space:nowrap}.hrtbl td:nth-child(2){white-space:nowrap}.hrsw input{width:16px;height:16px;accent-color:var(--accent)}
+.hradd{display:flex;gap:8px}.hradd input{flex:1;min-width:0;font:inherit;font-size:13.5px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg)}
+@media (max-width:760px){.stwrap{grid-template-columns:1fr;gap:12px}.stnav{flex-direction:row;overflow-x:auto;gap:6px;top:0;z-index:3;background:var(--bg);padding:6px 0;scrollbar-width:none}.stnav button{white-space:nowrap;border:1px solid var(--line);border-radius:999px;padding:5px 12px;font-size:13px}.stnav button[aria-current]{box-shadow:none;background:var(--fg);color:var(--bg);border-color:var(--fg)}.sthead input{min-width:0;flex:1 1 100%}.hrsecs{grid-template-columns:1fr}.hrtbl td:nth-child(2),.hrtbl th:nth-child(2){display:none}}
 .ibsug{display:flex;flex-direction:column;gap:6px}.ibsugs{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:6px}
 .ibs{font:inherit;font-size:13px;text-align:left;border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:10px;padding:8px 10px;cursor:pointer;line-height:1.4}.ibs:hover{border-color:var(--accent);background:var(--accent-soft)}.ibs small{display:block;font-weight:700;font-size:11.5px;color:var(--accent);margin-bottom:2px}
 .ibperson{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px;display:flex;flex-direction:column;gap:10px;font-size:13px;position:sticky;top:12px}
@@ -1115,7 +1127,17 @@ body.cpopen{overflow:hidden}
   <section id="anView" class="egv" hidden aria-label="Analytics"></section>
   <section id="toolsView" class="egv" hidden aria-label="Tools"></section>
   <section id="lsView" class="egv" hidden aria-label="Listening"></section>
-  <section id="stView" class="egv" hidden aria-label="Settings"><div><h2>Settings</h2><p class="lede">Your own settings, your access, and your Facebook connection.</p></div><div id="stMine"></div><div id="stBody"></div><div class="ibd"><b>Facebook connection</b><p class="src" style="margin:0">Connect your own Facebook account so the Pages you manage there become the accounts you can approve posts for and reply as. Reconnect to refresh them.</p><div><span id="fbConnect"></span></div></div></section>
+  <section id="stView" class="egv" hidden aria-label="Settings"><div class="sthead"><div><h2>Settings</h2><p class="lede">Everything you can set, in one place. Search, or jump to a section.</p></div><input type="search" id="stQ" placeholder="Search settings, e.g. voice, initials, auto-hide" aria-label="Search settings" autocomplete="off"></div>
+  <div class="stwrap"><nav class="stnav" id="stNav" aria-label="Settings sections"></nav><div class="stmain" id="stMain">
+  <div class="stsec" id="st-me" data-st="me" data-kw="me theme light dark time zone notifications my settings"><h3>Me</h3><div id="stMine"></div></div>
+  <div class="stsec" id="st-team" data-st="team" data-kw="team access role initials invite people admin permissions"><h3>Team and access</h3><div id="stBody"></div></div>
+  <div class="stsec" id="st-conn" data-st="conn" data-kw="connections facebook instagram pages reconnect login"><h3>Connections</h3><div class="ibd"><b>Facebook connection</b><p class="src" style="margin:0">Connect your own Facebook account so the Pages you manage there become the accounts you can approve posts for and reply as. Reconnect to refresh them.</p><div><span id="fbConnect"></span></div></div></div>
+  <div class="stsec" id="st-inbox" data-st="inbox" data-kw="inbox shortcuts rules automations auto-hide banned words auto replies moderation"><h3>Inbox shortcuts</h3><div id="stInbox"></div></div>
+  <div class="stsec" id="st-pub" data-st="pub" data-kw="publishing link in bio labels tags campaigns"><h3>Publishing</h3><div id="stPub"></div></div>
+  <div class="stsec" id="st-rules" data-st="rules" data-kw="house rules voice tone audience always never spelling style claude ai prompts"><h3>House rules</h3><div id="stRules"></div></div>
+  <div class="stsec" id="st-listen" data-st="listen" data-kw="listening watches topics keywords parliament"><h3>Listening</h3><div id="stListen"></div></div>
+  <p class="src" id="stNone" hidden>No settings match that. Try another word.</p>
+  </div></div></section>
 </div>
 <div class="pauseline" id="pauseLine" hidden></div>
 <div class="help" id="pauseDlg" hidden role="dialog" aria-modal="true" aria-label="Pause publishing"><div class="helpbox pdlg" id="pauseBox"></div></div>
@@ -1213,7 +1235,9 @@ function renderFilters(){
 }
 /* Drafts board [Priority One 9A]: who made a draft, its labels, and the words search reads. */
 function draftBy(d){return d.own?(d.own.name||d.own.by||"A teammate"):"The engine"}
-function draftLabels(d){const l=[];if(d.launch)l.push("Launch pack");if(d.own)l.push(d.own.translatedFrom?"Translated":"Own post");if(d.action&&d.action.title)l.push(d.action.title);if(d.evergreen_id||/evergreen/i.test(d.type||""))l.push("Evergreen");return l}
+/* 30A (3 Nov): labels are automatic and never longer than three words (campaign names are cut to their first three). */
+function short3(t){const w=String(t||"").replace(/\s+/g," ").trim().split(" ").filter(Boolean);return w.slice(0,3).join(" ")}
+function draftLabels(d){const l=[];if(d.launch)l.push("Launch pack");if(d.own)l.push(d.own.translatedFrom?"Translated":"Own post");if(d.action&&d.action.title)l.push(short3(d.action.title));if(d.evergreen_id||/evergreen/i.test(d.type||""))l.push("Evergreen");return l}
 function draftText(d){const p=d.platforms||{};return [d.title,d.issue,d.type,d.rationale,p.facebook,p.instagram,p.x,p.facebookComment,(d.source||{}).label,(d.action||{}).title,...(d.notes||[]).map(n=>n&&n.text)].filter(Boolean).join(" \n").toLowerCase()}
 function hasChecks(d){return (d.facts||[]).some(f=>f.status==="check")}
 function renderQueue(){
@@ -1404,7 +1428,9 @@ document.addEventListener("input",ev=>{if(ev.target.id!=="ieText"||!S.inline)ret
 
 /* say WHY a save failed, and keep the details for Claude */
 /* Web app: S.sample is the "Ask Claude" round trip (desk/web.js), so no timeout: the person takes as long as they need. */
-function askAI(prompt){return S.sample(prompt,{modelTier:"default"})}
+/* 33 (3 Nov): the team's house rules go with every writing prompt (posts and Inbox replies), not with graphics, sorting or analysis. */
+function hrWhere(p){p=String(p||"");if(/^(You write replies|Rewrite this private message)/.test(p))return "inbox";if(/^(You are (rewriting|redrafting|writing one new)|You are .{0,40}social content creator|Rewrite this first comment)/.test(p))return "compose";return ""}
+async function askAI(prompt){const w=hrWhere(prompt);if(w){try{const t=await hrPromptText(S.team,w);if(t)prompt+=`\n\n${t}\n(Keep to the output format asked for above.)`}catch(e){}}return S.sample(prompt,{modelTier:"default"})}
 /* Whose voice and language Claude writes in, by team (3 Nov 2026: México drafts and replies are in Mexican Spanish). */
 const TEAM_VOICE={uk:{org:"CitizenGO UK",lang:"UK English",spell:"British spelling"},global:{org:"CitizenGO",lang:"English",spell:"British spelling"},mx:{org:"CitizenGO México",lang:"Mexican Spanish (español de México)",spell:"written in Mexican Spanish (español de México): ustedes, never vosotros"}};
 function voice(team){const id=team||S.team;if(TEAM_VOICE[id])return TEAM_VOICE[id];const t=(S.teams||[]).find(x=>x.id===id);return {org:`CitizenGO ${t?t.name:""}`.trim(),lang:"the language the page's followers read",spell:"in the language the page's followers read"}}
@@ -3366,7 +3392,7 @@ function renderSettings(){renderMine();const el=$("#stBody");if(!el)return;const
     <div class="awrap"><table class="atbl"><thead><tr><th>Account</th><th>Can you post and reply?</th></tr></thead><tbody>${(t.accounts||[]).map(a=>`<tr><td>${esc(a.name||a.key)} <small class="src">${esc(a.platform)}</small></td><td>${a.platform==="x"?"Posted by hand: copy the text from the post":conn.has(a.key)?"✓ Yes, through your Facebook connection":rights.has(a.key)?"✓ Yes, set up by hand (connect Facebook to confirm it)":"🔒 No: you need a role on this Page in Facebook"}</td></tr>`).join("")}</tbody></table></div></div>`).join("")||`<p class="src">You aren't in a Content Engine team yet.</p>`;
   if(!$("#stAccess")){const d=document.createElement("div");d.id="stAccess";el.after(d)}
   if(!ACC.data||ACC.team!==S.team)loadAccess();else renderAccess();
-  renderConnect()}
+  renderConnect();stExtras()}
 document.addEventListener("click",async ev=>{if(!ev.target.closest("[data-acc-invite]"))return;const who=String($("#invWho")?.value||"").trim().toLowerCase();if(!who){toast("Give the desk name first");return}
   try{const r=await window.deskInvite({who,team_id:S.team,role:$("#invRole")?.value||"editor"});const out=$("#invOut");if(out)out.innerHTML=`<div class="aurow"><input type="text" readonly value="${esc(r.link)}" class="acini" style="flex:1;min-width:200px;text-transform:none"><button class="btn small" data-inv-copy>Copy</button><span class="src">expires ${esc(new Date(r.expires_at).toLocaleDateString("en-GB",{day:"numeric",month:"short"}))}</span></div>`}catch(e){toast(e.message||"Couldn't create the invite")}});
 document.addEventListener("click",async ev=>{if(!ev.target.closest("[data-inv-copy]"))return;const i=$("#invOut input");try{await navigator.clipboard.writeText(i.value);toast("Invite link copied: send it to them directly")}catch(e){i.select()}});
@@ -3375,6 +3401,63 @@ document.addEventListener("change",ev=>{const k=ev.target.closest("[data-acc-kin
 document.addEventListener("click",ev=>{const n=ev.target.closest("[data-nav]");if(n){navGo(n.dataset.nav);return}
   const o=ev.target.closest("[data-side]");if(o){$("#side").classList.add("open");$("#sideShade").hidden=false;return}
   if(ev.target.id==="sideShade"){$("#side").classList.remove("open");$("#sideShade").hidden=true}});
+/* 36A (3 Nov): one Settings page with a search box and a section list (left on a laptop, chips on a phone). */
+const ST_SECS=[["me","Me"],["team","Team and access"],["conn","Connections"],["inbox","Inbox shortcuts"],["pub","Publishing"],["rules","House rules"],["listen","Listening"]];
+const ST={q:"",at:"me"};
+function stExtras(){const nav=$("#stNav");if(nav)nav.innerHTML=ST_SECS.map(([k,l])=>`<button data-st-go="${k}"${ST.at===k?' aria-current="true"':""}>${esc(l)}</button>`).join("");
+  const ib=$("#stInbox");if(ib)ib.innerHTML=`<div class="ibd stlinks">${[["inbox:autos","Automations","Auto-replies and the auto-hide list: banned words, phrases, links and scam phrases."],["inbox:history","Moderation","What was hidden, deleted or banned, and by whom, so you can undo it."],["inbox:team","Team","Who is answering what, and what is assigned to whom."]].map(([k,t,d])=>`<button class="stlink" data-nav="${k}"><b>${esc(t)}</b><span>${esc(d)}</span><i aria-hidden="true">›</i></button>`).join("")}</div>`;
+  const ls=$("#stListen");if(ls)ls.innerHTML=`<div class="ibd stlinks">${[["listening:watches","Watches","Your own word lists: what to look for, what to leave out, and where."],["listening:topics","Topics","The topics Listening follows for the team."],["listening:parliament","Parliament","What MPs and peers say on our issues."]].map(([k,t,d])=>`<button class="stlink" data-nav="${k}"><b>${esc(t)}</b><span>${esc(d)}</span><i aria-hidden="true">›</i></button>`).join("")}</div>`;
+  stPub();hrRender();stFilter()}
+function stFilter(){const q=ST.q.trim().toLowerCase();let any=false;
+  document.querySelectorAll("#stMain .stsec").forEach(sec=>{const hit=!q||(sec.dataset.kw+" "+sec.textContent).toLowerCase().includes(q);sec.hidden=!hit;if(hit)any=true});
+  document.querySelectorAll("#stNav [data-st-go]").forEach(b=>{const sec=$("#st-"+b.dataset.stGo);b.hidden=!!(sec&&sec.hidden)});
+  const n=$("#stNone");if(n)n.hidden=any}
+document.addEventListener("input",ev=>{if(ev.target.id==="stQ"){ST.q=ev.target.value;stFilter()}});
+document.addEventListener("click",ev=>{const g=ev.target.closest("[data-st-go]");if(!g)return;ST.at=g.dataset.stGo;document.querySelectorAll("#stNav [data-st-go]").forEach(b=>b.toggleAttribute("aria-current",b===g));const sec=$("#st-"+ST.at);if(sec)sec.scrollIntoView({behavior:"smooth",block:"start"})});
+
+/* 30A (3 Nov): labels are made for you, never managed. From the post (campaign, cut to three words; launch pack; own post; translated; evergreen) and from the Inbox (Question, Supporter, auto-hidden and the like). */
+function lblColor(n){let h=0;for(const c of String(n))h=(h*31+c.charCodeAt(0))>>>0;return CAMP_COLORS[h%CAMP_COLORS.length]}
+function stPub(){const el=$("#stPub");if(!el)return;const cnt=(arr)=>{const m=new Map();arr.forEach(l=>{if(!l)return;const k=short3(l);m.set(k,(m.get(k)||0)+1)});return [...m].sort((a,b)=>b[1]-a[1]).slice(0,40)};
+  const dl=cnt((S.drafts||[]).flatMap(draftLabels)),il=cnt((IB.items||[]).flatMap(i=>ibTags(i)));
+  const chips=(l,kind)=>l.length?l.map(([n,c])=>`<button class="lbl" style="--cc:${lblColor(n)}" data-st-lbl="${esc(n)}" data-kind="${kind}" title="Show ${kind==="ib"?"conversations":"posts"} labelled ${esc(n)}">${esc(n)} <small>${c}</small></button>`).join(""):`<span class="src">${kind==="ib"?"Open the Inbox once and its labels show here.":"No posts on the board right now."}</span>`;
+  el.innerHTML=`<div class="ibd stlinks"><button class="stlink" data-nav="tools:bio"><b>Link in bio</b><span>Your Instagram link page, filled with recent campaigns for you.</span><i aria-hidden="true">›</i></button></div>
+  <div class="ibd"><b>Labels</b><p class="src" style="margin:0">Labels are added for you, so there is nothing to create, rename or tidy. Posts get the campaign (its first three words), and whether they are a launch pack, your own post, a translation or evergreen. Conversations get Question, Supporter and the moderation labels. Tap one to see what has it.</p>
+  <div class="lblgrp"><small>On posts</small><div>${chips(dl,"dr")}</div></div><div class="lblgrp"><small>In the Inbox</small><div>${chips(il,"ib")}</div></div></div>`}
+document.addEventListener("click",ev=>{const b=ev.target.closest("[data-st-lbl]");if(!b)return;const n=b.dataset.stLbl;
+  if(b.dataset.kind==="ib"){IB.f={...(IB.f||IBF0),label:n};IB.fOpen=true;navGo("inbox:inbox");return}
+  S.label=n;navGo("posts");try{renderAll()}catch(e){}});
+
+/* 33A + 33B + 33E (3 Nov): house rules per team. Sections (voice, tone and the rest) start from a built-in default the team amends; anyone in the team adds rules; each rule says where it applies. Saved in desk docs houseRules/hr_<team>. */
+const HRS={team:null,data:null,busy:false,dirty:false,err:null};
+async function hrLoad(team){const r=await eng("engine_house_rules",{team});HRS.team=team;HRS.data=r;HRS.dirty=false;HRS.err=null;return r}
+async function hrPromptText(team,where){if(!team)return "";if(HRS.team!==team||!HRS.data)await hrLoad(team);const h=HRS.data;if(!h||!h.sections)return "";
+  const order=h.sections_order||[];const lines=order.map(([k,l])=>h.sections[k]?`${l}: ${h.sections[k]}`:"").filter(Boolean);const rules=(h.rules||[]).filter(r=>r.on&&r.on[where]).map(r=>`- ${r.text}`);
+  return `House rules for this team (follow them):\n${lines.join("\n")}${rules.length?`\nRules:\n${rules.join("\n")}`:""}`}
+function hrRender(){const el=$("#stRules");if(!el)return;
+  if(!S.team){el.innerHTML='<p class="src">Join a team to see its house rules.</p>';return}
+  if(HRS.team!==S.team||!HRS.data){el.innerHTML='<p class="src">Loading the house rules…</p>';if(!HRS.busy){HRS.busy=true;hrLoad(S.team).catch(e=>{HRS.err=whyFailed(e)}).finally(()=>{HRS.busy=false;if(HRS.err)el.innerHTML=`<p class="src">Couldn't load the house rules (${esc(HRS.err)}).</p>`;else hrRender()})}return}
+  const h=HRS.data,df=h.default_sections||{},tm=(S.teams||[]).find(t=>t.id===S.team);
+  const when=h.updated_at?new Date(h.updated_at).toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"}):"";
+  el.innerHTML=`<div class="ibd hr"><div class="hrtop"><span class="src">${h.is_default?"The built-in default for "+esc(tm?tm.name:"this team")+". Change anything: it saves for the whole team.":`Edited${h.updated_by?" by "+esc(h.updated_by):""}${when?" on "+esc(when):""}.`}</span><span class="sp"></span><button class="btn small hrghost" data-hr-reset ${h.is_default?"disabled":""}>Reset to the default</button><button class="btn small" data-hr-save ${HRS.dirty?"":"disabled"}>${HRS.dirty?"Save changes":"Saved"}</button></div>
+  <div class="hrsecs">${(h.sections_order||[]).map(([k,l])=>{const same=(h.sections[k]||"")===(df[k]||"");return `<label class="hrsec"><span class="hrh"><b>${esc(l)}</b><small class="${same?"":"chg"}">${same?"Built-in default":"Changed"}</small>${same?"":`<button class="lnk" data-hr-def="${k}" title="Put the built-in text back">Use default</button>`}</span><textarea data-hr-sec="${k}" rows="3">${esc(h.sections[k]||"")}</textarea></label>`}).join("")}</div>
+  <div class="hrrules"><div class="hrrh"><b>Rules</b><span class="src">Short rules Claude follows on top of the sections. Switch each on where it applies.</span></div>
+  <div class="awrap"><table class="atbl hrtbl"><thead><tr><th>Rule</th><th>Added by</th><th title="Compose, rewrites and redrafts">Compose</th><th title="Suggested Inbox replies">Inbox</th><th title="The morning run uses these once Chris turns it on">Morning run</th><th><span class="vh">Remove</span></th></tr></thead><tbody>
+  ${(h.rules||[]).map(r=>`<tr><td>${esc(r.text)}</td><td class="src">${r.by==="default"?"Built in":esc(r.by||"")}</td>${["compose","inbox","morning"].map(w=>`<td><label class="hrsw"><input type="checkbox" data-hr-on="${esc(r.id)}" data-w="${w}" ${r.on&&r.on[w]?"checked":""}><span class="vh">${w}</span></label></td>`).join("")}<td><button class="lnk" data-hr-del="${esc(r.id)}" aria-label="Remove this rule">✕</button></td></tr>`).join("")||'<tr><td colspan="6" class="src">No rules yet.</td></tr>'}
+  </tbody></table></div>
+  <div class="hradd"><input type="text" id="hrNew" maxlength="300" placeholder="Add a rule, e.g. Say 'MPs', never 'politicians'"><button class="btn small" data-hr-add>Add rule</button></div>
+  <p class="src" style="margin:6px 0 0">Claude uses these in Compose (new posts, rewrites, redrafts) and in suggested Inbox replies, for everyone in the team. The morning run will read them too once that is switched on.</p></div></div>`}
+function hrMark(){HRS.dirty=true;const b=document.querySelector("[data-hr-save]");if(b){b.disabled=false;b.textContent="Save changes"}}
+document.addEventListener("input",ev=>{const t=ev.target.closest("[data-hr-sec]");if(!t||!HRS.data)return;HRS.data.sections[t.dataset.hrSec]=t.value.slice(0,2000);hrMark()});
+document.addEventListener("change",ev=>{const t=ev.target.closest("[data-hr-on]");if(!t||!HRS.data)return;const r=(HRS.data.rules||[]).find(x=>x.id===t.dataset.hrOn);if(r){r.on={...(r.on||{}),[t.dataset.w]:t.checked};hrMark()}});
+document.addEventListener("click",async ev=>{if(!HRS.data)return;const h=HRS.data;
+  const d=ev.target.closest("[data-hr-def]");if(d){h.sections[d.dataset.hrDef]=(h.default_sections||{})[d.dataset.hrDef]||"";hrMark();hrRender();return}
+  const x=ev.target.closest("[data-hr-del]");if(x){h.rules=(h.rules||[]).filter(r=>r.id!==x.dataset.hrDel);hrMark();hrRender();return}
+  if(ev.target.closest("[data-hr-add]")){const i=$("#hrNew");const v=String(i?.value||"").trim();if(!v){toast("Write the rule first");return}
+    h.rules=[...(h.rules||[]),{id:"r"+Date.now().toString(36),text:v.slice(0,300),by:S.meName||S.me||"",at:new Date().toISOString(),on:{compose:true,inbox:true,morning:false}}];hrMark();hrRender();$("#hrNew")?.focus();return}
+  if(ev.target.closest("[data-hr-reset]")){if(!confirm("Put this team's house rules back to the built-in default? Rules teammates added will go."))return;
+    try{await S.db.doc("houseRules/hr_"+S.team).set({team:S.team,updated_by:S.meName||S.me||"",updated_at:new Date().toISOString()});await hrLoad(S.team);hrRender();toast("House rules reset to the default")}catch(e){failToast(e,"Couldn't reset the house rules")}return}
+  if(ev.target.closest("[data-hr-save]")){const b=ev.target.closest("[data-hr-save]");b.disabled=true;b.textContent="Saving…";
+    try{await S.db.doc("houseRules/hr_"+S.team).set({team:S.team,sections:h.sections,rules:h.rules,updated_by:S.meName||S.me||"",updated_at:new Date().toISOString()});await hrLoad(S.team);hrRender();toast("House rules saved for the team")}catch(e){b.disabled=false;b.textContent="Save changes";failToast(e,"Couldn't save the house rules")}}});
 function renderTeams(){
   const ts=S.teams||[],t=ts.find(x=>x.id===S.team);
   $("#teamLine").textContent=t?`${t.flag||""} ${t.name}`.trim():"CitizenGO";
@@ -3601,7 +3684,7 @@ function renderCal(){
   const label=CAL.view==="week"?`${s.toLocaleDateString("en-GB",{day:"numeric",month:"short"})} – ${new Date(e-864e5).toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"})}`:new Date(CAL.anchor).toLocaleDateString("en-GB",{month:"long",year:"numeric"});
   const ctry=CAL.country||"";const foreign=ctry&&ctry!=="all"&&ctry!==S.team;
   const camps=[...new Set(inRange.flatMap(d=>(byDay[dayKey(d)]||[]).filter(i=>i.mine).map(i=>campOf(S.drafts.find(x=>x.id===i.id))).filter(Boolean)))];
-  const campRow=camps.length?`<div class="camprow">${camps.map(c=>{const n=inRange.reduce((a,d)=>a+(byDay[dayKey(d)]||[]).filter(i=>i.mine&&campOf(S.drafts.find(x=>x.id===i.id))===c).length,0);return `<span class="camp" style="--cc:${campColor(c)}">${esc(c)} · ${n} post${n===1?"":"s"}</span>`}).join("")}</div>`:"";
+  const campRow=camps.length?`<div class="camprow">${camps.map(c=>{const n=inRange.reduce((a,d)=>a+(byDay[dayKey(d)]||[]).filter(i=>i.mine&&campOf(S.drafts.find(x=>x.id===i.id))===c).length,0);return `<span class="camp" style="--cc:${campColor(c)}" title="${esc(c)}">${esc(short3(c))} · ${n} post${n===1?"":"s"}</span>`}).join("")}</div>`:"";
   const head=calHeader(label,`${count} post${count===1?"":"s"} to go out · ${quietN} quiet day${quietN===1?"":"s"} ahead`)+(foreign?`<div class="callock">🔒 ${esc(calTeamName(ctry))}'s calendar is read-only for you. Use “→ copy as an idea” on a post to add it to ${esc(calTeamName(S.team))}'s calendar. <button class="btn small" data-cal-country-back>Back to my team</button></div>`:"");
   const grid=CAL.view==="week"?calWeek(days,byDay):CAL.view==="list"?calList(inRange,byDay):calMonth(days,month,byDay);
   el.innerHTML=`<div>${head}${campRow}${grid}<div class="kdlegend">${Object.entries(KD_CATS).map(([k,l])=>`<span class="kc-${k}">${l}</span>`).join("")}</div>${calPeekHtml()}</div>${calSide(CAL.view==="week"?days:inRange,items)}`;
@@ -3833,7 +3916,7 @@ function ibTags(i){if(i.from_us||i.kind==="mention")return[];const t=String(i.te
   if(/\?\s*$|^(how|where|what|when|why|can|could|is|are|do|does|will)\b/i.test(t.trim()))out.push("Question");
   const regular=IB.items.filter(x=>x.author_id&&x.author_id===i.author_id).length>=3;
   if(regular||/\b(pray(ing|ed)?|amen|god bless|thank(s| you)|signed|sharing|well done|bless)\b|🙏|❤️/i.test(t))out.push("Supporter");
-  return out.concat((i.labels||[]).filter(l=>!out.map(x=>x.toLowerCase()).includes(String(l).toLowerCase())))}
+  return out.concat((i.labels||[]).map(short3).filter(l=>l&&!out.map(x=>x.toLowerCase()).includes(String(l).toLowerCase())))}
 /* Tone from the engine (lib/sentiment.js, word lists, no paid AI): the tone of the words, not whether they agree with us. */
 const IB_TONE={positive:["Positive","q"],negative:["Negative","hid"],mixed:["Mixed",""]};
 function ibToneChip(i){const t=IB_TONE[i.tone];if(!t||(i.tone==="negative"&&ibIntent(i).has("hostile")))return"";return `<span class="ibtag${t[1]?" "+t[1]:""}" title="${i.tone_fixed?"Set by "+esc(i.tone_set_by||"a teammate"):"Tone of the words, not whether they agree with us"}">${t[0]}${i.tone_fixed?" ✎":""}</span>`}
@@ -4149,7 +4232,7 @@ function ibPosts(){const ps=IB.posts||[];
   return bar+`<div class="ibx"><div class="ibl">${list}</div><div>${right}</div></div>`}
 function ibPerson(i){const p=IB.person;if(!p||p.author_id!==i.author_id||i.from_us)return"";const c=p.counts||{};
   const recent=(p.recent||[]).filter(r=>r.id!==i.id).slice(0,3);
-  return `<div class="ctx" style="border-left-color:var(--accent)"><b>${esc(p.author_name||"This person")}</b>, last 90 days: ${c.comments||0} comment${c.comments===1?"":"s"}${c.messages?`, ${c.messages} message${c.messages===1?"":"s"}`:""}${c.on_ads?`, ${c.on_ads} on ads`:""}${c.hidden?`, <span style="color:var(--bad)">${c.hidden} hidden by us</span>`:""}${(p.labels||[]).length?` · ${(p.labels||[]).map(l=>`<span class="ibtag">${esc(l)}</span>`).join("")}`:""}${recent.length?`<br>${recent.map(r=>`“${esc((r.text||"").slice(0,70))}” · ${esc(ibWhen(r.created_at))}`).join("<br>")}`:""}</div>`}
+  return `<div class="ctx" style="border-left-color:var(--accent)"><b>${esc(p.author_name||"This person")}</b>, last 90 days: ${c.comments||0} comment${c.comments===1?"":"s"}${c.messages?`, ${c.messages} message${c.messages===1?"":"s"}`:""}${c.on_ads?`, ${c.on_ads} on ads`:""}${c.hidden?`, <span style="color:var(--bad)">${c.hidden} hidden by us</span>`:""}${(p.labels||[]).length?` · ${(p.labels||[]).map(l=>`<span class="ibtag" title="${esc(l)}">${esc(short3(l))}</span>`).join("")}`:""}${recent.length?`<br>${recent.map(r=>`“${esc((r.text||"").slice(0,70))}” · ${esc(ibWhen(r.created_at))}`).join("<br>")}`:""}</div>`}
 function ibRules(){const R=IB.rules;if(!R)return"";const rules=R.rules||[],edit=R.can_edit;
   const has=k=>rules.find(r=>r.kind===k);
   const label=r=>r.kind==="word"?`Word: “${esc(r.value)}”`:r.kind==="phrase"?`Phrase: “${esc(r.value)}”`:r.kind==="links"?"Any link that isn't citizengo.org or cgo.ac":`Scam phrases (${(R.scam_phrases||[]).length} built in)`;
@@ -4214,7 +4297,7 @@ async function auRewrite(){const ta=$("#auDm");if(!ta||!S.sample)return;const t=
 async function ibAutoChange(args){try{const r=await eng("engine_automation",{team:S.team,...args});if(!r||r.ok===false){toast((r&&r.error)||"That didn't work.");return}IB.autos=r;if(["add","update"].includes(args.action))IB.auEdit=null;toast({add:"Automation added.",update:"Saved.",pause:"Paused.",resume:"Back on.",remove:"Removed."}[args.action]);renderInbox()}catch(e){failToast(e,"Couldn't change the automation")}}
 async function ibRuleChange(args){try{const r=await eng("engine_inbox_rule",{team:S.team,...args});if(!r||!r.ok){toast((r&&r.error)||"That didn't work.");return}IB.rules={...IB.rules,rules:r.rules};toast(args.action==="add"?"Added to the auto-hide list.":"Removed.");renderInbox()}catch(e){failToast(e,"Couldn't change the list")}}
 function ibFlaggedList(){const l=IB.flagged;if(!l)return '<p class="src">Loading…</p>';
-  return l.length?`<div class="ibl">${l.map(i=>`<div class="ibrow"><button class="ibi" data-ib-flag="${esc(i.id)}"><span class="av">${esc((i.author_name||"?").slice(0,1).toUpperCase())}</span><span><b>${esc(i.author_name||"Someone")}</b>${i.hidden?'<span class="ibtag hid">hidden</span>':""}${(i.labels||[]).map(x=>`<span class="ibtag">${esc(x)}</span>`).join("")}<span class="w">${esc(ibWhere(i))} · ${esc(ibWhen(i.created_at))}</span><span class="tx">${esc(i.text||"")}</span></span></button></div>`).join("")}</div><p class="src">Hidden comments stay visible to the writer and their friends. Threats are hidden, never deleted, so the copy here stays for safeguarding.</p>`:'<p class="src">Nothing flagged.</p>'}
+  return l.length?`<div class="ibl">${l.map(i=>`<div class="ibrow"><button class="ibi" data-ib-flag="${esc(i.id)}"><span class="av">${esc((i.author_name||"?").slice(0,1).toUpperCase())}</span><span><b>${esc(i.author_name||"Someone")}</b>${i.hidden?'<span class="ibtag hid">hidden</span>':""}${(i.labels||[]).map(x=>`<span class="ibtag" title="${esc(x)}">${esc(short3(x))}</span>`).join("")}<span class="w">${esc(ibWhere(i))} · ${esc(ibWhen(i.created_at))}</span><span class="tx">${esc(i.text||"")}</span></span></button></div>`).join("")}</div><p class="src">Hidden comments stay visible to the writer and their friends. Threats are hidden, never deleted, so the copy here stays for safeguarding.</p>`:'<p class="src">Nothing flagged.</p>'}
 function ibBanned(){const h=(IB.history||[]).filter(a=>(a.action==="ban"||a.action==="unban")&&a.status!=="cancelled").slice().reverse();const by={};
   for(const a of h){const k=a.item_id;by[k]={a,banned:a.action==="ban"}}
   const list=Object.values(by).filter(x=>x.banned);
@@ -5724,7 +5807,6 @@ document.addEventListener("keydown",ev=>{if(ev.key==="Escape"&&S.view==="inbox"&
    team's own calendar with every post. 13A-E calendar export: CSV, Print/PDF view, a window to pick
    dates and columns, the ticked posts, and Copy as table. Downloads only, nothing is emailed.
    16A-E the Instagram grid as a picture: download, options, copy, phone frame, sign-off sheet. */
-const short3=t=>{const w=String(t||"").replace(/\s+/g," ").trim().split(" ").filter(Boolean);return w.slice(0,3).join(" ")};
 function draftIsMine(d){const me=String(S.whoId||"").toLowerCase();return !!(d&&d.own&&[d.own.by,d.own.who,d.own.name].some(x=>x&&String(x).toLowerCase()===me))}
 function postKind(d){if(!d)return"";if(d.card&&d.card.template==="story")return"Story";if(isVideoPost(d))return"Reel or video";if(d.card&&d.card.template==="carousel")return"Carousel";if(d.card||d.photo||(d.own&&d.own.media&&d.own.media.length))return"Picture";return"Link or text"}
 function calFilterMenus(){const f=CAL.filter||{};const t=(S.teams||[]).find(x=>x.id===S.team)||{};const accs=(t.accounts||[]);
