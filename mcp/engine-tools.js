@@ -709,18 +709,20 @@ async function engineListening(store, args, ctx0) {
   if (!ctx.maintainer && !Object.keys(ctx.myTeams).length) throw err('Join a Content Engine team to see Listening.', 'ENGINE_NOT_MEMBER');
   const team = args.team ? String(args.team) : '';
   if (team && !E.canEditTeam(ctx, team)) throw err('You are not in that team.', 'ENGINE_NOT_MEMBER');
-  if (args.tab === 'overview') return cached(store, 'listening:overview:v2', args, () => topicsOverview(store));
+  // Topics read the team's own language (México: Spanish); the UK keeps its cache key.
+  const lang = E.teamLang(team), edition = E.newsEdition(team);
+  if (args.tab === 'overview') return cached(store, `listening:overview:v2${lang === 'en' ? '' : `:${lang}`}`, args, () => topicsOverview(store, Date.now(), lang));
   if (args.tab === 'beyond') {
-    return cached(store, 'listening:beyond:v2', args, async () => {
+    return cached(store, `listening:beyond:v2${edition === 'uk' ? '' : `:${edition}`}`, args, async () => {
       const now = Date.now(), since = new Date(now - 14 * 864e5).toISOString();
-      const [media, news, posts, accounts] = await Promise.all([store.listenHashtagMedia ? store.listenHashtagMedia({ since }).catch(() => []) : [], store.listenNews ? store.listenNews({ since: new Date(now - 3 * 864e5).toISOString() }).catch(() => []) : [], listeningCorpus(store, now), store.peerAccounts ? store.peerAccounts().catch(() => []) : []]);
+      const [media, news, posts, accounts] = await Promise.all([store.listenHashtagMedia ? store.listenHashtagMedia({ since }).catch(() => []) : [], store.listenNews ? store.listenNews({ since: new Date(now - 3 * 864e5).toISOString(), edition }).catch(() => []) : [], listeningCorpus(store, now), store.peerAccounts ? store.peerAccounts().catch(() => []) : []]);
       const tags = require('../config/listen-hashtags.json').map((t) => ({ tag: String(t.tag).toLowerCase(), topic: t.topic }));
-      // A hashtag post counts only when it's in English and its own words fit
+      // A hashtag post counts only when it's in the team's language and its own words fit
       // the hashtag's topic: hashtags travel (cars on #rse, pets on #euthanasia).
       const T = require('../lib/listen-topics');
       const tagTopic = Object.fromEntries(tags.map((t) => [t.tag, t.topic]));
-      const fit = (media || []).filter((m) => tagTopic[m.hashtag] && langOf(m.caption) === 'en' && T.topicsOf(m.caption).includes(tagTopic[m.hashtag]));
-      return json({ tab: 'beyond', ...require('../lib/listen-topics').beyond({ tags, media: fit, news, posts, known: (accounts || []).map((a) => a.username) }, { now }), hashtag_rows: fit.length, news_rows: news.length });
+      const fit = (media || []).filter((m) => tagTopic[m.hashtag] && langOf(m.caption) === lang && T.topicsOf(m.caption).includes(tagTopic[m.hashtag]));
+      return json({ tab: 'beyond', edition, ...require('../lib/listen-topics').beyond({ tags, media: fit, news, posts, known: (accounts || []).map((a) => a.username) }, { now }), hashtag_rows: fit.length, news_rows: news.length });
     });
   }
   if (args.tab === 'opponents_mix') {
@@ -959,10 +961,11 @@ async function engineInboxTeam(store, args, { who }) {
   const ids = new Set(items.map((i) => i.id));
   const all = items.concat(open.filter((i) => !ids.has(i.id)));
   const recent = actions.filter((a) => a.created_at >= since);
-  const stats = I.teamStats({ items: all, actions: recent, people: members.map((m) => m.who), hostile: (i) => I.isHostile(i.text, rules) });
+  const zone = E.teamZone(teamById(ctx, team));
+  const stats = I.teamStats({ items: all, actions: recent, people: members.map((m) => m.who), tz: zone.tz, hostile: (i) => I.isHostile(i.text, rules) });
   stats.hours.forEach((h) => { h.arrived = 0; });
-  for (const i of items) if (!i.from_us) stats.hours[Number(new Date(i.created_at).toLocaleString('en-GB', { hour: '2-digit', hour12: false, timeZone: 'Europe/London' })) % 24].arrived++;
-  return json({ team, days, ...stats, partial: items.length >= 1000 || actions.length >= 1000 });
+  for (const i of items) if (!i.from_us) stats.hours[hourIn(i.created_at, zone.tz).hour].arrived++;
+  return json({ team, days, zone, ...stats, partial: items.length >= 1000 || actions.length >= 1000 });
 }
 
 // Analytics [slice 3, chosen 1 Nov]: the desk's dashboard as one structured
@@ -1018,14 +1021,14 @@ async function roundTwo(store, { pageIds, team, from, to, cfrom, cto }) {
       store.engineInboxActions({ team_ids: [team.id], statuses: ['done'], limit: 1000 }).catch(() => []),
     ]);
     const inWin = (t) => t >= since && t <= until;
-    const ukHour = (iso) => Number(new Date(iso).toLocaleString('en-GB', { hour: '2-digit', hour12: false, timeZone: 'Europe/London' })) % 24;
+    const tz = E.teamZone(team).tz;
     talk = AX.conversations(items.filter((i) => inWin(i.created_at)), actions.filter((a) => inWin(a.created_at)), {
-      dates: report.dates, hourOf: ukHour,
+      dates: report.dates, hourOf: (iso) => hourIn(iso, tz).hour,
       toneOf: (text) => { const t = SENT.toneOf(text, { lang: langOf(text) }); return t ? t.tone : null; },
     });
     talk.partial = items.length >= 1000 || actions.length >= 1000;
   }
-  return { report, ranked, talk };
+  return { report, ranked, talk, zone: E.teamZone(team) };
 }
 async function rangeCompute(store, args, { who }) {
   const ctx = await context(store, who);
@@ -1121,13 +1124,14 @@ async function analyticsCompute(store, args, { who }) {
   const teamPosts = team && store.enginePosts ? await store.enginePosts({ team_ids: [team.id], statuses: ['posted', 'scheduled'], limit: 500 }).catch(() => []) : [];
   const signatures = team && store.engineSignatures ? await signaturesFor(store, team.id, days, now, { posts: teamPosts }).catch(() => null) : null;
   const sigPrev = team && store.engineSignatures ? await signaturesFor(store, team.id, days, now - days * 864e5, { posts: teamPosts }).catch(() => null) : null;
-  const facebook = facebookDetail(rows, med);
+  const zone = E.teamZone(team);
+  const facebook = facebookDetail(rows, med, zone.tz);
 
   // Board C: what works, over 90 days whatever the window (enough posts to compare).
   const rows90 = days === 90 ? rows : (((await run(TOOLS, 'top_posts', { days: 90, sort: 'views', compact: true, limit: 1000 })).data || {}).rows || []).filter((r) => pageIds.has(r.page_id));
   const med90 = {};
   for (const id of pageIds) med90[id] = median(rows90.filter((r) => r.page_id === id).map((r) => r.views_total));
-  const works = require('../lib/analytics-extra').works(oncePerLink(rows90), { med: med90, ukParts, topicsOf: require('../lib/listen-topics').topicsOf, langOf, fbFormat });
+  const works = require('../lib/analytics-extra').works(oncePerLink(rows90), { med: med90, ukParts: (iso) => hourIn(iso, zone.tz), topicsOf: require('../lib/listen-topics').topicsOf, langOf, fbFormat });
 
   // Boards A and B: the window before this one, daily lines, what changed, campaigns.
   const AX = require('../lib/analytics-extra');
@@ -1144,7 +1148,7 @@ async function analyticsCompute(store, args, { who }) {
   if (sigPrev) prevT.signatures = sigPrev.total;
   if (signatures) curT.signatures = signatures.total;
   const daily = AX.dailySeries(store.pageGrowth ? await store.pageGrowth({ since: ymd(now - (days + 1) * 864e5) }).catch(() => []) : [], pageIds, { now, days });
-  const changed = AX.whatChanged({ kpis: curT, prev: prevT, detail: facebook, top, sig: signatures, sigPrev, days });
+  const changed = AX.whatChanged({ kpis: curT, prev: prevT, detail: facebook, top, sig: signatures, sigPrev, days, zone: zone.label });
   const campaignList = signatures ? AX.campaigns(signatures.linked || [], { fbRows: rows, igRows }) : null;
   // Signatures on the best posts, where a post was ours from the desk.
   if (signatures) { const by = {}; for (const p of signatures.linked || []) for (const u of p.urls || []) by[AX.postKey(u)] = p; for (const t of top) { const hit = by[AX.postKey(t.url)]; if (hit) t.signatures = hit.signatures; } }
@@ -1365,11 +1369,12 @@ async function listeningCompute(store, args, { who }) {
   return json({ tab, days, min_multiple: minX, posts, ads, converging, building, topics: topicsOf(posts), note: out && !out.rows ? String(out.text || '').slice(0, 300) : null });
 }
 
-// Listening › Topics: every watched Instagram post and every English CitizenGO
-// Facebook post of the last 28 days, sorted into campaign topics.
-async function topicsOverview(store, now = Date.now()) {
-  const posts = (await listeningCorpus(store, now)).filter((p) => p.lang === 'en');
-  return json({ tab: 'overview', ...require('../lib/listen-topics').overview(posts, { now, storyKeys }), read: posts.length });
+// Listening › Topics: every watched Instagram post and every CitizenGO Facebook
+// post of the last 28 days in the team's language (English; México: Spanish),
+// sorted into campaign topics.
+async function topicsOverview(store, now = Date.now(), lang = 'en') {
+  const posts = (await listeningCorpus(store, now)).filter((p) => p.lang === lang);
+  return json({ tab: 'overview', lang, ...require('../lib/listen-topics').overview(posts, { now, storyKeys }), read: posts.length });
 }
 // Listening › Watches: the team's watches matched against the same 28 days of
 // posts (every language), cached by the watches' words.
@@ -1429,7 +1434,7 @@ function topicsOf(posts) {
 }
 
 // Facebook page for a team's Analytics: the best post, formats compared and
-// the best hours to post (UK time), from the window's posts. Medians, not
+// the best hours to post (in the team's own time zone), from the window's posts. Medians, not
 // averages, so one viral post doesn't make a format look better than it is.
 const FORMAT_NAMES = { photo: 'Photo', video: 'Video', link: 'Link', album: 'Album', status: 'Text', share: 'Shared', event: 'Event' };
 function fbFormat(r) {
@@ -1438,17 +1443,14 @@ function fbFormat(r) {
   for (const [k, v] of Object.entries(FORMAT_NAMES)) if (t.includes(k)) return v;
   return t ? t[0].toUpperCase() + t.slice(1) : 'Other';
 }
-function ukHour(iso) {
-  const parts = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', hour: '2-digit', hour12: false, weekday: 'short' }).formatToParts(new Date(iso));
+// A time's hour and weekday in a team's time zone (UK by default).
+function hourIn(iso, tz = E.DEFAULT_TZ) {
+  const parts = new Intl.DateTimeFormat('en-GB', { timeZone: tz, hour: '2-digit', hour12: false, weekday: 'short' }).formatToParts(new Date(iso));
   const g = (k) => (parts.find((p) => p.type === k) || {}).value;
-  return { hour: Number(g('hour')) % 24, weekend: ['Sat', 'Sun'].includes(g('weekday')) };
+  const weekday = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].indexOf(g('weekday'));
+  return { hour: Number(g('hour')) % 24, weekday, weekend: weekday >= 5 };
 }
-function ukParts(iso) {
-  const parts = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', hour: '2-digit', hour12: false, weekday: 'short' }).formatToParts(new Date(iso));
-  const g = (k) => (parts.find((p) => p.type === k) || {}).value;
-  return { weekday: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].indexOf(g('weekday')), hour: Number(g('hour')) % 24 };
-}
-function facebookDetail(rows, med) {
+function facebookDetail(rows, med, tz) {
   const scored = rows.filter((r) => typeof r.views_total === 'number');
   if (!scored.length) return { posts: 0, formats: [], hours: [], best: null };
   const best = scored.slice().sort((a, b) => b.views_total - a.views_total)[0];
@@ -1457,7 +1459,7 @@ function facebookDetail(rows, med) {
     format, posts: list.length, median_views: Math.round(median(list.map((r) => r.views_total))),
     median_rate: median(list.map((r) => r.engagement_rate)), median_beyond_pct: median(list.map((r) => r.beyond_followers_pct)), median_shares: median(list.map((r) => r.shares_total)),
   })).sort((a, b) => b.median_views - a.median_views);
-  const slot = (r) => { const h = ukHour(r.created_time); const b = Math.floor(h.hour / 3) * 3; return `${h.weekend ? 'Weekend' : 'Weekday'} ${String(b).padStart(2, '0')}:00–${String(b + 3).padStart(2, '0')}:00`; };
+  const slot = (r) => { const h = hourIn(r.created_time, tz); const b = Math.floor(h.hour / 3) * 3; return `${h.weekend ? 'Weekend' : 'Weekday'} ${String(b).padStart(2, '0')}:00–${String(b + 3).padStart(2, '0')}:00`; };
   const hours = Object.entries(group(slot)).filter(([, list]) => list.length >= 2).map(([when, list]) => ({ when, posts: list.length, median_views: Math.round(median(list.map((r) => r.views_total))) }))
     .sort((a, b) => b.median_views - a.median_views).slice(0, 6);
   const ranked = scored.slice().sort((a, b) => b.views_total - a.views_total).slice(0, 200).map((r, i) => ({
@@ -1758,7 +1760,7 @@ const ENGINE_TOOLS = [
   { name: 'engine_parliament', description: 'Content Engine Listening › Parliament for one of your teams (UK for now): Westminster and Scottish Parliament items on our issues that the Parliamentary Monitor triaged as worth a line or worth acting on (score 2 or 3), newest first, with why it matters, issue areas, kind and date, plus coming deadlines; last 21 days by default (days up to 60).', inputSchema: obj({ team: { type: 'string' }, days: { type: 'number' }, fresh: { type: 'boolean' } }, ['team']), handler: engineParliament },
   { name: 'engine_bio', description: 'Content Engine Tools › Link in bio for one of your teams (only its members can see or change it): its public page (/links/<slug>, QR at /links/<slug>/qr.svg), filled with the petitions the team linked to in the last 30 days plus saved buttons. action get (default) lists every button in page order with its section, whether it shows (why: removed, closed, asana, quiet, ended, not_yet, won_old), clicks and signatures from the bio in 30 days, the Bluebook total and Asana hints, plus page views by source (ig, x, fb, tt, qr, wa), click rate and a daily series; action save sets slug, title, intro, auto, settings (donate_url, emails_url, whatsapp_url, grid, socials, totals, quiet) and items in order (id, title, url, petition_id, pinned, featured, hidden = removed, closed, won, won_at, section (Act now, Pray with us, Get involved, More), starts, ends, cd_date, cd_label, auto).', inputSchema: obj({ team: { type: 'string' }, action: { type: 'string', enum: ['get', 'save'] }, slug: { type: 'string' }, title: { type: 'string' }, intro: { type: 'string' }, auto: { type: 'boolean' }, settings: { type: 'object' }, items: { type: 'array', items: { type: 'object' } } }, ['team']), handler: engineBio },
   { name: 'engine_ig_grid', description: 'Content Engine Calendar › Instagram grid for one of your teams: each Instagram account with its latest 12 posts (type, caption start, link, preview image, time) from the nightly collection.', inputSchema: obj({ team: { type: 'string' } }, ['team']), handler: engineIgGrid },
-  { name: 'engine_inbox_team', description: 'Content Engine Inbox › Team for one of your teams: open conversations per person and unassigned, each person\'s replies and median first-reply time, what has waited over 2 hours, and comments arriving by hour (UK time) against reply times, over the last 7 days (days up to 30).', inputSchema: obj({ team: { type: 'string' }, days: { type: 'number' } }, ['team']), handler: engineInboxTeam },
+  { name: 'engine_inbox_team', description: 'Content Engine Inbox › Team for one of your teams: open conversations per person and unassigned, each person\'s replies and median first-reply time, what has waited over 2 hours, and comments arriving by hour (in the team\'s own time zone) against reply times, over the last 7 days (days up to 30).', inputSchema: obj({ team: { type: 'string' }, days: { type: 'number' } }, ['team']), handler: engineInboxTeam },
   { name: 'engine_inbox_history', description: 'Content Engine Inbox moderation history for one of your teams: every reply, hide, delete, like, assignment, label and done, by whom, newest first.', inputSchema: obj({ team: { type: 'string' }, limit: { type: 'number' } }, ['team']), handler: engineInboxHistory },
   { name: 'engine_analytics', description: 'Content Engine Analytics for the desk, as data: page reach, views, engagements and net follows, Instagram follower movement, top Facebook posts against their own Page\'s median, top Instagram posts and X totals, for the last 7, 30 or 90 days. scope citizengo (every CitizenGO Page, default), hazteoir (kept apart), team (with team) or countries (every team side by side).', inputSchema: obj({ scope: { type: 'string', enum: ['citizengo', 'hazteoir', 'team', 'countries'] }, team: { type: 'string' }, days: { type: 'number', enum: [7, 30, 90] }, from: { type: 'string', description: 'Custom range start, YYYY-MM-DD (up to 92 days). Returns only the report, ranked posts and conversations.' }, to: { type: 'string', description: 'Custom range end, inclusive; defaults to today.' }, compare_from: { type: 'string', description: 'First day of the window to compare with (same length). Default: the days just before.' }, compare: { type: 'string', enum: ['previous', 'none'] }, fresh: { type: 'boolean' } }), handler: engineAnalytics },
   { name: 'engine_listening', description: 'Content Engine Listening for the desk, as data: posts beating their own normal (min_multiple, default 3). tab citizengo: other CitizenGO Pages\' posts (not your team\'s, with team) by views against that Page\'s 90-day median, last 7 or 30 days. tab allies: watched ally Instagram accounts (optional country UK, US, IE, CA, AU), last 7, 10 or 30 days. tab opponents: watched opponent accounts plus their Meta Ad Library issue ads. tab beyond: hashtag posts from anyone (config/listen-hashtags.json), UK headlines per topic, and accounts our watched posts keep tagging that are not on our lists. tab opponents_mix: each opponent organisation\'s last 7 or 14 days split by topic (posts, best post, ads, spend). tab watches: watches [{id, words, not, sources}] matched against the last 14 days of those posts. tab overview: English posts from all of those in the last 14 days sorted into campaign topics (posts, change, share of voice, words, top posts, gaps) plus rising hashtags, links and names.', inputSchema: obj({ tab: { type: 'string', enum: ['citizengo', 'allies', 'opponents', 'overview', 'watches', 'opponents_mix', 'beyond'] }, watches: { type: 'array', items: { type: 'object' } }, team: { type: 'string' }, country: { type: 'string' }, days: { type: 'number' }, min_multiple: { type: 'number' }, fresh: { type: 'boolean' } }), handler: engineListening },
