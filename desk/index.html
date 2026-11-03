@@ -830,6 +830,34 @@ header.top #statusTabs{order:3;flex:1 1 100%;flex-wrap:nowrap;overflow-x:auto;ga
 .rbig{font-variant-numeric:tabular-nums}.rbig b{font-family:var(--display);font-size:28px;line-height:1.1}.rbig span{color:var(--muted);font-size:12.5px}
 .rx{font-weight:700;font-size:14px;font-variant-numeric:tabular-nums}.rx.up{color:var(--ok)}.rx.down{color:var(--warn)}
 .qf.qx{font-weight:700}.qf.qx.up{border-color:var(--ok);color:var(--ok)}.qf.qx.down{border-color:var(--warn);color:var(--warn)}
+/* New post (3 Nov): your own idea in the same composer */
+.npbtn{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;padding:9px 12px;font-weight:700;border-radius:10px}
+.npbtn .npi{font-size:17px;line-height:1}
+.folded .npbtn{width:40px;padding:8px 0}.folded .npbtn .npl{display:none}
+.qnew{display:flex;align-items:center;gap:10px;width:100%;text-align:left;border:1px dashed var(--line);border-radius:10px;background:var(--surface);color:var(--fg);font:inherit;padding:9px 12px;margin-bottom:10px;cursor:pointer}
+.qnew:hover{border-color:var(--accent);background:var(--accent-soft)}.qnew b{font-size:14px}.qnew small{display:block;color:var(--muted);font-size:12px}
+.qnew .npi{display:grid;place-items:center;width:28px;height:28px;border-radius:8px;background:var(--accent);color:var(--accent-fg);font-weight:700;font-size:18px;flex:none}
+.npbox{width:min(560px,100%);max-height:92vh;overflow:auto;gap:14px}
+.npbox .nph{display:flex;flex-direction:column;gap:2px}.npbox .nph b{font-size:18px;font-family:var(--display)}
+.npf{display:flex;flex-direction:column;gap:6px;font-size:13.5px;font-weight:600;border:0;padding:0;margin:0;min-width:0}
+.npf legend{font-weight:600;padding:0;margin-bottom:6px}
+.npf input[type=text],.npf input[type=url],.npf textarea{width:100%;font:inherit;font-weight:400;font-size:14px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg);box-sizing:border-box}
+.npf textarea{resize:vertical;min-height:84px}
+.npf .dest{font-weight:400}.npf .dest small{font-weight:400}
+.npopts{display:grid;gap:6px}.npopts .dest{border:1px solid var(--line);border-radius:10px;padding:8px 10px;align-items:flex-start;background:var(--bg);cursor:pointer}
+.npopts .dest:has(input:checked){border-color:var(--accent);background:var(--accent-soft)}
+.npopts .dest span{display:flex;flex-direction:column}.npopts .dest small{color:var(--muted);font-size:12px}
+.npacc{display:flex;flex-wrap:wrap;gap:6px}.npacc .dest{border:1px solid var(--line);border-radius:999px;padding:4px 10px 4px 6px;background:var(--bg)}
+.nperr{color:var(--bad);font-size:13px;font-weight:600}
+.npbox .row{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+.ownbox{display:flex;flex-direction:column;gap:8px;border:1px solid var(--line);border-radius:12px;padding:12px;background:var(--sunk);margin-bottom:10px}
+.ownbox textarea,.ownbox input[type=url]{width:100%;font:inherit;font-size:13.5px;padding:7px 9px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg);box-sizing:border-box}
+.ownbox .editrow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0}
+.ownbox .ownchk{display:inline-flex!important;grid-template-columns:none!important;gap:6px;align-items:center;font-size:13px;cursor:pointer;width:auto;margin:0}.ownbox .ownchk input{width:auto;margin:0;flex:none}
+.ptext.ie:empty::before{content:"Click to write it";color:var(--muted);font-style:italic}
+.post.comment .ptext.ie:empty::before{content:"Click to add a first comment (optional)"}
+.post.textonly .pimgnote{font-size:12px;color:var(--muted);padding:6px 0}
+@media (max-width:640px){.qnew{flex:none;width:auto;min-width:150px;margin:0;scroll-snap-align:start}.qnew small{display:none}.npbox{padding:16px}}
 </style>
 
 <div class="shell">
@@ -870,9 +898,10 @@ header.top #statusTabs{order:3;flex:1 1 100%;flex-wrap:nowrap;overflow-x:auto;ga
 <div class="help" id="pauseDlg" hidden role="dialog" aria-modal="true" aria-label="Pause publishing"><div class="helpbox pdlg" id="pauseBox"></div></div>
 </div>
 <div class="help" id="pvDlg" hidden role="dialog" aria-modal="true" aria-label="Preview"><div class="helpbox" id="pvBox" style="max-width:min(760px,96vw);max-height:92vh;overflow:auto"></div></div>
+<div class="help" id="npDlg" hidden role="dialog" aria-modal="true" aria-label="Compose a post"><div class="helpbox npbox" id="npBox"></div></div>
 <div class="toast" id="toast" hidden role="status"></div>
 <div class="zoom" id="zoom" hidden role="dialog" aria-modal="true" aria-label="Graphic preview"></div>
-<div class="help" id="help" hidden role="dialog" aria-label="Keyboard shortcuts"><div class="helpbox"><b>Keyboard shortcuts</b><dl><dt>← →</dt><dd>Previous or next draft</dd><dt>A</dt><dd>Schedule</dd><dt>C</dt><dd>Request changes</dd><dt>R</dt><dd>Reject</dd><dt>E</dt><dd>Edit the text</dd><dt>1–9</dt><dd>Pick a graphic option</dd><dt>Z</dt><dd>Zoom the graphic</dd><dt>Esc</dt><dd>Close</dd><dt>?</dt><dd>Show or hide this list</dd></dl><button class="btn small" data-act="help">Close</button></div></div>
+<div class="help" id="help" hidden role="dialog" aria-label="Keyboard shortcuts"><div class="helpbox"><b>Keyboard shortcuts</b><dl><dt>← →</dt><dd>Previous or next draft</dd><dt>A</dt><dd>Schedule</dd><dt>C</dt><dd>Request changes</dd><dt>R</dt><dd>Reject</dd><dt>N</dt><dd>Compose a post</dd><dt>E</dt><dd>Edit the text</dd><dt>1–9</dt><dd>Pick a graphic option</dd><dt>Z</dt><dd>Zoom the graphic</dd><dt>Esc</dt><dd>Close</dd><dt>?</dt><dd>Show or hide this list</dd></dl><button class="btn small" data-act="help">Close</button></div></div>
 <input type="file" id="gfile" accept="image/jpeg,image/png,image/webp" hidden>
 <input type="file" id="gfiles" accept="image/jpeg,image/png,image/webp" multiple hidden>
 
@@ -960,15 +989,15 @@ function renderQueue(){
   if(S.status==="evergreen"){renderEgQueue();return}
   const list=filtered();
   if(!S.drafts.length){
-    $("#queue").innerHTML=`<div class="empty">No drafts yet. The engine adds each day's batch here; Claude can load one on request.</div>`;
+    $("#queue").innerHTML=newBar()+`<div class="empty">No drafts yet. The engine adds each day's batch here, or start your own with Compose.</div>`;
     return;
   }
-  if(!list.length){$("#queue").innerHTML=trashBar()+`<div class="empty">Nothing in “${esc(STATUS.find(s=>s.key===S.status).label)}”.</div>`;return}
+  if(!list.length){$("#queue").innerHTML=newBar()+trashBar()+`<div class="empty">Nothing in “${esc(STATUS.find(s=>s.key===S.status).label)}”.</div>`;return}
   if(!list.find(d=>d.id===S.openId)) { S.openId=list[0].id; resetDraftUi(); }
   const grouped=!["posted","rejected"].includes(S.status);let lastG=null;
   const qday=d=>{const g=groupOf(d);if(["Needs a new time","No date yet"].includes(g))return g;const t=whenOf(d);const dl=t.toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"});return g==="Today"||g==="Tomorrow"?`${g} · ${dl}`:dl};
   const qtime=d=>{const t=whenOf(d);return t&&groupOf(d)!=="Needs a new time"?t.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"}):"—"};
-  $("#queue").innerHTML=trashBar()+freeSlot()+list.map(d=>{const g=grouped?qday(d):null;const head=g&&g!==lastG?`<div class="qgroup">${esc(g)}<span>${list.filter(x=>qday(x)===g).length}</span></div>`:"";lastG=g;return head+`<div class="qslot">${grouped?`<span class="qtime">${esc(qtime(d))}</span>`:""}
+  $("#queue").innerHTML=newBar()+trashBar()+freeSlot()+list.map(d=>{const g=grouped?qday(d):null;const head=g&&g!==lastG?`<div class="qgroup">${esc(g)}<span>${list.filter(x=>qday(x)===g).length}</span></div>`:"";lastG=g;return head+`<div class="qslot">${grouped?`<span class="qtime">${esc(qtime(d))}</span>`:""}
     <button class="qitem" data-id="${esc(d.id)}" data-status="${esc(d.status||"pending")}" data-tone="${qTone(d)}" aria-current="${d.id===S.openId}">
       <span class="stripe"></span>
       <canvas class="qthumb" data-q="${esc(d.id)}" width="10" height="10" aria-hidden="true"></canvas>
@@ -1053,7 +1082,7 @@ function slotChips(dests){const ds=dests||[];const leads=[["fb","FB"],["ig","IG"
 /* K3: what kind of option each graphic is */
 function optKind(o){const id=String(o.id||"");if(id.startsWith("prev-"))return["Previous","prev"];if(id.startsWith("ai-"))return["AI","ai"];if(id.startsWith("set-"))return["Set","set"];if(o.card?.template==="free")return["Fresh","fresh"];return["Default","def"]}
 /* M: phone action bar */
-function mobileBar(d,st){if(!S.db||!["pending","changes"].includes(st)||S.mode)return"";return `<div class="mbar" role="group" aria-label="Decide"><button class="btn bad" data-act="reject">Reject</button><button class="btn warn" data-act="changes">Changes</button><button class="btn primary" data-act="approve"${hasChecks(d)&&!S.factsOk?" disabled title=\"Tick the facts to check first\"":""}>Schedule</button></div>`}
+function mobileBar(d,st){if(!S.db||!["pending","changes"].includes(st)||S.mode)return"";return `<div class="mbar" role="group" aria-label="Decide">${d.own?`<button class="btn bad" data-own="discard">Discard</button><button class="btn" data-act="apNow"${ownMissing(d)?" disabled":""}>Post now</button>`:`<button class="btn bad" data-act="reject">Reject</button><button class="btn warn" data-act="changes">Changes</button>`}<button class="btn primary" data-act="approve"${hasChecks(d)&&!S.factsOk?" disabled title=\"Tick the facts to check first\"":ownMissing(d)?" disabled title=\"Write the words first\"":""}>Schedule</button></div>`}
 
 /* 5: facts to check, ticked one by one beside Schedule */
 function factCheck(d){const list=checkFacts(d);return `<div class="fcheck"><div class="fhead"><span class="eyebrow">Check before approving</span><span class="src" id="fcount">${S.factTicks.size} of ${list.length} ticked</span></div>${list.map(({f,i})=>`<label class="fitem"><input type="checkbox" data-fact="${i}"${S.factTicks.has(i)?" checked":""}><span>${esc(f.claim)}<small>${f.url?`<a href="${esc(f.url)}" target="_blank" rel="noopener">${esc(f.source||"source")}</a>`:esc(f.source||"")}</small></span></label>`).join("")}<a class="src" href="#facts">All facts and sources</a></div>`}
@@ -1069,7 +1098,7 @@ function revisedBox(d,st){if(!["pending","changes"].includes(st))return"";const 
 function tabWarn(d,p){const v=asPosts(textFor(d,p)).map(t=>withLink(t||"",d,p));let w="",why="";
   if(p==="x"){const over=v.map(xLen).filter(n=>n>280);if(over.length){w=`${Math.max(...over)}/280`;why="An X post is over 280 characters"}}
   else if(p==="instagram"){const t=v[0]||"";const tags=(t.match(/#\w+/g)||[]).length;if(tags>5){w=`#${tags}`;why=`${tags} hashtags; 5 at most`}else if([...t].length>2200){w=`${[...t].length}`;why="Over Instagram's 2,200 characters"}}
-  else{const t=v[0]||"";const n=[...t].length;if(/https?:\/\//.test(textFor(d,"facebook")||"")){w="link";why="The link belongs in the first comment (F2)"}else if(t&&(n<120||n>700)){w=`${n}`;why="Our best Facebook posts run 120–700 characters"}}
+  else{const t=v[0]||"";const n=[...t].length;if(!d.fbTextOnly&&/https?:\/\//.test(textFor(d,"facebook")||"")){w="link";why="The link belongs in the first comment (F2)"}else if(t&&(n<120||n>700)){w=`${n}`;why="Our best Facebook posts run 120–700 characters"}}
   return w?` <span class="tw" title="${esc(why)}">⚠ ${esc(w)}</span>`:""}
 /* 10: zoom and compare */
 function openZoom(d,optId){const z=$("#zoom");const cur=curCard(d);const o=optId?(d.cardOptions||[]).find(x=>x.id===optId):null;
@@ -1085,6 +1114,7 @@ document.addEventListener("keydown",ev=>{if(ev.altKey||ev.ctrlKey||ev.metaKey)re
   if(ev.key==="Escape"){closeZoom();const h=$("#help");if(h&&!h.hidden)h.hidden=true;return}
   const t=ev.target;if(t&&(t.isContentEditable||/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)))return;
   if(ev.key==="?"){ev.preventDefault();toggleHelp();return}
+  if(ev.key.toLowerCase()==="n"&&S.db&&(S.view||"posts")==="posts"&&$("#npDlg").hidden){ev.preventDefault();openNP();return}
   const d=S.drafts.find(x=>x.id===S.openId);if(!d||S.editing)return;
   const click=sel=>{const b=document.querySelector(".decide "+sel)||document.querySelector(sel);if(b&&!b.disabled){ev.preventDefault();b.click()}else if(b&&b.disabled)toast(sel.includes("approve")?"Tick the facts to check first":"Not available here")};
   const k=ev.key.toLowerCase();
@@ -1099,7 +1129,9 @@ document.addEventListener("toggle",e=>{if(e.target.id==="aiFold")S.aiOpen=e.targ
 
 /* U1: is this draft ready to approve? */
 function pickerWhen(){const pt=perTimes();if(pt)return pt.length?pt[0][1]:null;const dv=$("#postDay")?.value,tv=$("#postTime")?.value;if(!dv||!tv)return null;const t=new Date(`${dv}T${tv}:00`);return isNaN(t)?null:t}
-function readyItems(d){const it=[];const cf=checkFacts(d);const ticked=cf.filter(x=>S.factTicks.has(x.i)).length;
+function readyItems(d){const it=[];const cf=checkFacts(d);
+  {const ds=(d.posting||{}).destinations||defaultDests(d);const miss=["facebook","instagram"].filter(k=>ds.some(x=>platOfKey(x)===k)&&!String(asPosts(textFor(d,k)).join("")).trim());
+   it.push(["Words",miss.length?[false,`Write the ${miss.map(k=>k==="facebook"?"Facebook":"Instagram").join(" and ")} text`]:[true,"Written"]])}const ticked=cf.filter(x=>S.factTicks.has(x.i)).length;
   it.push(["Facts",!cf.length?[true,"All verified"]:[ticked>=cf.length,`${ticked} of ${cf.length} ticked`]]);
   const p=d.posting||{};const at=pickerWhen()||(p.at||p.suggestedAt?new Date(p.at||p.suggestedAt):null);
   it.push(["Time",!at?[false,"Pick a time"]:at.getTime()<Date.now()?[false,"Slot passed · pick one"]:[true,at.toLocaleString("en-GB",{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})]]);
@@ -1123,7 +1155,7 @@ function refreshReady(){setTimeout(refreshLane,0);rememberPick();const d=S.draft
   if(w&&pt&&pt.length>1)w.textContent="goes out at these times";else if(w&&t)w.textContent=t.toLocaleString("en-GB",{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"});
   const tl=$("#apTimes");if(tl)tl.innerHTML=pt&&pt.length>1?pt.map(([k,t2])=>`${esc((Object.fromEntries(teamDests()))[k]||k)} ${esc(t2.toLocaleString("en-GB",{weekday:"short",hour:"2-digit",minute:"2-digit"}))}`).join(" · "):""}
 function approveSplit(d,checks){const t=(()=>{const pk=pickFor();if(pk){const pt=pk.times&&Object.values(pk.times).sort()[0];const x=pt?new Date(pt):pk.day&&pk.time?new Date(`${pk.day}T${pk.time}:00`):null;if(x&&!isNaN(x))return x}const p=d.posting||{};const v=p.at||p.suggestedAt;const x=v?new Date(v):null;return x&&x.getTime()>Date.now()?x:bestSlot(p.destinations||defaultDests(d))})();
-  const dis=checks&&!S.factsOk?" disabled":"";const dests=(d.posting||{}).destinations||defaultDests(d);
+  const dis=(checks&&!S.factsOk)||ownMissing(d)?" disabled":"";const dests=(d.posting||{}).destinations||defaultDests(d);
   const slots=[["fb","Facebook"],["ig","Instagram"],["x","X"]].filter(([k])=>dests.some(x=>x.endsWith(k))).map(([k,l])=>[bestFor(k),l]).filter(x=>x[0]).sort((a,b)=>a[0]-b[0]);
   return `<div class="aprow"><div class="apsplit"><button class="btn primary apmain" data-act="approve"${dis}>Schedule · <span id="apWhen">${esc(t.toLocaleString("en-GB",{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}))}</span></button><button class="btn primary apmore" data-act="apMenu" aria-label="Schedule at another time" aria-expanded="${!!S.apMenu}"${dis}>▾</button></div><button class="btn apnow" data-act="apNow" title="Facebook and Instagram go out within 5 minutes"${dis}>Post now</button></div>
   <div class="src" id="apTimes" style="margin-top:4px"></div>${S.apMenu?`<div class="apmenu" role="menu">${slots.map(([t2,l])=>`<button class="apitem" role="menuitem" data-act="apSlot" data-at="${t2.toISOString()}"><span>${esc(t2.toLocaleString("en-GB",{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}))}</span><small>★ best for ${l}</small></button>`).join("")}<button class="apitem" role="menuitem" data-act="apQueue"><span>Add to queue</span><small>The next free best slot</small></button><button class="apitem" role="menuitem" data-act="apPick"><span>Choose a time…</span></button><button class="apitem" role="menuitem" data-act="approve" data-hold="1"><span>Approve and hold</span><small>Ready, but not scheduled yet</small></button></div>`:""}`}
@@ -1183,7 +1215,7 @@ function stepInfo(d){const st=d.status||"pending";const live=["pending","changes
   const cf=checkFacts(d).length,tk=Math.min(S.factTicks.size,cf),lint=live?lintDraft(d).length:0;
   const ex=d.extras||{},set=d.set||{};const nfx=(d.story||[]).length+(set.reel?1:0)+(set.xThread?1:0)+(ex.polls?1:0)+(ex.replies?1:0)+(ex.xLong?1:0);
   return [
-    {label:"Words",tone:warns.length?"warn":"ok",note:warns.length?warns.map(p=>p.label).join(", ")+": length or hashtags":"Lengths fit"},
+    {label:"Words",tone:warns.length||ownMissing(d)?"warn":"ok",note:ownMissing(d)?"Not written yet":warns.length?warns.map(p=>p.label).join(", ")+": length or hashtags":"Lengths fit"},
     {label:"Graphic",tone:alt?"ok":"warn",note:(alt?"":"Alt text missing · ")+(nopt?`${nopt} option${nopt===1?"":"s"}`:"one graphic")},
     {label:"Video",tone:vNeed?"warn":vs.length&&!d.videoDismissed&&!(d.video&&d.video.status==="ready")?"info":d.video?"ok":"mut",note:vNeed?"Upload the video":d.video?"Video attached":vs.length&&!d.videoDismissed?`${vs.length} clip${vs.length===1?"":"s"} found`:"None"},
     {label:"Petition",tone:d.action?.url?"ok":ask?"warn":"mut",note:d.action?.url?(d.links?.facebook?.short?"Tracked link ready":"Linked"):ask?"No petition linked":"No ask"},
@@ -1220,8 +1252,8 @@ function renderDetail0(){
       ${S.trim&&S.trim.id===d.id?trimView(d):""}
       <div class="ptabs" role="tablist" aria-label="Customise for each network">${PLATFORMS.map(p=>`<button class="ptab" role="tab" aria-selected="${S.platform===p.key}" data-jump="${p.key}">${p.label}${tabWarn(d,p.key)||`<span class="pcnt">${esc(pCount(d,p.key))}</span>`}${edited[p.key]!=null||(p.key==="facebook"&&edited.facebookComment!=null)?'<span class="edited">EDITED</span>':""}</button>`).join("")}${["facebook","instagram","x"].some(k=>edited[k]!=null)&&S.db?`<button class="ptab diffbtn" data-act="showDiff" aria-pressed="${!!S.showDiff}">${S.showDiff?"Hide my changes":"Show my changes"}</button>`:""}<span class="src fhint">Pick a network · click any text in the preview to edit it</span></div>
       <div class="stepper" role="tablist" aria-label="Steps for this post">${steps.map((x,i)=>`<button role="tab" class="stp ${x.tone}" data-step="${i}" aria-selected="${i===si}"><b>${i+1} ${esc(x.label)}</b><span>${x.tone==="ok"?"✓ ":x.tone==="warn"?"! ":""}${esc(x.note)}</span></button>`).join("")}</div>
-      ${panel(0,`${revisedBox(d,st)}${captionChips()}${rewriteAllBox(d)}<p class="src" style="margin:0">Click any text in the previews to edit it (⌘↵ saves, Esc cancels), or use Edit under a network for the whole post and Redraft. The X thread splits on a line with ---.</p>`)}
-      ${panel(1,`<div class="art" id="gFold">
+      ${panel(0,`${ownWriteBox(d)}${revisedBox(d,st)}${ownEmpty(d)?"":captionChips()+rewriteAllBox(d)}<p class="src" style="margin:0">Click any text in the previews to edit it (⌘↵ saves, Esc cancels), or use Edit under a network for the whole post and Redraft. The X thread splits on a line with ---.</p>`)}
+      ${panel(1,`${ownPicBox(d)}<div class="art" id="gFold">
         <canvas id="card" width="1080" height="1080" role="img" aria-label="Post image preview"></canvas>
         <div class="artbar">
           ${slides>1?`<span class="pager"><button class="btn small" data-act="prev" aria-label="Previous slide">‹</button> ${S.slide+1} / ${slides} <button class="btn small" data-act="next" aria-label="Next slide">›</button></span>`:`<span>${cardSize(d)[2]}</span>`}
@@ -1231,7 +1263,7 @@ function renderDetail0(){
         ${slides>1&&d.card.slides[S.slide]?.photoFrom?`<div class="src">Photo for this slide: <a href="${esc(d.card.slides[S.slide].photoFrom)}" target="_blank" rel="noopener">from our post</a></div>`:""}
       </div>`)}
       ${panel(2,videoBox(d)||`<p class="src" style="margin:0">No video for this post, and no clip was found for it.</p>`)}
-      ${panel(3,actionBox(d)||`<p class="src" style="margin:0">This post doesn't ask people to sign anything.</p>`)}
+      ${panel(3,ownLinkBox(d)+actionBox(d)||`<p class="src" style="margin:0">This post doesn't ask people to sign anything.</p>`)}
       ${panel(4,`${checks&&live?factCheck(d):""}<h3 id="facts">Facts and sources</h3>${(d.facts||[]).map(f=>`<div class="fact"><span class="pill ${f.status}">${f.status==="check"?"Check":"Verified"}</span><span>${esc(f.claim)}<small>${f.url?`<a href="${esc(f.url)}" target="_blank" rel="noopener">${esc(f.source)}</a>`:esc(f.source)}</small></span></div>`).join("")||'<p class="src" style="margin:0">No facts listed.</p>'}${live?lintBox(d):""}`)}
       ${panel(5,`${launchBox(d)}${extrasBox(d)}<h3>Why this post</h3><p>${esc(d.rationale||"")}</p>${rulesBox(d)}${(d.modelledOn||[]).map(m=>`<div class="model"><a href="${esc(m.url)}" target="_blank" rel="noopener">${esc(m.label)}</a><span class="m">${esc(m.metric)}</span></div>`).join("")}`)}
     </div>
@@ -1262,7 +1294,7 @@ document.addEventListener("scroll",ev=>{const fs=ev.target;if(!fs||fs.id!=="fstr
 /* Posts v2 (2 Nov): every network's post as it will look, image included, side by side in one sideways scroll. */
 function feedStrip(d){const edited=d.edited||{};
   return `<div class="fstrip" id="fstrip">${PLATFORMS.map(pf=>{const posts=asPosts(textFor(d,pf.key));const editing=S.editing===pf.key;
-    const body=editing?editBox(d):posts.map((t,i)=>postBox(t,i,posts.length,pf,d)+(i===0?`<canvas class="pimg" data-plat="${pf.key}" width="10" height="10" role="img" aria-label="${esc(pf.label)} image"></canvas>`:"")).join("")+(pf.key==="facebook"?commentBox(d,true):"");
+    const body=editing?editBox(d):posts.map((t,i)=>postBox(t,i,posts.length,pf,d)+(i===0?(pf.key==="facebook"&&d.fbTextOnly?`<div class="src pimgnote">No picture: a text post${/https?:\/\/|\[ACTION LINK\]/.test(t)?" (Facebook shows the link's preview)":""}</div>`:`<canvas class="pimg" data-plat="${pf.key}" width="10" height="10" role="img" aria-label="${esc(pf.label)} image"></canvas>`):"")).join("")+(pf.key==="facebook"?commentBox(d,true):"");
     const rev=edited[pf.key]!=null||(pf.key==="facebook"&&edited.facebookComment!=null);
     return `<section class="fcol${S.platform===pf.key?" on":""}" data-fcol="${pf.key}" aria-label="${esc(pf.label)}">${body}${editing?"":`<div class="editrow"><button class="btn small" data-act="copy">Copy</button>${pf.key==="facebook"&&textFor(d,"facebookComment")?`<button class="btn small" data-act="copyComment">Copy comment</button>`:""}<button class="btn small" data-act="edit" ${S.db?"":"disabled"}>Edit${posts.length>1?" all":""}</button>${rev?`<button class="btn small" data-act="revert" ${S.db?"":"disabled"}>Revert</button>`:""}</div>`}</section>`}).join("")}</div>`}
 function checksRow(d){const st=d.status||"pending";const out=[];const chip=(ok,label,jump)=>out.push(`<button class="ck ${ok?"ok":"warn"}"${jump?` data-ckjump="${jump}"`:""}>${ok?"✓":"!"} ${esc(label)}</button>`);
@@ -1485,10 +1517,11 @@ document.addEventListener("change",async ev=>{const t=ev.target;const d=S.drafts
 function drawThumbs(d){document.querySelectorAll("canvas[data-plat]").forEach(cv=>{try{drawCard(d,cv,S.gPreview?.id===d.id&&cv.classList.contains("pimg")?S.gPreview.card:cardFor(d,cv.dataset.plat))}catch(e){}});document.querySelectorAll("canvas[data-opt]").forEach(cv=>{const o=(d.cardOptions||[]).find(x=>x.id===cv.dataset.opt);if(o)drawCard(d,cv,o.card)});document.querySelectorAll("canvas[data-story]").forEach(cv=>{const s=(d.story||[])[+cv.dataset.story];if(s)drawCard(d,cv,s)});document.querySelectorAll("canvas[data-prev]").forEach(cv=>{const h=(d.history||[]).slice(-1)[0];const c=cv.dataset.prev==="1"?h?.card:curCard(d);if(c)try{drawCard(d,cv,c)}catch(e){}})}
 function commentBox(d,force){
   if(!force&&S.platform!=="facebook")return"";
-  const c=textFor(d,"facebookComment");if(!c)return"";
-  const t=withLink(c,d,"facebook");
+  const c=textFor(d,"facebookComment");const own=!!(d.own&&S.db);if(!c&&!own)return"";
+  const t=withLink(c||"",d,"facebook");
+  if(own&&S.inline&&S.inline.p==="facebookComment"){const v=S.inlineVal??(c||"");return `<div class="post comment ieon"><div class="who"><span class="av small">CG</span><span><b>Citizen GO UK</b><span>First comment · posted straight after the post</span></span></div><textarea class="ietext" id="ieText" rows="3" aria-label="Edit the first comment">${esc(v)}</textarea><div class="iefoot"><span class="cnt" id="ieCount">${ieCountText("facebookComment",v,d)}</span><span class="row"><button class="btn small" data-act="ieCancel">Cancel <kbd>Esc</kbd></button><button class="btn small primary" data-act="ieSave">Save <kbd>⌘↵</kbd></button></span></div></div>`}
   const html=esc(t).replace(/\[ACTION LINK\]/g,"<mark>[ACTION LINK] no petition yet</mark>").replace(/(https?:\/\/[^\s<]+)/g,u=>`<a href="${u}" target="_blank" rel="noopener">${u.split("?")[0].replace(/^https?:\/\//,"")}</a>`);
-  return `<div class="post comment"><div class="who"><span class="av small">CG</span><span><b>Citizen GO UK</b><span>First comment · post it straight after publishing</span></span></div><div class="ptext">${html}</div>${S.sample&&S.db?`<div class="editrow" style="margin-top:6px"><button class="btn small" data-act="rewriteComment">✨ Rewrite</button></div>`:""}</div>`;
+  return `<div class="post comment"><div class="who"><span class="av small">CG</span><span><b>Citizen GO UK</b><span>First comment · post it straight after publishing</span></span></div><div class="ptext${own?" ie":""}"${own?' data-ie="facebookComment" data-ii="0" tabindex="0" title="Click to edit"':""}>${html}</div>${S.sample&&S.db&&c?`<div class="editrow" style="margin-top:6px"><button class="btn small" data-act="rewriteComment">✨ Rewrite</button></div>`:""}</div>`;
 }
 function editBox(d){
   const v=textFor(d,S.platform);
@@ -1541,8 +1574,8 @@ function decideBar(d,st,checks){
     <div class="reasons">${REJECT_REASONS.map(r=>`<button class="reason" data-reason="${esc(r)}" aria-pressed="${S.picked.has(r)}">${esc(r)}</button>`).join("")}</div>
     <div class="row"><input type="text" id="decNote" placeholder="${isRej?"Anything else? (optional)":"Describe the change"}"><button class="btn ${isRej?"bad":"warn"}" data-act="${isRej?"confirmReject":"confirmChanges"}">${isRej?"Reject draft":"Send back for changes"}</button><button class="btn" data-act="cancelMode">Cancel</button></div>`;
   }
-  return `${checks&&!S.factsOk?`<button class="src linkish" data-step="4">Tick the ${checkFacts(d).length} fact${checkFacts(d).length===1?"":"s"} in step 5 to schedule</button>`:""}
-  ${approveSplit(d,checks)}<div class="row"><button class="btn warn" data-act="changes">Request changes</button><button class="btn bad" data-act="reject">Reject</button></div>`;
+  return `${ownMissing(d)?`<span class="src">Write the words for each network first, then Post now or Schedule.</span>`:""}${checks&&!S.factsOk?`<button class="src linkish" data-step="4">Tick the ${checkFacts(d).length} fact${checkFacts(d).length===1?"":"s"} in step 5 to schedule</button>`:""}
+  ${approveSplit(d,checks)}${d.own?`<div class="row"><span class="src">Saved as you go: it waits here in Review until you post or schedule it.</span><button class="btn bad" data-own="discard">Discard</button></div>`:`<div class="row"><button class="btn warn" data-act="changes">Request changes</button><button class="btn bad" data-act="reject">Reject</button></div>`}`;
 }
 /* ---------- cycle through drafts ---------- */
 function navBar(d){const list=filtered();const i=list.findIndex(x=>x.id===d.id);if(list.length<2)return"";
@@ -1597,7 +1630,7 @@ async function snapshotFinal(d){
       blobs[p]=[];for(const it of mine){const cv=drawP({...it,platform:p});blobs[p].push(await new Promise(r=>cv.toBlob(r,"image/jpeg",0.9)))}}
   }finally{S.slide=keep.slide;S.platform=keep.platform}
   for(const p of plats){
-    const media=[];if(!video)for(let i=0;i<blobs[p].length&&i<10;i++){const r=await eng("engine_media",{id:d.id,platform:p,index:i,mime:"image/jpeg",data:await b64(blobs[p][i])});if(!r||!r.ok)throw Object.assign(new Error((r&&r.error)||"Couldn't store the image"),{code:"engine_refused"});media.push(r.path)}
+    const media=[];if(!video&&!(p==="facebook"&&d.fbTextOnly))for(let i=0;i<blobs[p].length&&i<10;i++){const r=await eng("engine_media",{id:d.id,platform:p,index:i,mime:"image/jpeg",data:await b64(blobs[p][i])});if(!r||!r.ok)throw Object.assign(new Error((r&&r.error)||"Couldn't store the image"),{code:"engine_refused"});media.push(r.path)}
     const text=withLink(asPosts(textFor(d,p))[0]||"",d,p);const c=p==="facebook"?textFor(d,"facebookComment"):null;
     /* a Reel's cover: the post's card, when it has one */
     let cover;if(video&&p==="instagram"&&blobs[p]&&blobs[p][0]){const r=await eng("engine_media",{id:d.id,platform:p,index:0,mime:"image/jpeg",data:await b64(blobs[p][0])});if(r&&r.ok)cover=r.path}
@@ -1612,7 +1645,7 @@ async function snapshotFinal(d){
   return fin;
 }
 // Edits to a scheduled post refresh its snapshot, two seconds after the last one.
-const SNAP_KEYS=["edited","card","cardChoice","platforms","links","posting","altText","altTexts","publishVideo"];
+const SNAP_KEYS=["edited","card","cardChoice","platforms","links","posting","altText","altTexts","publishVideo","fbTextOnly","action"];
 function queueSnapshot(id){clearTimeout(queueSnapshot.t[id]);queueSnapshot.t[id]=setTimeout(async()=>{const d=S.drafts.find(x=>x.id===id);if(!d||d.status!=="scheduled")return;
   try{const fin=await snapshotFinal(d);await S.db.doc("drafts/"+id).update({final:fin})}catch(e){failToast(e,"Couldn't refresh what will be published. Press Update where and when")}},2000)}
 queueSnapshot.t={};
@@ -2461,7 +2494,7 @@ ${note}`;
 
 /* ---------- store ---------- */
 async function logFeedback(entry){
-  if(!S.db)return;
+  if(!S.db)return;if(entry&&entry.draftId&&S.drafts.find(x=>x.id===entry.draftId)?.own)return;/* own posts aren't the engine's to learn from */
   try{await S.db.collection("feedback").add({...entry,by:S.me,at:new Date().toISOString()})}catch(e){}
 }
 /* Post now: what the toast says. UK posts get their Asana calendar task from the engine run (through Chris's own Claude). */
@@ -2481,7 +2514,7 @@ async function setStatus(d,status,extra={},msgOver=null){
 
 /* ---------- events ---------- */
 document.addEventListener("click",async ev=>{
-  const ie=ev.target.closest(".ptext.ie");if(ie&&!ev.target.closest("a")&&S.db){S.platform=ie.dataset.ie;S.inline={p:ie.dataset.ie,i:+ie.dataset.ii};S.inlineVal=null;S.editing=null;renderDetail();const ta=$("#ieText");if(ta){ta.focus();ta.style.height=ta.scrollHeight+4+"px"}return}
+  const ie=ev.target.closest(".ptext.ie");if(ie&&!ev.target.closest("a")&&S.db){if(PLATFORMS.some(x=>x.key===ie.dataset.ie))S.platform=ie.dataset.ie;S.inline={p:ie.dataset.ie,i:+ie.dataset.ii};S.inlineVal=null;S.editing=null;renderDetail();const ta=$("#ieText");if(ta){ta.focus();ta.style.height=ta.scrollHeight+4+"px"}return}
   if(!ev.target.closest(".apsplit,.apmenu")&&S.apMenu){S.apMenu=false;const m=$(".apmenu");if(m)m.remove()}
   if(ev.target.id==="card"&&!S.padj){const d0=S.drafts.find(x=>x.id===S.openId);if(d0)openZoom(d0);return}
   if(ev.target.id==="zoom"){closeZoom();return}
@@ -2748,11 +2781,11 @@ function sideActive(){const v=S.view||"posts";
   if(v==="tools")return "tools:"+TL.tab;
   if(v==="listening")return "listening:"+(["citizengo","allies","opponents"].includes(LS.tab)?"allies":LS.tab);/* topics is its own entry */
   return v}
-/* Sidebar 3 (2 Nov): Drafts first, then Plan, Talk, Listen, Analytics, Tools with icons; folds to an icon rail. Statuses live in the tabs above the board. */
+/* Sidebar 3 (2 Nov): Create (was Drafts; Compose, Review board, Evergreen, 3 Nov) first, then Plan, Talk, Listen, Analytics, Tools with icons; folds to an icon rail. Statuses live in the tabs above the board. */
 const SIDE_IC={plan:'<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/>',make:'<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13 7l4 4"/>',talk:'<path d="M4 13l3-8h10l3 8v6H4zM4 13h5l1 2h4l1-2h5"/>',listen:'<circle cx="12" cy="12" r="2"/><path d="M16.2 7.8a6 6 0 010 8.4M7.8 16.2a6 6 0 010-8.4M19.1 4.9a10 10 0 010 14.2M4.9 19.1a10 10 0 010-14.2"/>',learn:'<path d="M5 20V10M12 20V4M19 20v-7"/>',tools:'<path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.4-.6-.6-2.4z"/>',
   light:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M5 19l1.5-1.5M17.5 6.5L19 5"/>',dark:'<path d="M20 14.5A8 8 0 019.5 4a8 8 0 1010.5 10.5z"/>',auto:'<rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4"/>'};
 const sideSvg=(k,n=18)=>`<svg width="${n}" height="${n}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${SIDE_IC[k]}</svg>`;
-const SIDE_NAV=[["make","Drafts",[["posts","Review board"],["evergreen","Evergreen"]]],["plan","Plan",[["plan","Month"],["calendar:week","Week"],["calendar:list","List"],["calendar:grid","Instagram grid"]]],
+const SIDE_NAV=[["make","Create",[["compose","Compose"],["posts","Review board"],["evergreen","Evergreen"]]],["plan","Plan",[["plan","Month"],["calendar:week","Week"],["calendar:list","List"],["calendar:grid","Instagram grid"]]],
   ["talk","Talk",[["inbox:inbox","Conversations"],["inbox:mine","Assigned to me"],["inbox:posts","By post"],["inbox:autos","Automations"],["inbox:history","Moderation"],["inbox:team","Team"]]],
   ["listen","Listen",[["listening:rising","Rising now"],["listening:mentions","Mentions"],["listening:allies","Allies and opponents"],["listening:topics","Topics"],["listening:parliament","Parliament"],["listening:watches","Watches"]]],
   ["learn","Analytics",[["analytics","Overview"]]],["tools","Tools",[["tools:home","All tools"],["tools:inviter","Page Inviter"],["tools:links","Tracked links"],["tools:bio","Link in bio"],["tools:make","Make"],["tools:health","Health check"]]]];
@@ -2772,7 +2805,8 @@ function renderSide(){const el=$("#sideNav");if(!el)return;const n=sideCounts(),
   const me=$("#sideMe");if(me){const nm=S.meName||S.whoId||"";const ini=nm.split(/[\s@.]+/).filter(Boolean).slice(0,2).map(x=>x[0].toUpperCase()).join("")||"?";
     me.innerHTML=`<i>${esc(ini)}</i><span>${esc(nm||"Signed in")}<small${S.mcp&&!$("#offline").hidden?' class="off"':""}>${S.mcp&&$("#offline").hidden?"● live":"○ not connected"}</small></span>`}
   $("#viewTitle").textContent=VIEW_TITLES[S.view||"posts"]||"Posts"}
-function navGo(key){const [v,sub]=key.split(":");
+function navGo(key){if(key==="compose"){$("#side").classList.remove("open");$("#sideShade").hidden=true;if((S.view||"posts")!=="posts"||S.status==="evergreen"){if(S.status==="evergreen"){S.status="pending";S.openId=null;resetDraftUi()}setView("posts")}renderSide();openNP();return}
+  const [v,sub]=key.split(":");
   if(v==="posts"&&S.status==="evergreen"){S.status="pending";S.openId=null;resetDraftUi()}
   if(v==="inbox"){IB.open=null;IB.topics=null;if(sub==="mine"){IB.tab="inbox";IB.filter="mine"}else if(sub==="inbox"){IB.tab="inbox";if(IB.filter==="mine")IB.filter="all"}else IB.tab=sub}
   if(v==="listening"){LS.tab=sub==="digest"?"rising":sub;LS.data=null}
@@ -4333,6 +4367,142 @@ document.addEventListener("click",ev=>{
 document.addEventListener("change",ev=>{if(ev.target.matches?.("[data-cal-country]")){CAL.country=ev.target.value;renderCal()}if(ev.target.matches?.("[data-cal-ig]")){CAL.igKey=ev.target.value;renderCal()}});
 document.addEventListener("click",ev=>{const c=ev.target.closest("[data-cal-copy]");if(c){ev.stopPropagation();copyAsIdea(c);return}if(ev.target.closest("[data-cal-country-back]")){CAL.country="";renderCal()}});
 document.addEventListener("change",ev=>{if(ev.target.id!=="fTeam")return;CAL.data=null;CAL.ahead=null;CAL.country="";ACC.data=null;S.team=ev.target.value;teamPref(S.team);S.openId=null;S.drafts=[];resetDraftUi();renderTeams();PLAN.reqs=[];EG.posts=[];EG.loaded=false;IB.items=[];IB.open=null;IB.thread=[];AN.data=null;LS.data=null;TL.links=null;TL.health=null;TL.made=null;if(S.view==="listening")loadListening();else if(S.view==="analytics")loadAnalytics();else if(S.view==="inbox")loadInbox();else if(S.view==="calendar")loadCal();else if(S.view==="plan")loadPlan();else if(S.view==="evergreen")loadEvergreen();else renderAll();refreshPosts()});
+/* ---------- New post (3 Nov): your own idea, in the same composer ----------
+   Create › Compose (sidebar), the Compose tile on the queue, or N starts a blank post in Review for the open team
+   (engine_create) and opens it in the style C composer, so it gets everything an engine draft gets:
+   words per network with live counts and previews, image, carousel or video upload, house designs,
+   petition link and first comment, where and when, Post now or Schedule, and Claude (the person's own)
+   to write a first go from notes. Own posts carry own:{…} and type "Own idea"; the desk doesn't log
+   their edits as feedback, so the engine doesn't learn from them as if they were its own drafts. */
+const NP={busy:false};
+function npAccounts(){return teamDests().filter(([k])=>platOfKey(k)!=="x")}
+/* A citizengo.org petition becomes the post's tracked petition; any other link stays a plain link. */
+function npPetition(url,title){try{const u=new URL(url);if(!/(^|\.)citizengo\.org$/i.test(u.hostname))return null;const m=u.pathname.match(/\/(\d+)-[^/]*\/?$/);if(!m)return null;
+  return{url:u.origin+u.pathname.replace(/\/$/,""),title:String(title||"").slice(0,120),petitionId:m[1],scope:"LO",note:"Linked on the desk"}}catch(e){return null}}
+function newBar(){if(!S.db||!["pending","changes","hold"].includes(S.status))return"";
+  return `<button class="qnew" data-np="open"><span class="npi" aria-hidden="true">＋</span><span><b>Compose</b><small>Your own idea, not from the engine</small></span></button>`}
+function teamLabel(){const t=(S.teams||[]).find(x=>x.id===S.team);return t?`${t.flag||""} ${t.name}`.trim():""}
+function openNP(){if(!S.db){toast("Sign in to the desk to write a post");return}NP.busy=false;
+  const accs=npAccounts();const ai=!!S.sample;const dd=defaultDests({});const on=k=>accs.some(([x])=>dd.includes(x))?dd.includes(k):true;
+  $("#npBox").innerHTML=`<div class="nph"><b>Compose a post</b><span class="src">${esc(teamLabel())} · your own idea. It opens in the composer as a draft; nothing goes out until you press Post now or Schedule.</span></div>
+  <label class="npf">What's it about?<input type="text" id="npTitle" maxlength="120" placeholder="e.g. Thank you: 10,000 signatures in a week" autocomplete="off"></label>
+  <fieldset class="npf"><legend>Where</legend><div class="npacc">${accs.map(([k,l])=>`<label class="dest"><input type="checkbox" data-np-dest="${esc(k)}"${on(k)?" checked":""}> ${esc(l)}</label>`).join("")||'<span class="src">This team has no Facebook or Instagram accounts yet.</span>'}</div>
+    ${accs.some(([k])=>locked(k))?`<span class="src" style="font-weight:400">You can draft for every account; ones you can't publish to need someone with the right to schedule them.</span>`:""}</fieldset>
+  <label class="npf">Petition or link <small class="src" style="font-weight:400">optional · a citizengo.org petition gets tracked links</small><input type="url" id="npLink" placeholder="https://citizengo.org/…" autocomplete="off"></label>
+  <fieldset class="npf"><legend>Words</legend><div class="npopts">
+    <label class="dest"><input type="radio" name="npStart" value="blank" checked><span>I'll write it<small>A blank post for each network</small></span></label>
+    ${ai?`<label class="dest"><input type="radio" name="npStart" value="ai"><span>Claude writes a first go from my notes<small>With your own Claude; you edit it after</small></span></label>`:""}
+  </div></fieldset>
+  <label class="npf" id="npNotesW" hidden>Notes for Claude<textarea id="npNotes" rows="4" placeholder="What happened, who it's about, the numbers, what we want people to do"></textarea></label>
+  <fieldset class="npf"><legend>Picture</legend><div class="npopts">
+    <label class="dest"><input type="radio" name="npPic" value="design" checked><span>A house design with the headline<small>Switch the design or add a photo in the composer</small></span></label>
+    <label class="dest"><input type="radio" name="npPic" value="upload"><span>My own image, carousel or video<small>Upload it in the composer's Graphic and Video steps</small></span></label>
+    <label class="dest"><input type="radio" name="npPic" value="none"><span>No picture on Facebook<small>A text or link post; Instagram still needs a picture</small></span></label>
+  </div></fieldset>
+  <div class="nperr" id="npErr" role="alert" hidden></div>
+  <div class="row"><button class="btn" data-np="cancel">Cancel</button><button class="btn primary" data-np="create">Open in the composer</button></div>`;
+  $("#npDlg").hidden=false;setTimeout(()=>$("#npTitle")?.focus(),0)}
+function closeNP(){$("#npDlg").hidden=true}
+async function npCreate(btn){if(NP.busy)return;
+  const err=m=>{const e=$("#npErr");e.textContent=m;e.hidden=!m;return false};err("");
+  const title=($("#npTitle").value||"").trim().replace(/\s+/g," ");
+  const dests=[...document.querySelectorAll("[data-np-dest]")].filter(x=>x.checked).map(x=>x.dataset.npDest);
+  const link=($("#npLink").value||"").trim();const start=document.querySelector('[name="npStart"]:checked')?.value||"blank";
+  const pic=document.querySelector('[name="npPic"]:checked')?.value||"design";const notes=($("#npNotes")?.value||"").trim();
+  if(!title){$("#npTitle").focus();return err("Give it a working title first")}
+  if(!dests.length)return err("Pick at least one account");
+  if(link&&!/^https?:\/\/[^\s.]+\.\S+$/i.test(link))return err("That link doesn't look right: it should start with https://");
+  if(start==="ai"&&!notes){$("#npNotes").focus();return err("Add a few notes for Claude to write from")}
+  const act=link?npPetition(link,title):null;const textOnly=pic==="none"&&dests.some(k=>platOfKey(k)==="facebook");
+  const linkTxt=act?"[ACTION LINK]":link;
+  /* House rule F2: on Facebook the link goes in the first comment, unless it's a text or link post. */
+  const fb=textOnly&&link?`\n\n${linkTxt}`:"";const comment=link&&!textOnly?(act?`Sign the petition 👉 ${linkTxt}`:`Read more 👉 ${linkTxt}`):"";
+  const now=new Date().toISOString();
+  const doc={title,type:"Own idea",own:{by:S.whoId||S.me||"",name:S.meName||"",at:now,...(notes?{notes}:{}),...(act||!link?{}:{link})},
+    source:{label:`Own post · started on the desk by ${S.meName||S.whoId||"a team member"}`},rationale:"Your own idea, written on the desk.",
+    platforms:{facebook:fb,instagram:"",x:"",...(comment?{facebookComment:comment}:{})},
+    card:{template:"ig1d",kicker:"",headline:title,sub:""},posting:{destinations:dests,suggestedAt:bestSlot(dests).toISOString()},createdAt:now,...(act?{action:act}:{}),...(textOnly?{fbTextOnly:true}:{})};
+  NP.busy=true;btn.disabled=true;btn.textContent="Making it…";
+  try{const r=await eng("engine_create",{team:S.team,doc});if(!r||r.ok===false||!r.post)throw Object.assign(new Error((r&&r.error)||"The Content Engine refused that"),{code:"engine_refused"});
+    const d=putPost(r.post);closeNP();if((S.view||"posts")!=="posts")setView("posts");S.status="pending";S.issue="";S.type="";S.openId=d.id;resetDraftUi();
+    const first=dests.some(k=>platOfKey(k)==="facebook")?"facebook":"instagram";S.platform=first;
+    if(pic==="upload")S.step=1;else if(start!=="ai"){S.inline={p:first,i:0};S.inlineVal=null}
+    renderAll();renderSide();
+    if(S.inline){const ta=$("#ieText");if(ta){ta.focus();ta.setSelectionRange(0,0)}}else if(pic==="upload")document.querySelector(".stepper")?.scrollIntoView({block:"start"});
+    toast(pic==="upload"?"Draft made. Upload your image or carousel here, or a video in step 3":"Draft made. Write it here; it saves when you press Save");
+    if(start==="ai")ownWrite(d,notes)}
+  catch(e){err(whyFailed(e));NP.busy=false;btn.disabled=false;btn.textContent="Open in the composer"}}
+document.addEventListener("click",ev=>{const b=ev.target.closest("[data-np]");
+  if(!b){if(ev.target.id==="npDlg")closeNP();return}const a=b.dataset.np;
+  if(a==="open"){ev.preventDefault();if(matchMedia("(max-width:900px)").matches){$("#side")?.classList.remove("open");const sh=$("#sideShade");if(sh)sh.hidden=true}openNP();return}
+  if(a==="cancel"){closeNP();return}
+  if(a==="create"){npCreate(b)}});
+document.addEventListener("change",ev=>{if(ev.target.name==="npStart"){const w=$("#npNotesW");if(w){w.hidden=ev.target.value!=="ai";if(!w.hidden)$("#npNotes").focus()}}});
+document.addEventListener("keydown",ev=>{const dl=$("#npDlg");if(!dl||dl.hidden)return;
+  if(ev.key==="Escape"){closeNP();ev.stopPropagation();ev.preventDefault();return}
+  if(ev.key==="Enter"&&(ev.metaKey||ev.ctrlKey||ev.target.id==="npTitle"||ev.target.id==="npLink")){ev.preventDefault();const b=document.querySelector('[data-np="create"]');if(b)npCreate(b)}},true);
+
+/* The composer's extras for an own post: Claude writes from notes, picture choices, and the link. */
+function ownMissing(d){if(!d.own)return false;const ds=(d.posting||{}).destinations||[];const bare=t=>String(asPosts(t).join("")).replace(/\[ACTION LINK\]|https?:\/\/\S+/g,"").trim();return ["facebook","instagram"].some(k=>ds.some(x=>platOfKey(x)===k)&&!bare(textFor(d,k)))}
+function ownEmpty(d){return !!d.own&&!["facebook","instagram","x","facebookComment"].some(k=>{const t=asPosts(textFor(d,k)).join("").replace(/\[ACTION LINK\]|https?:\/\/\S+|Sign the petition 👉|Read more 👉/g,"").trim();return t})}
+function ownWriteBox(d){if(!d.own||!S.db)return"";const busy=S.ownBusy===d.id;
+  if(!ownEmpty(d)&&!busy)return"";
+  if(!S.sample)return `<div class="ownbox"><b>Your own post</b><span class="src">Click the Facebook and Instagram previews to write it.</span></div>`;
+  return `<div class="ownbox"><b>${busy?"Claude is writing a first go…":"Write it yourself, or let Claude write a first go"}</b>
+    <span class="src">${busy?"Your own Claude answers this; the words land in the previews when it's done. You can keep working meanwhile.":"Click the previews to write it yourself, or give Claude your notes. It uses your own Claude, and you edit it after."}</span>
+    ${busy?"":`<textarea id="ownNotes" rows="3" placeholder="What happened, who it's about, the numbers, what we want people to do">${esc(d.own.notes||"")}</textarea>
+    <div class="editrow"><button class="btn small primary" data-own="write">✨ Write it with Claude</button></div>`}</div>`}
+async function ownWrite(d,notes){if(!S.sample||S.ownBusy)return;S.ownBusy=d.id;renderDetail();
+  const dests=(d.posting||{}).destinations||[];const nets=["facebook","instagram"].filter(k=>dests.some(x=>platOfKey(x)===k));
+  const prompt=`You are writing one new social media post for ${teamLabel()||"CitizenGO"} (CitizenGO, a campaigning organisation). It is a staff member's own idea, written from their notes.
+
+RULES
+- Return ONLY JSON: {"facebook":"...","instagram":"...","x":["..."],"facebookComment":"...","headline":"...","altText":"..."}. No commentary.
+- Use only the facts, names, numbers and dates in the notes; never invent any. Quotes stay verbatim.
+- Facebook 120–700 characters, a strong first line, no link in the post${d.action?.url||d.own?.link?': the link goes in facebookComment, written as "[ACTION LINK]" for a petition':""}.
+- Instagram 150–1,200 characters, at most 5 hashtags, ends with "Link in bio" if there is a link.
+- X: one post of 280 characters or fewer.
+- headline: up to 8 words for the graphic. altText: one sentence describing the graphic.
+- No engagement bait ("share if", "comment YES"). Campaigning voice, plain words, British spelling, no em dashes.
+- Write for: ${nets.join(" and ")||"facebook"}.
+
+TITLE
+${d.title||""}
+${d.action?.url?`\nPETITION\n${d.action.url}\n`:d.own?.link?`\nLINK\n${d.own.link}\n`:""}
+NOTES
+${notes}`;
+  try{const r=await askAI(prompt);let t=String(r.text||"").trim().replace(/^```(?:json)?/,"").replace(/```$/,"").trim();const j=JSON.parse(t.slice(t.indexOf("{"),t.lastIndexOf("}")+1));
+    if(!j.facebook&&!j.instagram)throw new Error("shape");
+    const cur=S.drafts.find(x=>x.id===d.id)||d;const keepComment=String(textFor(cur,"facebookComment")||"").trim();
+    const patch={platforms:{facebook:String(j.facebook||""),instagram:String(j.instagram||""),x:(xs=>xs.length?xs:"")(asPosts(j.x).map(String).filter(Boolean))},own:{...(cur.own||{}),notes}};
+    if(!keepComment&&j.facebookComment)patch.platforms.facebookComment=String(j.facebookComment);
+    if(cur.fbTextOnly&&/\[ACTION LINK\]|https?:\/\//.test(String(textFor(cur,"facebook")||"")))patch.platforms.facebook=`${patch.platforms.facebook}\n\n${(String(textFor(cur,"facebook")).match(/\[ACTION LINK\]|https?:\/\/\S+/)||[""])[0]}`;
+    const c=cur.card||{};if(j.headline&&c.template==="ig1d"&&(!c.headline||c.headline===cur.title))patch.card={...c,headline:String(j.headline)};
+    if(j.altText&&!cur.altText)patch.altText=String(j.altText);
+    S.ownBusy=null;await S.db.doc("drafts/"+d.id).update(patch);toast("Claude's first go is in. Click any text to change it")}
+  catch(e){S.ownBusy=null;renderDetail();toast(e?.code==="rate_limited"?"Too many requests. Wait a minute":"Claude's answer didn't come through. Try again, or write it yourself")}}
+function ownPicBox(d){if(!d.own||!S.db)return"";const fb=((d.posting||{}).destinations||[]).some(k=>platOfKey(k)==="facebook");
+  return `<div class="ownbox"><b>Your picture</b><span class="src">Keep the house design (change it below), upload your own, or post Facebook without one.</span>
+    <div class="editrow">${S.assets?`<button class="btn small primary" data-act="gupload">⇪ Upload image or carousel</button>`:""}<button class="btn small" data-step="2">▶ Upload a video</button>${fb?`<label class="ownchk"><input type="checkbox" data-own-textonly${d.fbTextOnly?" checked":""}> No picture on Facebook (text or link post)</label>`:""}</div></div>`}
+function ownLinkBox(d){if(!d.own||!S.db)return"";const cur=d.action?.url||d.own?.link||"";
+  return `<div class="ownbox"><b>Petition or link</b><span class="src">A citizengo.org petition gets tracked links for each network and fills [ACTION LINK]. Any other link goes into the first comment as it is.</span>
+    <input type="url" id="ownLink" value="${esc(cur)}" placeholder="https://citizengo.org/…"><div class="editrow"><button class="btn small primary" data-own="link">${cur?"Change the link":"Add the link"}</button>${cur?`<button class="btn small" data-own="unlink">Remove it</button>`:""}</div></div>`}
+document.addEventListener("click",async ev=>{const b=ev.target.closest("[data-own]");if(!b||!S.db)return;const d=S.drafts.find(x=>x.id===S.openId);if(!d||!d.own)return;const a=b.dataset.own;
+  if(a==="discard"){if(!confirm(`Discard “${d.title}”? It moves to Rejected.`))return;try{await S.db.doc("drafts/"+d.id).update({status:"rejected",review:{note:"Own post, discarded",reasons:[]}});S.openId=null;toast("Discarded")}catch(e){failToast(e,"Couldn't discard it")}return}
+  if(a==="write"){const n=($("#ownNotes")?.value||"").trim();if(!n){toast("Add a few notes first");$("#ownNotes")?.focus();return}ownWrite(d,n);return}
+  if(a==="link"||a==="unlink"){const url=a==="unlink"?"":($("#ownLink")?.value||"").trim();
+    if(url&&!/^https?:\/\/[^\s.]+\.\S+$/i.test(url)){toast("That link doesn't look right: it should start with https://");return}
+    const act=url?npPetition(url,d.title):null;const old=d.action?.url?"[ACTION LINK]":d.own?.link||"";const nu=act?"[ACTION LINK]":url;
+    const swap=t=>{if(t==null)return t;if(Array.isArray(t))return t.map(swap);let v=String(t);if(old&&v.includes(old))v=nu?v.split(old).join(nu):v.split(old).join("").replace(/\s*(Sign the petition|Read more) 👉\s*$/,"").trim();return v};
+    const patch={action:act||null,own:{...d.own,link:act?null:url||null}};const pl={},ed={};
+    ["facebook","instagram","x","facebookComment"].forEach(k=>{const p0=d.platforms?.[k],e0=d.edited?.[k];const p1=swap(p0),e1=swap(e0);if(JSON.stringify(p1)!==JSON.stringify(p0))pl[k]=p1;if(e0!=null&&JSON.stringify(e1)!==JSON.stringify(e0))ed[k]=e1});
+    if(nu&&!old&&d.fbTextOnly){const k=d.edited?.facebook!=null?ed:pl;const base=String(textFor(d,"facebook")||"").trim();k.facebook=base?`${base}\n\n${nu}`:nu}
+    if(nu&&!old&&!String(textFor(d,"facebookComment")||"").trim()&&!d.fbTextOnly)pl.facebookComment=`${act?"Sign the petition":"Read more"} 👉 ${nu}`;
+    if(Object.keys(pl).length)patch.platforms=pl;if(Object.keys(ed).length)patch.edited=ed;
+    try{await S.db.doc("drafts/"+d.id).update(patch);toast(url?act?"Petition linked: tracked links fill in on each network":"Link added":"Link removed")}catch(e){failToast(e,"Couldn't save the link")}}});
+document.addEventListener("change",async ev=>{if(!ev.target.matches?.("[data-own-textonly]"))return;const d=S.drafts.find(x=>x.id===S.openId);if(!d||!S.db)return;
+  try{await S.db.doc("drafts/"+d.id).update({fbTextOnly:ev.target.checked});toast(ev.target.checked?"Facebook goes out as a text post":"Facebook gets the picture again")}catch(e){failToast(e,"Couldn't change it")}});
+
 (async()=>{
   const [db,user,downloads,sample,assets,mcp]=await Promise.all(["db","user","downloads","sample","assets","mcp"].map(n=>window.claude?.use?window.claude.use(n).catch(()=>null):Promise.resolve(null)));
   S.downloads=downloads;S.sample=sample;S.user=user;S.assets=assets;S.mcp=mcp;
