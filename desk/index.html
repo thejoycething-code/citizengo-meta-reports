@@ -724,6 +724,37 @@ mark.new{background:var(--ok-soft);color:var(--fg);border-radius:3px}
 }
 @container (min-width:900px){.draft.v3{grid-template-columns:minmax(0,1fr) 320px}}@container (min-width:1140px){.draft.v3{grid-template-columns:minmax(0,1fr) 350px}}
 .stepper{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px}
+/* Review style C (3 Nov): queue of time slots, composer in the middle, live preview on the right, decide bar along the foot. */
+.draft.v3.compose{grid-template-columns:minmax(0,1fr);grid-template-areas:"head" "main" "prev" "foot";grid-template-rows:auto}
+.draft.v3.compose>.dprev{grid-area:prev;display:flex;flex-direction:column;gap:12px;padding:14px 16px 16px;background:var(--sunk);border-top:1px solid var(--line);min-width:0}
+.dprev .prevh{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:14px}
+.draft.v3.compose .fstrip{scroll-snap-type:x mandatory}.draft.v3.compose .fcol{flex-basis:100%}
+.draft.v3.compose>.dfoot{grid-area:foot;display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;padding:10px 16px;border-top:1px solid var(--line);background:var(--surface)}
+.dfoot>.checks{flex:1 1 300px}.dfoot>.fsteps{white-space:nowrap}
+.dfoot>.decide{flex:1 1 100%;padding:0;border:0;background:none;display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:8px;position:relative}
+.dfoot>.decide .row{margin:0;flex-wrap:wrap;order:1}.dfoot>.decide .aprow{min-width:300px;order:2}.dfoot>.decide>.linkish{order:0;flex-basis:100%;text-align:right}.dfoot>.decide>#apTimes{order:3;flex-basis:100%;text-align:right}
+.draft.v3.compose .stepper{grid-template-columns:repeat(auto-fill,minmax(140px,1fr))}
+.dfoot>.decide:has(.reasons),.dfoot>.decide:has(#pfb){flex-basis:100%;flex-direction:column;align-items:stretch}
+.dfoot .apmenu{position:absolute;right:0;bottom:calc(100% + 8px);z-index:8;min-width:260px}
+.cwhere .posting{margin:0;background:var(--surface)}
+.pmore>summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--muted)}.pmore[open]>summary{margin-bottom:8px}
+.cwhere .dests{gap:6px}.cwhere .dests .dest{border:1px solid var(--line);border-radius:999px;padding:4px 10px 4px 6px;background:var(--surface)}
+.cwhere .dests .dest:has(input:checked){border-color:var(--accent);background:var(--accent-soft)}
+.compose .ptabs{margin-bottom:0;flex-wrap:wrap;align-items:center}.compose .ptab{display:flex;gap:6px;align-items:center}
+.ptab .pcnt{font:600 11px var(--mono,inherit);color:var(--muted);background:var(--sunk);border-radius:999px;padding:1px 7px}
+.ptab[aria-selected="true"] .pcnt{color:var(--accent);background:var(--accent-soft)}
+.qslot{display:grid;grid-template-columns:44px minmax(0,1fr);align-items:center;gap:6px}.qslot:not(:has(.qtime)){grid-template-columns:minmax(0,1fr)}
+.qtime{font:700 12px var(--mono,inherit);font-variant-numeric:tabular-nums;color:var(--fg);text-align:right}
+.qfree{display:grid;grid-template-columns:44px minmax(0,1fr);gap:6px;align-items:center;text-align:left;border:0;background:none;padding:0;color:var(--muted);font:inherit;cursor:pointer}
+.qfree>span:last-child{border:1px dashed var(--line);border-radius:var(--r);padding:9px 10px;font-size:12.5px;display:flex;flex-direction:column}
+.qfree small{font-size:11px}.qfree .qtime{color:var(--muted)}.qfree:hover>span:last-child,.qfree:focus-visible>span:last-child{border-color:var(--accent);color:var(--accent)}
+@container (min-width:760px){
+  .draft.v3.compose{grid-template-columns:minmax(0,1fr) 320px;grid-template-areas:"head prev" "main prev" "foot foot";grid-template-rows:auto 1fr auto}
+  .draft.v3.compose>.dprev{border-top:0;border-left:1px solid var(--line);align-self:stretch}
+  .draft.v3.compose>.dfoot{position:sticky;bottom:0;z-index:6;box-shadow:0 -6px 16px rgba(0,0,0,.06)}
+}
+@container (min-width:1000px){.draft.v3.compose{grid-template-columns:minmax(0,1fr) 360px}}
+@media (max-width:640px){.qslot{grid-template-columns:minmax(0,1fr)}.qslot .qtime{display:none}.qfree{display:none}}
 @container (max-width:640px){.stepper{grid-template-columns:repeat(3,minmax(0,1fr))}}
 .stp{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;border:1px solid var(--line);border-top:3px solid var(--line);background:var(--surface);color:var(--fg);border-radius:8px;padding:7px 9px;min-width:0;cursor:pointer;font:inherit}
 .stp b{font-size:13px;line-height:1.25}
@@ -746,7 +777,7 @@ mark.new{background:var(--ok-soft);color:var(--fg);border-radius:3px}
 /* Sidebar 3 with icons, GO logo per theme, theme switch, fold to an icon rail (2 Nov) */
 .side{gap:10px;background:var(--surface);margin-left:-16px;padding-left:12px;padding-right:10px}
 .side .brand{gap:8px;padding:0 4px 4px;font-size:19px}
-@media (min-width:1100px){.desk{grid-template-columns:260px minmax(0,1fr)}}
+@media (min-width:1100px){.desk{grid-template-columns:270px minmax(0,1fr)}}
 .side .brand .bt{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .golg{width:34px;height:34px;flex:none;display:block}
 .golg.drk{display:none}
@@ -935,16 +966,26 @@ function renderQueue(){
   if(!list.length){$("#queue").innerHTML=trashBar()+`<div class="empty">Nothing in “${esc(STATUS.find(s=>s.key===S.status).label)}”.</div>`;return}
   if(!list.find(d=>d.id===S.openId)) { S.openId=list[0].id; resetDraftUi(); }
   const grouped=!["posted","rejected"].includes(S.status);let lastG=null;
-  $("#queue").innerHTML=trashBar()+list.map(d=>{const g=grouped?groupOf(d):null;const head=g&&g!==lastG?`<div class="qgroup">${esc(g)}<span>${list.filter(x=>groupOf(x)===g).length}</span></div>`:"";lastG=g;return head+`
+  const qday=d=>{const g=groupOf(d);if(["Needs a new time","No date yet"].includes(g))return g;const t=whenOf(d);const dl=t.toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"});return g==="Today"||g==="Tomorrow"?`${g} · ${dl}`:dl};
+  const qtime=d=>{const t=whenOf(d);return t&&groupOf(d)!=="Needs a new time"?t.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"}):"—"};
+  $("#queue").innerHTML=trashBar()+freeSlot()+list.map(d=>{const g=grouped?qday(d):null;const head=g&&g!==lastG?`<div class="qgroup">${esc(g)}<span>${list.filter(x=>qday(x)===g).length}</span></div>`:"";lastG=g;return head+`<div class="qslot">${grouped?`<span class="qtime">${esc(qtime(d))}</span>`:""}
     <button class="qitem" data-id="${esc(d.id)}" data-status="${esc(d.status||"pending")}" data-tone="${qTone(d)}" aria-current="${d.id===S.openId}">
       <span class="stripe"></span>
       <canvas class="qthumb" data-q="${esc(d.id)}" width="10" height="10" aria-hidden="true"></canvas>
       <span class="qbody"><span class="qt">${esc(d.title)}</span>
       <span class="qm"><span>${esc(d.type||"")}</span>${d.issue?`<span>${esc(d.issue)}</span>`:""}</span>
       <span class="qflags">${qFlags(d)}</span></span>
-    </button>`}).join("");
+    </button></div>`}).join("");
   document.querySelectorAll("canvas.qthumb").forEach(cv=>{const d=S.drafts.find(x=>x.id===cv.dataset.q);if(!d||!d.card)return;const c=d.card.template==="carousel"&&HOUSE_T.has(d.card.slides?.[0]?.template)?d.card.slides[0]:d.card;try{const k=S.slide;S.slide=0;drawCard(d,cv,c);S.slide=k}catch(e){}});
 }
+/* Queue as time slots (review style C, 3 Nov): the next ★ best slot with nothing booked sits on top;
+   clicking it puts the open draft's time there. Nothing is scheduled until you press Schedule. */
+function freeSlot(){if(!["pending","changes","hold"].includes(S.status)||!S.db)return"";
+  const busy=new Set();S.drafts.filter(x=>["scheduled","hold","pending","changes"].includes(x.status||"pending")).forEach(x=>{const w=whenOf(x);if(w)busy.add(w.getTime());Object.values((x.posting||{}).times||{}).forEach(v=>{const t2=new Date(v);if(!isNaN(t2))busy.add(t2.getTime())})});
+  let t=null;for(let i=0;i<9&&!t;i++){const c=bestFor("fb",Date.now()+i*864e5);if(c&&!busy.has(c.getTime()))t=c}
+  if(!t)return"";return `<button class="qfree" data-act="useSlot" data-at="${t.toISOString()}" title="Put the open draft's time here"><span class="qtime">${esc(t.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"}))}</span><span>★ Next free best slot · ${esc(t.toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"}))}<small>Use it for the open draft</small></span></button>`}
+document.addEventListener("click",ev=>{const b=ev.target.closest('[data-act="useSlot"]');if(!b)return;const t=new Date(b.dataset.at);if(isNaN(t))return;
+  if(!$("#postDay")){S.perAcct=false;renderDetail()}setPicker(t);refreshReady();toast("Time set: press Schedule to book it");$("#postDay")?.scrollIntoView({behavior:"smooth",block:"center"})});
 /* Empty the bin (2 Nov): the engine archives rejected drafts the morning run has already learnt from;
    newer ones wait for its next run. Archived drafts leave the desk but the run still reads them. */
 function trashBar(){if(S.status!=="rejected"||!S.db)return"";const t=S.trash;
@@ -1164,9 +1205,9 @@ function renderDetail0(){
   const edited=d.edited||{};
   const checks=hasChecks(d);
   const steps=stepInfo(d);const si=Math.min(Math.max(0,S.step|0),steps.length-1);const live=["pending","changes"].includes(st);
-  const panel=(i,body)=>`<section class="stpanel" data-steppanel="${i}" aria-label="Step ${i+1}: ${esc(steps[i].label)}"${i===si?"":" hidden"}><div class="sthead"><b>${i+1} · ${esc(steps[i].label)}</b><span class="src">${esc(steps[i].note)}</span></div>${body}<div class="stnav">${i>0?`<button class="btn small" data-step="${i-1}">‹ ${i} ${esc(steps[i-1].label)}</button>`:"<span></span>"}${i<steps.length-1?`<button class="btn small stnext" data-step="${i+1}">Next: ${i+2} ${esc(steps[i+1].label)} ›</button>`:`<span class="src">${live?"Then decide on the right":""}</span>`}</div></section>`;
+  const panel=(i,body)=>`<section class="stpanel" data-steppanel="${i}" aria-label="Step ${i+1}: ${esc(steps[i].label)}"${i===si?"":" hidden"}><div class="sthead"><b>${i+1} · ${esc(steps[i].label)}</b><span class="src">${esc(steps[i].note)}</span></div>${body}<div class="stnav">${i>0?`<button class="btn small" data-step="${i-1}">‹ ${i} ${esc(steps[i-1].label)}</button>`:"<span></span>"}${i<steps.length-1?`<button class="btn small stnext" data-step="${i+1}">Next: ${i+2} ${esc(steps[i+1].label)} ›</button>`:`<span class="src">${live?"Then decide below":""}</span>`}</div></section>`;
   el.innerHTML=`
-  <article class="draft v3" data-st="${esc(st)}">
+  <article class="draft v3 compose" data-st="${esc(st)}">
     <div class="dhead">
       ${navBar(d)}
       <div class="chips">${d.action?.title||d.issue?`<span class="chip" title="Campaign, set automatically from the petition or issue">Campaign: ${esc(String(d.action?.title||d.issue).slice(0,40))}</span>`:""}${d.type?`<span class="chip type">${esc(d.type)}</span>`:""}${d.issue?`<span class="chip">${esc(d.issue)}</span>`:""}${d.timing?.label||d.timing?.date?`<span class="chip">${[d.timing?.label?esc(d.timing.label):"",d.timing?.date?esc(new Date(d.timing.date).toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"})):""].filter(Boolean).join(" · ")}</span>`:""}<span class="chip st-${st}">${stLabel}</span></div>
@@ -1175,8 +1216,9 @@ function renderDetail0(){
     </div>
     <div class="dmain">
       ${st==="posted"||d.results?resultsBox(d):""}
-      <div class="ptabs" role="tablist" aria-label="Jump to a network">${PLATFORMS.map(p=>`<button class="ptab" role="tab" aria-selected="${S.platform===p.key}" data-jump="${p.key}">${p.label}${tabWarn(d,p.key)}${edited[p.key]!=null||(p.key==="facebook"&&edited.facebookComment!=null)?'<span class="edited">EDITED</span>':""}</button>`).join("")}${["facebook","instagram","x"].some(k=>edited[k]!=null)&&S.db?`<button class="ptab diffbtn" data-act="showDiff" aria-pressed="${!!S.showDiff}">${S.showDiff?"Hide my changes":"Show my changes"}</button>`:""}<span class="src fhint">Scroll sideways for each network · click any text to edit it</span></div>
-      ${S.trim&&S.trim.id===d.id?trimView(d):feedStrip(d)}
+      ${["pending","changes","hold","scheduled"].includes(st)?`<section class="cwhere" aria-label="Where and when">${postingPanel(d,st)}</section>`:""}
+      ${S.trim&&S.trim.id===d.id?trimView(d):""}
+      <div class="ptabs" role="tablist" aria-label="Customise for each network">${PLATFORMS.map(p=>`<button class="ptab" role="tab" aria-selected="${S.platform===p.key}" data-jump="${p.key}">${p.label}${tabWarn(d,p.key)||`<span class="pcnt">${esc(pCount(d,p.key))}</span>`}${edited[p.key]!=null||(p.key==="facebook"&&edited.facebookComment!=null)?'<span class="edited">EDITED</span>':""}</button>`).join("")}${["facebook","instagram","x"].some(k=>edited[k]!=null)&&S.db?`<button class="ptab diffbtn" data-act="showDiff" aria-pressed="${!!S.showDiff}">${S.showDiff?"Hide my changes":"Show my changes"}</button>`:""}<span class="src fhint">Pick a network · click any text in the preview to edit it</span></div>
       <div class="stepper" role="tablist" aria-label="Steps for this post">${steps.map((x,i)=>`<button role="tab" class="stp ${x.tone}" data-step="${i}" aria-selected="${i===si}"><b>${i+1} ${esc(x.label)}</b><span>${x.tone==="ok"?"✓ ":x.tone==="warn"?"! ":""}${esc(x.note)}</span></button>`).join("")}</div>
       ${panel(0,`${revisedBox(d,st)}${captionChips()}${rewriteAllBox(d)}<p class="src" style="margin:0">Click any text in the previews to edit it (⌘↵ saves, Esc cancels), or use Edit under a network for the whole post and Redraft. The X thread splits on a line with ---.</p>`)}
       ${panel(1,`<div class="art" id="gFold">
@@ -1193,20 +1235,29 @@ function renderDetail0(){
       ${panel(4,`${checks&&live?factCheck(d):""}<h3 id="facts">Facts and sources</h3>${(d.facts||[]).map(f=>`<div class="fact"><span class="pill ${f.status}">${f.status==="check"?"Check":"Verified"}</span><span>${esc(f.claim)}<small>${f.url?`<a href="${esc(f.url)}" target="_blank" rel="noopener">${esc(f.source)}</a>`:esc(f.source)}</small></span></div>`).join("")||'<p class="src" style="margin:0">No facts listed.</p>'}${live?lintBox(d):""}`)}
       ${panel(5,`${launchBox(d)}${extrasBox(d)}<h3>Why this post</h3><p>${esc(d.rationale||"")}</p>${rulesBox(d)}${(d.modelledOn||[]).map(m=>`<div class="model"><a href="${esc(m.url)}" target="_blank" rel="noopener">${esc(m.label)}</a><span class="m">${esc(m.metric)}</span></div>`).join("")}`)}
     </div>
-    <aside class="drail" aria-label="${live?"Decide":st==="posted"?"Published":st==="rejected"?"Decision":"Going out"}">
-      <div class="railh"><b>${live?"7 · Decide":st==="posted"?"Published":st==="rejected"?"Rejected":st==="hold"?"On hold":"Going out"}</b>${live?`<span class="src">${steps.filter(x=>x.tone!=="warn").length} of ${steps.length} steps ready</span>`:""}</div>
-      ${["posted","rejected"].includes(st)?"":checksRow(d)}
-      ${mobileBar(d,st)}<div class="decide">${live&&S.db?readyBox(d):""}${["scheduled","posted"].includes(st)?publishBox(d):""}${["pending","changes","hold","scheduled"].includes(st)?postingPanel(d,st):""}${decideBar(d,st,checks)}</div>
+    <aside class="dprev" aria-label="Preview">
+      <div class="prevh"><b>${esc(pf.label)} preview</b><span class="src">${S.db?"Click any text to edit":"Read-only"}</span></div>
+      ${feedStrip(d)}
+      ${live&&S.db?readyBox(d):""}${["scheduled","posted"].includes(st)?publishBox(d):""}
     </aside>
+    <div class="dfoot" role="group" aria-label="${live?"Decide":st==="posted"?"Published":st==="rejected"?"Decision":"Going out"}">
+      ${["posted","rejected"].includes(st)?"":checksRow(d)}${live?`<span class="src fsteps">${steps.filter(x=>x.tone!=="warn").length} of ${steps.length} steps ready</span>`:""}
+      ${mobileBar(d,st)}<div class="decide">${decideBar(d,st,checks)}</div>
+    </div>
   </article>`;
   drawCard(d,null,S.gPreview?.id===d.id?S.gPreview.card:null);drawThumbs(d);savePrefs();stripTo(S.platform,false);refreshLane();
 }
+/* Composer (review style C, 3 Nov): a live count on each network tab. */
+function pCount(d,k){const posts=asPosts(textFor(d,k)).map(t=>withLink(t||"",d,k));if(!posts.length||!posts.join("").trim())return"empty";
+  if(k==="x"){const n=xLen(posts[0]);return posts.length>1?`${posts.length} posts`:`${n} / 280`}
+  const n=[...posts.join("\n")].length;if(k==="instagram"){const tags=(posts.join(" ").match(/#\w+/g)||[]).length;return `${n.toLocaleString("en-GB")} / 2,200 · ${tags} #`}
+  return `${n.toLocaleString("en-GB")}`}
 function stripTo(p,smooth){const fs=$("#fstrip"),col=fs&&fs.querySelector(`[data-fcol="${p}"]`);if(!fs||!col)return;fs.scrollTo({left:col.offsetLeft-fs.offsetLeft,behavior:smooth?"smooth":"auto"})}
-function markPlatform(p){S.platform=p;document.querySelectorAll(".ptabs [data-jump]").forEach(b=>b.setAttribute("aria-selected",b.dataset.jump===p));document.querySelectorAll("#fstrip .fcol").forEach(c=>c.classList.toggle("on",c.dataset.fcol===p))}
+function markPlatform(p){S.platform=p;{const h=document.querySelector(".dprev .prevh b"),pf=PLATFORMS.find(x=>x.key===p);if(h&&pf)h.textContent=pf.label+" preview"}document.querySelectorAll(".ptabs [data-jump]").forEach(b=>b.setAttribute("aria-selected",b.dataset.jump===p));document.querySelectorAll("#fstrip .fcol").forEach(c=>c.classList.toggle("on",c.dataset.fcol===p))}
 document.addEventListener("click",ev=>{const j=ev.target.closest("[data-jump]");if(j){markPlatform(j.dataset.jump);stripTo(j.dataset.jump,true);return}
   const c=ev.target.closest("[data-ckjump]");if(c){const k=c.dataset.ckjump;const el=k==="lint"?document.querySelector(".lint"):document.getElementById(k);const sp=el&&el.closest("[data-steppanel]");if(sp)showStep(+sp.dataset.steppanel);if(el){if(el.tagName==="DETAILS")el.open=true;if(k==="altFold"){const g=$("#gFold");if(g){g.open=true;S.gOpen=true}}el.scrollIntoView({behavior:"smooth",block:"center"})}return}
   const fc=ev.target.closest("#fstrip [data-fcol]");if(fc&&fc.dataset.fcol!==S.platform)markPlatform(fc.dataset.fcol)});
-document.addEventListener("toggle",ev=>{if(ev.target.id==="gFold")S.gOpen=ev.target.open},true);
+document.addEventListener("toggle",ev=>{if(ev.target.id==="gFold")S.gOpen=ev.target.open;if(ev.target.id==="laneFold"){S.laneOpen=ev.target.open;if(S.laneOpen)refreshLane()}},true);
 document.addEventListener("scroll",ev=>{const fs=ev.target;if(!fs||fs.id!=="fstrip")return;clearTimeout(fs._t);fs._t=setTimeout(()=>{const cols=[...fs.querySelectorAll(".fcol")];let best=null,bd=1e9;for(const c of cols){const dd=Math.abs(c.offsetLeft-fs.offsetLeft-fs.scrollLeft);if(dd<bd){bd=dd;best=c}}if(best&&best.dataset.fcol!==S.platform)markPlatform(best.dataset.fcol)},120)},true);
 /* Posts v2 (2 Nov): every network's post as it will look, image included, side by side in one sideways scroll. */
 function feedStrip(d){const edited=d.edited||{};
@@ -2296,7 +2347,7 @@ function postingPanel(d,st){const p=d.posting||{};const dests=p.destinations||de
   return `${isVideoPost(d)&&dests.some(k=>["facebook","instagram"].includes(platOfKey(k)))?videoUploadBox(d):""}<div class="posting"><span class="eyebrow">Posting</span>
   <div class="dests">${teamDests().map(([k,l])=>{const lock=locked(k);const on=dests.includes(k);return `<label class="dest"${lock?` title="You can't post to this Page yourself. Connect Facebook if you manage it, or leave it for someone who does."`:""}><input type="checkbox" data-dest="${k}" ${on?"checked":""}${lock&&!on?" disabled":""}> ${lock?"🔒 ":""}${l}</label>`}).join("")}</div>
   ${teamDests().some(([k])=>locked(k)&&dests.includes(k))?`<div class="row"><span class="src">🔒 You can't post to a ticked Page, so Schedule will be refused until you untick it or someone who manages it approves.</span></div>`:""}
-  ${storyRow(d,dests)}${collabRow(d,dests)}${bioRow(d,dests)}${signRow(d)}${perAcctRow(d,dests,at)}<div class="dlane" id="dayLane" aria-label="The day at a glance"></div><div class="row"><span class="src">${p.why?esc(p.why)+" · ":""}${esc(BEST_HINT)}</span></div>
+  ${storyRow(d,dests)}${collabRow(d,dests)}${bioRow(d,dests)}${signRow(d)}${perAcctRow(d,dests,at)}<details class="pmore" id="laneFold"${S.laneOpen?" open":""}><summary>Day timeline and best times</summary><div class="dlane" id="dayLane" aria-label="The day at a glance"></div><div class="row"><span class="src">${p.why?esc(p.why)+" · ":""}${esc(BEST_HINT)}</span></div></details>
   ${st==="hold"||st==="scheduled"?`<div class="row"><button class="btn small" data-act="savePosting">Update where and when</button>${links?`<span class="src">${links}</span>`:p.asanaError?`<span class="src">The Asana task couldn’t be made (${esc(p.asanaError.message||"")}). The engine run adds it instead.</span>`:`<span class="src">The Asana task appears here once it’s created.</span>`}</div>`:""}
   ${S.db?`<div class="row"><button class="btn small" data-act="canvaReq" ${d.canvaRequest?"disabled":""}>${d.canva?.url?"Refresh Canva copy":d.canvaRequest?"Canva copy requested":"Send to Canva"}</button></div>`:""}</div>`}
 function readPosting(){const dests=[...document.querySelectorAll("input[data-dest]")].filter(x=>x.checked).map(x=>x.dataset.dest);
