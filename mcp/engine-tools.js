@@ -48,6 +48,8 @@ function track(d) {
     resultsCheckedAt: (d.results && d.results.checkedAt) || null, postedAt: posted.at || null, linksPending: !!posted.linksPending,
     stale: !!d.stale, pack: source.pack || null, requestAt: (source.request && source.request.at) || null,
     requestId: (source.request && source.request.id) || null, evergreenId: source.evergreen_id || null,
+    // Post now on the desk: {at, by}. UK posts get their Asana task on the next run.
+    postNow: (posting.postNow && posting.postNow.at) ? { at: posting.postNow.at, by: posting.postNow.by || null } : null,
   };
 }
 
