@@ -981,7 +981,7 @@ function renderQueue(){
 /* Queue as time slots (review style C, 3 Nov): the next ★ best slot with nothing booked sits on top;
    clicking it puts the open draft's time there. Nothing is scheduled until you press Schedule. */
 function freeSlot(){if(!["pending","changes","hold"].includes(S.status)||!S.db)return"";
-  const busy=new Set(S.drafts.filter(x=>["scheduled","hold","pending","changes"].includes(x.status||"pending")).map(whenOf).filter(Boolean).map(t=>t.getTime()));
+  const busy=new Set();S.drafts.filter(x=>["scheduled","hold","pending","changes"].includes(x.status||"pending")).forEach(x=>{const w=whenOf(x);if(w)busy.add(w.getTime());Object.values((x.posting||{}).times||{}).forEach(v=>{const t2=new Date(v);if(!isNaN(t2))busy.add(t2.getTime())})});
   let t=null;for(let i=0;i<9&&!t;i++){const c=bestFor("fb",Date.now()+i*864e5);if(c&&!busy.has(c.getTime()))t=c}
   if(!t)return"";return `<button class="qfree" data-act="useSlot" data-at="${t.toISOString()}" title="Put the open draft's time here"><span class="qtime">${esc(t.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"}))}</span><span>★ Next free best slot · ${esc(t.toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"}))}<small>Use it for the open draft</small></span></button>`}
 document.addEventListener("click",ev=>{const b=ev.target.closest('[data-act="useSlot"]');if(!b)return;const t=new Date(b.dataset.at);if(isNaN(t))return;
