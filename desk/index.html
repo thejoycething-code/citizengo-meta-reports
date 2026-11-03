@@ -1083,7 +1083,7 @@ function slotChips(dests){const ds=dests||[];const leads=[["fb","FB"],["ig","IG"
 /* K3: what kind of option each graphic is */
 function optKind(o){const id=String(o.id||"");if(id.startsWith("prev-"))return["Previous","prev"];if(id.startsWith("ai-"))return["AI","ai"];if(id.startsWith("set-"))return["Set","set"];if(o.card?.template==="free")return["Fresh","fresh"];return["Default","def"]}
 /* M: phone action bar */
-function mobileBar(d,st){if(!S.db||!["pending","changes"].includes(st)||S.mode)return"";return `<div class="mbar" role="group" aria-label="Decide">${d.own?`<button class="btn bad" data-own="discard">Discard</button><button class="btn" data-act="apNow"${ownEmpty(d)?" disabled":""}>Post now</button>`:`<button class="btn bad" data-act="reject">Reject</button><button class="btn warn" data-act="changes">Changes</button>`}<button class="btn primary" data-act="approve"${hasChecks(d)&&!S.factsOk?" disabled title=\"Tick the facts to check first\"":ownEmpty(d)?" disabled title=\"Write the words first\"":""}>Schedule</button></div>`}
+function mobileBar(d,st){if(!S.db||!["pending","changes"].includes(st)||S.mode)return"";return `<div class="mbar" role="group" aria-label="Decide">${d.own?`<button class="btn bad" data-own="discard">Discard</button><button class="btn" data-act="apNow"${ownMissing(d)?" disabled":""}>Post now</button>`:`<button class="btn bad" data-act="reject">Reject</button><button class="btn warn" data-act="changes">Changes</button>`}<button class="btn primary" data-act="approve"${hasChecks(d)&&!S.factsOk?" disabled title=\"Tick the facts to check first\"":ownMissing(d)?" disabled title=\"Write the words first\"":""}>Schedule</button></div>`}
 
 /* 5: facts to check, ticked one by one beside Schedule */
 function factCheck(d){const list=checkFacts(d);return `<div class="fcheck"><div class="fhead"><span class="eyebrow">Check before approving</span><span class="src" id="fcount">${S.factTicks.size} of ${list.length} ticked</span></div>${list.map(({f,i})=>`<label class="fitem"><input type="checkbox" data-fact="${i}"${S.factTicks.has(i)?" checked":""}><span>${esc(f.claim)}<small>${f.url?`<a href="${esc(f.url)}" target="_blank" rel="noopener">${esc(f.source||"source")}</a>`:esc(f.source||"")}</small></span></label>`).join("")}<a class="src" href="#facts">All facts and sources</a></div>`}
@@ -1156,7 +1156,7 @@ function refreshReady(){setTimeout(refreshLane,0);rememberPick();const d=S.draft
   if(w&&pt&&pt.length>1)w.textContent="goes out at these times";else if(w&&t)w.textContent=t.toLocaleString("en-GB",{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"});
   const tl=$("#apTimes");if(tl)tl.innerHTML=pt&&pt.length>1?pt.map(([k,t2])=>`${esc((Object.fromEntries(teamDests()))[k]||k)} ${esc(t2.toLocaleString("en-GB",{weekday:"short",hour:"2-digit",minute:"2-digit"}))}`).join(" · "):""}
 function approveSplit(d,checks){const t=(()=>{const pk=pickFor();if(pk){const pt=pk.times&&Object.values(pk.times).sort()[0];const x=pt?new Date(pt):pk.day&&pk.time?new Date(`${pk.day}T${pk.time}:00`):null;if(x&&!isNaN(x))return x}const p=d.posting||{};const v=p.at||p.suggestedAt;const x=v?new Date(v):null;return x&&x.getTime()>Date.now()?x:bestSlot(p.destinations||defaultDests(d))})();
-  const dis=(checks&&!S.factsOk)||ownEmpty(d)?" disabled":"";const dests=(d.posting||{}).destinations||defaultDests(d);
+  const dis=(checks&&!S.factsOk)||ownMissing(d)?" disabled":"";const dests=(d.posting||{}).destinations||defaultDests(d);
   const slots=[["fb","Facebook"],["ig","Instagram"],["x","X"]].filter(([k])=>dests.some(x=>x.endsWith(k))).map(([k,l])=>[bestFor(k),l]).filter(x=>x[0]).sort((a,b)=>a[0]-b[0]);
   return `<div class="aprow"><div class="apsplit"><button class="btn primary apmain" data-act="approve"${dis}>Schedule · <span id="apWhen">${esc(t.toLocaleString("en-GB",{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}))}</span></button><button class="btn primary apmore" data-act="apMenu" aria-label="Schedule at another time" aria-expanded="${!!S.apMenu}"${dis}>▾</button></div><button class="btn apnow" data-act="apNow" title="Facebook and Instagram go out within 5 minutes"${dis}>Post now</button></div>
   <div class="src" id="apTimes" style="margin-top:4px"></div>${S.apMenu?`<div class="apmenu" role="menu">${slots.map(([t2,l])=>`<button class="apitem" role="menuitem" data-act="apSlot" data-at="${t2.toISOString()}"><span>${esc(t2.toLocaleString("en-GB",{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}))}</span><small>★ best for ${l}</small></button>`).join("")}<button class="apitem" role="menuitem" data-act="apQueue"><span>Add to queue</span><small>The next free best slot</small></button><button class="apitem" role="menuitem" data-act="apPick"><span>Choose a time…</span></button><button class="apitem" role="menuitem" data-act="approve" data-hold="1"><span>Approve and hold</span><small>Ready, but not scheduled yet</small></button></div>`:""}`}
@@ -1216,7 +1216,7 @@ function stepInfo(d){const st=d.status||"pending";const live=["pending","changes
   const cf=checkFacts(d).length,tk=Math.min(S.factTicks.size,cf),lint=live?lintDraft(d).length:0;
   const ex=d.extras||{},set=d.set||{};const nfx=(d.story||[]).length+(set.reel?1:0)+(set.xThread?1:0)+(ex.polls?1:0)+(ex.replies?1:0)+(ex.xLong?1:0);
   return [
-    {label:"Words",tone:warns.length||ownEmpty(d)?"warn":"ok",note:ownEmpty(d)?"Not written yet":warns.length?warns.map(p=>p.label).join(", ")+": length or hashtags":"Lengths fit"},
+    {label:"Words",tone:warns.length||ownMissing(d)?"warn":"ok",note:ownMissing(d)?"Not written yet":warns.length?warns.map(p=>p.label).join(", ")+": length or hashtags":"Lengths fit"},
     {label:"Graphic",tone:alt?"ok":"warn",note:(alt?"":"Alt text missing · ")+(nopt?`${nopt} option${nopt===1?"":"s"}`:"one graphic")},
     {label:"Video",tone:vNeed?"warn":vs.length&&!d.videoDismissed&&!(d.video&&d.video.status==="ready")?"info":d.video?"ok":"mut",note:vNeed?"Upload the video":d.video?"Video attached":vs.length&&!d.videoDismissed?`${vs.length} clip${vs.length===1?"":"s"} found`:"None"},
     {label:"Petition",tone:d.action?.url?"ok":ask?"warn":"mut",note:d.action?.url?(d.links?.facebook?.short?"Tracked link ready":"Linked"):ask?"No petition linked":"No ask"},
@@ -1575,7 +1575,7 @@ function decideBar(d,st,checks){
     <div class="reasons">${REJECT_REASONS.map(r=>`<button class="reason" data-reason="${esc(r)}" aria-pressed="${S.picked.has(r)}">${esc(r)}</button>`).join("")}</div>
     <div class="row"><input type="text" id="decNote" placeholder="${isRej?"Anything else? (optional)":"Describe the change"}"><button class="btn ${isRej?"bad":"warn"}" data-act="${isRej?"confirmReject":"confirmChanges"}">${isRej?"Reject draft":"Send back for changes"}</button><button class="btn" data-act="cancelMode">Cancel</button></div>`;
   }
-  return `${ownEmpty(d)?`<span class="src">Write the words first, then Post now or Schedule.</span>`:""}${checks&&!S.factsOk?`<button class="src linkish" data-step="4">Tick the ${checkFacts(d).length} fact${checkFacts(d).length===1?"":"s"} in step 5 to schedule</button>`:""}
+  return `${ownMissing(d)?`<span class="src">Write the words for each network first, then Post now or Schedule.</span>`:""}${checks&&!S.factsOk?`<button class="src linkish" data-step="4">Tick the ${checkFacts(d).length} fact${checkFacts(d).length===1?"":"s"} in step 5 to schedule</button>`:""}
   ${approveSplit(d,checks)}${d.own?`<div class="row"><span class="src">Saved as you go: it waits here in Review until you post or schedule it.</span><button class="btn bad" data-own="discard">Discard</button></div>`:`<div class="row"><button class="btn warn" data-act="changes">Request changes</button><button class="btn bad" data-act="reject">Reject</button></div>`}`;
 }
 /* ---------- cycle through drafts ---------- */
@@ -4424,7 +4424,7 @@ async function npCreate(btn){if(NP.busy)return;
     card:{template:"ig1d",kicker:"",headline:title,sub:""},posting:{destinations:dests,suggestedAt:bestSlot(dests).toISOString()},createdAt:now,...(act?{action:act}:{}),...(textOnly?{fbTextOnly:true}:{})};
   NP.busy=true;btn.disabled=true;btn.textContent="Making it…";
   try{const r=await eng("engine_create",{team:S.team,doc});if(!r||r.ok===false||!r.post)throw Object.assign(new Error((r&&r.error)||"The Content Engine refused that"),{code:"engine_refused"});
-    const d=putPost(r.post);closeNP();if((S.view||"posts")!=="posts")setView("posts");S.status="pending";S.openId=d.id;resetDraftUi();
+    const d=putPost(r.post);closeNP();if((S.view||"posts")!=="posts")setView("posts");S.status="pending";S.issue="";S.type="";S.openId=d.id;resetDraftUi();
     const first=dests.some(k=>platOfKey(k)==="facebook")?"facebook":"instagram";S.platform=first;
     if(pic==="upload")S.step=1;else if(start!=="ai"){S.inline={p:first,i:0};S.inlineVal=null}
     renderAll();renderSide();
@@ -4443,6 +4443,7 @@ document.addEventListener("keydown",ev=>{const dl=$("#npDlg");if(!dl||dl.hidden)
   if(ev.key==="Enter"&&(ev.metaKey||ev.ctrlKey||ev.target.id==="npTitle"||ev.target.id==="npLink")){ev.preventDefault();const b=document.querySelector('[data-np="create"]');if(b)npCreate(b)}},true);
 
 /* The composer's extras for an own post: Claude writes from notes, picture choices, and the link. */
+function ownMissing(d){if(!d.own)return false;const ds=(d.posting||{}).destinations||[];const bare=t=>String(asPosts(t).join("")).replace(/\[ACTION LINK\]|https?:\/\/\S+/g,"").trim();return ["facebook","instagram"].some(k=>ds.some(x=>platOfKey(x)===k)&&!bare(textFor(d,k)))}
 function ownEmpty(d){return !!d.own&&!["facebook","instagram","x","facebookComment"].some(k=>{const t=asPosts(textFor(d,k)).join("").replace(/\[ACTION LINK\]|https?:\/\/\S+|Sign the petition 👉|Read more 👉/g,"").trim();return t})}
 function ownWriteBox(d){if(!d.own||!S.db)return"";const busy=S.ownBusy===d.id;
   if(!ownEmpty(d)&&!busy)return"";
@@ -4495,6 +4496,7 @@ document.addEventListener("click",async ev=>{const b=ev.target.closest("[data-ow
     const swap=t=>{if(t==null)return t;if(Array.isArray(t))return t.map(swap);let v=String(t);if(old&&v.includes(old))v=nu?v.split(old).join(nu):v.split(old).join("").replace(/\s*(Sign the petition|Read more) 👉\s*$/,"").trim();return v};
     const patch={action:act||null,own:{...d.own,link:act?null:url||null}};const pl={},ed={};
     ["facebook","instagram","x","facebookComment"].forEach(k=>{const p0=d.platforms?.[k],e0=d.edited?.[k];const p1=swap(p0),e1=swap(e0);if(JSON.stringify(p1)!==JSON.stringify(p0))pl[k]=p1;if(e0!=null&&JSON.stringify(e1)!==JSON.stringify(e0))ed[k]=e1});
+    if(nu&&!old&&d.fbTextOnly){const k=d.edited?.facebook!=null?ed:pl;const base=String(textFor(d,"facebook")||"").trim();k.facebook=base?`${base}\n\n${nu}`:nu}
     if(nu&&!old&&!String(textFor(d,"facebookComment")||"").trim()&&!d.fbTextOnly)pl.facebookComment=`${act?"Sign the petition":"Read more"} 👉 ${nu}`;
     if(Object.keys(pl).length)patch.platforms=pl;if(Object.keys(ed).length)patch.edited=ed;
     try{await S.db.doc("drafts/"+d.id).update(patch);toast(url?act?"Petition linked: tracked links fill in on each network":"Link added":"Link removed")}catch(e){failToast(e,"Couldn't save the link")}}});
