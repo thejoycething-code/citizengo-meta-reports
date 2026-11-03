@@ -580,6 +580,38 @@ async function engineInboxPerson(store, args, { who }) {
   });
 }
 
+// 28A/B (Priority Two, 3 Nov): our Instagram beside allied organisations'
+// Instagram over the last days (30 by default): followers, posts, likes +
+// comments, and per post. Allies only: opponents are left out on purpose.
+const TEAM_COUNTRY = { uk: 'UK', scotland: 'UK', ie: 'IE', us: 'US' };
+async function engineBenchmark(store, args, { who }) {
+  const ctx = await context(store, who);
+  const team = String(args.team || '');
+  const t = teamById(ctx, team);
+  if (!t || !E.canEditTeam(ctx, team)) throw err('You are not in that team.', 'ENGINE_NOT_MEMBER');
+  const days = [7, 30, 90].includes(Number(args.days)) ? Number(args.days) : 30;
+  const since = new Date(Date.now() - days * 864e5).toISOString();
+  const country = args.country === 'all' ? null : String(args.country || TEAM_COUNTRY[team] || '') || null;
+  const igs = (t.accounts || []).filter((a) => a.platform === 'instagram' && (a.ig_id || a.handle));
+  const B = await store.allyBenchmark({ country, since, ig_ids: igs.map((a) => ({ ig_id: a.ig_id || null, handle: a.handle || null, key: a.key })) });
+  const row = (o) => ({ ...o, engagement: o.likes + o.comments, per_post: o.posts ? Math.round((o.likes + o.comments) / o.posts) : 0, per_1k_followers: o.followers ? Math.round((o.likes + o.comments) / o.posts / o.followers * 1000 * 10) / 10 || 0 : null });
+  const rows = (B.accounts || []).map((a) => {
+    const ps = (B.posts || []).filter((p) => p.username === a.username);
+    const top = ps.slice().sort((x, y) => ((y.like_count || 0) + (y.comments_count || 0)) - ((x.like_count || 0) + (x.comments_count || 0)))[0];
+    return row({ name: a.label || a.username, handle: a.username, country: a.country, topic: a.topic, ours: false, followers: a.followers_count || null, posts: ps.length,
+      likes: ps.reduce((n, p) => n + (p.like_count || 0), 0), comments: ps.reduce((n, p) => n + (p.comments_count || 0), 0),
+      top: top ? { url: top.permalink, text: String(top.caption || '').slice(0, 140), engagement: (top.like_count || 0) + (top.comments_count || 0), at: top.timestamp } : null });
+  }).filter((r) => r.posts);
+  for (const o of B.ours || []) {
+    const by = Object.fromEntries((o.metrics || []).map((m) => [m.media_id, m]));
+    const likes = o.media.reduce((n, m) => n + ((by[m.media_id] || {}).likes || 0), 0), comments = o.media.reduce((n, m) => n + ((by[m.media_id] || {}).comments || 0), 0);
+    const acc = igs.find((a) => a.key === o.key) || {};
+    rows.push(row({ name: acc.name || ('@' + (o.username || 'us')), handle: o.username, country: TEAM_COUNTRY[team] || null, ours: true, followers: o.followers, posts: o.media.length, likes, comments, top: null }));
+  }
+  rows.sort((a, b) => b.per_post - a.per_post);
+  return json({ team, days, country: country || 'all', measure: 'likes + comments on Instagram', rows, note: 'Allies only. Their figures come from Instagram business discovery: likes and comments, no reach.' });
+}
+
 // 10A (Priority Two, 3 Nov): the post a conversation is on, with its newest
 // nightly figures (reactions by type, shares, comments, views) and the post's
 // own tone. Facebook pictures can't be shown (Meta's stored picture links
@@ -1942,6 +1974,7 @@ const ENGINE_TOOLS = [
   { name: 'engine_inbox_check', description: 'Content Engine Inbox checks (team admins): approve or send back (decision approve / reject, optional note) a teammate\'s reply, hide, delete or ban waiting for a check (action_id from engine_inbox checks), or switch checks on or off for a teammate (person, needs_check).', inputSchema: obj({ team: { type: 'string' }, action_id: { type: 'number' }, decision: { type: 'string', enum: ['approve', 'reject'] }, note: { type: 'string' }, person: { type: 'string' }, needs_check: { type: 'boolean' } }, ['team']), handler: engineInboxCheck },
   { name: 'engine_inbox_post', description: "Content Engine Inbox: the post a conversation is on (thread_id from engine_inbox), with its newest nightly figures (reactions by type, shares, comments, views), the post's own tone and how many comments are open on it.", inputSchema: obj({ team: { type: 'string' }, thread_id: { type: 'string' } }, ['team', 'thread_id']), handler: engineInboxPost },
   { name: 'engine_inbox_similar', description: "Content Engine Inbox: up to three of the team's own past replies to comments like this one (id of an inbox item, or text), matched by shared words, best first. No AI.", inputSchema: obj({ team: { type: 'string' }, id: { type: 'string' }, text: { type: 'string' } }, ['team']), handler: engineInboxSimilar },
+  { name: 'engine_benchmark', description: "Content Engine Analytics: your team's Instagram beside allied organisations' Instagram over the last days (7, 30 or 90; 30 by default): followers, posts, likes + comments, per post and each ally's best post. country: UK, US, IE... or all (default the team's country). Allies only.", inputSchema: obj({ team: { type: 'string' }, days: { type: 'number' }, country: { type: 'string' } }, ['team']), handler: engineBenchmark },
   { name: 'engine_bell', description: 'Content Engine: what needs you in one team (the desk bell): Inbox items assigned to you, teammates\' actions waiting for your check, your actions checked, sent back or failed, your posts approved or sent back, publishing failures, and your Facebook connection running out. Read state is engine_prefs bell_seen.', inputSchema: obj({ team: { type: 'string' } }, ['team']), handler: engineBell },
   { name: 'engine_prefs', description: 'Content Engine: your own desk settings and saved Inbox views. No set reads them; set merges keys (inbox_views, settings; null removes one).', inputSchema: obj({ set: { type: 'object' } }), handler: enginePrefsTool },
   { name: 'engine_inbox_undo', description: 'Content Engine Inbox: undo a reply, like, hide, unhide or delete you did while it is still in its window (action_id from engine_inbox_act), or a whole bulk action (action_ids from engine_inbox_bulk).', inputSchema: obj({ action_id: { type: 'number' }, action_ids: { type: 'array', items: { type: 'number' } } }), handler: engineInboxUndo },

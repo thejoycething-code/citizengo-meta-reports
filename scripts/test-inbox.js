@@ -244,6 +244,13 @@ function fakeMeta() {
     const sim = await call(s, 'engine_inbox_similar', { team: 'uk', id: 'fbc_p3' }, 'sam');
     eq('past replies: best match first with who wrote it, at most three, unrelated replies left out', [sim.replies[0].text, sim.replies[0].by, sim.replies.length <= 3, sim.replies.some((r) => r.text === 'Enjoy the sun!')], ['Sorry! The link is fixed now: cgo.ac/x', 'fiona', true, false]);
     eq('past replies: another team cannot look', await callErr(s, 'engine_inbox_similar', { team: 'uk', id: 'fbc_p3' }, 'tamara'), 'ENGINE_NOT_MEMBER');
+    s.db.teams[0].accounts.find((a) => a.key === 'uk-ig').ig_id = '178';
+    s.allyBenchmark = async ({ country, ig_ids }) => ({ accounts: [{ username: 'rtl', label: 'Right To Life UK', country, followers_count: 40000 }, { username: 'quiet', label: 'Quiet one', country, followers_count: 10 }],
+      posts: [{ username: 'rtl', media_id: 'a', like_count: 300, comments_count: 20, permalink: 'https://ig/a', caption: 'Best' }, { username: 'rtl', media_id: 'b', like_count: 100, comments_count: 0 }],
+      ours: ig_ids.map((x) => ({ ig_id: x.ig_id, key: x.key, username: 'citizengo_uk', followers: 18000, media: [{ media_id: 'm1' }], metrics: [{ media_id: 'm1', likes: 50, comments: 10 }] })) });
+    const bm = await call(s, 'engine_benchmark', { team: 'uk' }, 'sam');
+    eq('benchmark: allies with posts, ours marked, sorted by per post, team country by default', [bm.country, bm.rows.map((r) => [r.handle, r.ours, r.posts, r.engagement, r.per_post]), bm.rows[0].top.url], ['UK', [['rtl', false, 2, 420, 210], ['citizengo_uk', true, 1, 60, 60]], 'https://ig/a']);
+    eq('benchmark: another team cannot look', await callErr(s, 'engine_benchmark', { team: 'uk' }, 'tamara'), 'ENGINE_NOT_MEMBER');
   }
 
   // Auto-hide list.
