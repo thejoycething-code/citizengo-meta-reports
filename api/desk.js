@@ -21,7 +21,8 @@ const E = require('../lib/engine');
 const DESK_TOOLS = new Set(['engine_me', 'engine_posts', 'engine_save', 'engine_status', 'engine_calendar', 'engine_requests', 'engine_request',
   'engine_evergreen', 'engine_evergreen_update', 'engine_connect', 'engine_media', 'engine_pause', 'engine_video', 'engine_inbox', 'engine_inbox_act',
   'engine_inbox_undo', 'engine_inbox_history', 'engine_inbox_team', 'engine_ig_grid', 'engine_bio', 'engine_parliament', 'engine_inbox_person', 'engine_inbox_posts', 'engine_inbox_rules', 'engine_inbox_rule', 'engine_inbox_alert',
-  'engine_inbox_bulk', 'engine_analytics', 'engine_listening', 'engine_automations', 'engine_automation', 'engine_access', 'page_inviter_usage', 'engine_inviter', 'engine_links', 'engine_health', 'engine_preview', 'engine_trash']);
+  'engine_inbox_bulk', 'engine_analytics', 'engine_listening', 'engine_automations', 'engine_automation', 'engine_access', 'page_inviter_usage', 'engine_inviter', 'engine_links', 'engine_health', 'engine_preview', 'engine_trash',
+  'engine_create']);
 
 function send(res, status, body, cookie) {
   res.statusCode = status;
@@ -64,7 +65,11 @@ module.exports = async (req, res) => {
       if (!DESK_TOOLS.has(tool)) return send(res, 400, { error: `The desk can't call ${tool || 'that'}.`, code: 'tool_error' });
       try {
         const t0 = Date.now();
-        const out = await callTool(store(), tool, (body && body.input) || {}, { who });
+        let input = (body && body.input) || {};
+        // New post (3 Nov): the desk only starts a blank post in Review for one of the person's
+        // teams; it never picks the id or claims to be a copy of another post.
+        if (tool === 'engine_create') input = { team: input.team, doc: input.doc };
+        const out = await callTool(store(), tool, input, { who });
         console.log(JSON.stringify({ at: new Date().toISOString(), who, tool, ms: Date.now() - t0, event: 'desk/call' }));
         let payload = out.text;
         if (out.raw) { try { payload = JSON.parse(out.text); } catch (e) { payload = out.text; } }
