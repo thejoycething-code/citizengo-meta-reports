@@ -1456,10 +1456,13 @@ function fmtN(n){return n==null?"—":Number(n).toLocaleString("en-GB")}
 /* Posted tab (2 Nov): results first. A verdict line, then one tile per network with its post link, reach and × normal. */
 function xTone(x){const n=parseFloat(x);return !Number.isFinite(n)?"":n>=1.2?"up":n<0.8?"down":"mid"}
 function bestX(r){const xs=["facebook","instagram","x"].map(k=>r&&r[k]&&parseFloat(r[k].xMedian)).filter(Number.isFinite);return xs.length?Math.max(...xs):null}
+/* Post now on UK accounts: where its Asana task is, or why it isn't there yet. */
+function asanaLine(d){const g=d.posting||{};if(g.asanaUrl)return `<span class="src"><a href="${esc(g.asanaUrl)}" target="_blank" rel="noopener">Asana task</a>${g.asanaError?` · ${esc(g.asanaError.message||"")}`:""}</span>`;
+  if(g.asanaError)return `<span class="src">The Asana task couldn’t be made (${esc(g.asanaError.message||"")}). The morning run adds it instead.</span>`;return ""}
 function resultsBox(d){
   if(d.status!=="posted"&&!d.results)return"";
   const r=d.results;const p=d.posted||{};
-  if(!r)return `<section class="results rwait" aria-label="Results"><div class="rhead"><span class="rverdict">Waiting for results</span><span class="src">${p.linksPending?"Marked as posted"+(p.markedAt?" "+esc(fmtWhen(p.markedAt)):"")+". The morning run finds the post links and real times itself, and updates the Asana calendars.":"Posted"+(p.at?" "+esc(fmtWhen(p.at)):"")+"."}</span></div><span class="src">Results arrive once the reporting data has collected the post (usually within a day).</span></section>`;
+  if(!r)return `<section class="results rwait" aria-label="Results"><div class="rhead"><span class="rverdict">Waiting for results</span><span class="src">${p.linksPending?"Marked as posted"+(p.markedAt?" "+esc(fmtWhen(p.markedAt)):"")+". The morning run finds the post links and real times itself, and updates the Asana calendars.":"Posted"+(p.at?" "+esc(fmtWhen(p.at)):"")+"."}</span></div><span class="src">Results arrive once the reporting data has collected the post (usually within a day).</span>${asanaLine(d)}</section>`;
   const tiles=[];
   if(r.facebook)tiles.push({k:"facebook",net:"Facebook",url:r.facebook.url,reach:fmtN(r.facebook.views),unit:"views",x:r.facebook.xMedian,beyond:r.facebook.beyondPct,acts:fmtN(r.facebook.shares)+" shares · "+fmtN(r.facebook.clicks)+" clicks"});
   if(r.instagram)tiles.push({k:"instagram",net:"Instagram",url:r.instagram.url,reach:fmtN(r.instagram.reach),unit:"reached",x:r.instagram.xMedian,acts:fmtN(r.instagram.shares)+" shares · "+fmtN(r.instagram.saves)+" saves"});

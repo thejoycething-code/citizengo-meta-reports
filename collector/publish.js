@@ -81,6 +81,12 @@ async function asanaPass({ store, live, now, log, token, fetchImpl, tally }) {
       await store.engineEvent({ post_id: post.id, team_id: post.team_id, who: 'publisher', action: 'asana_task', detail: { gid: out.gid, calendars: due.keys } });
       log(`  ✓ ${post.id} → Asana: ${out.url}`);
     } catch (e) {
+      if (e.task) {
+        // The task exists but isn't finished: keep it, never make another.
+        await patchDoc(store, post.id, () => ({ posting: { asanaPending: null, asanaTaskGid: e.task.gid, asanaUrl: e.task.url, syncedAt: stamp, asanaError: { at: stamp, message: `The task was made but not finished (${e.message}). The morning run fills in the rest.`, tries: A.MAX_TRIES } } }));
+        log(`  ✗ ${post.id} → Asana: task ${e.task.gid} made, but ${e.message}`);
+        continue;
+      }
       await patchDoc(store, post.id, () => ({ posting: { asanaPending: null, asanaError: { at: stamp, message: e.message, tries: (err.tries || 0) + 1 } } }));
       log(`  ✗ ${post.id} → Asana: ${e.message}`);
     }

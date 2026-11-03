@@ -347,6 +347,16 @@ const quiet = () => {};
   const ee = se.db.posts[0].doc.posting;
   eq('Asana down: three tries, then it stops and says why', [ee.asanaError.tries, /Server Error/.test(ee.asanaError.message), ee.asanaPending, ee.asanaTaskGid], [3, true, null, undefined]);
 
+  const sh = engine();
+  addPost(sh, 'pnh', nowPost(['uk-fb', 'uk-ig']));
+  const half = fakeAsana();
+  const halfFetch = async (u, o = {}) => (/addProject$/.test(new URL(u).pathname) ? { ok: false, status: 500, json: async () => ({ errors: [{ message: 'Server Error' }] }) } : half.fetchImpl(u, o));
+  await run({ store: sh, privateKey: keys.privateKey, live: true, now: NOW, log: quiet, fetchImpl: fakeFacebook().fetchImpl, asanaToken: 'PAT', asanaFetch: halfFetch });
+  const half2 = fakeAsana();
+  await run({ store: sh, privateKey: keys.privateKey, live: true, now: NOW + 300_000, log: quiet, fetchImpl: fakeFacebook().fetchImpl, asanaToken: 'PAT', asanaFetch: half2.fetchImpl });
+  const hp = sh.db.posts[0].doc.posting;
+  eq('task made but adding a calendar fails: the task is kept and never made twice', [hp.asanaTaskGid, /not finished/.test(hp.asanaError.message), half2.calls.length], ['T1', true, 0]);
+
   // engine_media: the desk's finished images.
   const tool = ENGINE_TOOLS.find((t) => t.name === 'engine_media').handler;
   const s5 = engine();
