@@ -47,6 +47,7 @@ function engine() {
     async engineEvent(e) { (db.events = db.events || []).push(e); },
     async engineSetInitials(who, initials) { db.people = (db.people || []).filter((p) => p.who !== who).concat([{ who, initials }]); },
     async engineConnectedTokens() { return clone(db.tokens); },
+    async engineMyConnections(who) { return clone(db.tokens.filter((t) => t.who === who).map((t) => ({ account_key: t.account_key, connected_at: t.connected_at }))); },
     async enginePageToken({ who, account_key }) { return clone(db.tokens.find((t) => t.who === who && t.account_key === account_key) || null); },
     async enginePauses() { return clone(db.pauses || []); },
     async enginePosts({ team_ids } = {}) { return clone((db.posts || []).filter((p) => !team_ids || team_ids.includes(p.team_id))); },
@@ -200,6 +201,21 @@ function fakeMeta() {
   eq('checks: you can withdraw your own waiting action', (await call(s, 'engine_inbox_undo', { action_id: jw.check.id }, 'jo')).ok, true);
   const pv = await call(s, 'engine_prefs', { set: { inbox_views: { uk: [{ name: 'Negative this week', f: { tone: 'negative', days: 7 } }] } } }, 'sam');
   eq('settings: saved per person, unknown keys refused', [pv.ok, (await call(s, 'engine_prefs', {}, 'sam')).prefs.inbox_views.uk[0].name, Object.keys((await call(s, 'engine_prefs', {}, 'chris')).prefs).length, (await call(s, 'engine_prefs', { set: { token: 'x' } }, 'sam')).ok], [true, 'Negative this week', 0, false]);
+
+  // The bell [Priority One 21A] and the renewal banner (20C).
+  {
+    s.db.tokens.push({ who: 'jo', account_key: 'uk-fb', page_id: '105', connected_at: new Date(Date.now() - 85 * 864e5).toISOString(), sealed: 'x' });
+    s.db.posts = (s.db.posts || []).concat([{ id: 'bp1', team_id: 'uk', status: 'changes', title: 'Write to your MP', created_by: 'jo', doc: { review: { by: 'chris', at: new Date().toISOString(), note: 'Shorter please' }, publishErrors: {} } },
+      { id: 'bp2', team_id: 'uk', status: 'scheduled', title: 'Weekly wins', created_by: 'chris', doc: { review: { by: 'chris', at: new Date().toISOString() }, publishErrors: { 'uk-ig': { at: new Date().toISOString(), message: 'Token expired' } } } }]);
+    const bj = await call(s, 'engine_bell', { team: 'uk' }, 'jo');
+    const kinds = bj.items.map((i) => i.kind).sort();
+    eq('bell: sent back and approved (inbox and post) and the connection ending, for jo only', [kinds.includes('sent_back'), kinds.includes('approved'), kinds.includes('connection'), bj.items.some((i) => /Shorter please/.test(i.text)), bj.items.some((i) => /Not this one/.test(i.text)), bj.connections[0].days_left], [true, true, true, true, true, 5]);
+    const bc = await call(s, 'engine_bell', { team: 'uk' }, 'chris');
+    eq('bell: chris sees his own failed post, not his own approvals, and no renewal yet', [bc.items.some((i) => i.kind === 'failed' && /Weekly wins/.test(i.text)), bc.items.some((i) => i.kind === 'connection'), bc.items.some((i) => /Shorter/.test(i.text))], [true, false, false]);
+    eq('bell: not for other teams', await callErr(s, 'engine_bell', { team: 'global' }, 'jo'), 'ENGINE_NOT_MEMBER');
+    const seen = new Date().toISOString();
+    eq('bell: read state saved per person', [(await call(s, 'engine_prefs', { set: { bell_seen: seen } }, 'jo')).ok, (await call(s, 'engine_bell', { team: 'uk' }, 'jo')).seen], [true, seen]);
+  }
 
   // Supporter history and By post (the fake Meta's dates are relative to 3 Nov; shift them to now).
   const shift = Date.now() - NOW;

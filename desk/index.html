@@ -352,7 +352,7 @@ header.top .filters{padding-block:0;margin-left:auto}
 .cmonth .mcell{min-height:104px}.cmonth .mcell .cchip{padding:2px}.mcell.quiet .n{color:var(--fg)}
 .qhint{margin-top:auto;font-family:var(--mono);font-size:10.5px;color:var(--muted)}
 .mcell.dropok,.cwtrack.dropok,.clday.dropok{outline:2px dashed var(--accent);outline-offset:-2px}
-.cweek{display:grid;grid-template-columns:34px repeat(7,minmax(0,1fr));gap:6px}.cwhead{min-height:46px;display:flex;flex-direction:column;gap:2px;font-size:12.5px}.cwcol.today .cwhead b{color:var(--accent)}
+.cweek{display:grid;grid-template-columns:34px repeat(var(--n,7),minmax(0,1fr));gap:6px}.cwhead{min-height:46px;display:flex;flex-direction:column;gap:2px;font-size:12.5px}.cwcol.today .cwhead b{color:var(--accent)}
 .cwkd{font-size:10.5px;border-left:3px solid var(--accent);padding-left:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.cwkd.rqk{border-color:var(--ok)}
 .cwtrack{position:relative;height:620px;background:var(--surface);border:1px solid var(--line);border-radius:8px}.cwruler .cwtrack{background:none;border:0;font-family:var(--mono);font-size:10.5px;color:var(--muted)}.cwruler span{position:absolute;right:2px;transform:translateY(-50%)}
 .cwbest{position:absolute;left:0;right:0;background:repeating-linear-gradient(135deg,var(--accent-soft) 0 6px,transparent 6px 10px);pointer-events:none}.cwnow{position:absolute;left:0;right:0;border-top:2px solid var(--bad);pointer-events:none;z-index:2}
@@ -366,10 +366,28 @@ header.top .filters{padding-block:0;margin-left:auto}
 .calbulk{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:8px 12px;margin-bottom:8px;background:var(--accent-soft);border:1px solid var(--accent);border-radius:var(--r);position:sticky;top:0;z-index:3}.calbulk .sp{flex:1}.calbulk label{display:flex;gap:6px;align-items:center;font-size:13px}.calbulk input[type=date]{font:inherit;font-size:13px;padding:3px 6px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--fg)}
 .caltz{display:flex;flex-wrap:wrap;gap:8px 10px;align-items:center;padding:8px 12px;margin:6px 0 8px;background:var(--accent-soft);border:1px solid var(--accent);border-radius:var(--r);font-size:13.5px;color:var(--fg)}.caltz svg{width:18px;height:18px;fill:none;stroke:var(--accent);stroke-width:1.8;stroke-linecap:round;flex:none}.caltz>span{flex:1 1 220px;min-width:0}
 .caltzq{margin-left:10px;white-space:nowrap}.lnk{font:inherit;font-size:inherit;background:none;border:0;padding:0;color:var(--accent);text-decoration:underline;cursor:pointer}
+.bellbtn{position:relative;display:inline-flex;align-items:center;padding:4px 7px}.bellbtn svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linejoin:round;stroke-linecap:round}
+.bellbtn .bn{position:absolute;top:-6px;right:-7px;min-width:17px;height:17px;padding:0 4px;border-radius:9px;background:var(--bad);color:#fff;font-size:10.5px;font-weight:700;line-height:17px;text-align:center}
+@media (max-width:960px){header.top{position:relative}}.bellpop{position:absolute;right:8px;top:calc(100% - 4px);z-index:40;width:min(380px,calc(100vw - 24px));max-height:min(70vh,560px);overflow:auto;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:0 10px 30px rgba(0,0,0,.18);padding:10px 10px 6px}
+.bellhd{display:flex;align-items:center;gap:10px;padding:0 4px 6px}.bellhd b{flex:1}.bellpop h4{margin:8px 4px 4px;font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
+.bellrow{display:flex;gap:9px;align-items:flex-start;width:100%;text-align:left;font:inherit;font-size:13px;color:var(--fg);background:none;border:0;border-radius:8px;padding:7px 6px;cursor:pointer}.bellrow:hover{background:var(--sunk)}.bellrow.unread{background:var(--accent-soft)}.bellrow.unread .btx>span{font-weight:600}
+.btx{display:flex;flex-direction:column;gap:1px;min-width:0;overflow-wrap:anywhere}.btx small{color:var(--muted);font-size:11.5px}
+.bic{flex:none;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:12px;background:var(--sunk);color:var(--muted)}.bic.k-failed{background:var(--bad-soft);color:var(--bad);font-weight:700}.bic.k-approved{background:var(--ok-soft);color:var(--ok)}.bic.k-connection,.bic.k-sent_back{background:var(--warn-soft);color:var(--warn)}.bic.k-check,.bic.k-ask{background:var(--accent-soft);color:var(--accent)}
+.bellft{margin:8px 4px 2px;font-size:11.5px}
+.renewbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin:10px 0 0;padding:9px 14px;border:1px solid var(--warn);background:var(--warn-soft);color:var(--fg);border-radius:var(--r);font-size:13.5px}.renewbar[hidden]{display:none}.renewbar.urgent{border-color:var(--bad);background:var(--bad-soft)}.renewbar svg{width:18px;height:18px;fill:none;stroke:var(--warn);stroke-width:1.8;stroke-linecap:round;flex:none}.renewbar>span{flex:1 1 260px;min-width:0}
+.stmine h3{margin:0 0 4px}.stmine h4{margin:14px 0 6px;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
+.stcols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,400px);gap:20px;align-items:start}@media (max-width:820px){.stcols{grid-template-columns:minmax(0,1fr)}}
+.stkv{display:grid;grid-template-columns:140px minmax(0,1fr);gap:8px 12px;align-items:center;font-size:13.5px}@media (max-width:480px){.stkv{grid-template-columns:minmax(0,1fr)}.stkv>span:empty{display:none}}
+.stseg{display:inline-flex;flex-wrap:wrap;border:1px solid var(--line);border-radius:8px;overflow:hidden;width:max-content;max-width:100%}.stseg button{font:inherit;font-size:13px;padding:5px 11px;border:0;background:var(--surface);color:var(--fg);cursor:pointer}.stseg button+button{border-left:1px solid var(--line)}.stseg button[aria-pressed=true]{background:var(--accent);color:var(--accent-fg)}
+#stSaved{margin:14px 0 0}#stSaved.bad{color:var(--bad)}
+.stprev{margin:0;display:flex;flex-direction:column;gap:6px;padding:10px;border:1px solid var(--line);border-radius:var(--r);background:var(--bg)}
+.stpcal{display:grid;grid-template-columns:repeat(var(--n,7),minmax(0,1fr));gap:3px;font-size:10.5px}.stph{font-weight:600;color:var(--muted);text-align:center}.stpd{min-height:76px;background:var(--surface);border:1px solid var(--line);border-radius:5px;padding:2px;display:flex;flex-direction:column;gap:2px}.stpc{background:var(--accent-soft);border-left:2px solid var(--accent);border-radius:3px;padding:1px 3px;line-height:1.25;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}.stpc b{display:block;font-variant-numeric:tabular-nums}
+.side .me{cursor:pointer}.side .me:hover span{text-decoration:underline}
+.wsrow.new p{font-weight:600}.wsrow p mark{background:var(--launch-bg);color:var(--launch-fg);border-radius:3px;padding:0 1px}
 .cnote-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--launch-line);margin-left:5px;vertical-align:middle}
 .cnotes{display:flex;flex-direction:column;gap:8px;padding-bottom:12px;margin-bottom:4px;border-bottom:1px solid var(--line)}.cnotes h3{margin:0}.cnday{display:flex;flex-direction:column;gap:4px;font-size:13px}.cnote{background:var(--launch-bg);border-left:3px solid var(--launch-line);border-radius:6px;padding:6px 8px;display:flex;flex-wrap:wrap;gap:2px 8px;align-items:baseline}.cnote p{margin:0;flex:1 1 100%;color:var(--launch-fg,var(--fg));white-space:pre-wrap;overflow-wrap:anywhere}.cnote .src{font-size:12px}.cnote .lnk{font-size:12px;margin-left:auto}
 .cnform{display:flex;flex-direction:column;gap:6px}.cnform label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--muted)}.cnform input,.cnform textarea{font:inherit;font-size:13px;padding:5px 8px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--fg);resize:vertical}.cnform .btn{align-self:flex-start}.tray .cnform textarea{min-height:0;height:auto}.tray label.lg{flex-direction:row;align-items:center;gap:6px;font-size:12.5px}.tray label.lg input{padding:0;width:auto}
-@media (max-width:820px){.clrow{grid-template-columns:22px 44px minmax(0,1fr) auto}.clrow>:nth-child(4),.clrow>:nth-child(n+6){display:none}.cweek{overflow-x:auto;grid-template-columns:30px repeat(7,minmax(120px,1fr))}}
+@media (max-width:820px){.clrow{grid-template-columns:22px 44px minmax(0,1fr) auto}.clrow>:nth-child(4),.clrow>:nth-child(n+6){display:none}.cweek{overflow-x:auto;grid-template-columns:30px repeat(var(--n,7),minmax(120px,1fr))}}
 .cpeek{position:absolute;z-index:30;width:340px;max-width:calc(100vw - 32px);background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:0 10px 30px rgba(15,25,50,.22);padding:12px;display:flex;flex-direction:column;gap:8px;font-size:13px}
 .cpeek .cprow{display:flex;gap:10px;align-items:flex-start}.cpeek .cprow>div{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}.cpeek small{color:var(--muted)}
 .cpmove{display:flex;flex-wrap:wrap;gap:6px 8px;align-items:center;background:var(--accent-soft);border-radius:8px;padding:8px}.cpmove small{flex-basis:100%}.cpmove select{font:inherit;font-size:13px;padding:3px 6px}
@@ -1057,9 +1075,12 @@ body.cpopen{overflow:hidden}
       <label for="fLabel">Labels <select id="fLabel"><option value="">All</option></select></label>
       <label class="fq" for="fQ"><span class="vh">Search drafts</span><input type="search" id="fQ" placeholder="Search drafts" autocomplete="off"></label>
       <span class="notice" id="who"></span>
+      <button class="btn small bellbtn" id="bellBtn" aria-label="For you" aria-haspopup="dialog" aria-expanded="false" title="For you"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg><span class="bn" id="bellN" hidden></span></button>
       <button class="btn small" data-act="help" aria-label="Keyboard shortcuts" title="Keyboard shortcuts (?)">?</button>
     </div>
+    <div class="bellpop" id="bellPop" role="dialog" aria-label="For you" hidden></div>
   </header>
+  <div class="renewbar" id="renewBar" role="status" hidden></div>
   <div id="offline" class="offline" hidden>Not connected to the Content Engine, so posts can't load or be saved from this view. Open the page signed in to claude.ai to review.</div>
   <main class="desk">
     <nav class="queue" id="queue" aria-label="Drafts"></nav>
@@ -1072,7 +1093,7 @@ body.cpopen{overflow:hidden}
   <section id="anView" class="egv" hidden aria-label="Analytics"></section>
   <section id="toolsView" class="egv" hidden aria-label="Tools"></section>
   <section id="lsView" class="egv" hidden aria-label="Listening"></section>
-  <section id="stView" class="egv" hidden aria-label="Settings"><div><h2>Settings</h2><p class="lede">Your access, and your Facebook connection.</p></div><div id="stBody"></div><div class="ibd"><b>Facebook connection</b><p class="src" style="margin:0">Connect your own Facebook account so the Pages you manage there become the accounts you can approve posts for and reply as. Reconnect to refresh them.</p><div><span id="fbConnect"></span></div></div></section>
+  <section id="stView" class="egv" hidden aria-label="Settings"><div><h2>Settings</h2><p class="lede">Your own settings, your access, and your Facebook connection.</p></div><div id="stMine"></div><div id="stBody"></div><div class="ibd"><b>Facebook connection</b><p class="src" style="margin:0">Connect your own Facebook account so the Pages you manage there become the accounts you can approve posts for and reply as. Reconnect to refresh them.</p><div><span id="fbConnect"></span></div></div></section>
 </div>
 <div class="pauseline" id="pauseLine" hidden></div>
 <div class="help" id="pauseDlg" hidden role="dialog" aria-modal="true" aria-label="Pause publishing"><div class="helpbox pdlg" id="pauseBox"></div></div>
@@ -2310,6 +2331,87 @@ document.addEventListener("click",async ev=>{const b=ev.target.closest("[data-co
 document.addEventListener("visibilitychange",async()=>{if(document.visibilityState!=="visible"||!S.connectUrl)return;
   // Back from Facebook: refresh what this person can post to.
   try{const me=await eng("engine_me",{});S.rights=me.publish_rights||[];S.connected=me.connected_rights||[];S.connectUrl=null;renderConnect();if(S.view==="posts")renderDetail()}catch(e){}});
+/* ---------- Priority One, across the desk [chosen 3 Nov] ----------
+   21A The bell: what needs you, in the desk only (no email, phone or Slack).
+   Today and Earlier, each line opens what it's about, Mark all as read.
+   20C The renewal banner: only for the person whose Facebook connection is
+   ending (7 days out), across every page, snoozable for a day.
+   22A My settings: clock, week start, calendar times, weekends, theme, with a
+   live preview; saved to the person (engine_prefs settings). */
+const BELL={items:[],live:[],seen:null,connections:[],open:false,err:null,url:null};
+async function loadBell(){if(!S.mcp||!S.team)return;const team=S.team;
+  try{const r=await eng("engine_bell",{team});if(S.team!==team)return;BELL.items=r.items||[];BELL.seen=r.seen||BELL.seen;BELL.connections=r.connections||[];BELL.err=null}catch(e){BELL.err=e}
+  renderBell();renderRenew()}
+const bellAll=()=>BELL.live.filter(x=>x.team===S.team).concat(BELL.items).sort((a,b)=>String(b.at).localeCompare(String(a.at)));
+const bellUnread=i=>!BELL.seen||String(i.at)>BELL.seen;
+const BELL_IC={assigned:"💬",check:"☑",sent_back:"↩",approved:"✓",failed:"!",connection:"🔌",ask:"✎",mention:"@"};
+function bellPush(kind,text,go,ref){BELL.live.unshift({id:"lv:"+Date.now()+Math.random(),kind,text,go,ref,team:S.team,at:new Date().toISOString()});BELL.live=BELL.live.slice(0,20);renderBell()}
+function renderBell(){const n=bellAll().filter(bellUnread).length;const b=$("#bellN"),btn=$("#bellBtn");if(!btn)return;
+  if(b){b.hidden=!n;b.textContent=n>9?"9+":String(n)}btn.setAttribute("aria-label",n?`For you, ${n} unread`:"For you");btn.setAttribute("aria-expanded",String(BELL.open));
+  document.title=(n?`(${n}) `:"")+document.title.replace(/^\(\d+\+?\) /,"");
+  const pop=$("#bellPop");if(!pop)return;pop.hidden=!BELL.open;if(!BELL.open)return;
+  const all=bellAll();const today=dayKey(new Date());const row=i=>`<button class="bellrow${bellUnread(i)?" unread":""}" data-bell-go="${esc(i.go||"")}" data-ref="${esc(i.ref||"")}"><span class="bic k-${esc(i.kind)}" aria-hidden="true">${BELL_IC[i.kind]||"•"}</span><span class="btx"><span>${esc(i.text)}</span><small>${esc(new Date(i.at).toLocaleString("en-GB",dayKey(new Date(i.at))===today?{hour:"2-digit",minute:"2-digit"}:{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}))}</small></span></button>`;
+  const t=all.filter(i=>dayKey(new Date(i.at))===today),e=all.filter(i=>dayKey(new Date(i.at))!==today);
+  pop.innerHTML=`<div class="bellhd"><b>For you</b>${all.some(bellUnread)?`<button class="lnk" data-bell-read>Mark all as read</button>`:""}<button class="btn small" data-bell-close aria-label="Close">✕</button></div>
+    ${BELL.err&&!all.length?`<p class="src">${esc("Couldn't load: "+whyFailed(BELL.err))}</p>`:""}${t.length?`<h4>Today</h4>${t.map(row).join("")}`:""}${e.length?`<h4>Earlier</h4>${e.map(row).join("")}`:""}${all.length?"":`<p class="src">Nothing needs you right now. Things assigned to you, checks, approvals, failed posts and your connection show here.</p>`}
+    <p class="src bellft">Only here in the desk: nothing is emailed or sent to Slack.</p>`}
+async function bellRead(){const at=new Date().toISOString();BELL.seen=at;renderBell();try{await eng("engine_prefs",{set:{bell_seen:at}})}catch(e){}}
+async function bellGo(go,ref){BELL.open=false;renderBell();
+  if(go==="renew"){renewStart();return}
+  if(go==="post"||go==="ask"){const d=S.drafts.find(x=>x.id===ref);if(!d){toast("That post isn't on the desk any more");return}S.status=d.status||"pending";S.openId=d.id;resetDraftUi();setView("posts");renderSide();return}
+  if(go==="inbox:check"){navGo("inbox:inbox");IB.status="check";loadInbox();return}
+  if(go)navGo(go)}
+document.addEventListener("click",ev=>{
+  if(ev.target.closest("#bellBtn")){BELL.open=!BELL.open;renderBell();if(BELL.open){$("#bellPop .bellrow,#bellPop [data-bell-read]")?.focus();loadBell()}return}
+  if(ev.target.closest("[data-bell-close]")){BELL.open=false;renderBell();$("#bellBtn")?.focus();return}
+  if(ev.target.closest("[data-bell-read]")){bellRead();return}
+  const g=ev.target.closest("[data-bell-go]");if(g){bellGo(g.dataset.bellGo,g.dataset.ref);return}
+  if(BELL.open&&!ev.target.closest("#bellPop")){BELL.open=false;renderBell()}});
+document.addEventListener("keydown",ev=>{if(ev.key==="Escape"&&BELL.open){BELL.open=false;renderBell();$("#bellBtn")?.focus()}});
+setInterval(()=>{if(document.visibilityState==="visible")loadBell()},120e3);
+/* 20C */
+const renewEnding=()=>(BELL.connections||[]).filter(c=>c.days_left<=7);
+function renderRenew(){const el=$("#renewBar");if(!el)return;const end=renewEnding();const snooze=lsGet("desk.renewSnooze","");
+  if(!end.length||snooze===dayKey(new Date())&&end[0].days_left>1){el.hidden=true;el.innerHTML="";return}
+  const c=end[0];const accs=end.map(x=>accLabel(x.account_key)).join(", ");const when=new Date(c.ends_at).toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"});
+  el.hidden=false;el.className="renewbar"+(c.days_left<=1?" urgent":"");
+  el.innerHTML=`<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3v5M15 3v5M7 8h10v3a5 5 0 0 1-10 0z"/><path d="M12 16v5"/></svg><span><b>${c.days_left>0?`Your Facebook connection ends in ${c.days_left} day${c.days_left===1?"":"s"}`:"Your Facebook connection has ended"}</b> (${esc(accs)}). ${c.days_left>0?`Posts you approved stop going out after ${esc(when)} unless you renew.`:"Posts you approved can't go out until you renew."}</span>${BELL.url?`<a class="btn small primary" href="${esc(BELL.url)}" target="_blank" rel="noopener">Continue to Facebook ↗</a>`:`<button class="btn small primary" data-renew>Renew</button>`}${c.days_left>1?`<button class="btn small" data-renew-snooze>Tomorrow</button>`:""}`}
+async function renewStart(){try{const r=await eng("engine_connect",{});if(r&&r.ok&&r.url){BELL.url=r.url;renderRenew();if($("#renewBar").hidden){S.connectUrl=r.url;renderConnect();navGo("settings")}setTimeout(()=>{BELL.url=null;renderRenew()},9*60e3)}else toast((r&&r.error)||"Couldn't start Connect Facebook")}catch(e){failToast(e,"Couldn't start Connect Facebook")}}
+document.addEventListener("click",ev=>{if(ev.target.closest("[data-renew]")){ev.target.closest("[data-renew]").disabled=true;renewStart();return}
+  if(ev.target.closest("[data-renew-snooze]")){lsSet("desk.renewSnooze",dayKey(new Date()));renderRenew()}});
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"&&BELL.url){BELL.url=null;loadBell()}});
+/* 22A My settings */
+const SET0={clock:"24",weekStart:"mon",tz:"",weekends:true,theme:""};
+async function loadSettings(){try{const r=await eng("engine_prefs",{});IB.prefs=IB.prefs||r.prefs||{};S.settings={...SET0,...((r.prefs||{}).settings||{})}}catch(e){S.settings=S.settings||{...SET0}}
+  if(S.settings.theme){lsSet("desk.theme",S.settings.theme);applyTheme(S.settings.theme)}
+  if(S.view==="calendar")renderCal();if(S.view==="settings")renderMine()}
+let setT=0;function saveSettings(){clearTimeout(setT);setT=setTimeout(async()=>{try{const r=await eng("engine_prefs",{set:{settings:S.settings}});const n=$("#stSaved");if(n){n.textContent=r&&r.ok===false?(r.error||"Couldn't save"):"✓ Saved";n.classList.toggle("bad",!!(r&&r.ok===false))}}catch(e){const n=$("#stSaved");if(n){n.textContent="Couldn't save: "+whyFailed(e);n.classList.add("bad")}}},400)}
+function seg(k,opts){const v=(S.settings||SET0)[k];return `<span class="stseg" role="group">${opts.map(([x,l])=>`<button data-set="${k}" data-v="${esc(String(x))}" aria-pressed="${String(v)===String(x)}">${esc(l)}</button>`).join("")}</span>`}
+function mineHtml(){const st=S.settings||SET0;const team=calTeamName(S.team);const city=tzCity(teamTz());const differs=tzGapMin()!==0;
+  const tzv=st.tz||(lsGet("desk.calTzMine",false)?"mine":"team");
+  return `<div class="ibd stmine"><div class="stcols"><div class="stform">
+    <h3>My settings</h3>
+    <h4>Time and dates</h4>
+    <div class="stkv"><span>Clock</span>${seg("clock",[["24","24 hour"],["12","12 hour"]])}
+    <span>Calendar times</span><span class="stseg" role="group"><button data-set="tz" data-v="team" aria-pressed="${tzv==="team"}">${esc(city)} time</button><button data-set="tz" data-v="mine" aria-pressed="${tzv==="mine"}">My computer's time</button></span>
+    <span></span><small class="src">${differs?`Your computer is on ${esc(tzCity(myTz()))} time, ${esc(tzGapText().replace("yours","the team's").replace(/ahead of|behind/,m=>m==="behind"?"ahead of":"behind"))}.`:`Your computer is on the same time as ${esc(team)}.`}</small></div>
+    <h4>Calendar</h4>
+    <div class="stkv"><span>Week starts</span>${seg("weekStart",[["mon","Monday"],["sun","Sunday"]])}
+    <span>Weekends in Week</span>${seg("weekends",[[true,"Show"],[false,"Hide"]])}</div>
+    <h4>Look</h4>
+    <div class="stkv"><span>Theme</span>${seg("theme",[["light","Light"],["dark","Dark"],["","Auto"]])}</div>
+    <p class="src" id="stSaved" aria-live="polite">Saves as you change it. Follows you to any computer.</p></div>
+    <figure class="stprev" aria-label="Preview">${minePreview()}<figcaption class="src">How a week of posts will look</figcaption></figure></div></div>`}
+function minePreview(){const st=S.settings||SET0;const mine=(st.tz||(lsGet("desk.calTzMine",false)?"mine":"team"))==="mine";
+  const shift=mine?-tzGapMin():0;const fmt=(h,m)=>{const t=new Date(2026,0,5,h,m+shift);return st.clock==="12"?t.toLocaleTimeString("en-GB",{hour:"numeric",minute:"2-digit",hour12:true}).replace(" ",""):t.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"})};
+  let days=st.weekStart==="sun"?["Sun","Mon","Tue","Wed","Thu","Fri","Sat"]:["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];if(st.weekends===false)days=days.filter(d=>d!=="Sat"&&d!=="Sun");
+  const P={Mon:[[9,30,"Burnham"]],Tue:[[7,30,"Explainer"],[14,0,"Write to MP"]],Wed:[[10,0,"Questions"]],Thu:[[12,0,"The bill"]],Sat:[[18,0,"Weekly wins"]],Sun:[[19,0,"Reflection"]]};
+  return `<div class="stpcal" style="--n:${days.length}">${days.map(d=>`<span class="stph">${d}</span>`).join("")}${days.map(d=>`<span class="stpd">${(P[d]||[]).map(([h,m,l])=>`<span class="stpc"><b>${esc(fmt(h,m))}</b> ${esc(l)}</span>`).join("")}</span>`).join("")}</div>`}
+function renderMine(){const el=$("#stMine");if(!el)return;const a=document.activeElement;const k=a&&a.dataset&&a.dataset.set?a.dataset.set+":"+a.dataset.v:null;el.innerHTML=mineHtml();if(k){const b=el.querySelector(`[data-set="${k.split(":")[0]}"][data-v="${k.split(":").slice(1).join(":")}"]`);b&&b.focus()}}
+document.addEventListener("click",ev=>{const b=ev.target.closest("[data-set]");if(!b)return;S.settings=S.settings||{...SET0};const k=b.dataset.set;let v=b.dataset.v;if(k==="weekends")v=v==="true";
+  S.settings[k]=v;if(k==="tz")lsSet("desk.calTzMine",v==="mine");if(k==="theme"){lsSet("desk.theme",v||"auto");applyTheme(v||"auto")}
+  renderMine();const n=$("#stSaved");if(n)n.textContent="Saving…";saveSettings()});
+document.addEventListener("click",ev=>{if(ev.target.closest("#sideMe")){navGo("settings");setTimeout(()=>$("#stMine")?.scrollIntoView({block:"start"}),50)}});
 function defaultDests(d){return d.account==="scotland"?["sc-fb","sc-ig"]:["uk-fb","uk-ig","uk-x"]}
 function nextSlot(){const t=new Date();t.setHours(18,0,0,0);if(new Date()>t)t.setDate(t.getDate()+1);while([0,6].includes(t.getDay()))t.setDate(t.getDate()+1);return t}
 function toLocalInput(iso){const t=iso?new Date(iso):nextSlot();const p=n=>String(n).padStart(2,"0");return `${t.getFullYear()}-${p(t.getMonth()+1)}-${p(t.getDate())}T${p(t.getHours())}:${p(t.getMinutes())}`}
@@ -2968,7 +3070,8 @@ function sideCounts(){const c=IB.counts||{};return{
   posts:S.drafts.filter(d=>(d.status||"pending")==="pending").length,
   evergreen:(EG.posts||[]).filter(p=>p.state==="due").length,
   "inbox:inbox":Math.max(0,(c.open||0)-(c.mentions||0)),"inbox:mine":c.mine||0,
-  "inbox:history":(IB.alerts||[]).length,"listening:mentions":c.mentions||0}}
+  "inbox:history":(IB.alerts||[]).length,"listening:mentions":c.mentions||0,
+  "listening:watches":LS.wby?wsMine().reduce((n,w)=>n+wsNew(w,LS.wby[w.id]),0):0}}
 function sideActive(){const v=S.view||"posts";
   if(v==="posts"&&S.status==="evergreen")return "evergreen";
   if(v==="calendar")return CAL.view==="month"?"plan":"calendar:"+CAL.view;
@@ -2991,7 +3094,7 @@ function applyTheme(t){const r=document.documentElement;if(t==="light"||t==="dar
   const sw=$("#themeSw");if(sw)sw.innerHTML=[["light","Light"],["dark","Dark"],["auto","Auto"]].map(([k,l])=>`<button data-theme-set="${k}" aria-pressed="${(t||"auto")===k}" title="${l} theme">${sideSvg(k,13)}<span>${l}</span></button>`).join("");
   try{const d=S.drafts?.find(x=>x.id===S.openId);if(d){drawCard(d);drawThumbs(d)}}catch(e){}}
 function applyFold(){document.querySelector(".shell")?.classList.toggle("folded",!!SIDE.fold);const b=document.querySelector(".sfold");if(b){b.setAttribute("aria-label",SIDE.fold?"Open the sidebar":"Fold the sidebar to icons");b.title=SIDE.fold?"Open the sidebar":"Fold to icons";b.classList.toggle("flip",!!SIDE.fold)}}
-document.addEventListener("click",ev=>{const t=ev.target.closest("[data-theme-set]");if(t){lsSet("desk.theme",t.dataset.themeSet);applyTheme(t.dataset.themeSet);return}
+document.addEventListener("click",ev=>{const t=ev.target.closest("[data-theme-set]");if(t){lsSet("desk.theme",t.dataset.themeSet);applyTheme(t.dataset.themeSet);if(S.settings){S.settings.theme=t.dataset.themeSet==="auto"?"":t.dataset.themeSet;saveSettings();renderMine()}return}
   if(ev.target.closest('[data-act="sideFold"]')){SIDE.fold=!SIDE.fold;lsSet("desk.sideFold",SIDE.fold);applyFold();return}
   const sc=ev.target.closest("[data-sec]");if(sc){const k=sc.dataset.sec;if(SIDE.fold){const it=SIDE_NAV.find(x=>x[0]===k)[2];navGo(it[0][0]);return}SIDE.open[k]=!(sc.getAttribute("aria-expanded")==="true");lsSet("desk.sideOpen",SIDE.open);renderSide()}});
 applyTheme(lsGet("desk.theme","auto"));
@@ -3233,7 +3336,7 @@ document.addEventListener("input",ev=>{const t=ev.target;if(t.id==="tlQ"){TL.q=t
   const map={mkKick:"kicker",mkHl:"headline",mkSub:"sub"};if(map[t.id]){TL.mk[map[t.id]]=t.value;mkDraw()}});
 document.addEventListener("change",ev=>{const t=ev.target;if(t.id==="mkT"){TL.mk.T=t.value;mkDraw()}else if(t.id==="mkPhoto"&&t.files&&t.files[0]){const r=new FileReader();r.onload=()=>{TL.mk.photo=r.result;mkDraw();setTimeout(mkDraw,300)};r.readAsDataURL(t.files[0])}});
 document.addEventListener("click",async ev=>{if(!ev.target.closest("[data-pi-dl]"))return;try{const r=await window.deskFile(PI_INFO.zip);location.href=r.url}catch(e){toast(e.message||"Couldn't get the download")}});
-function renderSettings(){const el=$("#stBody");if(!el)return;const rights=new Set(S.rights||[]),conn=new Set(S.connected||[]);
+function renderSettings(){renderMine();const el=$("#stBody");if(!el)return;const rights=new Set(S.rights||[]),conn=new Set(S.connected||[]);
   el.innerHTML=(S.teams||[]).map(t=>`<div class="ibd"><b>${esc(((t.flag||"")+" "+t.name).trim())}</b><span class="src">Your role: ${esc(t.role||"editor")}${t.role==="admin"?" (you can change this team's auto-hide list and automations)":""}</span>
     <div class="awrap"><table class="atbl"><thead><tr><th>Account</th><th>Can you post and reply?</th></tr></thead><tbody>${(t.accounts||[]).map(a=>`<tr><td>${esc(a.name||a.key)} <small class="src">${esc(a.platform)}</small></td><td>${a.platform==="x"?"Posted by hand: copy the text from the post":conn.has(a.key)?"✓ Yes, through your Facebook connection":rights.has(a.key)?"✓ Yes, set up by hand (connect Facebook to confirm it)":"🔒 No: you need a role on this Page in Facebook"}</td></tr>`).join("")}</tbody></table></div></div>`).join("")||`<p class="src">You aren't in a Content Engine team yet.</p>`;
   if(!$("#stAccess")){const d=document.createElement("div");d.id="stAccess";el.after(d)}
@@ -3259,7 +3362,9 @@ function renderTeams(){
    items, and the key dates, come from engine_calendar. */
 const CAL={view:"month",best:true,filter:{},anchor:new Date(),others:false,data:null,ahead:null,err:null,loading:false};
 const accLabel=k=>{const [c,p]=String(k).split("-");return `${c==="sc"?"Scot":c==="global"?"CGO":c.toUpperCase()} ${({fb:"FB",ig:"IG",x:"X"})[p]||p||""}`.trim()};
-const hhmm=t=>new Date(t).toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"});
+const hhmm=t=>(S.settings||{}).clock==="12"?new Date(t).toLocaleTimeString("en-GB",{hour:"numeric",minute:"2-digit",hour12:true}).replace(" ",""):new Date(t).toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"});
+const wkOff=d=>(S.settings||{}).weekStart==="sun"?d.getDay():(d.getDay()+6)%7;
+const dowNames=()=>(S.settings||{}).weekStart==="sun"?["Sun","Mon","Tue","Wed","Thu","Fri","Sat"]:["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
 /* Priority One 6E [chosen 3 Nov]: the calendar runs on the team's own clock.
    Nothing changes for anyone whose computer is in that zone; anyone else gets
    a one-line heads-up with "Show my time". Z() turns a real instant into a Date
@@ -3296,8 +3401,8 @@ function calNotesPanel(days){const ks=new Set(days.map(dayKey));const list=(CAL.
     <form id="calNoteForm" class="cnform"><label>Day<input type="date" name="day" value="${esc(def)}" required></label><label>Note<textarea name="text" rows="2" maxlength="280" required placeholder="e.g. Embargo till 10am on the NHS figures"></textarea></label><button class="btn small" type="submit">+ Add note</button></form>
     <label class="lg"><input type="checkbox" data-cal-notes-show${calShowNotes()?" checked":""}> Show on calendar</label></section>`}
 function calRange(){const a=new Date(CAL.anchor);a.setHours(0,0,0,0);
-  if(CAL.view==="week"){const s=new Date(a);s.setDate(a.getDate()-((a.getDay()+6)%7));const e=new Date(s);e.setDate(s.getDate()+7);return{s,e}}
-  const f=new Date(a.getFullYear(),a.getMonth(),1);const s=new Date(f);s.setDate(f.getDate()-((f.getDay()+6)%7));const e=new Date(s);e.setDate(s.getDate()+42);return{s,e,month:a.getMonth()}}
+  if(CAL.view==="week"){const s=new Date(a);s.setDate(a.getDate()-wkOff(a));const e=new Date(s);e.setDate(s.getDate()+7);return{s,e}}
+  const f=new Date(a.getFullYear(),a.getMonth(),1);const s=new Date(f);s.setDate(f.getDate()-wkOff(f));const e=new Date(s);e.setDate(s.getDate()+42);return{s,e,month:a.getMonth()}}
 async function loadCal(){
   const {s,e}=calRange();const now=new Date();now.setHours(0,0,0,0);const ahead=new Date(now);ahead.setDate(now.getDate()+28);
   const ticket=CAL.ticket=(CAL.ticket||0)+1;CAL.loading=true;CAL.err=null;renderCal();
@@ -3395,7 +3500,7 @@ function calHeader(label,count){const v=CAL.view;const f=CAL.filter||{};const ne
     <div class="calnote">${CAL.loading?"Loading the calendar…":CAL.err?esc("Couldn't load key dates and other teams: "+whyFailed(CAL.err)):esc(count)}${lsGet("desk.calTzSeen","")===teamTz()+"|"+myTz()?tzBanner():""}</div>${lsGet("desk.calTzSeen","")===teamTz()+"|"+myTz()?"":tzBanner()}`}
 /* ---- month ---- */
 function calMonth(days,month,byDay){const today=calToday();const reqOn=k=>(PLAN.reqs||[]).filter(r=>r.for_date===k);
-  return `<div class="month cmonth">${["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map(x=>`<div class="dow">${x}</div>`).join("")}${days.map(d=>{const k=dayKey(d);const list=byDay[k]||[];const rq=reqOn(k);
+  return `<div class="month cmonth">${dowNames().map(x=>`<div class="dow">${x}</div>`).join("")}${days.map(d=>{const k=dayKey(d);const list=byDay[k]||[];const rq=reqOn(k);
     const quiet=k>=today&&!list.some(i=>i.mine)&&!rq.length;
     const best=CAL.best!==false&&k>=today?bestChip(d,list):"";
     return `<div class="mcell${d.getMonth()!==month?" out":""}${k===today?" today":""}${quiet?" quiet":""}" data-day="${k}"><span class="n">${d.getDate()}${noteDot(k)}</span>${k>=today?keyDatesOn(k).filter(x=>x.starts===k||d.getDay()===1).map(x=>kdHtml(x,k)).join(""):""}${rq.map(rqHtml).join("")}${list.map(i=>calChip(i)).join("")}${badgeHtml(k)}${best&&list.filter(i=>i.mine).length<2?`<span class="qhint" title="Our best slot that day is free">${best} free</span>`:""}</div>`}).join("")}</div>`}
@@ -3404,7 +3509,7 @@ function bestChip(d,list){const t=(S.teams||[]).find(x=>x.id===S.team);const lea
 function rqHtml(r){if(r.status!=="drafted"&&r.for_date<dayKey(new Date()))return"";return r.status==="drafted"?`<div class="rq done" title="${esc(r.angle||"")}">✎ Drafted: ${esc(r.title)}</div>`:`<div class="rq" title="${esc(r.angle||"")}"><span>✎ Asked: ${esc(r.title)}</span><button data-plan-cancel="${esc(r.id)}" aria-label="Cancel the request for ${esc(r.title)}">Cancel</button></div>`}
 /* ---- week by the hour ---- */
 const CW_FROM=6,CW_TO=23;
-function calWeek(days,byDay){const today=calToday();const pct=t=>((t.getHours()+t.getMinutes()/60)-CW_FROM)/(CW_TO-CW_FROM)*100;
+function calWeek(days,byDay){const today=calToday();if((S.settings||{}).weekends===false)days=days.filter(d=>![0,6].includes(d.getDay()));const pct=t=>((t.getHours()+t.getMinutes()/60)-CW_FROM)/(CW_TO-CW_FROM)*100;
   const ruler=[];for(let h=CW_FROM;h<CW_TO;h+=2)ruler.push(`<span style="top:${(h-CW_FROM)/(CW_TO-CW_FROM)*100}%">${String(h).padStart(2,"0")}</span>`);
   const t=(S.teams||[]).find(x=>x.id===S.team);const lead=((t&&t.accounts)||[]).some(a=>a.platform==="facebook")?"fb":"ig";
   const cols=days.map(d=>{const k=dayKey(d);const we=[0,6].includes(d.getDay());const [bh,bm]=BEST[lead][we?"we":"wd"];const b0=new Date(d);b0.setHours(bh-1,bm,0,0);const b1=new Date(d);b1.setHours(bh+2,bm,0,0);
@@ -3413,7 +3518,7 @@ function calWeek(days,byDay){const today=calToday();const pct=t=>((t.getHours()+
     const head=(k>=today?keyDatesOn(k):[]).filter(x=>x.starts===k).map(x=>`<span class="cwkd kc-${kdCat(x)}">${esc(x.title)}</span>`).join("")+(PLAN.reqs||[]).filter(r=>r.for_date===k).map(r=>`<span class="cwkd rqk">✎ ${esc(r.title)}</span>`).join("");
     return `<div class="cwcol${k===today?" today":""}"><div class="cwhead"><b>${esc(d.toLocaleDateString("en-GB",{weekday:"short",day:"numeric"}))}${noteDot(k)}</b>${head}${badgeHtml(k)}</div>
       <div class="cwtrack" data-day="${k}" data-week="1">${CAL.best!==false&&k>=today?`<span class="cwbest" style="top:${pct(b0)}%;height:${pct(b1)-pct(b0)}%" title="Our best window"></span>`:""}${k===today?`<span class="cwnow" style="top:${pct(now)}%"></span>`:""}${blocks}</div></div>`}).join("");
-  return `<div class="cweek"><div class="cwruler"><div class="cwhead"></div><div class="cwtrack">${ruler.join("")}</div></div>${cols}</div>`}
+  return `<div class="cweek" style="--n:${days.length}"><div class="cwruler"><div class="cwhead"></div><div class="cwtrack">${ruler.join("")}</div></div>${cols}</div>`}
 /* ---- list: Priority One 8A [chosen 3 Nov] ----
    A tick on every post still to go out and on every day, a red Now line,
    and a bulk bar: Move…, Pause (On hold) and Back to Review. */
@@ -3530,7 +3635,7 @@ function calPeekHtml(){const P=CAL.peek;if(!P)return"";if(P.others)return calOth
     <div class="row">${P.to?`<button class="btn small primary" data-cal-move>${d.status==="scheduled"?"Move it":"Set this time and open"}</button>`:""}<button class="btn small" data-cal-open="${esc(d.id)}">Open in Posts</button>${!P.to&&d.status!=="posted"?`<span class="src">Drag it to another day to move it</span>`:""}</div></div>`}
 function openPeek(id,x,y,to){const box=$("#calView").getBoundingClientRect();const W=340;CAL.peek={id,to:to?to.toISOString():null,x:Math.max(8,Math.min(x-box.left,box.width-W-8)),y:Math.max(8,y-box.top+8)};renderCal();document.querySelector("#calPeek [data-cal-move],#calPeek [data-cal-open]")?.focus()}
 function monthHtml(days,month,byDay,extra){const today=dayKey(new Date());
-  return `<div class="month">${["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map(x=>`<div class="dow">${x}</div>`).join("")}${days.map(d=>{const k=dayKey(d);return `<div class="mcell${d.getMonth()!==month?" out":""}${k===today?" today":""}" data-day="${k}"><span class="n">${d.getDate()}</span>${keyDatesOn(k).filter(x=>x.starts===k||d.getDay()===1).map(x=>kdHtml(x,k)).join("")}${extra?extra(k):""}${PLAN.images&&S.view==="plan"?(byDay[k]||[]).map(i=>`<canvas class="mthumb" data-thumb="${esc(i.id)}" width="108" height="135" title="${esc(i.title)}" data-cal-open="${esc(i.id)}"></canvas>`).join(""):(byDay[k]||[]).map(itemHtml).join("")}</div>`}).join("")}</div>`}
+  return `<div class="month">${dowNames().map(x=>`<div class="dow">${x}</div>`).join("")}${days.map(d=>{const k=dayKey(d);return `<div class="mcell${d.getMonth()!==month?" out":""}${k===today?" today":""}" data-day="${k}"><span class="n">${d.getDate()}</span>${keyDatesOn(k).filter(x=>x.starts===k||d.getDay()===1).map(x=>kdHtml(x,k)).join("")}${extra?extra(k):""}${PLAN.images&&S.view==="plan"?(byDay[k]||[]).map(i=>`<canvas class="mthumb" data-thumb="${esc(i.id)}" width="108" height="135" title="${esc(i.title)}" data-cal-open="${esc(i.id)}"></canvas>`).join(""):(byDay[k]||[]).map(itemHtml).join("")}</div>`}).join("")}</div>`}
 
 /* ---------- plan (Plan C): the month, and an ideas tray beside it ----------
    Picking an idea asks the daily engine to draft it for that date
@@ -4321,7 +4426,18 @@ function wsMine(){return (LS.watches||[]).filter(w=>w.team===S.team&&!w.deleted)
 function wsSplit(v){return String(v||"").split(/[,\n]/).map(x=>x.trim()).filter(Boolean).slice(0,20)}
 async function loadWatches(){const ws=wsMine();const [m,ov]=await Promise.all([ws.length?eng("engine_listening",{tab:"watches",watches:ws.map(w=>({id:w.id,words:w.words,not:w.not,sources:w.sources})),...(LS.fresh?{fresh:true}:{})}):Promise.resolve({watches:[]}),eng("engine_listening",{tab:"overview"}).catch(()=>null)]);
   const by={};for(const r of m.watches||[])by[r.id]=r;return{tab:"watches",by,overview:ov,cached_at:m.cached_at||null,sig:ws.map(w=>w.id+":"+(w.words||[]).join("|")+":"+(w.not||[]).join("|")+":"+(w.sources||[]).join("|")).join(";")}}
-function wsNew(w,r){const seen=wsSeen()[w.id]||w.at||"";return ((r&&r.matches)||[]).filter(p=>String(p.created_time)>seen).length}
+/* Priority One 24 [chosen 3 Nov, A with C]: a new count per watch and in the
+   sidebar, unseen posts bold with a dot, matched words marked, Mark all seen,
+   and opening a post marks that one seen. Seen is kept per person, per browser. */
+function wsSeenUrls(){try{return new Set(JSON.parse(localStorage.getItem("lsWatchSeenUrls")||"[]"))}catch(e){return new Set()}}
+function wsSeeUrl(u){if(!u)return;const s=[...wsSeenUrls()].filter(x=>x!==u).concat(u).slice(-400);try{localStorage.setItem("lsWatchSeenUrls",JSON.stringify(s))}catch(e){}}
+function wsIsNew(w,p,seen,urls){return !!w&&String(p.created_time)>(seen[w.id]||w.at||"")&&!(p.url&&urls.has(p.url))}
+function wsNew(w,r){const seen=wsSeen(),urls=wsSeenUrls();return ((r&&r.matches)||[]).filter(p=>wsIsNew(w,p,seen,urls)).length}
+function wsMark(text,words){const t=esc(text);const ws=(words||[]).map(x=>String(x).trim()).filter(x=>x.length>1).sort((a,b)=>b.length-a.length).slice(0,20);if(!ws.length)return t;
+  const re=new RegExp("("+ws.map(x=>esc(x).replace(/[.*+?^${}()|[\]\\]/g,"\\$&")).join("|")+")","gi");return t.replace(re,"<mark>$1</mark>")}
+async function lsWatchTotals(){const ws=wsMine();if(!ws.length||!S.mcp){LS.wby=null;renderSide();return}
+  try{const m=await eng("engine_listening",{tab:"watches",watches:ws.map(w=>({id:w.id,words:w.words,not:w.not,sources:w.sources}))});const by={};for(const r of m.watches||[])by[r.id]=r;LS.wby=by;renderSide()}catch(e){}}
+setInterval(()=>{if(document.visibilityState==="visible")lsWatchTotals()},10*60e3);
 function wsSuggest(){const D=LS.data,ov=D&&D.overview,have=new Set(wsMine().flatMap(w=>(w.words||[]).map(x=>x.toLowerCase())));const out=[];
   for(const t of (ov&&ov.topics)||[])if(t.gap)out.push({src:"⚠ GAP TO FILL",name:t.name,why:t.gap.text+".",words:wsSplit(t.terms)});
   for(const c of ((ov&&ov.trending)||[]).slice(0,4))out.push({src:"📈 PICKING UP",name:tpLbl(c),why:`${c.accounts} accounts this week${c.before?` (${c.before} the week before)`:", new"}.`,words:[c.key]});
@@ -4344,8 +4460,8 @@ function renderWatches(el,head){const D=LS.data,ws=wsMine(),sel=LS.wsel||"all",b
       <div class="tpacts"><button class="btn small" data-ws-check>Check last 14 days</button><button class="btn small primary" data-ws-save>Save watch</button><button class="btn small" data-ws-cancel>Cancel</button>${f.id?`<button class="btn small" data-ws-del style="margin-left:auto">Delete</button>`:""}</div>
       ${pv?`<div class="wsprev"><b>${pv.total} match${pv.total===1?"":"es"} in the last 14 days</b>${pv.matches.slice(0,5).map(p=>`<div class="src"><span class="rsdot" data-src="${p.src}"></span> ${esc(p.who)}: ${esc(String(p.text||"").slice(0,110))}</div>`).join("")}</div>`:""}</section>`}
   else{const list=sel==="all"?ws.flatMap(w=>((by[w.id]||{}).matches||[]).map(p=>({...p,w}))).sort((a,b)=>String(b.created_time).localeCompare(String(a.created_time))):(((by[sel]||{}).matches)||[]).map(p=>({...p,w:ws.find(x=>x.id===sel)}));
-    const seen=wsSeen(),W=ws.find(x=>x.id===sel);LS.wlist=list;
-    const row=(p,i)=>{const nw=p.w&&String(p.created_time)>(seen[p.w.id]||p.w.at||"");return `<div class="wsrow${nw?" new":""}"><div class="rsmeta"><span class="rsdot" data-src="${p.src}"></span><b>${esc(p.who)}</b><span class="src">${esc(rsAge(p.created_time))}</span>${sel==="all"&&p.w?`<span class="wstag">${esc(p.w.name)}</span>`:""}${nw?`<span class="wsnew">● new</span>`:""}${p.x!=null?`<b class="tpx">${anN(p.x)}×</b>`:""}</div><p>${esc(p.text||"(no text)")}</p><div class="tpacts">${p.url?`<a class="btn small" href="${esc(p.url)}" target="_blank" rel="noopener">Open ↗</a>`:""}${tm?(LS.done.has(p.url||p.text)?`<span class="src">✓ Requested</span>`:`<button class="btn small" data-ws-ask="${i}">${p.src==="opponents"?"Counter with facts":"Rework for "+esc(tm.name)}</button>`):""}</div></div>`};
+    const seen=wsSeen(),urls=wsSeenUrls(),W=ws.find(x=>x.id===sel);LS.wlist=list;if(D&&D.by)LS.wby=D.by;
+    const row=(p,i)=>{const nw=wsIsNew(p.w,p,seen,urls);return `<div class="wsrow${nw?" new":""}"><div class="rsmeta"><span class="rsdot" data-src="${p.src}"></span><b>${esc(p.who)}</b><span class="src">${esc(rsAge(p.created_time))}</span>${sel==="all"&&p.w?`<span class="wstag">${esc(p.w.name)}</span>`:""}${nw?`<span class="wsnew">● new</span>`:""}${p.x!=null?`<b class="tpx">${anN(p.x)}×</b>`:""}</div><p>${p.text?wsMark(p.text,p.w&&p.w.words):"(no text)"}</p><div class="tpacts">${p.url?`<a class="btn small" href="${esc(p.url)}" target="_blank" rel="noopener" data-ws-open="${esc(p.url)}">Open ↗</a>`:""}${tm?(LS.done.has(p.url||p.text)?`<span class="src">✓ Requested</span>`:`<button class="btn small" data-ws-ask="${i}">${p.src==="opponents"?"Counter with facts":"Rework for "+esc(tm.name)}</button>`):""}</div></div>`};
     mid=`<section class="rsbox wsm"><div class="rsbar"><b class="wsh">${sel==="all"?"All watches":esc(W?W.name:"")}</b>${W?`<span class="src">${esc((W.words||[]).join(", "))}${(W.not||[]).length?" · not "+esc(W.not.join(", ")):""}</span><button class="btn small" data-ws-edit="${esc(W.id)}">Edit</button>`:""}${list.length?`<button class="btn small" data-ws-seen style="margin-left:auto">Mark all seen</button>`:""}</div>
       ${!D?`<span class="src">${LS.loading?"Loading…":""}</span>`:list.length?list.slice(0,60).map(row).join(""):`<span class="src">${ws.length?"Nothing matched in the last 14 days.":"Your watches' matches will show here."}</span>`}</section>`}
   const sug=wsSuggest();
@@ -4454,7 +4570,8 @@ document.addEventListener("click",async ev=>{const mo=ev.target.closest("[data-l
     try{await S.db.doc(`listenWatches/${id}`).set(doc);LS.watches=[...(LS.watches||[]).filter(w=>w.id!==id),doc];LS.wform=null;LS.wprev=null;LS.wsel=id;LS.data=null;toast("Watch saved");loadListening()}catch(e){failToast(e,"Couldn't save it");wsv.disabled=false}return}
   const wdl=ev.target.closest("[data-ws-del]");if(wdl&&LS.wform&&LS.wform.id){if(wdl.dataset.sure!=="1"){wdl.dataset.sure="1";wdl.textContent="Delete for the whole team?";return}
     try{await S.db.doc(`listenWatches/${LS.wform.id}`).update({deleted:true});LS.watches=(LS.watches||[]).map(w=>w.id===LS.wform.id?{...w,deleted:true}:w);LS.wform=null;LS.wsel="all";toast("Watch deleted");renderListening()}catch(e){failToast(e,"Couldn't delete it")}return}
-  if(ev.target.closest("[data-ws-seen]")){wsSetSeen(LS.wsel&&LS.wsel!=="all"?[LS.wsel]:wsMine().map(w=>w.id));renderListening();return}
+  const wo=ev.target.closest("[data-ws-open]");if(wo){wsSeeUrl(wo.dataset.wsOpen);setTimeout(()=>{renderListening();renderSide()},50);return}
+  if(ev.target.closest("[data-ws-seen]")){wsSetSeen(LS.wsel&&LS.wsel!=="all"?[LS.wsel]:wsMine().map(w=>w.id));renderListening();renderSide();return}
   const wak=ev.target.closest("[data-ws-ask]");if(wak&&LS.wlist){const p=LS.wlist[Number(wak.dataset.wsAsk)];if(p)lsAsk(p,wak);return}
   const tpo=ev.target.closest("[data-tp-open]");if(tpo){LS.openTopic=tpo.dataset.tpOpen||null;LS.tpSrc="";LS.tpMore=false;renderListening();$("#lsView").scrollIntoView({block:"start"});return}
   const gp=ev.target.closest("[data-ls-gap],[data-ls-trend]");if(gp&&LS.data&&LS.data.tab==="topics"){const isG=gp.hasAttribute("data-ls-gap");const c=isG?LS.data.topics[Number(gp.dataset.lsGap)]:LS.data.trending[Number(gp.dataset.lsTrend)];if(!c)return;const tm=new Date();tm.setDate(tm.getDate()+1);gp.disabled=true;
@@ -5472,7 +5589,7 @@ window.addEventListener("beforeunload",ev=>{if(CP.open&&CP.state&&/Unsaved|Savin
   renderTeams();renderConnect();renderPause();
   S.db=engineStore(db);
   if(db)db.collection("videoRequests").onSnapshot(snap=>{S.requests={};snap.docs.forEach(x=>S.requests[x.id]=x.data());if(S.view==="tools"&&TL.tab==="make"&&!document.activeElement?.closest?.("#toolsView"))renderTools();if(!(S.editing&&$("#editText"))&&!busy())renderDetail();else S.renderWaiting=true},()=>{});
-  await refreshPosts();loadInbox();renderSide();
+  loadSettings();await refreshPosts();loadInbox();renderSide();loadBell();setTimeout(lsWatchTotals,4000);
   if(db)try{db.collection("analyticsGroups").onSnapshot(snap=>{AN.groups=snap.docs.map(x=>x.data());if(S.view==="analytics")renderAnalytics()},()=>{})}catch(e){}
   if(db)try{db.collection("analyticsViews").onSnapshot(snap=>{AN.views=snap.docs.map(x=>x.data());if(S.view==="analytics")renderAnalytics()},()=>{})}catch(e){}
   if(db)try{db.collection("listenVoices").onSnapshot(snap=>{LS.voices=snap.docs.map(x=>x.data())},()=>{})}catch(e){}
@@ -5481,9 +5598,9 @@ window.addEventListener("beforeunload",ev=>{if(CP.open&&CP.state&&/Unsaved|Savin
   if(db)try{db.collection("savedReplies").onSnapshot(snap=>{IB.saved=snap.docs.map(x=>x.data()).filter(r=>r.team===S.team);if(S.view==="inbox")renderInbox()},()=>{})}catch(e){}
   try{const room=await window.claude.use("room");if(room){IB.room=room;room.onPeers(ps=>{IB.peers=ps;if(S.view==="inbox"&&IB.open)renderInbox()});
     room.on("inbox",m=>{if(m&&m.team===S.team&&S.view==="inbox"&&!$("#ibText")?.matches(":focus"))loadInbox()});
-    room.on("composeAsk",m=>{const me=String(S.whoId||"").toLowerCase();if(m&&m.team===S.team&&(m.to==="*"||String(m.to||"").toLowerCase()===me)&&String(m.by||"").toLowerCase()!==me){toast(`${m.by||"Someone"} asked you to check “${m.title||"a post"}”`);refreshPosts()}});
-    room.on("composeNote",m=>{if(m&&m.to&&String(m.to).toLowerCase()===String(S.whoId||"").toLowerCase())toast(`${m.by||"Someone"} mentioned you on “${m.title||"a post"}”`)});
-    room.on("assigned",m=>{if(m&&m.to&&String(m.to).toLowerCase()===String(S.whoId||"").toLowerCase())toast(`${m.by||"Someone"} assigned you “${m.text||"a conversation"}”`)})}}catch(e){}try{if(!EG.loaded)loadEvergreen()}catch(e){}
+    room.on("composeAsk",m=>{const me=String(S.whoId||"").toLowerCase();if(m&&m.team===S.team&&(m.to==="*"||String(m.to||"").toLowerCase()===me)&&String(m.by||"").toLowerCase()!==me){toast(`${m.by||"Someone"} asked you to check “${m.title||"a post"}”`);bellPush("ask",`${m.by||"Someone"} asked you to check “${m.title||"a post"}”`,"post",m.id||m.post||"");refreshPosts()}});
+    room.on("composeNote",m=>{if(m&&m.to&&String(m.to).toLowerCase()===String(S.whoId||"").toLowerCase()){toast(`${m.by||"Someone"} mentioned you on “${m.title||"a post"}”`);bellPush("mention",`${m.by||"Someone"} mentioned you on “${m.title||"a post"}”`,"post",m.id||m.post||"")}});
+    room.on("assigned",m=>{if(m&&m.to&&String(m.to).toLowerCase()===String(S.whoId||"").toLowerCase()){toast(`${m.by||"Someone"} assigned you “${m.text||"a conversation"}”`);loadBell()}})}}catch(e){}try{if(!EG.loaded)loadEvergreen()}catch(e){}
   setInterval(()=>{if(document.visibilityState==="visible"&&!busy()&&!S.editing&&!S.gedit&&!S.inline)refreshPosts()},45000);
   document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"&&!busy())refreshPosts()});
 })();

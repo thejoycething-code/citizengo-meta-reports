@@ -528,7 +528,7 @@ async function engineInboxCheck(store, args, { who }) {
 
 // A person's own desk settings and saved views. Only the listed keys, each
 // kept small; nothing here is shared with the team.
-const PREF_KEYS = { inbox_views: 20000, settings: 4000 };
+const PREF_KEYS = { inbox_views: 20000, settings: 4000, bell_seen: 40 };
 async function enginePrefsTool(store, args, { who }) {
   await context(store, who);
   const cur = await store.enginePrefs(who);
@@ -1818,6 +1818,63 @@ async function engineConnect(store, args, { who }) {
   return json({ ok: true, configured: true, url: `${origin}/api/fb/authorize?t=${encodeURIComponent(fbflow.signLink(cfg.secret, who))}`, expires_in: 600 });
 }
 
+// The bell [Priority One 21A, chosen 3 Nov]: what needs this person, inside
+// the desk only (no email, phone or Slack). Built from what is already stored:
+// Inbox items assigned to them, teammates' actions waiting for their check
+// (admins), their own checked, sent back or failed actions, their posts
+// approved, sent back or rejected by someone else, publishing failures on posts
+// they made or approved, and their Facebook connection running out (20C:
+// Meta asks people to sign in again every 90 days, counted from Connect).
+const CONNECT_DAYS = 90;
+async function engineBell(store, args, { who }) {
+  const ctx = await context(store, who);
+  const team = String(args.team || '');
+  if (!E.canEditTeam(ctx, team)) throw err('You are not in that team.', 'ENGINE_NOT_MEMBER');
+  const now = Date.now(), since = new Date(now - 7 * 864e5).toISOString();
+  const me = String(who).toLowerCase(), isMe = (x) => String(x || '').toLowerCase() === me;
+  const safe = (p) => Promise.resolve(p).catch(() => []);
+  const [open, acts, posts, conns, prefs] = await Promise.all([
+    safe(store.engineInbox({ team_ids: [team], statuses: ['open'], limit: 500 })),
+    safe(store.engineInboxActions({ team_ids: [team], limit: 300 })),
+    safe(store.enginePosts({ team_ids: [team], limit: 300 })),
+    store.engineMyConnections ? safe(store.engineMyConnections(who)) : [],
+    store.enginePrefs ? Promise.resolve(store.enginePrefs(who)).catch(() => ({})) : {},
+  ]);
+  const out = [];
+  const add = (o) => { if (o.at && o.at >= since) out.push(o); };
+  const quote = (t) => `“${String(t || 'a post').replace(/\s+/g, ' ').trim().slice(0, 70)}”`;
+  for (const i of open || []) if (isMe(i.assigned_to)) add({ id: `as:${i.id}`, kind: 'assigned', at: i.updated_at || i.created_at, text: `${i.author_name || 'Someone'}'s ${i.kind === 'message' ? 'message' : 'comment'} was assigned to you`, go: 'inbox:mine', ref: i.id });
+  const ACT = { reply: 'reply', private_reply: 'private reply', hide: 'hide', unhide: 'unhide', delete: 'delete', ban: 'ban', like: 'like' };
+  if (isChecker(ctx, team)) for (const a of acts || []) if (a.status === 'check' && !isMe(a.by)) add({ id: `ck:${a.id}`, kind: 'check', at: a.created_at, text: `${a.by} asked you to check a ${ACT[a.action] || a.action}`, go: 'inbox:check', ref: a.item_id });
+  for (const a of acts || []) {
+    if (!isMe(a.by)) continue;
+    const d = a.detail || {}, what = ACT[a.action] || a.action;
+    if (a.status === 'cancelled' && d.sent_back) add({ id: `sb:${a.id}`, kind: 'sent_back', at: a.done_at || a.created_at, text: `${d.checked_by || 'An admin'} sent back your ${what}${d.note ? `: ${String(d.note).slice(0, 120)}` : ''}`, go: 'inbox:inbox', ref: a.item_id });
+    else if (a.status === 'failed') add({ id: `fa:${a.id}`, kind: 'failed', at: a.done_at || a.created_at, text: `Your ${what} didn't go through${a.result && a.result.error ? `: ${String(a.result.error).slice(0, 120)}` : ''}`, go: 'inbox:inbox', ref: a.item_id });
+    else if (d.checked_by && ['queued', 'running', 'done'].includes(a.status)) add({ id: `ok:${a.id}`, kind: 'approved', at: d.checked_at || a.done_at || a.created_at, text: `${d.checked_by} approved your ${what}`, go: 'inbox:inbox', ref: a.item_id });
+  }
+  const teamRow = ctx.teams.find((t) => t.id === team) || {};
+  const accName = (k) => { const a = (teamRow.accounts || []).find((x) => x.key === k); return a ? `${a.name || k} ${a.platform === 'instagram' ? 'Instagram' : a.platform === 'facebook' ? 'Facebook' : a.platform || ''}`.trim() : k; };
+  const VERB = { scheduled: 'approved', hold: 'approved (on hold)', changes: 'sent back', rejected: 'rejected' };
+  for (const p of posts || []) {
+    const doc = p.doc || {}, r = doc.review || {};
+    const mine = isMe(p.created_by) || isMe(doc.own && doc.own.who);
+    if (mine && VERB[p.status] && r.by && !isMe(r.by)) add({ id: `pv:${p.id}:${r.at}`, kind: p.status === 'scheduled' || p.status === 'hold' ? 'approved' : 'sent_back', at: r.at, text: `${r.by} ${VERB[p.status]} ${quote(p.title || doc.title)}${r.note ? `: ${String(r.note).slice(0, 120)}` : ''}`, go: 'post', ref: p.id });
+    if (mine || isMe(r.by)) for (const [slot, e] of Object.entries(doc.publishErrors || {})) if (e && e.at) add({ id: `pf:${p.id}:${slot}:${e.at}`, kind: 'failed', at: e.at, text: `Post failed: ${quote(p.title || doc.title)} on ${accName(slot)}${e.message ? `. ${String(e.message).slice(0, 160)}` : ''}`, go: 'post', ref: p.id });
+  }
+  const connections = (conns || []).filter((c) => c.connected_at).map((c) => {
+    const ends = Date.parse(c.connected_at) + CONNECT_DAYS * 864e5;
+    return { account_key: c.account_key, connected_at: c.connected_at, ends_at: new Date(ends).toISOString(), days_left: Math.ceil((ends - now) / 864e5) };
+  }).sort((a, b) => a.days_left - b.days_left);
+  const ending = connections.filter((c) => c.days_left <= 7);
+  if (ending.length) {
+    const c = ending[0];
+    out.push({ id: `cn:${c.ends_at.slice(0, 10)}:${c.days_left <= 1 ? 1 : c.days_left <= 3 ? 3 : 7}`, kind: 'connection', at: new Date(Math.min(now, Date.parse(c.ends_at) - Math.max(0, c.days_left) * 864e5)).toISOString(), text: c.days_left > 0 ? `Your Facebook connection ends in ${c.days_left} day${c.days_left === 1 ? '' : 's'} (${ending.length} account${ending.length === 1 ? '' : 's'}). Renew it so scheduled posts keep going out.` : 'Your Facebook connection has ended. Renew it so scheduled posts go out.', go: 'renew' });
+  }
+  out.sort((a, b) => String(b.at).localeCompare(String(a.at)));
+  return json({ team, items: out.slice(0, 50), seen: (prefs && prefs.bell_seen) || null, connections });
+}
+
 const obj = (properties, required = []) => ({ type: 'object', properties, required, additionalProperties: false });
 
 const ENGINE_TOOLS = [
@@ -1830,6 +1887,7 @@ const ENGINE_TOOLS = [
   { name: 'engine_inbox', description: 'Content Engine Inbox: comments and DMs on one of your teams\' Facebook Pages and Instagram accounts, newest first (status open by default, or done, or all; optional platform facebook/instagram, kind comment/message, before an ISO time), each with its tone from its words (positive, negative, mixed, neutral; tone of the words, not whether they agree with us), with open counts, the open items\' tone, actions still in their undo window and pile-on alerts from the last 24 hours. thread returns one post\'s comments or one conversation, oldest first. q searches the words, the person\'s name and the post; accounts limits to some account keys; since an ISO time. Also lists actions waiting for a check (checks) and whether yours need one (me).', inputSchema: obj({ team: { type: 'string' }, status: { type: 'string', enum: ['open', 'done', 'all'] }, platform: { type: 'string', enum: ['facebook', 'instagram'] }, kind: { type: 'string', enum: ['comment', 'message', 'mention'] }, thread: { type: 'string' }, before: { type: 'string' }, since: { type: 'string' }, accounts: { type: 'array', items: { type: 'string' } }, q: { type: 'string' }, limit: { type: 'number' } }, ['team']), handler: engineInbox },
   { name: 'engine_inbox_act', description: 'Content Engine Inbox: act on a comment or message. done, reopen, assign (assign_to, or empty to unassign) and label (labels) apply at once. reply, private_reply (Facebook comments, within 7 days), like (Facebook only), hide, unhide, delete and ban / unban (block the author from the Facebook Page; threats can be hidden but not deleted) go to Meta from the Mini with your own Page token after 10 seconds, so they can be undone; message replies only within 24 hours of their last message. If your actions need a check, they wait for a team admin instead (check). tone (positive, neutral, negative, mixed) fixes a wrong tone by hand.', inputSchema: obj({ id: { type: 'string' }, action: { type: 'string', enum: ['reply', 'private_reply', 'like', 'hide', 'unhide', 'delete', 'ban', 'unban', 'done', 'reopen', 'assign', 'label', 'tone'] }, text: { type: 'string' }, assign_to: { type: 'string' }, labels: { type: 'array', items: { type: 'string' } }, tone: { type: 'string', enum: ['positive', 'neutral', 'negative', 'mixed'] } }, ['id', 'action']), handler: engineInboxAct },
   { name: 'engine_inbox_check', description: 'Content Engine Inbox checks (team admins): approve or send back (decision approve / reject, optional note) a teammate\'s reply, hide, delete or ban waiting for a check (action_id from engine_inbox checks), or switch checks on or off for a teammate (person, needs_check).', inputSchema: obj({ team: { type: 'string' }, action_id: { type: 'number' }, decision: { type: 'string', enum: ['approve', 'reject'] }, note: { type: 'string' }, person: { type: 'string' }, needs_check: { type: 'boolean' } }, ['team']), handler: engineInboxCheck },
+  { name: 'engine_bell', description: 'Content Engine: what needs you in one team (the desk bell): Inbox items assigned to you, teammates\' actions waiting for your check, your actions checked, sent back or failed, your posts approved or sent back, publishing failures, and your Facebook connection running out. Read state is engine_prefs bell_seen.', inputSchema: obj({ team: { type: 'string' } }, ['team']), handler: engineBell },
   { name: 'engine_prefs', description: 'Content Engine: your own desk settings and saved Inbox views. No set reads them; set merges keys (inbox_views, settings; null removes one).', inputSchema: obj({ set: { type: 'object' } }), handler: enginePrefsTool },
   { name: 'engine_inbox_undo', description: 'Content Engine Inbox: undo a reply, like, hide, unhide or delete you did while it is still in its window (action_id from engine_inbox_act), or a whole bulk action (action_ids from engine_inbox_bulk).', inputSchema: obj({ action_id: { type: 'number' }, action_ids: { type: 'array', items: { type: 'number' } } }), handler: engineInboxUndo },
   { name: 'engine_inbox_bulk', description: 'Content Engine Inbox bulk by topic: one action on up to 100 comments (ids): reply (texts: up to 5 wordings, rotated), like, hide, unhide, delete, done, reopen, assign (assign_to) or label (labels). Same rules as one at a time; refusals are listed. Facebook and Instagram actions wait 30 seconds so the whole batch can be undone with engine_inbox_undo action_ids.', inputSchema: obj({ ids: { type: 'array', items: { type: 'string' } }, action: { type: 'string', enum: ['reply', 'like', 'hide', 'unhide', 'delete', 'ban', 'done', 'reopen', 'assign', 'label'] }, text: { type: 'string' }, texts: { type: 'array', items: { type: 'string' } }, assign_to: { type: 'string' }, labels: { type: 'array', items: { type: 'string' } } }, ['ids', 'action']), handler: engineInboxBulk },
