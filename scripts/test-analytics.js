@@ -178,6 +178,43 @@ const callErr = async (args, who) => { try { await call(args, who); return null;
     const wk = AX.weeklyByGroup([{ page_id: 'a', metric_date: '2026-10-27', media_view_unique: 5 }, { page_id: 'a', metric_date: '2026-10-28', media_view_unique: 7 }, { page_id: 'b', metric_date: '2026-10-27', media_view_unique: 1 }], { uk: new Set(['a']), ie: new Set(['b']) }, { now, weeks: 2 });
     eq('countries: weekly reach per team', [wk.weeks.join(','), wk.series.uk.join(','), wk.series.ie.join(',')], ['2026-10-19,2026-10-26', ',12', ',1']);
   }
+  {
+    // Round two (3 Nov 2026): the report, peaks, conversations and ranked posts.
+    const AX = require('../lib/analytics-extra');
+    const G = [], P = [], GP = [];
+    const ids = new Set(['p1', 'p2']);
+    AX.datesBetween('2026-10-01', '2026-10-05').forEach((d, i) => {
+      G.push({ page_id: 'p1', metric_date: d, followers_snapshot: 100 + i, daily_follows: 3, daily_unfollows: 1, net_follows: 2, media_view: i === 3 ? 900 : 100, media_view_unique: i === 3 ? 600 : 50, post_engagements: 10, video_views: 5, video_view_time_ms: 60000, post_reactions_by_type: { like: 8, love: 2 } });
+      if (i !== 2) G.push({ page_id: 'p2', metric_date: d, followers_snapshot: 50, media_view: 10, media_view_unique: 5 });
+      G.push({ page_id: 'other', metric_date: d, followers_snapshot: 9999, media_view: 9999 });
+    });
+    AX.datesBetween('2026-09-26', '2026-09-30').forEach((d) => GP.push({ page_id: 'p1', metric_date: d, daily_follows: 1, daily_unfollows: 1, net_follows: 0, media_view: 100, media_view_unique: 50 }));
+    P.push({ page_id: 'p1', page_name: 'UK', created_time: '2026-10-04T09:00:00Z', views_total: 800, views_unique: 500, views_from_nonfollowers: 400, reactions_total: 30, comments_total: 10, shares_total: 5, clicks_total: 5, message: 'big one', permalink_url: 'u1' });
+    P.push({ page_id: 'p1', page_name: 'UK', created_time: '2026-10-01T09:00:00Z', views_total: 200, views_unique: 100, views_from_nonfollowers: 0, reactions_total: 6, comments_total: 2, shares_total: 1, clicks_total: 1, message: 'small', permalink_url: 'u2' });
+    const R = AX.report({ growth: G, growthPrev: GP, posts: P, postsPrev: [], pageIds: ids, from: '2026-10-01', to: '2026-10-05', cfrom: '2026-09-26', cto: '2026-09-30', med: { p1: 400 } });
+    eq('report: followers carried forward when a Page misses a day', R.daily.followers, [150, 151, 152, 153, 154]);
+    eq('report: new, lost and net, other Pages left out', [R.totals.follows, R.totals.unfollows, R.totals.net_follows, R.totals.views], [15, 5, 10, 1340]);
+    eq('report: engagement by type on the day posted, per post and rates', [R.daily.reactions.join(','), R.totals.engagements, R.totals.per_post, R.totals.rate_per_view, R.totals.beyond_pct], ['6,0,0,30,0', 60, 30, 6, 40]);
+    eq('report: reactions by type and change against the window before', [R.reactions_by_type.map((r) => `${r.key}:${r.pct}`).join(','), R.change.net_follows, R.change.views], ['like:80,love:20', null, 168]);
+    eq('report: a peak names the post behind it', R.peaks.map((p) => [p.date, p.post && p.post.text, p.post && p.post.x_median]), [['2026-10-04', 'big one', 2]]);
+    eq('ranked: biggest first, against the Page normal', AX.ranked(P, { med: { p1: 400 } }).map((r) => [r.rank, r.views, r.x_median]), [[1, 800, 2], [2, 200, 0.5]]);
+    const items = [
+      { id: 'a', kind: 'comment', thread_id: 't1', post_text: 'Post one', created_at: '2026-10-02T08:30:00Z', replied_at: '2026-10-02T09:30:00Z', text: 'thank you' },
+      { id: 'b', kind: 'comment', thread_id: 't1', post_text: 'Post one', created_at: '2026-10-02T19:00:00Z', replied_at: null, text: 'disgusting' },
+      { id: 'c', kind: 'message', thread_id: 'm1', created_at: '2026-10-03T10:00:00Z', replied_at: null, text: 'hello there' },
+      { id: 'd', kind: 'comment', thread_id: 't1', from_us: true, created_at: '2026-10-02T09:30:00Z', text: 'thanks' },
+    ];
+    const acts = [{ item_id: 'a', action: 'reply', by: 'chris', created_at: '2026-10-02T09:30:00Z' }, { item_id: 'c', action: 'private_reply', by: 'x', detail: { automation_id: 1 }, created_at: '2026-10-03T10:00:05Z' }, { item_id: 'b', action: 'hide', by: 'chris', created_at: '2026-10-02T19:10:00Z' }];
+    const C = AX.conversations(items, acts, { dates: AX.datesBetween('2026-10-01', '2026-10-05'), hourOf: (iso) => new Date(iso).getUTCHours(), toneOf: (t) => (/thank/.test(t) ? 'positive' : /disgust/.test(t) ? 'negative' : 'neutral') });
+    eq('conversations: in and answered each day, our own left out', [C.daily.in.join(','), C.daily.answered.join(',')], ['0,2,1,0,0', '0,1,0,0,0']);
+    eq('conversations: tone, who replied and how fast, busiest posts, hours', [C.tones.positive, C.tones.negative, C.people.map((p) => `${p.who}:${p.replies}+${p.private}:${p.median_reply_minutes}`).join(','), C.busiest[0].comments, C.busiest[0].answered_pct, C.hours[8]], [33, 33, 'chris:1+0:60,auto:0+1:null', 2, 50, 1]);
+    const r1 = await call({ scope: 'team', team: 'uk', from: '2026-10-10', to: '2026-10-01' });
+    eq('range: start after end is refused', r1.error, 'The start date is after the end date.');
+    const r2 = await call({ scope: 'team', team: 'uk', from: day(9), to: day(0), fresh: true });
+    eq('range: a chosen window returns the report with the days just before to compare', [r2.custom, r2.report.dates.length, r2.report.compare_to, !!r2.talk, Array.isArray(r2.ranked)], [true, 10, day(10), true, true]);
+    const r3 = await call({ scope: 'team', team: 'uk', days: 30, fresh: true });
+    eq('presets carry the round-two report too', [r3.report.dates.length, r3.report.totals.net_follows > 0, !!r3.talk], [30, true, true]);
+  }
   console.log(`\n${passed} passed, ${failed} failed`);
   process.exit(failed ? 1 : 0);
 })().catch((e) => { console.error(e); process.exit(1); });
