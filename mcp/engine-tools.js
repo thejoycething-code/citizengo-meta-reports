@@ -872,7 +872,7 @@ async function engineAnalytics(store, args, ctx0) {
   const days = [7, 30, 90].includes(Number(args.days)) ? Number(args.days) : 30;
   const team = scope === 'team' ? String(args.team || '') : '';
   if (team && !E.canEditTeam(ctx, team)) throw err('You are not in that team.', 'ENGINE_NOT_MEMBER');
-  if (scope === 'leaderboard') return cached(store, `analytics:v1:leaderboard:${days}`, args, () => leaderboardCompute(store, ctx, days));
+  if (scope === 'leaderboard') return cached(store, `analytics:v2:leaderboard:${days}`, args, () => leaderboardCompute(store, ctx, days));
   if (scope === 'countries') return cached(store, `analytics:v2:countries:${days}`, args, () => countriesCompute(store, ctx, days));
   // A date range of the person's own choosing (and, optionally, the window to
   // compare it with): only the round-two report, posts and conversations.
@@ -1421,7 +1421,8 @@ async function leaderboardCompute(store, ctx, days, now = Date.now()) {
     const pr = prevRows.find((x) => x.name === r.name);
     const best = rowsTp.filter((x) => x.page_id === p.page_id && med[x.page_id] && typeof x.views_total === 'number').sort((a, b) => b.views_total - a.views_total)[0];
     const tm = teamOf[p.page_id] || null;
-    out.push({ page_id: p.page_id, name: r.name, team: tm && tm.id, flag: tm ? tm.flag : '', mine: !!(tm && ctx.myTeams && ctx.myTeams[tm.id]),
+    // Shared cache: no viewer-specific fields here (the desk marks its own teams' Pages).
+    out.push({ page_id: p.page_id, name: r.name, team: tm && tm.id, flag: tm ? tm.flag : '',
       cur: fig(r, count.cur[p.page_id]), prev: fig(pr, count.prev[p.page_id]),
       best: best ? { text: String(best.message || '').slice(0, 140), url: best.permalink_url, views: best.views_total, x: Math.round((best.views_total / med[best.page_id]) * 10) / 10 } : null });
   }

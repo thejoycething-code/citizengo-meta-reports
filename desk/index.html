@@ -5976,7 +5976,9 @@ function ctTable(card){const old=card.querySelector(".cttbl");if(old){old.remove
 function ctPrint(card){const el=card.cloneNode(true);el.classList.remove("anfull");el.querySelectorAll(".ctools,button,.ctmenu").forEach(x=>x.remove());const R=anRep();
   printSheet(`<div class="psband"><img src="/desk/go.png" alt="CitizenGO" width="30" height="30"><b>${esc(ctTitle(card))}</b><span>${esc(R?anRangeLine(R).replace(/<[^>]+>/g,""):"")}</span></div>${el.outerHTML}<div class="psfoot">CitizenGO, for the team only · ${esc(new Date().toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"}))}</div>`,"Chart · print preview")}
 function ctClose(){document.querySelectorAll(".ctmenu").forEach(m=>m.remove())}
-function ctFull(card,on){const f=document.querySelector(".ancard.anfull");if(f&&f!==card){f.classList.remove("anfull")}card.classList.toggle("anfull",on);document.body.classList.toggle("anfullon",!!document.querySelector(".ancard.anfull"))}
+function ctFull(card,on){const f=document.querySelector(".ancard.anfull");if(f&&f!==card){f.classList.remove("anfull")}card.classList.toggle("anfull",on);AN.full=on?ctTitle(card):null;document.body.classList.toggle("anfullon",!!document.querySelector(".ancard.anfull"))}
+/* A re-render (new measure, a sort, an answer from Claude) rebuilds the cards: keep the same card full screen, or unlock the page. */
+function ctRestore(){const c=AN.full&&[...document.querySelectorAll("#anView .ancard")].find(x=>ctTitle(x)===AN.full);if(c)c.classList.add("anfull");else AN.full=null;document.body.classList.toggle("anfullon",!!c)}
 document.addEventListener("click",ev=>{const mi=ev.target.closest("[data-ctm]");if(mi){const card=mi.closest(".ancard");ctClose();if(!card)return;const a=mi.dataset.ctm;
     if(a==="png")ctPng(card);else if(a==="csv")ctCsv(card);else if(a==="table")ctTable(card);else if(a==="print")ctPrint(card);return}
   const b=ev.target.closest("[data-ct]");if(!b){if(!ev.target.closest(".ctmenu"))ctClose();return}const card=b.closest(".ancard");if(!card)return;const a=b.dataset.ct;
@@ -5995,7 +5997,7 @@ function anLeaderboard(){const st=AN.lbs||(AN.lbs={days:30,sort:"per_1k"});const
   const ctrl=`<div class="anbar"><span class="tabs">${[7,30,90].map(d=>`<button class="tab" data-lb-days="${d}" aria-pressed="${st.days===d}">${d} days</button>`).join("")}</span><span class="sp"></span><button class="btn small" data-lb-csv>⬇ CSV</button></div>`;
   const D=AN.lbd;if(!D||D.busy)return ctrl+`<p class="src">Loading the leaderboard…</p>`;if(D.err)return ctrl+`<p class="offline">Couldn't load the leaderboard (${esc(whyFailed(D.err))}).</p>`;
   const P=(D.pages||[]).slice();if(!P.length)return ctrl+`<div class="empty2"><span class="ei">🏆</span><b>No figures for these days yet</b><p>Try a longer window.</p></div>`;
-  const nm=p=>`${p.flag?p.flag+" ":""}${p.name}`;const k=st.sort;const rc=lbRank(P,k,"cur"),rp=lbRank(P,k,"prev");
+  const myT=new Set((S.teams||[]).map(t=>t.id));P.forEach(p=>p.mine=!!(p.team&&myT.has(p.team)));const nm=p=>`${p.flag?p.flag+" ":""}${p.name}`;const k=st.sort;const rc=lbRank(P,k,"cur"),rp=lbRank(P,k,"prev");
   const top=(m,min3)=>P.filter(p=>p.cur&&p.cur[m]!=null&&(!min3||(p.cur.posts||0)>=3)).sort((a,b)=>b.cur[m]-a.cur[m])[0];
   const r1k=lbRank(P,"per_1k","cur"),r1kp=lbRank(P,"per_1k","prev");const climb=P.filter(p=>r1k[p.page_id]&&r1kp[p.page_id]).map(p=>({p,up:r1kp[p.page_id]-r1k[p.page_id]})).sort((a,b)=>b.up-a.up)[0];
   const bestPost=P.filter(p=>p.best&&p.best.x).sort((a,b)=>b.best.x-a.best.x)[0];
@@ -6014,6 +6016,7 @@ document.addEventListener("click",ev=>{if(S.view!=="analytics"||!AN.lbs)return;
   const so=ev.target.closest("[data-lb-sort]");if(so){AN.lbs.sort=so.dataset.lbSort;renderAnalytics();return}
   if(ev.target.closest("[data-lb-csv]")&&AN.lbd&&AN.lbd.pages){const q=v=>{const x=v==null?"":String(v);return /[",\n]/.test(x)?`"${x.replace(/"/g,'""')}"`:x};const cols=LB_COLS.map(c=>c[0]);
     const rows=[["page",...cols,...cols.map(c=>c+"_before")],...AN.lbd.pages.map(p=>[p.name,...cols.map(c=>p.cur&&p.cur[c]),...cols.map(c=>p.prev&&p.prev[c])])];ctSave(new Blob([rows.map(r=>r.map(q).join(",")).join("\n")],{type:"text/csv"}),`citizengo-leaderboard-${AN.lbd.days}d.csv`)}});
+{const r0=renderAnalytics;renderAnalytics=function(){const out=r0.apply(this,arguments);try{ctRestore()}catch(e){}return out}}
 const AN_PRINT_TABS=[["overview","Overview"],["audience","Audience"],["posts","Posts"],["talk","Conversations"],["campaigns","Campaigns"],["allies","Allies"],["leaderboard","Leaderboard"]];
 function anPrintOpen(){let o;try{o=JSON.parse(localStorage.getItem("desk.anPrint")||"null")}catch(e){}const t=(S.teams||[]).find(x=>x.id===S.team);const who=AN.scope==="team"?(t&&t.name)||"My team":AN.scope==="hazteoir"?"HazteOir":"CitizenGO";
   /* Countries has its own dataset (AN.data is countries-only there), so it prints on its own; the other tabs print together. */
