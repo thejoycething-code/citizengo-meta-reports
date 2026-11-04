@@ -95,6 +95,9 @@ module.exports = async (req, res) => {
       kind: invite.kind, country: invite.country || null, label: invite.label, is_active: true,
       followers_count: u.followers_count ?? null, media_count: u.media_count ?? null,
       authorized_at: now, authorized_by: invite.by || null, last_seen_at: now,
+      // Only written when the invite carries it, so reconnecting with an ordinary
+      // invite never withdraws a consent already recorded.
+      ...(invite.full === true ? { full_collection: true } : {}),
     }], 'resolution=merge-duplicates,return=minimal');
     await pg('PATCH', `ig_oauth_tokens?ig_user_id=eq.${encodeURIComponent(igUserId)}&revoked_at=is.null`,
       { revoked_at: now, last_error: 're-authorised' }, 'return=minimal');
@@ -110,6 +113,6 @@ module.exports = async (req, res) => {
   console.log(JSON.stringify({ at: now, event: 'ig/authorized', ig_user_id: igUserId, username: u.username, kind: invite.kind, label: invite.label }));
   return flow.page(res, 200, 'Connected',
     `<h1>@${flow.esc(u.username)} is connected</h1>
-     <p>Connected as <strong>${flow.esc(invite.label)}</strong> (${flow.esc(invite.kind)}). Collection starts with the next nightly run.</p>
+     <p>Connected as <strong>${flow.esc(invite.label)}</strong> (${flow.esc(invite.kind)}${invite.full === true ? ', whole account' : ''}). Collection starts with the next nightly run.</p>
      <p class="muted">You can close this page. To withdraw access later: Instagram &rarr; Settings &rarr; Website permissions.</p>`);
 };

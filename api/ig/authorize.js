@@ -36,7 +36,9 @@ module.exports = async (req, res) => {
   const state = crypto.randomBytes(16).toString('base64url');
   flow.setCookie(res, flow.signCookie(cfg.inviteSecret, { state, invite }));
   const next = igauth.authorizeUrl({ appId: cfg.appId, redirectUri: cfg.redirectUri, state });
-  const what = invite.kind === 'spokesperson'
+  const what = invite.kind === 'spokesperson' && invite.full === true
+    ? 'All your posts (feed and reels) will be stored, with their reach, views, likes, comments, shares and saves, as you agreed in writing - not only those about CitizenGO. Stories are not read.'
+    : invite.kind === 'spokesperson'
     ? 'Only posts that contain a CitizenGO link (citizengo.org, hazteoir.org or cgo.ac) or mention CitizenGO (by name, @-mention or hashtag) will be stored, with their reach, views, likes, comments, shares and saves. Nothing else you post is kept.'
     : 'Your posts from the last 30 days, and their reach, views and interactions, will be collected each night and kept for reporting.';
 

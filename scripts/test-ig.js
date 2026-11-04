@@ -47,6 +47,10 @@ function mockRes() {
   ok('sets the flow cookie, scoped to /api/ig', /ig_oauth_flow=.*Path=\/api\/ig/.test(res.headers['set-cookie'] || ''));
   ok('explains how to switch a personal account to professional', /Switch to professional account/.test(res.body));
   res = mockRes();
+  await authorize({ method: 'GET', url: `/api/ig/authorize?t=${xauth.signInvite(SECRET, { label: "Rocío D'Angelo", kind: 'spokesperson', platform: 'instagram', full: true })}`, headers: {} }, res);
+  ok('full-collection invite: consent says every post is stored', res.statusCode === 200 && /All your posts/.test(res.body) && /agreed in writing/.test(res.body));
+  ok('full-collection invite: no "nothing else is kept" promise', !/Nothing else you post is kept/.test(res.body));
+  res = mockRes();
   await authorize({ method: 'GET', url: `/api/ig/authorize?t=${xauth.signInvite(SECRET, { label: 'CitizenGO UK' })}`, headers: {} }, res);
   ok('an X invite is refused on the Instagram route', res.statusCode === 400 && /for X, not Instagram/.test(res.body));
   res = mockRes();
