@@ -15,7 +15,9 @@
 //   2. refresh the account's profile (followers, posts);
 //   3. read its posts (feed and reels) since the window - all of them, up to
 //      1,000, on the first run - and keep, for a spokesperson, only those that
-//      carry a CitizenGO link or mention CitizenGO (lib/xschedule.js isAboutUs);
+//      carry a CitizenGO link or mention CitizenGO (lib/xschedule.js isAboutUs),
+//      unless the holder consented in writing to full collection
+//      (ig_accounts.full_collection), when every post is kept;
 //   4. read insights for every kept post and store one snapshot per day.
 // Stories are not read: they last 24 hours and the API does not expose the
 // link a sticker points to, so they cannot be matched to a campaign code.
@@ -61,8 +63,9 @@ function describe(caption) {
     mentions: [...text.matchAll(/@([A-Za-z0-9._]+)/g)].map((m) => m[1].replace(/\.$/, '')),
   };
 }
+const filtered = (account) => account.kind === 'spokesperson' && account.full_collection !== true;
 function keep(account, media) {
-  return account.kind !== 'spokesperson' || sched.isAboutUs(describe(media.caption));
+  return !filtered(account) || sched.isAboutUs(describe(media.caption));
 }
 
 // Insights arrive as [{name, values:[{value}]}] or [{name, total_value:{value}}].
@@ -155,7 +158,7 @@ async function collectAccount(account, ctx) {
   } while (after);
 
   const kept = media.filter((m) => keep(account, m));
-  log(`   ${media.length} post(s) in the window${firstRun ? ' (first run: full history)' : ''}; ${kept.length} kept${account.kind === 'spokesperson' ? ' (CitizenGO links and mentions only)' : ''}`);
+  log(`   ${media.length} post(s) in the window${firstRun ? ' (first run: full history)' : ''}; ${kept.length} kept${filtered(account) ? ' (CitizenGO links and mentions only)' : account.kind === 'spokesperson' ? ' (full account, by consent)' : ''}`);
   const mediaRows = kept.map((m) => ({ media_id: String(m.id), ig_user_id: account.ig_user_id, caption: m.caption || null, media_type: m.media_type || null,
     media_product_type: m.media_product_type || null, permalink: m.permalink || null, timestamp: m.timestamp, citizengo_urls: describe(m.caption).citizengo_urls }));
   if (mediaRows.length) await sink.upsert('ig_media', mediaRows);
@@ -175,7 +178,7 @@ async function main() {
   const metaTokens = String(process.env.META_TOKENS || process.env.META_TOKEN || '').split(/[\n,]/).map((t) => t.trim()).filter(Boolean);
   if (!BASE || !KEY) { console.error('SUPABASE_URL and SUPABASE_SERVICE_KEY are needed.'); process.exit(2); }
   const publicKey = privateKey ? xauth.publicKeyOf(privateKey) : null;
-  let accounts = await pg('GET', 'ig_accounts?select=ig_user_id,username,label,kind,access,business_id&is_active=eq.true') || [];
+  let accounts = await pg('GET', 'ig_accounts?select=ig_user_id,username,label,kind,access,business_id,full_collection&is_active=eq.true') || [];
   if (ONLY.length) accounts = accounts.filter((a) => ONLY.includes(String(a.username).toLowerCase()));
   console.log(`Connected Instagram collector ${RUN_ID} · ${accounts.length} account(s)${DRY_RUN ? ' · dry run' : ''}`);
   if (!accounts.length) { console.log('No Instagram accounts connected yet.'); return; }

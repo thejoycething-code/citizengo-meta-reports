@@ -586,7 +586,9 @@ the token is sealed to the collector's public key.
   `collector/ig-connected.js`) refreshes each token once it is a day old, reads
   posts and insights (reach, views, likes, comments, shares, saves). A
   spokesperson's posts are kept only if they link to or mention CitizenGO
-  (`isAboutUs`), as the consent page promises. Stories are not read.
+  (`isAboutUs`), as the consent page promises, unless the holder consented in
+  writing to full collection (`ig_accounts.full_collection`, 4 Nov 2026, set
+  with the partner workflow's *full_collection* box). Stories are not read.
 - **Use:** `ig_connected_posts` (posts and connection health) and
   `link_performance` (signatures from their links). Schema: `sql/ig-schema.sql`.
   Tests: `npm run test:ig`.

@@ -17,9 +17,13 @@ const igpartner = require('../lib/igpartner');
 loadEnv();
 const args = process.argv.slice(2);
 const opt = (name, dflt) => { const i = args.indexOf('--' + name); return i !== -1 && args[i + 1] ? args[i + 1] : dflt; };
-const positional = args.filter((a, i) => !a.startsWith('--') && !(i > 0 && args[i - 1].startsWith('--')));
+const positional = args.filter((a, i) => !a.startsWith('--') && !(i > 0 && args[i - 1].startsWith('--') && args[i - 1] !== '--full-collection'));
 const [username, label] = positional;
 const kind = opt('kind', 'spokesperson');
+// --full-collection: the holder consented IN WRITING to collection of the whole
+// account, not only posts about CitizenGO. Only written when given, so re-running
+// without it never withdraws a consent already recorded.
+const FULL = args.includes('--full-collection');
 const BASE = (process.env.SUPABASE_URL || '').trim().replace(/\/rest\/v1\/?$/, '').replace(/\/+$/, '');
 const KEY = process.env.SUPABASE_SERVICE_KEY || '';
 const TOKENS = String(process.env.META_TOKENS || process.env.META_TOKEN || '').split(/[\n,]/).map((t) => t.trim()).filter(Boolean);
@@ -31,7 +35,7 @@ async function pg(method, q, body, prefer) {
 }
 
 async function main() {
-  if (!username || !label) { console.error('Usage: node scripts/ig-partner-add.js <username> "<label>" [--kind spokesperson|organisation] [--country XX] [--id <ig user id>] [--business <id>]'); process.exit(2); }
+  if (!username || !label) { console.error('Usage: node scripts/ig-partner-add.js <username> "<label>" [--kind spokesperson|organisation] [--country XX] [--id <ig user id>] [--business <id>] [--full-collection]'); process.exit(2); }
   if (!['spokesperson', 'organisation'].includes(kind)) { console.error('--kind must be spokesperson or organisation'); process.exit(2); }
   if (!TOKENS.length || !BASE || !KEY) { console.error('META_TOKENS, SUPABASE_URL and SUPABASE_SERVICE_KEY are needed.'); process.exit(2); }
 
@@ -76,8 +80,9 @@ async function main() {
     kind, country: opt('country', null), label, is_active: true, access: 'partner', business_id: found.businessId || null,
     followers_count: access.user.followers_count ?? null, media_count: access.user.media_count ?? null,
     authorized_at: now, authorized_by: process.env.GITHUB_ACTOR || process.env.USER || null, last_seen_at: now,
+    ...(FULL ? { full_collection: true } : {}),
   }], 'resolution=merge-duplicates,return=minimal');
-  console.log(`\nRegistered @${access.user.username} as "${label}" (${kind}, partner access). Collection starts with the next "Connected Instagram collection" run.`);
+  console.log(`\nRegistered @${access.user.username} as "${label}" (${kind}${FULL ? ', full account by consent' : ''}, partner access). Collection starts with the next "Connected Instagram collection" run.`);
 }
 
 main().catch((e) => { console.error(e.message); process.exit(1); });

@@ -77,6 +77,8 @@ function mockRes() {
   ok('dropped: a personal post', !keep(sp, { caption: 'Domingo en familia ☀️' }));
   ok('dropped: no caption', !keep(sp, { caption: null }));
   ok('an organisation account keeps everything', keep({ kind: 'organisation' }, { caption: 'Domingo en familia' }));
+  ok('a spokesperson with full-collection consent keeps everything', keep({ kind: 'spokesperson', full_collection: true }, { caption: 'Domingo en familia ☀️' }));
+  ok('full_collection false still filters', !keep({ kind: 'spokesperson', full_collection: false }, { caption: 'Domingo en familia ☀️' }));
   eq('links found in a caption', describe('Link: cgo.ac/scAbC123.').citizengo_urls, ['https://cgo.ac/scAbC123']);
 
   console.log('\nInsights');
