@@ -588,9 +588,20 @@ async function engineHouseRules(store, args, { who }) {
   const team = String(args.team || '');
   if (!E.canEditTeam(ctx, team)) throw err('You are not in that team.', 'ENGINE_NOT_MEMBER');
   const HR = require('../lib/house-rules');
+  const D = () => require('../lib/desk');
+  // Save (anyone in the team): sections and rules, or reset: true for the built-in default.
+  if (args.set || args.reset) {
+    const s = args.set || {};
+    const doc = args.reset ? { team, updated_by: who, updated_at: new Date().toISOString() }
+      : { team, sections: s.sections && typeof s.sections === 'object' ? s.sections : undefined, rules: Array.isArray(s.rules) ? s.rules : undefined, updated_by: who, updated_at: new Date().toISOString() };
+    const clean = HR.merge(team, doc);
+    const out = { team, updated_by: who, updated_at: doc.updated_at, ...(args.reset ? {} : { sections: clean.sections, rules: clean.rules }) };
+    if (store.houseRulesPut) await store.houseRulesPut(team, out);
+    else await D().docsPut('houseRules', `hr_${team}`, out, who, { engine: true });
+  }
   let saved = null;
   if (store.houseRulesDoc) saved = await store.houseRulesDoc(team);
-  else { try { const rows = await require('../lib/desk').docsList('houseRules', { team }); saved = (rows.find((r) => r.id === `hr_${team}`) || {}).data || null; } catch (e) { saved = null; } }
+  else { try { const rows = await D().docsList('houseRules', { team, engine: true }); saved = (rows.find((r) => r.id === `hr_${team}`) || {}).data || null; } catch (e) { saved = null; } }
   const h = HR.merge(team, saved);
   const where = ['compose', 'inbox', 'morning'].includes(args.for) ? args.for : 'compose';
   return json({ ...h, sections_order: HR.SECTIONS, default_sections: HR.defaults(team).sections, default_rules: HR.defaults(team).rules, text: HR.text(h, where), for: where });
@@ -1991,7 +2002,7 @@ const ENGINE_TOOLS = [
   { name: 'engine_inbox_post', description: "Content Engine Inbox: the post a conversation is on (thread_id from engine_inbox), with its newest nightly figures (reactions by type, shares, comments, views), the post's own tone and how many comments are open on it.", inputSchema: obj({ team: { type: 'string' }, thread_id: { type: 'string' } }, ['team', 'thread_id']), handler: engineInboxPost },
   { name: 'engine_inbox_similar', description: "Content Engine Inbox: up to three of the team's own past replies to comments like this one (id of an inbox item, or text), matched by shared words, best first. No AI.", inputSchema: obj({ team: { type: 'string' }, id: { type: 'string' }, text: { type: 'string' } }, ['team']), handler: engineInboxSimilar },
   { name: 'engine_benchmark', description: "Content Engine Analytics: your team's Instagram beside allied organisations' Instagram over the last days (7, 30 or 90; 30 by default): followers, posts, likes + comments, per post and each ally's best post. country: UK, US, IE... or all (default the team's country). Allies only.", inputSchema: obj({ team: { type: 'string' }, days: { type: 'number' }, country: { type: 'string' } }, ['team']), handler: engineBenchmark },
-  { name: 'engine_house_rules', description: "Content Engine: a team's house rules (voice, tone, audience, always, never, spelling and style, plus the rules teammates added, each marked for compose, inbox and/or the morning run): the team's saved copy over the built-in default, and prompt-ready text for: compose (default), inbox or morning.", inputSchema: obj({ team: { type: 'string' }, for: { type: 'string', enum: ['compose', 'inbox', 'morning'] } }, ['team']), handler: engineHouseRules },
+  { name: 'engine_house_rules', description: "Content Engine: read or save a team's house rules (voice, tone, audience, always, never, spelling and style, plus the rules teammates added, each marked for compose, inbox and/or the morning run): the team's saved copy over the built-in default, and prompt-ready text for: compose (default), inbox or morning.", inputSchema: obj({ team: { type: 'string' }, for: { type: 'string', enum: ['compose', 'inbox', 'morning'] }, set: { type: 'object', description: 'Save: { sections, rules } (anyone in the team)' }, reset: { type: 'boolean', description: 'Back to the built-in default' } }, ['team']), handler: engineHouseRules },
   { name: 'engine_bell', description: 'Content Engine: what needs you in one team (the desk bell): Inbox items assigned to you, teammates\' actions waiting for your check, your actions checked, sent back or failed, your posts approved or sent back, publishing failures, and your Facebook connection running out. Read state is engine_prefs bell_seen.', inputSchema: obj({ team: { type: 'string' } }, ['team']), handler: engineBell },
   { name: 'engine_prefs', description: 'Content Engine: your own desk settings and saved Inbox views. No set reads them; set merges keys (inbox_views, settings; null removes one).', inputSchema: obj({ set: { type: 'object' } }), handler: enginePrefsTool },
   { name: 'engine_inbox_undo', description: 'Content Engine Inbox: undo a reply, like, hide, unhide or delete you did while it is still in its window (action_id from engine_inbox_act), or a whole bulk action (action_ids from engine_inbox_bulk).', inputSchema: obj({ action_id: { type: 'number' }, action_ids: { type: 'array', items: { type: 'number' } } }), handler: engineInboxUndo },

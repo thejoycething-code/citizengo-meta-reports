@@ -3427,7 +3427,7 @@ document.addEventListener("click",ev=>{const b=ev.target.closest("[data-st-lbl]"
   if(b.dataset.kind==="ib"){IB.f={...(IB.f||IBF0),label:n};IB.fOpen=true;navGo("inbox:inbox");return}
   S.label=n;navGo("posts");try{renderAll()}catch(e){}});
 
-/* 33A + 33B + 33E (3 Nov): house rules per team. Sections (voice, tone and the rest) start from a built-in default the team amends; anyone in the team adds rules; each rule says where it applies. Saved in desk docs houseRules/hr_<team>. */
+/* 33A + 33B + 33E (3 Nov): house rules per team. Sections (voice, tone and the rest) start from a built-in default the team amends; anyone in the team adds rules; each rule says where it applies. Saved through engine_house_rules (team members only). */
 const HRS={team:null,data:null,busy:false,dirty:false,err:null};
 async function hrLoad(team){const r=await eng("engine_house_rules",{team});HRS.team=team;HRS.data=r;HRS.dirty=false;HRS.err=null;return r}
 async function hrPromptText(team,where){if(!team)return "";if(HRS.team!==team||!HRS.data)await hrLoad(team);const h=HRS.data;if(!h||!h.sections)return "";
@@ -3455,9 +3455,9 @@ document.addEventListener("click",async ev=>{if(!HRS.data)return;const h=HRS.dat
   if(ev.target.closest("[data-hr-add]")){const i=$("#hrNew");const v=String(i?.value||"").trim();if(!v){toast("Write the rule first");return}
     h.rules=[...(h.rules||[]),{id:"r"+Date.now().toString(36),text:v.slice(0,300),by:S.meName||S.me||"",at:new Date().toISOString(),on:{compose:true,inbox:true,morning:false}}];hrMark();hrRender();$("#hrNew")?.focus();return}
   if(ev.target.closest("[data-hr-reset]")){if(!confirm("Put this team's house rules back to the built-in default? Rules teammates added will go."))return;
-    try{await S.db.doc("houseRules/hr_"+S.team).set({team:S.team,updated_by:S.meName||S.me||"",updated_at:new Date().toISOString()});await hrLoad(S.team);hrRender();toast("House rules reset to the default")}catch(e){failToast(e,"Couldn't reset the house rules")}return}
+    try{HRS.data=await eng("engine_house_rules",{team:S.team,reset:true});HRS.team=S.team;HRS.dirty=false;hrRender();toast("House rules reset to the default")}catch(e){failToast(e,"Couldn't reset the house rules")}return}
   if(ev.target.closest("[data-hr-save]")){const b=ev.target.closest("[data-hr-save]");b.disabled=true;b.textContent="Saving…";
-    try{await S.db.doc("houseRules/hr_"+S.team).set({team:S.team,sections:h.sections,rules:h.rules,updated_by:S.meName||S.me||"",updated_at:new Date().toISOString()});await hrLoad(S.team);hrRender();toast("House rules saved for the team")}catch(e){b.disabled=false;b.textContent="Save changes";failToast(e,"Couldn't save the house rules")}}});
+    try{HRS.data=await eng("engine_house_rules",{team:S.team,set:{sections:h.sections,rules:h.rules}});HRS.team=S.team;HRS.dirty=false;hrRender();toast("House rules saved for the team")}catch(e){b.disabled=false;b.textContent="Save changes";failToast(e,"Couldn't save the house rules")}}});
 function renderTeams(){
   const ts=S.teams||[],t=ts.find(x=>x.id===S.team);
   $("#teamLine").textContent=t?`${t.flag||""} ${t.name}`.trim():"CitizenGO";
@@ -3905,12 +3905,14 @@ async function loadThread(){const it=IB.open;if(!it)return;ibPostLoad(it);ibPast
   if(it.author_id&&!it.from_us&&(!IB.person||IB.person.author_id!==it.author_id)){try{IB.person=await eng("engine_inbox_person",{team:S.team,author_id:it.author_id})}catch(e){IB.person=null}}}
 function ibVisible(){const me=String(S.whoId||"").toLowerCase();let l=IB.items.filter(i=>IB.filter!=="mine"||String(i.assigned_to||"").toLowerCase()===me);
   if(IB.status==="moderated")l=l.filter(i=>i.hidden);if(IB.ads==="ads")l=l.filter(i=>i.is_ad);
-  const F=IB.f||IBF0;if(F.tone)l=l.filter(i=>F.tone==="neutral"?!i.tone:i.tone===F.tone);if(F.label)l=l.filter(i=>(i.labels||[]).some(x=>String(x).toLowerCase()===F.label.toLowerCase()));
+  const F=IB.f||IBF0;if(F.tone)l=l.filter(i=>F.tone==="neutral"?!i.tone:i.tone===F.tone);if(F.label)l=l.filter(i=>ibHasLabel(i,F.label));
   if(F.hidden==="only")l=l.filter(i=>i.hidden);else if(F.hidden==="hide")l=l.filter(i=>!i.hidden);
   if(IB.status==="open"&&(IB.sort||"priority")==="priority")l=l.slice().sort((a,b)=>ibScore(b)-ibScore(a));
   if(IB.sort==="supporters"){const n={};IB.items.forEach(i=>{if(i.author_id)n[i.author_id]=(n[i.author_id]||0)+1});const sc=i=>(ibTags(i).includes("Supporter")?100:0)+(n[i.author_id]||0);l=l.slice().sort((a,b)=>sc(b)-sc(a)||String(b.created_at).localeCompare(String(a.created_at)))}
   if(IB.sort==="negative"){const r={negative:0,mixed:1};l=l.slice().sort((a,b)=>(r[a.tone]??2)-(r[b.tone]??2)||String(b.created_at).localeCompare(String(a.created_at)))}
   return l}
+/* A label filter matches what people see: the automatic tags and labels cut to three words, as well as the stored label. */
+function ibHasLabel(i,lab){const q=String(lab||"").toLowerCase();return ibTags(i).concat(i.labels||[]).some(x=>String(x).toLowerCase()===q)}
 /* Tags by rule (no paid AI): a question, or a supporter (praying, thanking, signing, or a regular). */
 function ibTags(i){if(i.from_us||i.kind==="mention")return[];const t=String(i.text||"");const out=[];
   if(/\?\s*$|^(how|where|what|when|why|can|could|is|are|do|does|will)\b/i.test(t.trim()))out.push("Question");
@@ -3980,7 +3982,7 @@ function ibToolbar(){const accs=ibTeamAccts();const c=(IB.counts||{}).accounts||
     <button class="btn small${nf?" on":""}" data-ib-drawer aria-expanded="${!!IB.fOpen}">Filters${nf?` · ${nf}`:""}</button>
     ${views.length?`<select data-ib-view aria-label="Saved views"><option value="">${IB.viewName?esc(IB.viewName):"Saved views…"}</option>${views.map((v,n)=>`<option value="${n}">${esc(v.name)}</option>`).join("")}${IB.viewName?'<option value="__del">Delete this view</option>':""}</select>`:""}
     ${IB.q&&IB.q.length>=2?`<span class="src">${ibVisible().length} match${ibVisible().length===1?"":"es"}${IB.status==="open"?IB.qAll?' · Open and Done <button class="linkish" data-ib-qall>Open only</button>':' in Open · <button class="linkish" data-ib-qall>search Done too</button>':""}</span>`:""}</div>`}
-function ibDrawer(){if(!IB.fOpen)return"";const F=IB.f||IBF0;const labels=[...new Set(IB.items.flatMap(i=>i.labels||[]))].slice(0,30);
+function ibDrawer(){if(!IB.fOpen)return"";const F=IB.f||IBF0;const labels=[...new Set(IB.items.flatMap(i=>ibTags(i)))].slice(0,30);
   const pills=(k,opts)=>`<div class="ibpills">${opts.map(([v,l])=>`<button class="ibpill${String(F[k])===String(v)?" on":""}" data-ib-f="${k}" data-v="${esc(String(v))}" aria-pressed="${String(F[k])===String(v)}">${l}</button>`).join("")}</div>`;
   return `<div class="ibscrim" data-ib-drawer></div><aside class="ibdrawer" aria-label="Filters"><div class="ibdh"><h3>Filters</h3><button class="btn small" data-ib-drawer>Close</button></div>
     <span class="eyebrow">When</span>${pills("days",[[0,"Any time"],[1,"Today"],[7,"7 days"],[30,"30 days"]])}
@@ -5778,7 +5780,7 @@ async function ibElsewhere(key){if(!IB.elsewhere||IB.elsewhere.key!==key)return;
   try{const args={team:S.team,status:"all",limit:500};Object.assign(args,IB_CHAN[IB.filter]||{});if((IB.q||"").trim().length>=2)args.q=IB.q.trim();
     const r=await eng("engine_inbox",args);const me=String(S.whoId||"").toLowerCase();const since=ibSince(F.days);const sel=IB.accts||[];
     (r.items||[]).filter(i=>!i.from_us).filter(i=>IB.filter!=="mine"||String(i.assigned_to||"").toLowerCase()===me).filter(i=>IB.ads!=="ads"||i.is_ad)
-      .filter(i=>!F.tone||(F.tone==="neutral"?!i.tone:i.tone===F.tone)).filter(i=>!F.label||(i.labels||[]).some(x=>String(x).toLowerCase()===F.label.toLowerCase())).filter(i=>F.hidden!=="only"||i.hidden).filter(i=>F.hidden!=="hide"||!i.hidden)
+      .filter(i=>!F.tone||(F.tone==="neutral"?!i.tone:i.tone===F.tone)).filter(i=>!F.label||ibHasLabel(i,F.label)).filter(i=>F.hidden!=="only"||i.hidden).filter(i=>F.hidden!=="hide"||!i.hidden)
       .forEach(i=>{const inAcct=!sel.length||sel.includes(i.account_key);const inTime=!since||i.created_at>=since;
         if(inAcct&&inTime){if(i.status==="done")out.done++;else out.open++}else if(!inAcct&&inTime)out.accts[i.account_key]=(out.accts[i.account_key]||0)+1;else if(inAcct&&!inTime)out.older++})}catch(e){}
   if(IB.elsewhere&&IB.elsewhere.key===key){IB.elsewhere=out;renderInbox()}}
@@ -5937,12 +5939,13 @@ document.addEventListener("click",ev=>{if(S.view!=="analytics")return;const st=A
 document.addEventListener("change",ev=>{const t=ev.target;if(!t.matches||S.view!=="analytics"||!AN.al)return;if(t.matches("[data-al-country]")){AN.al.country=t.value;renderAnalytics()}else if(t.matches("[data-al-measure]")){AN.al.measure=t.value;renderAnalytics()}});
 const AN_PRINT_TABS=[["overview","Overview"],["audience","Audience"],["posts","Posts"],["talk","Conversations"],["campaigns","Campaigns"],["allies","Allies"]];
 function anPrintOpen(){let o;try{o=JSON.parse(localStorage.getItem("desk.anPrint")||"null")}catch(e){}const t=(S.teams||[]).find(x=>x.id===S.team);const who=AN.scope==="team"?(t&&t.name)||"My team":AN.scope==="hazteoir"?"HazteOir":"CitizenGO";
-  o=Object.assign({by:nameOf(S.whoId),tabs:[AN.tab==="countries"?"overview":AN.tab],cover:false},o||{});o.title=`${who} social media report`;
-  $("#anPrintD")?.remove();document.body.insertAdjacentHTML("beforeend",`<div id="anPrintD"><div class="ibscrim" data-anp="close"></div><div class="calexpd" role="dialog" aria-label="Print or PDF"><h3>Print or PDF</h3><label class="src">Title<input type="text" id="anpTitle" value="${esc(o.title)}"></label><label class="src">Prepared by<input type="text" id="anpBy" value="${esc(o.by||"")}"></label><span class="eyebrow">Include</span><div class="ibacts">${AN_PRINT_TABS.map(([k,l])=>`<label class="lg"><input type="checkbox" data-anp-tab="${k}"${o.tabs.includes(k)?" checked":""}> ${l}</label>`).join("")}</div><label class="lg"><input type="checkbox" id="anpCover"${o.cover?" checked":""}> Start with a cover page</label><div class="ibacts"><span class="sp"></span><button class="btn small" data-anp="close">Cancel</button><button class="btn small primary" data-anp="go">Open print view</button></div><span class="src">Every page carries the CitizenGO band, the team, the dates and who prepared it. For the team only.</span></div></div>`)}
+  /* Countries has its own dataset (AN.data is countries-only there), so it prints on its own; the other tabs print together. */
+  const ctry=AN.tab==="countries",list=ctry?[["countries","Countries"]]:AN_PRINT_TABS;o=Object.assign({by:nameOf(S.whoId),cover:false},o||{});o.tabs=ctry?["countries"]:(o.tabs||[]).filter(k=>list.some(x=>x[0]===k));if(!o.tabs.length)o.tabs=[AN.tab];o.title=`${who} social media report`;
+  $("#anPrintD")?.remove();document.body.insertAdjacentHTML("beforeend",`<div id="anPrintD"><div class="ibscrim" data-anp="close"></div><div class="calexpd" role="dialog" aria-label="Print or PDF"><h3>Print or PDF</h3><label class="src">Title<input type="text" id="anpTitle" value="${esc(o.title)}"></label><label class="src">Prepared by<input type="text" id="anpBy" value="${esc(o.by||"")}"></label><span class="eyebrow">Include</span>${ctry?'<p class="src" style="margin:0">Countries prints on its own. Open another tab to print those together.</p>':""}<div class="ibacts">${list.map(([k,l])=>`<label class="lg"><input type="checkbox" data-anp-tab="${k}"${o.tabs.includes(k)?" checked":""}> ${l}</label>`).join("")}</div><label class="lg"><input type="checkbox" id="anpCover"${o.cover?" checked":""}> Start with a cover page</label><div class="ibacts"><span class="sp"></span><button class="btn small" data-anp="close">Cancel</button><button class="btn small primary" data-anp="go">Open print view</button></div><span class="src">Every page carries the CitizenGO band, the team, the dates and who prepared it. For the team only.</span></div></div>`)}
 function anPrintGo(){const tabs=[...document.querySelectorAll("[data-anp-tab]")].filter(x=>x.checked).map(x=>x.dataset.anpTab);if(!tabs.length){toast("Pick at least one section");return}
   const o={title:$("#anpTitle").value.trim()||"Social media report",by:$("#anpBy").value.trim(),tabs,cover:$("#anpCover").checked};try{localStorage.setItem("desk.anPrint",JSON.stringify({by:o.by,tabs:o.tabs,cover:o.cover}))}catch(e){}
   $("#anPrintD")?.remove();const R=anRep();const range=R?anRangeLine(R).replace(/<[^>]+>/g,""):`last ${AN.days} days`;const was=AN.tab;const parts=[];
-  for(const k of tabs){AN.tab=k;renderAnalytics();const el=$("#anView").cloneNode(true);el.querySelectorAll(".anbar,.antabs,.anhead,button,select,input,[data-an-refresh],details.anmore summary").forEach(x=>x.remove());el.querySelectorAll("details").forEach(x=>x.setAttribute("open",""));parts.push(`<section class="psec"><h2>${esc((AN_PRINT_TABS.find(x=>x[0]===k)||[])[1]||k)}</h2>${el.innerHTML}</section>`)}
+  for(const k of tabs){AN.tab=k;renderAnalytics();const el=$("#anView").cloneNode(true);el.querySelectorAll(".anbar,.antabs,.anhead,button,select,input,[data-an-refresh],details.anmore summary").forEach(x=>x.remove());el.querySelectorAll("details").forEach(x=>x.setAttribute("open",""));parts.push(`<section class="psec"><h2>${esc((AN_PRINT_TABS.find(x=>x[0]===k)||[])[1]||(k==="countries"?"Countries":k))}</h2>${el.innerHTML}</section>`)}
   AN.tab=was;renderAnalytics();const t=(S.teams||[]).find(x=>x.id===S.team)||{};const band=`<div class="psband"><img src="/desk/go.png" alt="CitizenGO" width="30" height="30"><b>${esc(o.title)}</b><span>${esc(range)}</span></div>`;
   const cover=o.cover?`<div class="pscover"><img src="/desk/go.png" alt="CitizenGO" width="86" height="86"><h1>${esc(o.title)}</h1><p>${esc([t.flag,AN.scope==="team"?t.name:""].filter(Boolean).join(" "))}</p><p>${esc(range)}</p><p>Prepared by ${esc(o.by||"the team")} · ${esc(new Date().toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"}))}</p></div>`:"";
   printSheet(cover+band+parts.join("")+`<div class="psfoot">Prepared by ${esc(o.by||"the team")} · ${esc(new Date().toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"}))} · CitizenGO, for the team only</div>`,"Analytics · print preview")}

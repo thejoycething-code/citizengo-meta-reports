@@ -260,6 +260,13 @@ function fakeMeta() {
     const hc = await call(s, 'engine_house_rules', { team: 'uk' }, 'sam');
     eq('house rules: saved sections over the default, rules only where switched on, morning off unless set', [hi.is_default, hi.sections.voice, hi.sections.tone === hd.sections.tone, /Say MPs/.test(hi.text), /Say MPs/.test(hc.text), hi.rules[0].on.morning], [false, 'Bold and kind.', true, true, false, false]);
     eq('house rules: another team cannot look', await callErr(s, 'engine_house_rules', { team: 'uk' }, 'tamara'), 'ENGINE_NOT_MEMBER');
+    let put = null; s.houseRulesPut = async (team, doc) => { put = doc; }; s.houseRulesDoc = async () => put;
+    const hs = await call(s, 'engine_house_rules', { team: 'uk', set: { sections: { tone: 'Gentle.' }, rules: [{ id: 'r2', text: 'Thank people first', on: { inbox: true, compose: false } }] } }, 'sam');
+    eq('house rules: a teammate saves; who and when recorded; returned merged', [put.updated_by, hs.sections.tone, hs.sections.voice === hd.sections.voice, hs.rules.map((r) => r.text)], ['sam', 'Gentle.', true, ['Thank people first']]);
+    eq('house rules: another team cannot save', await callErr(s, 'engine_house_rules', { team: 'uk', set: { sections: { tone: 'x' } } }, 'tamara'), 'ENGINE_NOT_MEMBER');
+    eq('house rules: reset goes back to the built-in rules', (await call(s, 'engine_house_rules', { team: 'uk', reset: true }, 'sam')).rules.length, 7);
+    let refused = false; try { await require('../lib/desk').docsList('houseRules', {}); } catch (e) { refused = e.status === 400; }
+    eq('house rules: not open through the generic docs endpoint', refused, true);
     const mx = require('../lib/house-rules').defaults('mx');
     eq('house rules: Spanish default for Mexico', [/Cercana/.test(mx.sections.voice), mx.rules.length], [true, 7]);
   }
