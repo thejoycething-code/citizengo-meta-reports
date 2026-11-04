@@ -62,8 +62,8 @@ function engine() {
       return rows.length;
     },
     async engineInboxUpdate(id, fields) { const r = db.inbox.find((x) => x.id === id); Object.assign(r, fields); return clone(r); },
-    async engineInboxActions({ team_ids, statuses, due_before }) {
-      return clone(db.actions.filter((a) => (!team_ids || team_ids.includes(a.team_id)) && (!statuses || statuses.includes(a.status)) && (!due_before || a.run_after <= due_before)));
+    async engineInboxActions({ team_ids, item_ids, statuses, due_before }) {
+      return clone(db.actions.filter((a) => (!team_ids || team_ids.includes(a.team_id)) && (!item_ids || item_ids.includes(a.item_id)) && (!statuses || statuses.includes(a.status)) && (!due_before || a.run_after <= due_before)));
     },
     async engineInboxAlerts({ team_ids, statuses, since }) { return clone(db.alerts.filter((a) => team_ids.includes(a.team_id) && (!statuses || statuses.includes(a.status)) && (!since || a.at >= since))); },
     async engineInsertInboxAlert(row) { const a = { id: db.alerts.length + 1, status: 'open', ...row }; db.alerts.push(a); return clone(a); },
@@ -226,6 +226,45 @@ function fakeMeta() {
   eq('by post: comments grouped by post or ad, ours counted apart, ads can be picked out', [bp.posts.map((p) => [p.thread_id, p.comments, p.open, p.ours, p.is_ad]), (await call(s, 'engine_inbox_posts', { team: 'uk', ads: true }, 'sam')).posts.map((p) => p.thread_id)],
     [[['105_9', 1, 1, 0, true], ['105_1', 1, 0, 1, false], ['m1', 1, 0, 1, false]], ['105_9']]);
   eq('by post: another team cannot look', await callErr(s, 'engine_inbox_posts', { team: 'uk' }, 'tamara'), 'ENGINE_NOT_MEMBER');
+
+  // Priority Three (4 Nov): team tags on a person (19B) and what was done before (19E).
+  {
+    const tags = new Map();
+    s.personTagsGet = async (team, a) => tags.get(`${team}|${a}`) || null;
+    s.personTagsPut = async (team, a, doc) => { if (doc) tags.set(`${team}|${a}`, doc); else tags.delete(`${team}|${a}`); };
+    const t1 = await call(s, 'engine_inbox_person', { team: 'uk', author_id: 'u1', tags: ['Journalist', 'Asks questions'] }, 'sam');
+    const days = Math.round((Date.parse(t1.tags_expire) - Date.now()) / 864e5);
+    eq('person tags: fixed tags saved by who, deleted after 120 days', [t1.tags, t1.tags_by, days, t1.tag_choices.length], [['Journalist', 'Asks questions'], 'sam', 120, 6]);
+    eq('person tags: no free text', (await call(s, 'engine_inbox_person', { team: 'uk', author_id: 'u1', tags: ['Telegraph hack'] }, 'sam')).ok, false);
+    eq('person tags: another team cannot tag', await callErr(s, 'engine_inbox_person', { team: 'uk', author_id: 'u1', tags: ['Journalist'] }, 'tamara'), 'ENGINE_NOT_MEMBER');
+    tags.set('uk|u1', { tags: ['Journalist'], by: 'sam', at: '2026-01-01T00:00:00Z', expires_at: '2026-05-01T00:00:00Z' });
+    eq('person tags: past 120 days they are gone', (await call(s, 'engine_inbox_person', { team: 'uk', author_id: 'u1' }, 'sam')).tags, []);
+    eq('person tags: cleared with an empty list', [(await call(s, 'engine_inbox_person', { team: 'uk', author_id: 'u1', tags: [] }, 'sam')).tags, tags.size], [[], 0]);
+    s.db.actions.push({ id: 9001, item_id: 'fbc_c1', team_id: 'uk', account_key: 'uk-fb', action: 'hide', by: 'chris', status: 'done', created_at: '2026-11-02T10:00:00Z', detail: {} });
+    s.db.actions.push({ id: 9002, item_id: 'fbc_c1', team_id: 'uk', account_key: 'uk-fb', action: 'reply', by: 'chris', status: 'cancelled', created_at: '2026-11-02T11:00:00Z', detail: {} });
+    s.db.actions.push({ id: 9003, item_id: 'other', team_id: 'uk', account_key: 'uk-fb', action: 'ban', by: 'chris', status: 'done', created_at: '2026-11-02T12:00:00Z', detail: {} });
+    const h = (await call(s, 'engine_inbox_person', { team: 'uk', author_id: 'u1' }, 'sam')).handled;
+    eq('handled before: only this person\'s items, newest first, undone ones left out', [h.some((a) => a.action === 'hide'), h.some((a) => a.action === 'ban'), h.some((a) => a.status === 'cancelled'), h.every((a, k) => !k || a.at <= h[k - 1].at)], [true, false, false, true]);
+    delete s.personTagsGet; delete s.personTagsPut;
+  }
+
+  // Priority Three 18A: a picture or GIF on a Facebook comment reply.
+  {
+    const fbc = { kind: 'comment', platform: 'facebook', created_at: new Date(NOW).toISOString() };
+    const pic = { url: 'https://abc.supabase.co/storage/v1/object/public/desk-assets/desk/2026-11/x.png', kind: 'image' };
+    const gif = { url: 'https://media2.giphy.com/media/abc/giphy.gif?cid=1', kind: 'gif' };
+    eq('attachments: our pictures and GIPHY GIFs on a Facebook comment reply; a picture alone is a reply', [I.allowed(fbc, 'reply', { text: 'Thanks', attachment: pic, now: NOW }).ok, I.allowed(fbc, 'reply', { text: '', attachment: gif, now: NOW }).ok], [true, true]);
+    eq('attachments: not on Instagram, messages or private replies', [I.allowed({ ...fbc, platform: 'instagram' }, 'reply', { text: 'x', attachment: pic }).ok, I.allowed({ kind: 'message', platform: 'facebook' }, 'reply', { text: 'x', attachment: pic, lastIncomingAt: new Date(NOW).toISOString(), now: NOW }).ok, I.allowed(fbc, 'private_reply', { text: 'x', attachment: pic, now: NOW }).ok], [false, false, false]);
+    eq('attachments: no pictures from anywhere else, https only', [I.allowed(fbc, 'reply', { text: 'x', attachment: { url: 'https://evil.example/x.png' } }).ok, I.allowed(fbc, 'reply', { text: 'x', attachment: { url: 'http://media.giphy.com/x.gif', kind: 'gif' } }).ok, I.allowed(fbc, 'reply', { text: 'x', attachment: { url: 'https://media.giphy.com/x.gif', kind: 'image' } }).ok], [false, false, false]);
+    const sent = [];
+    const fakeFetch = async (url, o) => { sent.push([url, Object.fromEntries(new URLSearchParams(String(o.body)))]); return { ok: true, json: async () => ({ id: 'r1' }) }; };
+    await I.perform({ action: 'reply', item: { ...fbc, object_id: 'c9' }, account: {}, token: 'T', text: 'Thanks', attachment: pic, fetchImpl: fakeFetch });
+    await I.perform({ action: 'reply', item: { ...fbc, object_id: 'c9' }, account: {}, token: 'T', text: null, attachment: gif, fetchImpl: fakeFetch });
+    eq('attachments: still pictures go as attachment_url, GIFs as attachment_share_url so they move', [sent[0][1].attachment_url, sent[0][1].message, sent[1][1].attachment_share_url, 'message' in sent[1][1]], [pic.url, 'Thanks', gif.url, false]);
+    const q = await call(s, 'engine_inbox_act', { id: 'fbc_c1', action: 'reply', text: '', attachment: gif }, 'chris');
+    eq('attachments: queued with the reply for the Mini', [q.ok, q.queued && q.queued.detail.attachment], [true, { url: gif.url, kind: 'gif' }]);
+    if (q.queued) await call(s, 'engine_inbox_undo', { action_id: q.queued.id }, 'chris');
+  }
 
   // Priority Two: the post card (10A) and our past replies to similar comments (35A).
   {

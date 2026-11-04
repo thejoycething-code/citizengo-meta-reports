@@ -8,6 +8,8 @@
 //   POST /api/desk?op=docs   {collection, id?, data, merge?}
 //   POST /api/desk?op=invite {who, team_id, role}   team admins: a sign-in link
 //   GET  /api/desk?op=img&u=…                 one of our Instagram/Facebook pictures (for saving the grid)
+//   POST /api/desk?op=fromlink {url}          a picture from a Canva, Drive or public link, kept in desk-assets
+//   GET  /api/desk?op=gifcfg                   the GIF search key, if GIFs are switched on
 //   POST /api/desk?op=logout
 //
 // Every POST must come from the desk's own page (Origin + X-Desk header), so
@@ -124,6 +126,17 @@ module.exports = async (req, res) => {
       const body = (await readBody(req)) || {};
       await D.emitEvent({ topic: String(body.topic || ''), data: body.data, by: who });
       return send(res, 200, { ok: true });
+    }
+    // 41C (Priority Three, 4 Nov): a picture from a Canva, Drive or other public link, kept like an upload.
+    if (op === 'fromlink' && req.method === 'POST') {
+      const body = (await readBody(req)) || {};
+      try { return send(res, 200, await require('../lib/fromlink').saveFromLink(String(body.url || ''))); }
+      catch (e) { return send(res, e.status && e.status < 500 ? 200 : 502, { ok: false, error: e.message }); }
+    }
+    // 18A: GIF search runs in the browser (GIPHY's terms), so the page needs the key.
+    if (op === 'gifcfg' && req.method === 'GET') {
+      const key = String(process.env.GIPHY_API_KEY || '').trim();
+      return send(res, 200, key ? { provider: 'giphy', key } : { provider: null });
     }
     if (op === 'upload' && req.method === 'POST') {
       const body = (await readBody(req)) || {};

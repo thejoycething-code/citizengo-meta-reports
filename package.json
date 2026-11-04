@@ -61,6 +61,7 @@
     "test:publish": "node scripts/test-publish.js",
     "test:rights-check": "node scripts/test-rights-check.js",
     "test:inbox": "node scripts/test-inbox.js",
+    "test:fromlink": "node scripts/test-fromlink.js",
     "test:analytics": "node scripts/test-analytics.js",
     "test:preflight": "node scripts/test-preflight.js",
     "engine:preflight": "node scripts/engine-preflight.js",

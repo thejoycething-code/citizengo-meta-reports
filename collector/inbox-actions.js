@@ -42,7 +42,7 @@ async function run({ store, privateKey, live, now = Date.now(), log = console.lo
     if (!tok) { await fail(`${a.by} hasn't connected Facebook for ${a.account_key}.`); continue; }
     try {
       const token = xauth.open(privateKey, tok.sealed);
-      const result = await I.perform({ action: a.action, item, account: { key: a.account_key, platform: item.platform, page_id: tok.page_id, ig_id: tok.ig_id }, token, text: a.text, recipient: a.detail && a.detail.recipient, fetchImpl });
+      const result = await I.perform({ action: a.action, item, account: { key: a.account_key, platform: item.platform, page_id: tok.page_id, ig_id: tok.ig_id }, token, text: a.text, recipient: a.detail && a.detail.recipient, attachment: a.detail && a.detail.attachment, fetchImpl });
       await store.engineInboxUpdateAction(a.id, 'running', { status: 'done', result, done_at: at() });
       const change = I.afterAction(a.action, at());
       if (Object.keys(change).length) await store.engineInboxUpdate(item.id, { ...change, updated_at: at(), updated_by: a.by });

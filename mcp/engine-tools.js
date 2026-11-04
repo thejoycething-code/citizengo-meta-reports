@@ -456,12 +456,13 @@ async function actOn(store, ctx, item, args, who, undoMs, rightsCache) {
     lastIncomingAt = last.created_at; recipient = last.author_id;
     if (!recipient) return { ok: false, error: "Can't tell who to reply to in this conversation." };
   }
-  const ok = I.allowed(item, action, { text: args.text, lastIncomingAt, now: now.getTime() });
+  const ok = I.allowed(item, action, { text: args.text, lastIncomingAt, now: now.getTime(), attachment: args.attachment || undefined });
   if (!ok.ok) return ok;
+  const attachment = args.attachment ? I.attachmentOk(args.attachment).attachment : null;
   // Petition links become tracked Copilot links (or the same code as a long
   // link if Copilot can't be reached) before anything is queued.
   const tr = args.text ? await T.trackForItem(store, item, String(args.text).trim(), { action, who }) : { text: null, links: [] };
-  const detail = { ...(recipient ? { recipient } : {}), ...(tr.links.length ? { links: tr.links.map(({ to, code, via }) => ({ to, code, via })) } : {}) };
+  const detail = { ...(recipient ? { recipient } : {}), ...(attachment ? { attachment } : {}), ...(tr.links.length ? { links: tr.links.map(({ to, code, via }) => ({ to, code, via })) } : {}) };
   if (await needsCheck(store, item.team_id, who)) {
     const row = await store.engineInboxInsertAction({ ...base, text: tr.text, detail, run_after: now.toISOString(), status: 'check' });
     return { ok: true, check: row, links: detail.links || [] };
@@ -573,11 +574,55 @@ async function engineInboxPerson(store, args, { who }) {
   const all = await store.engineInbox({ team_ids: [team], author_id: String(args.author_id), since, limit: 500 });
   const rows = all.filter((r) => !r.from_us);
   const labels = [...new Set(rows.flatMap((r) => r.labels || []))];
+  const author = String(args.author_id);
+  // 19B (Priority Three, 4 Nov): a few fixed tags on a person, never free text,
+  // seen only by this team and gone 120 days after they were last set.
+  let tags = await personTagsGet(store, team, author);
+  if (args.tags !== undefined) {
+    const want = [...new Set([].concat(args.tags || []).map(String))];
+    const bad = want.filter((t) => !PERSON_TAGS.includes(t));
+    if (bad.length) return json({ ok: false, error: `Tags are one of: ${PERSON_TAGS.join(', ')}.` });
+    tags = want.length ? { tags: want, by: who, at: new Date().toISOString(), expires_at: new Date(Date.now() + PERSON_TAG_DAYS * 864e5).toISOString() } : null;
+    await personTagsPut(store, team, author, tags, who);
+  }
+  // 19E: what the team already did about this person, from the moderation log. Nothing new is stored.
+  const ids = all.map((r) => r.id).slice(0, 200);
+  const acts = ids.length ? await store.engineInboxActions({ team_ids: [team], item_ids: ids, limit: 200 }) : [];
+  const handled = acts.filter((a) => HANDLED.includes(a.action) && ['done', 'queued', 'running', 'check'].includes(a.status))
+    .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at))).slice(0, 12)
+    .map((a) => ({ action: a.action, by: a.by, at: a.created_at, item_id: a.item_id, status: a.status }));
   return json({
-    team, author_id: String(args.author_id), author_name: (rows[0] && rows[0].author_name) || null,
+    team, author_id: author, author_name: (rows[0] && rows[0].author_name) || null,
     counts: { comments: rows.filter((r) => r.kind === 'comment').length, messages: rows.filter((r) => r.kind === 'message').length, hidden: rows.filter((r) => r.hidden).length, on_ads: rows.filter((r) => r.is_ad).length },
     labels, recent: rows.slice(0, 8),
+    tags: tags ? tags.tags : [], tags_by: tags ? tags.by : null, tags_at: tags ? tags.at : null, tags_expire: tags ? tags.expires_at : null,
+    tag_choices: PERSON_TAGS, handled,
   });
+}
+const PERSON_TAGS = ['Regular supporter', 'Asks questions', 'Journalist', 'Politician', 'Organisation', 'Repeat abuse'];
+const PERSON_TAG_DAYS = 120;
+const HANDLED = ['reply', 'private_reply', 'like', 'hide', 'unhide', 'delete', 'ban', 'unban', 'assign', 'label', 'tone', 'done'];
+const tagDocId = (team, author) => `pt_${team}_${String(author).replace(/[^A-Za-z0-9_-]/g, '')}`.slice(0, 200);
+async function personTagsGet(store, team, author) {
+  let doc = null;
+  if (store.personTagsGet) doc = await store.personTagsGet(team, author);
+  else {
+    const D = require('../lib/desk');
+    try {
+      // Sweep anything past its 120 days first, so expired tags are really gone.
+      await D.pg('DELETE', `engine_desk_docs?collection=eq.personTags&data->>expires_at=lt.${encodeURIComponent(new Date().toISOString())}`, undefined, 'return=minimal');
+      const rows = await D.pg('GET', `engine_desk_docs?select=data&collection=eq.personTags&id=eq.${encodeURIComponent(tagDocId(team, author))}`);
+      doc = (rows[0] && rows[0].data) || null;
+    } catch (e) { doc = null; }
+  }
+  if (!doc || !Array.isArray(doc.tags) || !doc.tags.length || Date.parse(doc.expires_at) < Date.now()) return null;
+  return doc;
+}
+async function personTagsPut(store, team, author, doc, who) {
+  if (store.personTagsPut) return store.personTagsPut(team, author, doc);
+  const D = require('../lib/desk');
+  if (!doc) return D.pg('DELETE', `engine_desk_docs?collection=eq.personTags&id=eq.${encodeURIComponent(tagDocId(team, author))}`, undefined, 'return=minimal');
+  return D.docsPut('personTags', tagDocId(team, author), { team, author_id: String(author), ...doc }, who, { engine: true });
 }
 
 // 33 (Priority Two, 3 Nov): a team's house rules (voice, tone, audience,
@@ -2048,7 +2093,7 @@ const ENGINE_TOOLS = [
   { name: 'engine_pause', description: 'Content Engine Pause everything: hold every scheduled post at once (action pause: scope mine = every account you can post to, team = one of your teams (team), all = every account, admins only; a reason the team sees; optional hours, otherwise until someone resumes), or resume a pause (action resume: id). Nothing is deleted or changed: the publisher just waits.', inputSchema: obj({ action: { type: 'string', enum: ['pause', 'resume'] }, scope: { type: 'string', enum: ['mine', 'team', 'all'] }, team: { type: 'string' }, reason: { type: 'string' }, hours: { type: 'number' }, id: { type: 'number' } }, ['action']), handler: enginePause },
   { name: 'engine_video', description: 'Content Engine: send a Reel or video for a post you can edit, in pieces of up to 2.5 MB (action part: id, upload (8-32 lowercase letters and digits, the same for every piece), index from 0, data base64), then check them (action done: id, upload, parts, size, sha256 hex, mime video/mp4 or video/quicktime, optional name). done returns the video to save in the post\'s final snapshot. Up to 150 MB.', inputSchema: obj({ action: { type: 'string', enum: ['part', 'done'] }, id: { type: 'string' }, upload: { type: 'string' }, index: { type: 'number' }, data: { type: 'string' }, parts: { type: 'number' }, size: { type: 'number' }, sha256: { type: 'string' }, mime: { type: 'string', enum: ['video/mp4', 'video/quicktime'] }, name: { type: 'string' } }, ['action', 'id', 'upload']), handler: engineVideo },
   { name: 'engine_inbox', description: 'Content Engine Inbox: comments and DMs on one of your teams\' Facebook Pages and Instagram accounts, newest first (status open by default, or done, or all; optional platform facebook/instagram, kind comment/message, before an ISO time), each with its tone from its words (positive, negative, mixed, neutral; tone of the words, not whether they agree with us), with open counts, the open items\' tone, actions still in their undo window and pile-on alerts from the last 24 hours. thread returns one post\'s comments or one conversation, oldest first. q searches the words, the person\'s name and the post; accounts limits to some account keys; since an ISO time. Also lists actions waiting for a check (checks) and whether yours need one (me).', inputSchema: obj({ team: { type: 'string' }, status: { type: 'string', enum: ['open', 'done', 'all'] }, platform: { type: 'string', enum: ['facebook', 'instagram'] }, kind: { type: 'string', enum: ['comment', 'message', 'mention'] }, thread: { type: 'string' }, before: { type: 'string' }, since: { type: 'string' }, accounts: { type: 'array', items: { type: 'string' } }, q: { type: 'string' }, limit: { type: 'number' } }, ['team']), handler: engineInbox },
-  { name: 'engine_inbox_act', description: 'Content Engine Inbox: act on a comment or message. done, reopen, assign (assign_to, or empty to unassign) and label (labels) apply at once. reply, private_reply (Facebook comments, within 7 days), like (Facebook only), hide, unhide, delete and ban / unban (block the author from the Facebook Page; threats can be hidden but not deleted) go to Meta from the Mini with your own Page token after 10 seconds, so they can be undone; message replies only within 24 hours of their last message. If your actions need a check, they wait for a team admin instead (check). tone (positive, neutral, negative, mixed) fixes a wrong tone by hand.', inputSchema: obj({ id: { type: 'string' }, action: { type: 'string', enum: ['reply', 'private_reply', 'like', 'hide', 'unhide', 'delete', 'ban', 'unban', 'done', 'reopen', 'assign', 'label', 'tone'] }, text: { type: 'string' }, assign_to: { type: 'string' }, labels: { type: 'array', items: { type: 'string' } }, tone: { type: 'string', enum: ['positive', 'neutral', 'negative', 'mixed'] } }, ['id', 'action']), handler: engineInboxAct },
+  { name: 'engine_inbox_act', description: 'Content Engine Inbox: act on a comment or message. done, reopen, assign (assign_to, or empty to unassign) and label (labels) apply at once. reply, private_reply (Facebook comments, within 7 days), like (Facebook only), hide, unhide, delete and ban / unban (block the author from the Facebook Page; threats can be hidden but not deleted) go to Meta from the Mini with your own Page token after 10 seconds, so they can be undone; message replies only within 24 hours of their last message. A public reply to a Facebook comment can carry one attachment: a desk picture (kind image) or a GIPHY GIF (kind gif). If your actions need a check, they wait for a team admin instead (check). tone (positive, neutral, negative, mixed) fixes a wrong tone by hand.', inputSchema: obj({ id: { type: 'string' }, action: { type: 'string', enum: ['reply', 'private_reply', 'like', 'hide', 'unhide', 'delete', 'ban', 'unban', 'done', 'reopen', 'assign', 'label', 'tone'] }, text: { type: 'string' }, attachment: obj({ url: { type: 'string' }, kind: { type: 'string', enum: ['image', 'gif'] } }, ['url']), assign_to: { type: 'string' }, labels: { type: 'array', items: { type: 'string' } }, tone: { type: 'string', enum: ['positive', 'neutral', 'negative', 'mixed'] } }, ['id', 'action']), handler: engineInboxAct },
   { name: 'engine_inbox_check', description: 'Content Engine Inbox checks (team admins): approve or send back (decision approve / reject, optional note) a teammate\'s reply, hide, delete or ban waiting for a check (action_id from engine_inbox checks), or switch checks on or off for a teammate (person, needs_check).', inputSchema: obj({ team: { type: 'string' }, action_id: { type: 'number' }, decision: { type: 'string', enum: ['approve', 'reject'] }, note: { type: 'string' }, person: { type: 'string' }, needs_check: { type: 'boolean' } }, ['team']), handler: engineInboxCheck },
   { name: 'engine_inbox_post', description: "Content Engine Inbox: the post a conversation is on (thread_id from engine_inbox), with its newest nightly figures (reactions by type, shares, comments, views), the post's own tone and how many comments are open on it.", inputSchema: obj({ team: { type: 'string' }, thread_id: { type: 'string' } }, ['team', 'thread_id']), handler: engineInboxPost },
   { name: 'engine_inbox_similar', description: "Content Engine Inbox: up to three of the team's own past replies to comments like this one (id of an inbox item, or text), matched by shared words, best first. No AI.", inputSchema: obj({ team: { type: 'string' }, id: { type: 'string' }, text: { type: 'string' } }, ['team']), handler: engineInboxSimilar },
@@ -2058,7 +2103,7 @@ const ENGINE_TOOLS = [
   { name: 'engine_prefs', description: 'Content Engine: your own desk settings and saved Inbox views. No set reads them; set merges keys (inbox_views, settings; null removes one).', inputSchema: obj({ set: { type: 'object' } }), handler: enginePrefsTool },
   { name: 'engine_inbox_undo', description: 'Content Engine Inbox: undo a reply, like, hide, unhide or delete you did while it is still in its window (action_id from engine_inbox_act), or a whole bulk action (action_ids from engine_inbox_bulk).', inputSchema: obj({ action_id: { type: 'number' }, action_ids: { type: 'array', items: { type: 'number' } } }), handler: engineInboxUndo },
   { name: 'engine_inbox_bulk', description: 'Content Engine Inbox bulk by topic: one action on up to 100 comments (ids): reply (texts: up to 5 wordings, rotated), like, hide, unhide, delete, done, reopen, assign (assign_to) or label (labels). Same rules as one at a time; refusals are listed. Facebook and Instagram actions wait 30 seconds so the whole batch can be undone with engine_inbox_undo action_ids.', inputSchema: obj({ ids: { type: 'array', items: { type: 'string' } }, action: { type: 'string', enum: ['reply', 'like', 'hide', 'unhide', 'delete', 'ban', 'done', 'reopen', 'assign', 'label'] }, text: { type: 'string' }, texts: { type: 'array', items: { type: 'string' } }, assign_to: { type: 'string' }, labels: { type: 'array', items: { type: 'string' } } }, ['ids', 'action']), handler: engineInboxBulk },
-  { name: 'engine_inbox_person', description: 'Content Engine Inbox supporter history: one person\'s comments and messages on your team\'s accounts in the last 90 days (author_id from an inbox item), with counts (comments, messages, hidden, on ads), their labels and the most recent.', inputSchema: obj({ team: { type: 'string' }, author_id: { type: 'string' } }, ['team', 'author_id']), handler: engineInboxPerson },
+  { name: 'engine_inbox_person', description: 'Content Engine Inbox supporter history: one person\'s comments and messages on your team\'s accounts in the last 90 days (author_id from an inbox item), with counts (comments, messages, hidden, on ads), their labels, the most recent, what the team did about them before (handled, from the moderation log), and the team\'s tags on them. Pass tags (Regular supporter, Asks questions, Journalist, Politician, Organisation, Repeat abuse; empty to clear) to set them: fixed tags only, seen by this team, deleted 120 days after they were set.', inputSchema: obj({ team: { type: 'string' }, author_id: { type: 'string' }, tags: { type: 'array', items: { type: 'string' } } }, ['team', 'author_id']), handler: engineInboxPerson },
   { name: 'engine_inbox_posts', description: 'Content Engine Inbox by post: the last days\' comments (7 by default, up to 30) grouped by the post or ad they\'re on, with comment, open, hidden and our-reply counts and the comments\' tone (positive, negative, mixed, neutral), most open first; ads: true for ads only. Open one with engine_inbox thread.', inputSchema: obj({ team: { type: 'string' }, days: { type: 'number' }, ads: { type: 'boolean' } }, ['team']), handler: engineInboxPosts },
   { name: 'engine_inbox_rules', description: 'Content Engine Inbox auto-hide list for one of your teams: banned words, phrases, "any link that isn\'t ours" and the built-in scam phrases (listed), and whether you can change it (team admins).', inputSchema: obj({ team: { type: 'string' } }, ['team']), handler: engineInboxRules },
   { name: 'engine_inbox_rule', description: 'Content Engine Inbox: add to or remove from a team\'s auto-hide list (team admins). add: kind word (whole word), phrase (anywhere), links (any link that isn\'t citizengo.org or cgo.ac) or scams (the built-in scam phrases), with value for word and phrase. remove: id. New comments that match are hidden (never deleted) as you, and labelled auto-hidden.', inputSchema: obj({ action: { type: 'string', enum: ['add', 'remove'] }, team: { type: 'string' }, kind: { type: 'string', enum: ['word', 'phrase', 'links', 'scams'] }, value: { type: 'string' }, id: { type: 'number' } }, ['action', 'team']), handler: engineInboxRule },
