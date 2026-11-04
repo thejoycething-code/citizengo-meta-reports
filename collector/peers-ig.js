@@ -36,6 +36,8 @@ const LISTS = {
 };
 const LIST = LISTS.allies;
 const MEDIA_FIELDS = 'id,caption,like_count,comments_count,media_type,media_product_type,permalink,timestamp';
+// 37A (4 Nov): the post's picture for Listening's wall, from the same call.
+const MEDIA_FIELDS_PIC = `${MEDIA_FIELDS},media_url`;
 const PREFERRED_VIA = ['citizengo_uk', 'citizengo'];
 
 function args(argv) {
@@ -104,8 +106,10 @@ function classify(error) {
 }
 
 async function discover(get, viaId, username, posts) {
-  const fields = `business_discovery.username(${username}){id,username,name,followers_count,media_count,media.limit(${posts}){${MEDIA_FIELDS}}}`;
-  const res = await get(`/${viaId}`, { fields });
+  const ask = (mf) => get(`/${viaId}`, { fields: `business_discovery.username(${username}){id,username,name,followers_count,media_count,media.limit(${posts}){${mf}}}` });
+  let res = await ask(MEDIA_FIELDS_PIC);
+  // If Meta ever refuses the picture field, collect as before without it.
+  if (!res.ok && /media_url|field/i.test(String((res.error && res.error.message) || ''))) res = await ask(MEDIA_FIELDS);
   if (!res.ok) {
     const error = res.error || { message: res.transport_error || `HTTP ${res.status}` };
     return { status: classify(error), error: String(error.message || '').slice(0, 300) };
@@ -120,6 +124,8 @@ async function discover(get, viaId, username, posts) {
     caption: m.caption || null,
     permalink: m.permalink || null,
     timestamp: m.timestamp,
+    // A video's media_url is the video itself, not a picture.
+    thumbnail_url: m.media_type !== 'VIDEO' && m.media_url ? m.media_url : null,
     like_count: typeof m.like_count === 'number' ? m.like_count : null,
     comments_count: typeof m.comments_count === 'number' ? m.comments_count : null,
   })).filter((m) => m.media_id && m.timestamp);
@@ -204,7 +210,10 @@ async function run({ get, upsert, purge = null, list, opts, via, now = new Date(
       + (top && !opts.quiet ? `; top ${(top.like_count || 0) + (top.comments_count || 0)} (${top.permalink})` : ''));
     if (opts.dryRun) continue;
     await upsert('peer_ig_accounts', [account], 'username');
-    await upsert('peer_ig_media', r.media.map(({ like_count, comments_count, ...m }) => m), 'media_id');
+    const media = r.media.map(({ like_count, comments_count, ...m }) => m);
+    // thumbnail_url needs sql/listen-pictures.sql; until it's run, write without it.
+    try { await upsert('peer_ig_media', media, 'media_id'); }
+    catch (e) { await upsert('peer_ig_media', media.map(({ thumbnail_url, ...m }) => m), 'media_id'); }
     await upsert('peer_ig_media_metrics', r.media.map((m) => ({
       media_id: m.media_id, collected_date: today,
       like_count: m.like_count, comments_count: m.comments_count,

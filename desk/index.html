@@ -2,7 +2,58 @@
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="robots" content="noindex">
 <link rel="icon" type="image/svg+xml" href="/desk/favicon.svg">
-<style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+<style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif}img{max-width:100%}[hidden]{display:none!important}/* 37A + 37C Listening picture wall (Chris, 4 Nov) */
+.rsview{margin-left:auto}
+.rshead{margin:6px 0 0;font-family:var(--display);font-size:16px;display:flex;gap:8px;align-items:baseline}
+.rstake{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.rswall{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px}
+.rstile{--src:var(--accent);display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;min-width:0}
+.rstile[data-src="allies"]{--src:var(--ok)}
+.rstile[data-src="opponents"]{--src:var(--bad)}
+.rsimg{position:relative;display:block;aspect-ratio:1;background:var(--sunk);overflow:hidden;color:inherit;text-decoration:none;border-bottom:3px solid var(--src)}
+.rstile.big .rsimg{aspect-ratio:4/3}
+.rsimg img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.rsimg .rstext{display:none}
+.rsimg.noimg{background:color-mix(in srgb,var(--src) 12%,var(--surface))}
+.rsimg.noimg .rstext{display:-webkit-box;-webkit-line-clamp:6;-webkit-box-orient:vertical;overflow:hidden;padding:44px 14px 0;font-size:14px;line-height:1.4;color:var(--fg);overflow-wrap:anywhere}
+.rstile.big .rsimg.noimg .rstext{font-size:16px;-webkit-line-clamp:8}
+.rsbadge{position:absolute;top:8px;right:8px;background:var(--surface);color:var(--fg);border-radius:999px;padding:3px 9px;font-size:12px;box-shadow:0 1px 3px rgba(0,0,0,.25)}
+.rsbadge b{font-variant-numeric:tabular-nums}
+.rsrise{position:absolute;left:8px;top:8px;background:var(--ok);color:#fff;border-radius:999px;padding:2px 8px;font-size:11px;font-weight:600}
+a.rsimg:hover img{transform:scale(1.03);transition:transform .2s}
+a.rsimg:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.rsinfo{display:flex;flex-direction:column;gap:4px;padding:8px 10px 10px;min-width:0}
+.rsinfo .rsmeta{flex-wrap:nowrap;min-width:0}
+.rswho{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:inherit}
+a.rswho:hover{text-decoration:underline}
+.rsbig{margin:0;font-size:13px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
+.rsimg.noimg+.rsinfo .rsbig{display:none}
+.rstacts{display:flex;flex-wrap:wrap;gap:6px;margin-top:2px}
+.rswall .rstacts .btn{padding:3px 8px;font-size:12px}
+@media (max-width:860px){.rstake{grid-template-columns:minmax(0,1fr)}.rstile.big .rsimg{aspect-ratio:16/10}}
+@media (max-width:520px){.rswall{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.rsview{margin-left:0}}
+/* 40A + 40C Help menu and Report a problem (Chris, 4 Nov) */
+.hmbtn{display:flex;align-items:center;gap:8px;width:100%;background:none;border:1px solid var(--line);border-radius:10px;padding:6px 10px;color:var(--fg);font:inherit;font-size:13px;cursor:pointer;text-align:left}
+.hmbtn:hover,.hmbtn[aria-expanded="true"]{background:var(--sunk)}
+.hmq{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;border:1.5px solid currentColor;font-weight:700;font-size:12px;flex:none}
+.hml{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hmn{background:var(--bad);color:#fff;border-radius:999px;font-size:11px;font-weight:700;padding:1px 6px}
+.hmpop{position:fixed;z-index:70;width:320px;max-width:calc(100vw - 32px);max-height:calc(100vh - 32px);overflow:auto;background:var(--surface);color:var(--fg);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow,0 10px 28px rgba(0,0,0,.25));padding:10px;display:flex;flex-direction:column;gap:6px;font-size:14px}
+.hmpop .hmit{display:flex;align-items:center;gap:10px;width:100%;background:none;border:0;border-radius:8px;padding:8px;color:inherit;font:inherit;text-align:left;cursor:pointer}
+.hmpop .hmit:hover,.hmpop .hmit:focus-visible{background:var(--sunk)}
+.hmpop .hmit .w{margin-left:auto;font-size:12px;color:var(--muted)}
+.hmpop .hmsep{border-top:1px solid var(--line);margin:2px 0}
+.hmpop h4{margin:2px 0;font-size:15px;display:flex;align-items:center;gap:8px}
+.hmpop textarea{font:inherit;font-size:14px;min-height:96px;resize:vertical;padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--fg)}
+.hmpop .hmrow{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.hmpop .hmrep{border:1px solid var(--line);border-radius:8px;padding:8px;display:flex;flex-direction:column;gap:4px}
+.hmpop .hmrep.fixed{opacity:.75}
+.hmpop .hmrep p{margin:0;overflow-wrap:anywhere;white-space:pre-wrap}
+.hmpop ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px}
+.phreport{background:none;border:0;padding:6px 0 0;border-top:1px solid var(--line);color:var(--accent);font:inherit;font-weight:600;text-align:left;cursor:pointer}
+.folded .side .hml{display:none}.folded .side .hmbtn{width:auto;padding:6px;border:0;position:relative}.folded .side .hmn{position:absolute;top:-2px;right:-4px}
+@media (max-width:700px){.hmpop{left:8px!important;right:8px;bottom:8px!important;top:auto!important;width:auto;max-height:80vh}}
+</style>
 <script>window.DESK_AI_HELPER="https://claude.ai/artifact/XrdkfXNRYiSoCQtFghpaai";</script>
 <script src="/desk/web.js"></script>
 </head><body>
@@ -1096,7 +1147,7 @@ body.cpopen{overflow:hidden}
   .cp-th,.cp-add{width:84px;height:105px}
 }
 @media (max-width:860px){.cp-mid{flex-direction:column}.cp-mid>[data-p]{flex-direction:column}}
-/* Priority Three (4 Nov): translation, the reply composer with picture and GIF, person tags and history, Add from, connectors, page help and help search. */
+/* Priority Three (4 Nov): translation, the reply composer with a picture, person tags and history, Add from, connectors, page help and help search. */
 .ibtr{margin-top:6px;border-left:3px solid var(--accent);padding:2px 0 2px 8px;display:flex;flex-direction:column;gap:2px}.ibtr small{color:var(--muted);font-size:11px}.ibtrl{display:block;margin-top:4px;font-size:12px}
 .ibcomp{border:1px solid var(--line);border-radius:10px;background:var(--bg);display:flex;flex-direction:column;margin-bottom:8px}
 .ibcomp:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
@@ -1140,7 +1191,7 @@ body.cpopen{overflow:hidden}
   <div class="brand"><img class="golg lgt" alt="CitizenGO" width="34" height="34" src="data:image/png;base64,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"><img class="golg drk" alt="CitizenGO" width="34" height="34" src="data:image/png;base64,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"><span class="bt">Content Engine</span><button class="sfold" data-act="sideFold" aria-label="Fold the sidebar to icons" title="Fold to icons"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg></button></div>
   <label for="fTeam" id="teamWrap">Country <select id="fTeam"></select></label>
   <nav id="sideNav"></nav>
-  <div class="foot"><span id="pauseChip"></span><div class="themesw" id="themeSw" role="group" aria-label="Theme"></div><div class="me" id="sideMe"></div><div class="links"><button data-nav="settings">Settings</button><button data-act="helpsearch" title="Search help (/)">Help</button><button onclick="deskSignOut()">Sign out</button></div></div>
+  <div class="foot"><span id="pauseChip"></span><div class="themesw" id="themeSw" role="group" aria-label="Theme"></div><button class="hmbtn" id="helpMenuBtn" aria-haspopup="dialog" aria-expanded="false" title="Help, what's new and Report a problem"><span class="hmq" aria-hidden="true">?</span><span class="hml">Help and report</span><span class="hmn" id="helpMenuN" hidden></span></button><div class="me" id="sideMe"></div><div class="links"><button data-nav="settings">Settings</button><button onclick="deskSignOut()">Sign out</button></div></div>
 </aside>
 <div class="sideShade" id="sideShade" hidden></div>
 <div class="wrap">
@@ -2441,7 +2492,7 @@ async function loadBell(){if(!S.mcp||!S.team)return;const team=S.team;
   renderBell();renderRenew()}
 const bellAll=()=>BELL.live.filter(x=>x.team===S.team).concat(BELL.items).sort((a,b)=>String(b.at).localeCompare(String(a.at)));
 const bellUnread=i=>!BELL.seen||String(i.at)>BELL.seen;
-const BELL_IC={assigned:"💬",check:"☑",sent_back:"↩",approved:"✓",failed:"!",connection:"🔌",ask:"✎",mention:"@"};
+const BELL_IC={assigned:"💬",check:"☑",sent_back:"↩",approved:"✓",failed:"!",connection:"🔌",ask:"✎",mention:"@",report:"🐞",fixed:"✓"};
 function bellPush(kind,text,go,ref){BELL.live.unshift({id:"lv:"+Date.now()+Math.random(),kind,text,go,ref,team:S.team,at:new Date().toISOString()});BELL.live=BELL.live.slice(0,20);renderBell()}
 function renderBell(){const n=bellAll().filter(bellUnread).length;const b=$("#bellN"),btn=$("#bellBtn");if(!btn)return;
   if(b){b.hidden=!n;b.textContent=n>9?"9+":String(n)}btn.setAttribute("aria-label",n?`For you, ${n} unread`:"For you");btn.setAttribute("aria-expanded",String(BELL.open));
@@ -2457,6 +2508,7 @@ async function bellGo(go,ref){BELL.open=false;renderBell();
   if(go==="renew"){renewStart();return}
   if(go==="post"||go==="ask"){const d=S.drafts.find(x=>x.id===ref);if(!d){toast("That post isn't on the desk any more");return}S.status=d.status||"pending";S.openId=d.id;resetDraftUi();setView("posts");renderSide();return}
   if(go==="inbox:check"){navGo("inbox:inbox");IB.status="check";loadInbox();return}
+  if(go==="reports"){helpMenuOpen("reports");return}
   if(go)navGo(go)}
 document.addEventListener("click",ev=>{
   if(ev.target.closest("#bellBtn")){BELL.open=!BELL.open;renderBell();if(BELL.open){$("#bellPop .bellrow,#bellPop [data-bell-read]")?.focus();loadBell()}return}
@@ -4095,7 +4147,7 @@ function ibDetail(i){const mention=i.kind==="mention";const canAct=(S.rights||[]
     <div class="ibacts">${acts.join("")}</div>
     ${canAct&&!i.from_us&&i.status==="open"?ibPastHtml(i)+ibSuggestHtml(i):""}
     ${canAct&&!i.from_us?`<div class="ibreply"><label for="ibText" class="src">${msg?"Reply in the conversation":"Reply"}</label><div class="ibcomp"><textarea id="ibText" placeholder="Write a reply as ${esc(accLabel(i.account_key))}…">${esc(IB.text||"")}</textarea>${ibAttHtml(i)}
-      <div class="ibtools"><span class="ibemo"><button class="btn small ic" data-ib-emo aria-expanded="${!!IB.emoOpen}" title="Emoji" aria-label="Emoji">🙂</button>${IB.emoOpen?ibEmojiMenu():""}</span>${ibCanAttach(i)?`<button class="btn small" data-ib-pic="pic" aria-expanded="${IB.pick==="pic"}" title="Add a picture (Facebook only)">🖼 Picture</button><button class="btn small" data-ib-pic="gif" aria-expanded="${IB.pick==="gif"}" title="Add a GIF (Facebook only)">GIF</button>`:""}<select data-ib-petition aria-label="Insert a petition link"><option value="">🔗 Petition…</option>${ibPetitions().map((x,n)=>`<option value="${n}">${esc(x.title.slice(0,60))}</option>`).join("")}</select><select data-ib-saved aria-label="Saved replies"><option value="">💬 Saved replies…</option>${(IB.saved||[]).map((r,n)=>`<option value="${n}">${esc(r.title)}</option>`).join("")}<option value="__save">+ Save this reply…</option></select></div>${ibCanAttach(i)&&IB.pick?ibPickHtml():""}</div>
+      <div class="ibtools"><span class="ibemo"><button class="btn small ic" data-ib-emo aria-expanded="${!!IB.emoOpen}" title="Emoji" aria-label="Emoji">🙂</button>${IB.emoOpen?ibEmojiMenu():""}</span>${ibCanAttach(i)?`<button class="btn small" data-ib-pic="pic" aria-expanded="${IB.pick==="pic"}" title="Add a picture (Facebook only)">🖼 Picture</button>`:""}<select data-ib-petition aria-label="Insert a petition link"><option value="">🔗 Petition…</option>${ibPetitions().map((x,n)=>`<option value="${n}">${esc(x.title.slice(0,60))}</option>`).join("")}</select><select data-ib-saved aria-label="Saved replies"><option value="">💬 Saved replies…</option>${(IB.saved||[]).map((r,n)=>`<option value="${n}">${esc(r.title)}</option>`).join("")}<option value="__save">+ Save this reply…</option></select></div>${ibCanAttach(i)&&IB.pick?ibPickHtml():""}</div>
       <div class="ibacts"><button class="btn small primary" data-ib-replynext>${IB.sugMode==="replydm"?"Reply + DM, next":"Reply & next"}</button><button class="btn small" data-ib-act="reply">Send${msg?"":" reply"} only</button>${fb&&!msg?`<button class="btn small" data-ib-act="private_reply">Send as private message</button>`:""}${S.sample?`<button class="btn small" data-ib-act="draft">✨ Draft with Claude</button>`:""}<span class="ibchecks" id="ibChecks">${ibChecks(i,IB.text)}</span></div>${drafts}</div>`
     :mention?"":!canAct?`<p class="src">You can't reply for ${esc(accLabel(i.account_key))}: connect Facebook with a role on that Page, or leave it for someone who has one.</p>`:""}
   </div>`}
@@ -4495,7 +4547,7 @@ setInterval(()=>{if(S.view==="inbox"&&!IB.topics&&document.visibilityState==="vi
    engine_listening: posts beating their own normal. "Rework for…" files a Plan
    request for tomorrow, so the daily run drafts it into Review with the
    original credited; nothing here posts anything. */
-const LS={tab:"rising",src:"",win:48,data:null,err:null,loading:false,done:new Set(),lang:"",ho:false,to:null,shares:[],reqs:null,reqsTeam:null};
+const LS={tab:"rising",src:"",win:48,wall:(()=>{try{return localStorage.getItem("ls.rsView")!=="list"}catch(e){return true}})(),data:null,err:null,loading:false,done:new Set(),lang:"",ho:false,to:null,shares:[],reqs:null,reqsTeam:null};
 const LS_LANG={en:"English",es:"Spanish",pt:"Portuguese",fr:"French",it:"Italian",de:"German",pl:"Polish",hu:"Hungarian",sk:"Slovak",nl:"Dutch",hr:"Croatian"};
 async function loadListening(fresh){if(LS.loading)return;const key=`ls:${LS.tab}:${S.team}:${LS.tab==="opponents"?LS.oppDays||7:""}`;
   if(!fresh&&!["mentions","rising","watches"].includes(LS.tab)&&VIEW_MEMO[key]&&Date.now()-VIEW_MEMO[key].t<10*60e3){LS.data=VIEW_MEMO[key].d;LS.err=null;renderListening();return}
@@ -4525,7 +4577,7 @@ function renderRising(el,head){const D=LS.data,t=(S.teams||[]).find(x=>x.id===S.
   const n=k=>all.filter(([p])=>!k||p.src===k).length;
   const rows=all.filter(([p])=>!LS.src||p.src===LS.src).sort((a,b)=>rsScore(b[0])-rsScore(a[0]));
   const top=Math.max(10,...rows.map(([p])=>Number(p.x)||0));
-  const chips=`<div class="rsbar"><span class="tabs">${[["","All"],["citizengo","CitizenGO"],["allies","Allies"],["opponents","Opponents"]].map(([k,l])=>`<button class="tab" data-rs-src="${k}" aria-pressed="${LS.src===k}">${l} <span class="src">${n(k)}</span></button>`).join("")}</span><span class="tabs">${[[48,"48 hours"],[168,"7 days"]].map(([w,l])=>`<button class="tab" data-rs-win="${w}" aria-pressed="${LS.win===w}">${l}</button>`).join("")}</span>${hoN?`<label class="src"><input type="checkbox" data-ls-ho${LS.ho?" checked":""}> HazteOir (${hoN})</label>`:""}${lsTeamPick()}</div>`;
+  const chips=`<div class="rsbar"><span class="tabs">${[["","All"],["citizengo","CitizenGO"],["allies","Allies"],["opponents","Opponents"]].map(([k,l])=>`<button class="tab" data-rs-src="${k}" aria-pressed="${LS.src===k}">${l} <span class="src">${n(k)}</span></button>`).join("")}</span><span class="tabs">${[[48,"48 hours"],[168,"7 days"]].map(([w,l])=>`<button class="tab" data-rs-win="${w}" aria-pressed="${LS.win===w}">${l}</button>`).join("")}</span>${hoN?`<label class="src"><input type="checkbox" data-ls-ho${LS.ho?" checked":""}> HazteOir (${hoN})</label>`:""}${lsTeamPick()}<span class="tabs rsview" role="group" aria-label="Show as">${[[1,"Pictures"],[0,"List"]].map(([w,l])=>`<button class="tab" data-rs-wall="${w}" aria-pressed="${!!LS.wall===!!w}">${l}</button>`).join("")}</span></div>`;
   const row=([p,k])=>{const opp=p.src==="opponents",done=LS.done.has(p.url||p.text);
     return `<article class="rsrow" data-src="${p.src}"><div class="rsx"><b>${anN(p.x)}×</b><small>its normal</small><span class="rsmeter" aria-hidden="true"><i style="width:${Math.min(100,Math.round((Number(p.x)||0)/top*100))}%"></i></span></div>
     <div class="rsmain"><div class="rsmeta"><span class="rsdot"></span><b>${esc(RS_SRC[p.src])}</b><span>${esc(p.who)}</span>${p.country?`<span class="src">${esc(p.country)}</span>`:""}<span class="src">${esc(rsAge(p.created_time))}${p.format?" · "+esc(rsFormat(p.format)):""}${p.lang&&p.lang!=="en"?" · "+esc(LS_LANG[p.lang]||p.lang):""}</span>${p.settled===false?'<span class="rsup" title="Under three days old: still gathering likes, so the multiple can only rise">↑ still rising</span>':""}</div>
@@ -4533,7 +4585,20 @@ function renderRising(el,head){const D=LS.data,t=(S.teams||[]).find(x=>x.id===S.
     <div class="src">${p.views!=null?`${anN(p.views)} views${p.beyond_pct!=null?` · ${anN(p.beyond_pct)}% beyond followers`:""}`:`${anN(p.likes)} likes · ${anN(p.comments)} comments`}${p.gain_day?` · <b class="rsgain">+${anN(p.gain_day)} since yesterday</b>`:""}</div>
     ${(p.reworked||[]).length?`<span class="src">↻ Already reworked by ${p.reworked.map(r=>esc(`${r.flag} ${r.name}`.trim()+(r.status==="drafted"?" (drafted)":r.status==="cancelled"?" (cancelled)":" (asked)"))).join(", ")}</span>`:""}</div>
     <div class="rsacts">${p.url?`<a class="btn small" href="${esc(p.url)}" target="_blank" rel="noopener">Open ↗</a>`:""}${done?`<span class="src">✓ Requested</span>`:opp?`<button class="btn small" data-ls-counter="${k}" title="Ask the morning run for a post answering this with facts">Counter with facts</button>`:toT?`<button class="btn small primary" data-ls-rework="${k}">Rework for ${esc((toT.flag?toT.flag+" ":"")+toT.name)}</button>`:""}${p.url&&S.db?`<button class="btn small" data-ls-share="${k}">Share</button>`:""}</div></article>`};
-  const list=rows.length?`<div class="rslist">${rows.map(row).join("")}</div>`:`<div class="ibd"><b>Nothing at 3× normal or more ${LS.win===48?"in the last 48 hours":"this week"}${LS.src?" from "+esc(({citizengo:"other CitizenGO Pages",allies:"allies",opponents:"opponents"})[LS.src]):""}.</b>${LS.win===48?`<span><button class="btn small" data-rs-win="168">Look at the last 7 days</button></span>`:""}</div>`;
+  const acts=([p,k])=>{const opp=p.src==="opponents",done=LS.done.has(p.url||p.text);return `${p.url?`<a class="btn small" href="${esc(p.url)}" target="_blank" rel="noopener">Open ↗</a>`:""}${done?`<span class="src">✓ Requested</span>`:opp?`<button class="btn small" data-ls-counter="${k}" title="Ask the morning run for a post answering this with facts">Counter with facts</button>`:toT?`<button class="btn small primary" data-ls-rework="${k}">Rework</button>`:""}${p.url&&S.db?`<button class="btn small" data-ls-share="${k}">Share</button>`:""}`};
+  /* 37A + 37C (Chris, 4 Nov): the posts as pictures. The three rising fastest
+     sit big in "Taking off now", the rest in a wall below; every picture and
+     name opens the post where it was published. A picture is a link to Meta's
+     own copy (never kept by us); when it has expired the words show instead. */
+  const tile=([p,k],big)=>{const href=p.url?` href="${esc(p.url)}" target="_blank" rel="noopener"`:"";const tag=p.url?"a":"div";
+    return `<article class="rstile${big?" big":""}" data-src="${p.src}"><${tag} class="rsimg${p.img?"":" noimg"}"${href} title="${p.url?"Open the post on "+esc(/instagram/.test(p.url)?"Instagram":"Facebook"):""}">${p.img?`<img src="${esc(p.img)}" alt="" loading="lazy" referrerpolicy="no-referrer" data-rsimg>`:""}<span class="rstext">${esc(String(p.text||"(no text)").slice(0,big?220:140))}</span><span class="rsbadge"><b>${anN(p.x)}×</b> normal</span>${p.settled===false?'<span class="rsrise">↑ still rising</span>':""}</${tag}>
+      <div class="rsinfo"><div class="rsmeta"><span class="rsdot"></span><b>${esc(RS_SRC[p.src])}</b>${p.url?`<a href="${esc(p.url)}" target="_blank" rel="noopener" class="rswho">${esc(p.who)}</a>`:`<span class="rswho">${esc(p.who)}</span>`}</div>
+      <div class="src">${esc(rsAge(p.created_time))}${p.format?" · "+esc(rsFormat(p.format)):""}${p.country?" · "+esc(p.country):""} · ${p.views!=null?`${anN(p.views)} views`:`❤ ${anN(p.likes)} · 💬 ${anN(p.comments)}`}${p.gain_day?` · <b class="rsgain">+${anN(p.gain_day)} today</b>`:""}</div>
+      ${big?`<p class="rsbig">${esc(String(p.text||"").slice(0,180))}</p>`:""}
+      ${(p.reworked||[]).length?`<span class="src">↻ Reworked by ${p.reworked.map(r=>esc(`${r.flag} ${r.name}`.trim())).join(", ")}</span>`:""}
+      <div class="rstacts">${acts([p,k])}</div></div></article>`};
+  const wall=rows.length?`${rows.length>3?`<h3 class="rshead">Taking off now</h3>`:""}<div class="rstake">${rows.slice(0,3).map(r=>tile(r,true)).join("")}</div>${rows.length>3?`<h3 class="rshead">Also rising <span class="src">${rows.length-3}</span></h3><div class="rswall">${rows.slice(3).map(r=>tile(r,false)).join("")}</div>`:""}<p class="src">Pictures open the post where it was published. Opponents' posts and their pictures are deleted after 120 days.</p>`:"";
+  const list=rows.length?(LS.wall?wall:`<div class="rslist">${rows.map(row).join("")}</div>`):`<div class="ibd"><b>Nothing at 3× normal or more ${LS.win===48?"in the last 48 hours":"this week"}${LS.src?" from "+esc(({citizengo:"other CitizenGO Pages",allies:"allies",opponents:"opponents"})[LS.src]):""}.</b>${LS.win===48?`<span><button class="btn small" data-rs-win="168">Look at the last 7 days</button></span>`:""}</div>`;
   const lbl=c=>c.kind==="hashtag"?c.key:c.kind==="link"?"Link: "+c.key:"“"+c.key+"”";
   const when=d=>d?new Date(d).toLocaleDateString("en-GB",{day:"numeric",month:"short"}):"";
   const ours=`<section class="rsbox${D.alerts.length?" bad":""}"><h3>On our Pages</h3>${D.alerts.length?D.alerts.map(a=>`<div><b>${a.comments_hour} comments in an hour</b> on ${esc(accLabel(a.account_key))}, ${a.hostile_hour} hostile${a.post_url?` · <a href="${esc(a.post_url)}" target="_blank" rel="noopener">the post</a>`:""}</div>`).join("")+`<button class="btn small primary" data-view="inbox">Open the Inbox</button>`:`<span class="src">Quiet: no pile-ons on our posts right now.</span>`}</section>`;
@@ -4774,6 +4839,7 @@ document.addEventListener("click",async ev=>{const mo=ev.target.closest("[data-l
       if(r&&r.ok!==false){LS.done.add((isG?"gap:":"trend:")+c.key);toast("Requested: tomorrow's run drafts it into Review.");renderListening()}else{toast((r&&r.error)||"Couldn't request it");gp.disabled=false}}catch(e){failToast(e,"Couldn't request it");gp.disabled=false}return}
   const rs=ev.target.closest("[data-rs-src]");if(rs){LS.src=rs.dataset.rsSrc;renderListening();return}
   const rw2=ev.target.closest("[data-rs-win]");if(rw2){LS.win=Number(rw2.dataset.rsWin)||48;renderListening();return}
+  const rwv=ev.target.closest("[data-rs-wall]");if(rwv){LS.wall=rwv.dataset.rsWall==="1";try{localStorage.setItem("ls.rsView",LS.wall?"wall":"list")}catch(e){}renderListening();return}
   const go=ev.target.closest("[data-ls-go]");if(go){LS.tab=go.dataset.lsGo;LS.data=null;renderSide();loadListening();return}
   const ct=ev.target.closest("[data-ls-counter]");if(ct&&LS.data){const p=LS.data.posts[Number(ct.dataset.lsCounter)];if(!p)return;const tm=new Date();tm.setDate(tm.getDate()+1);ct.disabled=true;
     try{const r=await eng("engine_request",{action:"create",team:LS.to||S.team,for_date:tm.toISOString().slice(0,10),source:"idea",title:`Counter: ${p.who}: ${String(p.text||"").replace(/\s+/g," ").slice(0,90)}`,
@@ -6072,9 +6138,9 @@ function anPrintGo(){const tabs=[...document.querySelectorAll("[data-anp-tab]")]
 /* ===================== Priority Three picks (Chris, 4 Nov) =====================
    17A  "See translation" under a comment: the browser's own translator, on this
         computer (Chrome on a computer), or the person's own Claude. No paid API.
-   18A  A picture or GIF in the reply box (Facebook comment replies only: Meta's
+   18A  A picture in the reply box (Facebook comment replies only: Meta's
         API takes one picture per reply; Instagram replies are text only). Our
-        own pictures, GIPHY GIFs (Tenor closed its API on 30 June 2026), and the
+        own pictures (no GIFs: Chris, 4 Nov, no paid GIF service), and the
         petition's own picture when a petition link goes in (the link itself
         goes out as a tracked cgo.ac short link, as before).
    19B  Fixed team tags on a person (no free text), deleted after 120 days.
@@ -6109,32 +6175,21 @@ async function trRun(id){const m=(IB.thread||[]).concat(IB.items||[]).find(x=>x.
   catch(e){TR[id]={lang,err:"Couldn't translate: "+whyFailed(e)}}
   renderInbox()}
 
-// ---------- 18A picture or GIF in the reply ----------
+document.addEventListener("error",ev=>{const t=ev.target;if(t&&t.matches&&t.matches("img[data-rsimg]")){const a=t.closest(".rsimg");if(a)a.classList.add("noimg");t.remove()}},true);
+// ---------- 18A picture in the reply (no GIFs) ----------
 const ibCanAttach=i=>!!i&&i.platform==="facebook"&&i.kind==="comment"&&!i.from_us;
 const ibAttFor=i=>IB.att&&i&&IB.att.for===i.id?IB.att:null;
 const ibOurPic=u=>/\/storage\/v1\/object\/public\/desk-assets\//.test(String(u||""));
 function ibAttHtml(i){const a=ibAttFor(i);const off=!a&&IB.petOffer&&IB.petOffer.for===i.id?IB.petOffer:null;
-  return (a?`<div class="ibatt"><img src="${esc(a.thumb||a.url)}" alt="" referrerpolicy="no-referrer"><span>${a.kind==="gif"?"GIF":"Picture"} · goes with the reply on Facebook${a.src==="giphy"?" · via GIPHY":""}</span><button class="btn small ic" data-ib-attrm title="Remove" aria-label="Remove the ${a.kind==="gif"?"GIF":"picture"}">✕</button></div>`:"")
+  return (a?`<div class="ibatt"><img src="${esc(a.thumb||a.url)}" alt="" referrerpolicy="no-referrer"><span>Picture · goes with the reply on Facebook</span><button class="btn small ic" data-ib-attrm title="Remove" aria-label="Remove the picture">✕</button></div>`:"")
     +(off?`<div class="ibpoffer">🖼 Add the petition's picture too?<button class="btn small" data-ib-petpic${IB.petBusy?" disabled":""}>${IB.petBusy?"Adding…":"Add it"}</button><button class="btn small" data-ib-petno>No thanks</button><small class="src">The link goes out as a tracked cgo.ac short link.</small></div>`:"")}
 function ibPickHtml(){const k=IB.pick;
-  if(k==="pic"){const lib=cpLibrary().filter(u=>ibOurPic(u.url)).slice(0,30);IB.libPics=lib;
-    return `<div class="ibpick"><div class="row" style="justify-content:space-between;gap:6px"><b class="src">Pictures from this team's posts</b>${S.assets?`<button class="btn small" data-ib-upload>⇪ Upload a picture or GIF…</button>`:""}</div><div class="ibpgrid">${lib.length?lib.map((u,n)=>`<button data-ib-libpick="${n}" title="${esc(u.from||"")}"><img src="${esc(u.url)}" alt="" loading="lazy"></button>`).join(""):'<span class="src">No pictures yet: upload one.</span>'}</div></div>`}
-  const G=IB.gif||{};const on=G.cfg&&G.cfg.provider;
-  return `<div class="ibpick"><input type="search" id="ibGifQ" placeholder="Search GIFs: thank you, applause, well done…" value="${esc(G.q||"")}" autocomplete="off" style="font:inherit;font-size:13px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--fg)">
-    ${!G.cfg?'<p class="src">Loading…</p>':!on?`<p class="src">GIF search isn't switched on yet. You can still upload our own GIFs under 🖼 Picture.</p>`:G.busy?'<p class="src">Searching…</p>':G.err?`<p class="src">${esc(G.err)}</p>`:`<div class="ibpgrid">${(G.res||[]).map((g,n)=>`<button data-ib-gifpick="${n}" title="${esc(g.title||"")}"><img src="${esc(g.thumb)}" alt="${esc(g.title||"GIF")}" loading="lazy" referrerpolicy="no-referrer"></button>`).join("")||'<span class="src">Nothing found.</span>'}</div>`}
-    ${on?'<small class="src">Powered by GIPHY · family-friendly (rated G) only</small>':""}</div>`}
+  if(k==="pic"){const lib=cpLibrary().filter(u=>ibOurPic(u.url)&&!/\.gif(\?|$)/i.test(u.url)).slice(0,30);IB.libPics=lib;
+    return `<div class="ibpick"><div class="row" style="justify-content:space-between;gap:6px"><b class="src">Pictures from this team's posts</b>${S.assets?`<button class="btn small" data-ib-upload>⇪ Upload a picture…</button>`:""}</div><div class="ibpgrid">${lib.length?lib.map((u,n)=>`<button data-ib-libpick="${n}" title="${esc(u.from||"")}"><img src="${esc(u.url)}" alt="" loading="lazy"></button>`).join(""):'<span class="src">No pictures yet: upload one.</span>'}</div></div>`}
+  return ""}
 function ibRenderKeep(id){const el=document.getElementById(id);const pos=el&&el.selectionStart;renderInbox();const n=document.getElementById(id);if(n&&id){n.focus();try{n.setSelectionRange(pos,pos)}catch(e){}}}
-async function ibGifSearch(q){const G=IB.gif=IB.gif||{};G.q=q;G.err=null;
-  if(!G.cfg){try{G.cfg=window.deskGifCfg?await window.deskGifCfg():{provider:null}}catch(e){G.cfg={provider:null}}}
-  if(!G.cfg.provider){ibRenderKeep("ibGifQ");return}
-  G.busy=true;ibRenderKeep("ibGifQ");const key=encodeURIComponent(G.cfg.key);
-  try{const u=q?`https://api.giphy.com/v1/gifs/search?api_key=${key}&q=${encodeURIComponent(q)}&limit=24&rating=g&lang=${trTeamLang()}`:`https://api.giphy.com/v1/gifs/trending?api_key=${key}&limit=24&rating=g`;
-    const j=await (await fetch(u)).json();if(G.q!==q)return;
-    G.res=(j.data||[]).map(g=>{const im=g.images||{};return {title:g.title||"",thumb:(im.fixed_width_small||im.fixed_width||im.original||{}).url,url:(im.downsized_medium||im.original||{}).url}}).filter(g=>g.url&&g.thumb)}
-  catch(e){G.err="GIF search didn't answer. Try again in a moment."}
-  G.busy=false;ibRenderKeep("ibGifQ")}
-function ibPickFile(){if(!S.assets){toast("Uploads need the signed-in desk");return}const inp=document.createElement("input");inp.type="file";inp.accept="image/jpeg,image/png,image/webp,image/gif";
-  inp.onchange=async()=>{const f=inp.files&&inp.files[0];if(!f||!IB.open)return;const i=IB.open;toast("Uploading…");try{const r=await S.assets.upload(f);IB.att={for:i.id,url:r.url,kind:f.type==="image/gif"?"gif":"image",src:"upload"};IB.pick=null;renderInbox()}catch(e){failToast(e,"Couldn't upload it")}};inp.click()}
+function ibPickFile(){if(!S.assets){toast("Uploads need the signed-in desk");return}const inp=document.createElement("input");inp.type="file";inp.accept="image/jpeg,image/png,image/webp";
+  inp.onchange=async()=>{const f=inp.files&&inp.files[0];if(!f||!IB.open)return;if(f.type==="image/gif"){toast("GIFs can't go in replies: use a JPG or PNG");return}const i=IB.open;toast("Uploading…");try{const r=await S.assets.upload(f);IB.att={for:i.id,url:r.url,kind:"image",src:"upload"};IB.pick=null;renderInbox()}catch(e){failToast(e,"Couldn't upload it")}};inp.click()}
 async function ibPetPic(){const o=IB.petOffer;const i=IB.open;if(!o||!i||!S.assets)return;const d=S.drafts.find(x=>x.id===o.draft);if(!d||!d.card){IB.petOffer=null;renderInbox();return}
   IB.petBusy=true;renderInbox();
   try{const cv=document.createElement("canvas");cv.width=10;cv.height=10;cv.style.cssText="position:fixed;left:-9999px;top:0";document.body.appendChild(cv);
@@ -6147,17 +6202,15 @@ async function ibPetPic(){const o=IB.petOffer;const i=IB.open;if(!o||!i||!S.asse
 document.addEventListener("click",async ev=>{const t=ev.target;if(!t.closest)return;
   const tr=t.closest("[data-ib-tr]");if(tr){trRun(tr.dataset.ibTr);return}
   const th=t.closest("[data-ib-trhide]");if(th){delete TR[th.dataset.ibTrhide];renderInbox();return}
-  const pk=t.closest("[data-ib-pic]");if(pk){const k=pk.dataset.ibPic;IB.pick=IB.pick===k?null:k;IB.emoOpen=false;if(IB.pick==="gif"&&!(IB.gif&&IB.gif.res))ibGifSearch((IB.gif&&IB.gif.q)||"");else renderInbox();if(IB.pick==="gif")setTimeout(()=>$("#ibGifQ")?.focus(),0);return}
+  const pk=t.closest("[data-ib-pic]");if(pk){const k=pk.dataset.ibPic;IB.pick=IB.pick===k?null:k;IB.emoOpen=false;renderInbox();return}
   if(t.closest("[data-ib-attrm]")){IB.att=null;renderInbox();return}
   if(t.closest("[data-ib-upload]")){ibPickFile();return}
-  const lp=t.closest("[data-ib-libpick]");if(lp&&IB.open){const u=(IB.libPics||[])[Number(lp.dataset.ibLibpick)];if(u){IB.att={for:IB.open.id,url:u.url,kind:/\.gif(\?|$)/i.test(u.url)?"gif":"image",src:"library"};IB.pick=null;renderInbox()}return}
-  const gp=t.closest("[data-ib-gifpick]");if(gp&&IB.open){const g=((IB.gif||{}).res||[])[Number(gp.dataset.ibGifpick)];if(g){IB.att={for:IB.open.id,url:g.url,thumb:g.thumb,kind:"gif",src:"giphy"};IB.pick=null;renderInbox()}return}
+  const lp=t.closest("[data-ib-libpick]");if(lp&&IB.open){const u=(IB.libPics||[])[Number(lp.dataset.ibLibpick)];if(u){IB.att={for:IB.open.id,url:u.url,kind:"image",src:"library"};IB.pick=null;renderInbox()}return}
   if(t.closest("[data-ib-petpic]")){ibPetPic();return}
   if(t.closest("[data-ib-petno]")){IB.petOffer=null;renderInbox();return}
   const pt=t.closest("[data-ib-ptag]");if(pt&&IB.person&&IB.open){const tag=pt.dataset.ibPtag;const cur=new Set(IB.person.tags||[]);cur.has(tag)?cur.delete(tag):cur.add(tag);
     try{const r=await eng("engine_inbox_person",{team:S.team,author_id:IB.person.author_id,tags:[...cur]});if(r&&r.ok===false){toast(r.error||"Couldn't save the tag");return}IB.person=r;renderInbox()}catch(e){failToast(e,"Couldn't save the tag")}return}
   if(t.closest("[data-ib-ptagclear]")&&IB.person){try{const r=await eng("engine_inbox_person",{team:S.team,author_id:IB.person.author_id,tags:[]});IB.person=r;renderInbox();toast("Tags removed")}catch(e){failToast(e,"Couldn't remove them")}return}});
-document.addEventListener("input",ev=>{if(ev.target.id!=="ibGifQ")return;const q=ev.target.value;IB.gif=IB.gif||{};IB.gif.q=q;clearTimeout(IB._gq);IB._gq=setTimeout(()=>ibGifSearch(q.trim()),400)});
 
 // ---------- 19B team tags and 19E handled before ----------
 const HAND_L={reply:"Replied",private_reply:"Private reply",like:"Liked",hide:"Hidden",unhide:"Unhidden",delete:"Deleted",ban:"Banned",unban:"Unbanned",assign:"Assigned",label:"Labelled",tone:"Tone fixed",done:"Done"};
@@ -6219,7 +6272,7 @@ const PAGE_HELP={
   plan:["Plan","The month at a glance: posts, key dates and notes, in the team's own time zone.",["Drag a post to move it. Click a day to add a note.","Week, List and Instagram grid are in the sidebar under Plan."]],
   calendar:["Calendar","What goes out when, in the team's own time zone.",["Drag a post to another time to move it.","List view has tick boxes to move, pause or send back several posts."]],
   "calendar:grid":["Instagram grid","How the profile will look once planned posts go out.",["Planned posts show first, then what's already live.","Download the grid as a picture to share for sign-off."]],
-  inbox:["Inbox","Comments and messages on the team's Facebook Pages and Instagram, read every few minutes.",["Replies, hides and bans go out with your own Facebook connection after 10 seconds, so they can be undone.","“See translation” appears under comments in another language.","On Facebook comments you can add a picture or GIF with 🖼 Picture or GIF in the reply box.","Team tags and “Handled before” are in the person panel on the right."]],
+  inbox:["Inbox","Comments and messages on the team's Facebook Pages and Instagram, read every few minutes.",["Replies, hides and bans go out with your own Facebook connection after 10 seconds, so they can be undone.","“See translation” appears under comments in another language.","On Facebook comments you can add a picture with 🖼 Picture in the reply box (no GIFs).","Team tags and “Handled before” are in the person panel on the right."]],
   "inbox:autos":["Automations","Rules that like, reply to or hide comments by themselves.",["Each automation names the posts and words it acts on.","Pause one at any time; everything it did is in Moderation › History."]],
   "inbox:history":["Moderation","What was hidden, deleted or banned, and the auto-hide list.",["Flagged shows comments that may need a second look.","Rules is the team's auto-hide list of words and phrases."]],
   "inbox:team":["Team","Who is replying, what's waiting, and how fast replies go out.",["Unassigned and waiting over two hours are the ones to pick up first."]],
@@ -6237,7 +6290,9 @@ const PAGE_HELP={
   settings:["Settings","Your own settings and the teams you're in.",["Time format, week start and calendar view are saved for you only."]]};
 const HELP_TOPICS=[
   ["Translate a comment","Under any comment in another language, press “See translation”. Chrome on a computer translates it on the computer, nothing sent anywhere; elsewhere it asks your own Claude.","inbox:inbox","translate language spanish polish foreign"],
-  ["Reply with a picture or GIF","In the reply box on a Facebook comment, press 🖼 Picture for our own pictures or an upload, or GIF to search GIFs. Instagram replies can only be text.","inbox:inbox","image photo gif reply attach"],
+  ["Report a problem","Press the ? above your name, then Report a problem, or “Tell Chris” in any page's ?. It goes to Chris's bell with the page attached; your bell says when it's fixed.","__report","bug broken problem report feedback issue not working"],
+  ["Listening as pictures","Listening › Rising shows the posts as pictures, the three taking off fastest on top. Press a picture to open the post. Switch to List for the old view.","listening:rising","listening pictures wall rising taking off images"],
+  ["Reply with a picture","In the reply box on a Facebook comment, press 🖼 Picture for our own pictures or an upload (JPG, PNG or WebP; no GIFs). Instagram replies can only be text.","inbox:inbox","image photo gif reply attach"],
   ["Add the petition's picture to a reply","Pick a petition from 🔗 Petition in the reply box; the desk offers its picture. The link goes out as a tracked cgo.ac short link.","inbox:inbox","petition link short cgo.ac copilot tracked picture"],
   ["Tag a person","In the person panel, press a tag (Regular supporter, Journalist, Repeat abuse…). Only your team sees tags, and they're deleted after 120 days.","inbox:inbox","tag person journalist supporter abuse notes"],
   ["Has the team dealt with someone before?","“Handled before” in the person panel lists replies, hides and bans for them in the last 90 days, and who did them.","inbox:inbox","history before handled banned hidden person"],
@@ -6264,9 +6319,9 @@ function helpSearchOpen(q){HS.open=true;HS.q=q||"";HS.sel=0;helpSearchRender();c
 function helpSearchClose(){HS.open=false;$("#hsrch")?.remove()}
 function helpSearchRender(){HS.res=helpFind(HS.q);let el=$("#hsrch");if(!el){el=document.createElement("div");el.id="hsrch";el.className="hsrch";el.setAttribute("role","dialog");el.setAttribute("aria-label","Search help");document.body.appendChild(el)}
   const list=HS.res.map((x,n)=>`<button class="hsit" role="option" data-hs="${n}" aria-selected="${n===HS.sel}"><span class="k">${esc(x.kind)}</span><b>${esc(x.t)}</b>${n===HS.sel?`<span class="hsans">${esc(x.b)}</span>`:`<small>${esc(x.b.slice(0,90))}${x.b.length>90?"…":""}</small>`}</button>`).join("")||`<p class="src" style="padding:10px">Nothing matches. Try other words, or ask Chris.</p>`;
-  if(!$("#hsQ"))el.innerHTML=`<div class="hsbox"><input id="hsQ" type="search" placeholder="Search help: translate, GIF, renew, CSV…" autocomplete="off" aria-label="Search help"><div class="hslist" id="hsList" role="listbox"></div><div class="hsfoot">↑ ↓ to move · Enter to go there · Esc to close</div></div>`;
+  if(!$("#hsQ"))el.innerHTML=`<div class="hsbox"><input id="hsQ" type="search" placeholder="Search help: translate, picture, renew, CSV…" autocomplete="off" aria-label="Search help"><div class="hslist" id="hsList" role="listbox"></div><div class="hsfoot">↑ ↓ to move · Enter to go there · Esc to close</div></div>`;
   $("#hsQ").value=HS.q;$("#hsList").innerHTML=list}
-function helpGo(x){if(!x)return;helpSearchClose();if(x.go==="__keys"){toggleHelp();return}if(x.go)navGo(x.go)}
+function helpGo(x){if(!x)return;helpSearchClose();if(x.go==="__report"){helpMenuOpen("report",{anchor:null});return}if(x.go==="__keys"){toggleHelp();return}if(x.go)navGo(x.go)}
 document.addEventListener("input",ev=>{if(ev.target.id!=="hsQ")return;HS.q=ev.target.value;HS.sel=0;helpSearchRender()});
 document.addEventListener("keydown",ev=>{
   if(HS.open){if(ev.key==="Escape"){ev.preventDefault();helpSearchClose();return}
@@ -6279,7 +6334,7 @@ document.addEventListener("keydown",ev=>{
 function pageHelpKey(){const a=sideActive();return PAGE_HELP[a]?a:PAGE_HELP[a.split(":")[0]]?a.split(":")[0]:"posts"}
 function pageHelpClose(){$("#phelpPop")?.remove();$("#pageHelpBtn")?.setAttribute("aria-expanded","false")}
 function pageHelpOpen(){const b=$("#pageHelpBtn");if(!b)return;const [t,lead,more]=PAGE_HELP[pageHelpKey()];pageHelpClose();const p=document.createElement("div");p.id="phelpPop";p.className="phelppop";p.setAttribute("role","dialog");p.setAttribute("aria-label","About "+t);
-  p.innerHTML=`<b>About ${esc(t)}</b><span>${esc(lead)}</span>${(more||[]).length?`<ul>${more.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>`:""}<div class="row" style="justify-content:space-between;gap:6px"><button class="linkish" data-hs-open>Search all help <kbd>/</kbd></button><button class="btn small" data-phelp-x>Close</button></div>`;
+  p.innerHTML=`<b>About ${esc(t)}</b><span>${esc(lead)}</span>${(more||[]).length?`<ul>${more.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>`:""}<button class="phreport" data-hm-report="page">🐞 Something not working here? Tell Chris</button><div class="row" style="justify-content:space-between;gap:6px"><button class="linkish" data-hs-open>Search all help <kbd>/</kbd></button><button class="btn small" data-phelp-x>Close</button></div>`;
   document.body.appendChild(p);const r=b.getBoundingClientRect();p.style.top=(r.bottom+8)+"px";p.style.left=Math.max(16,Math.min(window.innerWidth-p.offsetWidth-16,r.left-12))+"px";b.setAttribute("aria-expanded","true")}
 document.addEventListener("click",ev=>{const t=ev.target;if(!t.closest)return;
   if(t.closest("#pageHelpBtn")){$("#phelpPop")?pageHelpClose():pageHelpOpen();return}
@@ -6290,6 +6345,57 @@ document.addEventListener("click",ev=>{const t=ev.target;if(!t.closest)return;
   if(HS.open&&t.id==="hsrch"){helpSearchClose();return}
   if($("#phelpPop")&&!t.closest("#phelpPop"))pageHelpClose()});
 document.addEventListener("keydown",ev=>{if(ev.key==="Escape"&&$("#phelpPop"))pageHelpClose()});
+
+/* ---------- 40A + 40C Help menu and Report a problem (Chris, 4 Nov) ----------
+   The "?" above your name: help search, help for this page, keyboard keys,
+   what's new and Report a problem. A page's own "?" also has "Tell Chris",
+   which opens the report with that page attached. Reports are words only (no
+   screenshots: an Inbox screenshot would show the public's comments), go to
+   Chris's bell in the desk (never email or Slack), only Chris sees them all,
+   and they're deleted 30 days after he marks them fixed. */
+const DESK_NEWS=[["4 Nov","Listening shows posts as pictures: “Taking off now” on top, every picture opens the post."],["4 Nov","Help menu and Report a problem: the ? above your name, or “Tell Chris” on any page's ?."],["4 Nov","See translation on comments; a picture in Facebook replies; team tags on a person."],["4 Nov","Compose: Add from Canva, Google Drive or a link. Tools: Claude connectors."],["3 Nov","Priority Two: Inbox post card, chart tools, the leaderboard and more."]];
+const HM={open:false,mode:"menu",page:"",text:"",busy:false,list:null,maint:false,err:null,anchor:null};
+function hmPageName(){const k=pageHelpKey();const h=PAGE_HELP[k];const t=(S.teams||[]).find(x=>x.id===S.team);return `${h?h[0]:k}${t?" · "+t.name:""}`}
+async function hmLoad(){try{const r=await eng("engine_report",{action:"list"});HM.list=r.reports||[];HM.maint=!!r.maintainer;HM.err=null}catch(e){HM.err=e}hmBadge();if(HM.open)hmRender()}
+function hmBadge(){const n=HM.maint?(HM.list||[]).filter(r=>r.status==="open").length:0;const b=$("#helpMenuN");if(b){b.hidden=!n;b.textContent=n>9?"9+":String(n)}}
+function helpMenuOpen(mode,opts={}){HM.open=true;HM.mode=mode||"menu";HM.anchor=opts.anchor||$("#helpMenuBtn");if(mode==="report"){HM.page=opts.page||hmPageName();HM.text=HM.text||"";HM.sent=null}
+  $("#helpMenuBtn")?.setAttribute("aria-expanded","true");pageHelpClose();hmRender();if(HM.list==null||mode==="reports")hmLoad();
+  setTimeout(()=>{const f=$("#hmText")||$("#hmPop .hmit");f&&f.focus()},0)}
+function helpMenuClose(){HM.open=false;$("#hmPop")?.remove();$("#helpMenuBtn")?.setAttribute("aria-expanded","false")}
+function hmRender(){if(!HM.open)return;let p=$("#hmPop");if(!p){p=document.createElement("div");p.id="hmPop";p.className="hmpop";p.setAttribute("role","dialog");p.setAttribute("aria-label","Help");document.body.appendChild(p)}
+  const back=`<button class="btn small" data-hm="menu">← Back</button>`;const mine=(HM.list||[]);const openN=mine.filter(r=>r.status==="open").length;
+  const when=a=>a?new Date(a).toLocaleString("en-GB",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}):"";
+  if(HM.mode==="report"){p.innerHTML=HM.sent?`<h4>✓ Sent to Chris</h4><span>Thanks. It's in Chris's bell in the desk, and your bell will say when it's fixed.</span><div class="hmrow">${back}<button class="btn small" data-hm="mine">Your reports</button></div>`
+    :`<h4>🐞 Report a problem</h4><span class="src">What went wrong, and what did you expect? Chris sees it in the desk.</span><textarea id="hmText" maxlength="2000" placeholder="e.g. Post now did nothing on the Scotland Page.">${esc(HM.text)}</textarea>
+    <label class="hmrow src"><input type="checkbox" id="hmPage" checked> Attach this page <b>(${esc(HM.page)})</b></label>
+    <div class="hmrow"><button class="btn small primary" data-hm-send${HM.busy?" disabled":""}>${HM.busy?"Sending…":"Send to Chris"}</button>${back}</div>
+    <small class="src">Words only, no screenshots. Goes to Chris's bell, not email or Slack. Deleted 30 days after it's fixed.</small>`}
+  else if(HM.mode==="reports"||HM.mode==="mine"){const L=mine;p.innerHTML=`<h4>${HM.maint?"Problem reports":"Your reports"} ${openN?`<span class="hmn">${openN} open</span>`:""}</h4>
+    ${HM.err?`<p class="src">${esc("Couldn't load: "+whyFailed(HM.err))}</p>`:HM.list==null?'<p class="src">Loading…</p>':L.length?L.map(r=>`<div class="hmrep${r.status==="fixed"?" fixed":""}"><div class="hmrow src"><b>${esc(r.by)}</b>${r.page?`<span>on ${esc(r.page)}</span>`:""}<span>${esc(when(r.at))}</span>${r.status==="fixed"?`<span class="ibtag good">Fixed ${esc(when(r.fixed_at))}</span>`:'<span class="ibtag warn">Open</span>'}</div><p>${esc(r.text)}</p>${r.reply?`<span class="src">Chris: ${esc(r.reply)}</span>`:""}
+      ${HM.maint?(r.status==="open"?`<div class="hmrow"><input id="hmReply-${esc(r.id)}" placeholder="Note to ${esc(r.by)} (optional)" style="flex:1;min-width:0;font:inherit;font-size:13px;padding:4px 6px;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--fg)"><button class="btn small primary" data-hm-fix="${esc(r.id)}">Mark fixed</button></div>`:`<div class="hmrow"><button class="btn small" data-hm-reopen="${esc(r.id)}">Open again</button></div>`):""}</div>`).join(""):`<p class="src">${HM.maint?"No reports. Nice.":"You haven't reported anything."}</p>`}
+    <div class="hmrow">${back}<button class="btn small" data-hm="report">🐞 Report a problem</button></div><small class="src">Fixed reports are deleted after 30 days.</small>`}
+  else if(HM.mode==="news"){p.innerHTML=`<h4>What's new</h4><ul>${DESK_NEWS.map(([d,t])=>`<li><b>${esc(d)}</b> ${esc(t)}</li>`).join("")}</ul><div class="hmrow">${back}</div>`}
+  else{const k=PAGE_HELP[pageHelpKey()];p.innerHTML=`<button class="hmit" data-hm-go="search">🔎 Search help<span class="w"><kbd>/</kbd></span></button><button class="hmit" data-hm-go="page">❔ About ${esc(k?k[0]:"this page")}</button><button class="hmit" data-hm-go="keys">⌨ Keyboard keys<span class="w"><kbd>?</kbd></span></button><button class="hmit" data-hm="news">✨ What's new<span class="w">${esc(DESK_NEWS[0][0])}</span></button><div class="hmsep"></div><button class="hmit" data-hm="report">🐞 Report a problem</button>${HM.maint?`<button class="hmit" data-hm="reports">📋 Problem reports<span class="w">${openN?`<span class="hmn">${openN}</span>`:"none open"}</span></button>`:mine.length?`<button class="hmit" data-hm="mine">📋 Your reports<span class="w">${mine.length}</span></button>`:""}`}
+  const a=HM.anchor&&HM.anchor.isConnected&&HM.anchor.offsetParent?HM.anchor:null;
+  if(a){const r=a.getBoundingClientRect();const left=r.right+8+p.offsetWidth<window.innerWidth?r.right+8:Math.max(16,r.left);p.style.left=left+"px";p.style.top="auto";p.style.bottom=Math.max(16,window.innerHeight-r.bottom)+"px"}
+  else{p.style.left=Math.max(16,(window.innerWidth-p.offsetWidth)/2)+"px";p.style.top="72px";p.style.bottom="auto"}}
+async function hmSend(){const t=($("#hmText")?.value||"").trim();if(t.length<3){toast("Say what went wrong first");return}
+  HM.busy=true;HM.text=t;hmRender();const page=$("#hmPage")?.checked?HM.page:"";
+  try{const r=await eng("engine_report",{action:"send",text:t,page,team:S.team||undefined});if(r&&r.ok===false){toast(r.error||"Couldn't send it")}else{HM.sent=r.report;HM.text="";HM.list=null;hmLoad()}}catch(e){failToast(e,"Couldn't send it")}
+  HM.busy=false;hmRender()}
+document.addEventListener("click",async ev=>{const t=ev.target;if(!t.closest)return;
+  if(t.closest("#helpMenuBtn")){HM.open?helpMenuClose():helpMenuOpen("menu");return}
+  const rp=t.closest("[data-hm-report]");if(rp){const b=$("#pageHelpBtn");helpMenuOpen("report",{page:hmPageName(),anchor:null});return}
+  if(!HM.open)return;
+  const m=t.closest("[data-hm]");if(m){HM.mode=m.dataset.hm;if(HM.mode==="report"){HM.page=hmPageName();HM.sent=null}if(["reports","mine"].includes(HM.mode))hmLoad();hmRender();setTimeout(()=>{($("#hmText")||$("#hmPop button"))?.focus()},0);return}
+  const g=t.closest("[data-hm-go]");if(g){const k=g.dataset.hmGo;helpMenuClose();if(k==="search")helpSearchOpen("");else if(k==="page")pageHelpOpen();else if(k==="keys")toggleHelp();return}
+  if(t.closest("[data-hm-send]")){hmSend();return}
+  const fx=t.closest("[data-hm-fix],[data-hm-reopen]");if(fx){const id=fx.dataset.hmFix||fx.dataset.hmReopen;const reply=fx.dataset.hmFix?($("#hmReply-"+CSS.escape(id))?.value||"").trim():"";
+    try{const r=await eng("engine_report",{action:fx.dataset.hmFix?"fix":"reopen",id,...(reply?{reply}:{})});if(r&&r.ok===false)toast(r.error||"Couldn't do that");else toast(fx.dataset.hmFix?"Marked fixed: they'll see it in their bell":"Open again")}catch(e){failToast(e,"Couldn't do that")}hmLoad();return}
+  if(!t.closest("#hmPop"))helpMenuClose()});
+document.addEventListener("input",ev=>{if(ev.target.id==="hmText")HM.text=ev.target.value});
+document.addEventListener("keydown",ev=>{if(!HM.open)return;if(ev.key==="Escape"){helpMenuClose();$("#helpMenuBtn")?.focus()}else if(ev.key==="Enter"&&(ev.metaKey||ev.ctrlKey)&&ev.target.id==="hmText"){ev.preventDefault();hmSend()}});
+setTimeout(hmLoad,4000);
 </script>
 
 </body></html>

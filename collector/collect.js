@@ -414,6 +414,9 @@ async function listPosts(pageId, as) {
         // the signed URL is both churn and dead-on-arrival for historical posts.
         // Keep only the stable path, as a media identity key — not a fetchable URL.
         full_picture: r.full_picture ? r.full_picture.split('?')[0] : null,
+        // 37A (4 Nov): the whole signed link too, for Listening's picture wall.
+        // It expires, but recent posts are refreshed every night.
+        picture_url: r.full_picture || null,
         is_published: r.is_published === undefined ? null : r.is_published,
         shares_total: (r.shares && typeof r.shares.count === 'number') ? r.shares.count : null,
       });
@@ -571,12 +574,15 @@ async function collectPageInner(page, pageToken, out) {
 
   console.log(`   ${posts.length} posts in the last ${LOOKBACK_DAYS}d · fetching metrics (${CONCURRENCY} posts x ${METRIC_CONCURRENCY} metrics = ${CONCURRENCY * METRIC_CONCURRENCY} in flight) ...`);
   if (posts.length) {
-    await sink.upsert('meta_posts', posts.map((p) => ({
+    const rows = posts.map((p) => ({
       post_id: p.post_id, page_id: p.page_id, created_time: p.created_time,
       message: p.message, permalink_url: p.permalink_url, status_type: p.status_type,
       media_type: p.media_type, full_picture: p.full_picture, is_published: p.is_published,
-      link_url: p.link_url,
-    })));
+      link_url: p.link_url, picture_url: p.picture_url || null,
+    }));
+    // picture_url needs sql/listen-pictures.sql; until it's run, write without it.
+    try { await sink.upsert('meta_posts', rows); }
+    catch (e) { console.warn(`   meta_posts with picture_url failed (${e.message}); writing without it`); await sink.upsert('meta_posts', rows.map(({ picture_url, ...r }) => r)); }
   }
 
   const metrics = await mapLimit(posts, CONCURRENCY, (p) => collectPostMetrics(p, as));

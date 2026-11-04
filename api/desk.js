@@ -9,7 +9,6 @@
 //   POST /api/desk?op=invite {who, team_id, role}   team admins: a sign-in link
 //   GET  /api/desk?op=img&u=…                 one of our Instagram/Facebook pictures (for saving the grid)
 //   POST /api/desk?op=fromlink {url}          a picture from a Canva, Drive or public link, kept in desk-assets
-//   GET  /api/desk?op=gifcfg                   the GIF search key, if GIFs are switched on
 //   POST /api/desk?op=logout
 //
 // Every POST must come from the desk's own page (Origin + X-Desk header), so
@@ -25,7 +24,7 @@ const DESK_TOOLS = new Set(['engine_me', 'engine_posts', 'engine_save', 'engine_
   'engine_evergreen', 'engine_evergreen_update', 'engine_connect', 'engine_media', 'engine_pause', 'engine_video', 'engine_inbox', 'engine_inbox_act',
   'engine_inbox_undo', 'engine_inbox_history', 'engine_inbox_team', 'engine_ig_grid', 'engine_bio', 'engine_parliament', 'engine_inbox_person', 'engine_inbox_posts', 'engine_inbox_rules', 'engine_inbox_rule', 'engine_inbox_alert',
   'engine_inbox_bulk', 'engine_analytics', 'engine_listening', 'engine_automations', 'engine_automation', 'engine_access', 'page_inviter_usage', 'engine_inviter', 'engine_links', 'engine_health', 'engine_preview', 'engine_trash',
-  'engine_create', 'engine_inbox_check', 'engine_prefs', 'engine_bell', 'engine_inbox_post', 'engine_inbox_similar', 'engine_benchmark', 'engine_house_rules']);
+  'engine_create', 'engine_inbox_check', 'engine_prefs', 'engine_bell', 'engine_inbox_post', 'engine_inbox_similar', 'engine_benchmark', 'engine_house_rules', 'engine_report']);
 
 function send(res, status, body, cookie) {
   res.statusCode = status;
@@ -132,11 +131,6 @@ module.exports = async (req, res) => {
       const body = (await readBody(req)) || {};
       try { return send(res, 200, await require('../lib/fromlink').saveFromLink(String(body.url || ''))); }
       catch (e) { return send(res, e.status && e.status < 500 ? 200 : 502, { ok: false, error: e.message }); }
-    }
-    // 18A: GIF search runs in the browser (GIPHY's terms), so the page needs the key.
-    if (op === 'gifcfg' && req.method === 'GET') {
-      const key = String(process.env.GIPHY_API_KEY || '').trim();
-      return send(res, 200, key ? { provider: 'giphy', key } : { provider: null });
     }
     if (op === 'upload' && req.method === 'POST') {
       const body = (await readBody(req)) || {};

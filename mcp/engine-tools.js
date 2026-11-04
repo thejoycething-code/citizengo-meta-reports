@@ -984,7 +984,7 @@ async function engineListening(store, args, ctx0) {
   }
   const tab = ['citizengo', 'allies', 'opponents'].includes(args.tab) ? args.tab : 'citizengo';
   // Only the citizengo tab depends on the team (it leaves the team's own Pages out).
-  const key = `listening:${tab}:${tab === 'citizengo' ? team : ''}:${args.country || ''}:${Number(args.days) || ''}:${Number(args.min_multiple) || ''}`;
+  const key = `listening:p2:${tab}:${tab === 'citizengo' ? team : ''}:${args.country || ''}:${Number(args.days) || ''}:${Number(args.min_multiple) || ''}`;
   return cached(store, key, args, () => listeningCompute(store, args, ctx0));
 }
 
@@ -1640,10 +1640,12 @@ async function listeningCompute(store, args, { who }) {
     for (const k of Object.keys(med)) med[k] = median(med[k]);
     const since = Date.now() - days * 864e5;
     const posts = oncePerLink(cgo.filter((r) => !own.has(r.page_id) && Date.parse(r.created_time) >= since && med[r.page_id] && r.views_total >= minX * med[r.page_id])
-      .map((r) => ({ who: r.page_name, page_id: r.page_id, text: String(r.message || '').slice(0, 300), url: r.permalink_url, created_time: r.created_time, format: r.media_type || r.status_type || null,
+      .map((r) => ({ who: r.page_name, page_id: r.page_id, post_id: r.post_id, text: String(r.message || '').slice(0, 300), url: r.permalink_url, created_time: r.created_time, format: r.media_type || r.status_type || null,
         views: r.views_total, x: Math.round((r.views_total / med[r.page_id]) * 10) / 10, beyond_pct: r.beyond_followers_pct, hazteoir: IS_HO.test(r.page_name || ''), lang: langOf(r.message) }))
       .sort((a, b) => b.x - a.x)).slice(0, 60);
     await markReworked(store, ctx, posts);
+    await addPictures(store, posts);
+    for (const p of posts) delete p.post_id;
     return json({ tab, days, min_multiple: minX, posts, topics: topicsOf(posts) });
   }
   const { PEER_TOOLS } = require('./peer-tools');
@@ -1651,6 +1653,7 @@ async function listeningCompute(store, args, { who }) {
   const out = await PEER_TOOLS.find((t) => t.name === (tab === 'allies' ? 'ally_watch' : 'opponent_watch')).handler(store, { days, min_multiple: minX, limit: 40, ...(tab === 'allies' && args.country ? { country: String(args.country) } : {}) });
   const posts = ((out && out.rows) || []).map((r) => ({ who: r.label || `@${r.username}`, handle: r.username, country: r.country || null, text: String(r.caption || '').slice(0, 300), url: r.permalink, created_time: r.timestamp,
     format: r.media_product_type || r.media_type || null, likes: r.like_count, comments: r.comments_count, x: r.vs_median === null || r.vs_median === undefined ? null : Number(r.vs_median), settled: !!r.settled, lang: langOf(r.caption), media_id: r.media_id }));
+  await addPictures(store, posts);
   await addDayGain(store, posts);
   if (tab === 'allies') await markReworked(store, ctx, posts);
   const ads = tab === 'opponents' ? ((out && out.ads) || []).slice(0, 40).map((a) => ({ who: a.label || a.page_name, started: a.delivery_start, running: !a.delivery_stop, spend_lower: Number(a.spend_lower) || 0, spend_upper: Number(a.spend_upper) || Number(a.spend_lower) || 0, currency: a.currency || null, title: a.link_titles || a.bodies || null, url: a.snapshot_url || null })) : [];
@@ -1663,6 +1666,14 @@ async function listeningCompute(store, args, { who }) {
     building = convergenceBuilding(recent, converging);
   }
   return json({ tab, days, min_multiple: minX, posts, ads, converging, building, topics: topicsOf(posts), note: out && !out.rows ? String(out.text || '').slice(0, 300) : null });
+}
+
+// 37A (4 Nov): each post's picture as img (a link to Meta's own copy, which
+// expires; the desk shows the words when it does). Never fails Listening.
+async function addPictures(store, posts) {
+  if (!store.listenPictures || !posts.length) return;
+  const pics = await store.listenPictures({ ig_ids: posts.map((p) => p.media_id).filter(Boolean), fb_ids: posts.map((p) => p.post_id).filter(Boolean) }).catch(() => ({}));
+  for (const p of posts) { const u = pics[p.media_id] || pics[p.post_id]; if (u && /^https:\/\//.test(u)) p.img = u; }
 }
 
 // Listening › Topics: every watched Instagram post and every CitizenGO Facebook
@@ -2079,13 +2090,68 @@ async function engineBell(store, args, { who }) {
     const c = ending[0];
     out.push({ id: `cn:${c.ends_at.slice(0, 10)}:${c.days_left <= 1 ? 1 : c.days_left <= 3 ? 3 : 7}`, kind: 'connection', at: new Date(Math.min(now, Date.parse(c.ends_at) - Math.max(0, c.days_left) * 864e5)).toISOString(), text: c.days_left > 0 ? `Your Facebook connection ends in ${c.days_left} day${c.days_left === 1 ? '' : 's'} (${ending.length} account${ending.length === 1 ? '' : 's'}). Renew it so scheduled posts keep going out.` : 'Your Facebook connection has ended. Renew it so scheduled posts go out.', go: 'renew' });
   }
+  // 40A + 40C (4 Nov): problem reports. Chris sees new ones; whoever sent one sees when it's fixed.
+  const reps = await reportsAll(store).catch(() => []);
+  for (const r of reps) {
+    if (ctx.maintainer && r.status === 'open' && !isMe(r.by)) add({ id: `rp:${r.id}`, kind: 'report', at: r.at, text: `${r.by} reported a problem${r.page ? ` on ${r.page}` : ''}: ${quote(r.text)}`, go: 'reports', ref: r.id });
+    if (isMe(r.by) && r.status === 'fixed' && r.fixed_at) add({ id: `rf:${r.id}`, kind: 'fixed', at: r.fixed_at, text: `${r.fixed_by || 'Chris'} fixed the problem you reported: ${quote(r.text)}${r.reply ? ` · ${String(r.reply).slice(0, 120)}` : ''}`, go: 'reports', ref: r.id });
+  }
   out.sort((a, b) => String(b.at).localeCompare(String(a.at)));
   return json({ team, items: out.slice(0, 50), seen: (prefs && prefs.bell_seen) || null, connections });
+}
+
+// 40A + 40C (Chris, 4 Nov): "Report a problem" from the Help menu or a page's
+// "?". Text and the page it came from only (no screenshots: an Inbox
+// screenshot shows the public's comments). Only maintainers (Chris) see every
+// report; people see their own. Deleted 30 days after it's marked fixed.
+const REPORT_KEEP_DAYS = 30, REPORT_MAX_DAY = 20;
+async function reportsAll(store) {
+  if (store.reportsList) return store.reportsList();
+  const D = require('../lib/desk');
+  const cut = new Date(Date.now() - REPORT_KEEP_DAYS * 864e5).toISOString();
+  try { await D.pg('DELETE', `engine_desk_docs?collection=eq.reports&data->>status=eq.fixed&data->>fixed_at=lt.${encodeURIComponent(cut)}`, undefined, 'return=minimal'); } catch (e) { /* sweep again next time */ }
+  const rows = await D.docsList('reports', { limit: 500, engine: true });
+  return rows.map((r) => ({ id: r.id, ...r.data }));
+}
+async function reportPut(store, id, doc, who) {
+  if (store.reportsPut) return store.reportsPut(id, doc);
+  return require('../lib/desk').docsPut('reports', id, doc, who, { engine: true });
+}
+async function engineReport(store, args, { who }) {
+  const ctx = await context(store, who);
+  if (!ctx.maintainer && !Object.keys(ctx.myTeams).length) throw err('Join a Content Engine team to use the desk.', 'ENGINE_NOT_MEMBER');
+  const action = String(args.action || 'list');
+  const all = (await reportsAll(store)).filter((r) => !(r.status === 'fixed' && Date.parse(r.fixed_at) < Date.now() - REPORT_KEEP_DAYS * 864e5));
+  const mine = (r) => String(r.by || '').toLowerCase() === String(who).toLowerCase();
+  if (action === 'send') {
+    const text = String(args.text || '').trim().slice(0, 2000);
+    if (text.length < 3) return json({ ok: false, error: 'Say what went wrong first.' });
+    const team = args.team ? String(args.team) : null;
+    if (team && !E.canEditTeam(ctx, team)) return json({ ok: false, error: 'You are not in that team.' });
+    if (all.filter((r) => mine(r) && Date.parse(r.at) > Date.now() - 864e5).length >= REPORT_MAX_DAY) return json({ ok: false, error: 'That is a lot of reports today: tell Chris directly.' });
+    const at = new Date().toISOString();
+    const id = `r-${at.replace(/\D/g, '').slice(0, 14)}-${require('crypto').randomBytes(3).toString('hex')}`;
+    const doc = { by: who, team, page: String(args.page || '').slice(0, 120) || null, text, at, status: 'open' };
+    await reportPut(store, id, doc, who);
+    return json({ ok: true, report: { id, ...doc } });
+  }
+  if (action === 'fix' || action === 'reopen') {
+    if (!ctx.maintainer) return json({ ok: false, error: 'Only Chris can mark reports fixed.' });
+    const r = all.find((x) => x.id === String(args.id || ''));
+    if (!r) return json({ ok: false, error: 'No such report (fixed reports go after 30 days).' });
+    const { id, ...rest } = r;
+    const doc = action === 'fix' ? { ...rest, status: 'fixed', fixed_at: new Date().toISOString(), fixed_by: who, reply: args.reply ? String(args.reply).slice(0, 500) : null } : { ...rest, status: 'open', fixed_at: null, fixed_by: null, reply: null };
+    await reportPut(store, id, doc, who);
+    return json({ ok: true, report: { id, ...doc } });
+  }
+  const list = (ctx.maintainer ? all : all.filter(mine)).sort((a, b) => String(b.at).localeCompare(String(a.at))).slice(0, 200);
+  return json({ ok: true, maintainer: !!ctx.maintainer, reports: list, keep_days: REPORT_KEEP_DAYS });
 }
 
 const obj = (properties, required = []) => ({ type: 'object', properties, required, additionalProperties: false });
 
 const ENGINE_TOOLS = [
+  { name: 'engine_report', description: 'Content Engine desk: report a problem with the desk (action send: text, page, team), list reports (Chris sees all, everyone else their own), or for Chris mark one fixed or open again (action fix / reopen: id, optional reply). Text only, no screenshots; deleted 30 days after it is fixed. Reports show in the desk bell, never by email or Slack.', inputSchema: obj({ action: { type: 'string', enum: ['send', 'list', 'fix', 'reopen'] }, text: { type: 'string' }, page: { type: 'string' }, team: { type: 'string' }, id: { type: 'string' }, reply: { type: 'string' } }), handler: engineReport },
   { name: 'engine_me', description: 'Content Engine: who you are, your country teams and the accounts you can publish to. Used by the posts desk.', inputSchema: obj({}), handler: engineMe },
   { name: 'engine_posts', description: 'Content Engine: the posts in one of your teams (the desk), optionally by status (one, or several comma-separated: review, changes, hold, scheduled, posted, rejected, archived: rejected posts cleared from the desk bin). Each post comes with track (its Asana task, results check, posted time, stale flag and source); full: true returns each whole post instead.', inputSchema: obj({ team: { type: 'string' }, status: { type: 'string' }, full: { type: 'boolean' }, limit: { type: 'number' } }, ['team']), handler: enginePosts },
   { name: 'engine_post', description: 'Content Engine: one whole post from your teams.', inputSchema: obj({ id: { type: 'string' } }, ['id']), handler: enginePost },
@@ -2093,7 +2159,7 @@ const ENGINE_TOOLS = [
   { name: 'engine_pause', description: 'Content Engine Pause everything: hold every scheduled post at once (action pause: scope mine = every account you can post to, team = one of your teams (team), all = every account, admins only; a reason the team sees; optional hours, otherwise until someone resumes), or resume a pause (action resume: id). Nothing is deleted or changed: the publisher just waits.', inputSchema: obj({ action: { type: 'string', enum: ['pause', 'resume'] }, scope: { type: 'string', enum: ['mine', 'team', 'all'] }, team: { type: 'string' }, reason: { type: 'string' }, hours: { type: 'number' }, id: { type: 'number' } }, ['action']), handler: enginePause },
   { name: 'engine_video', description: 'Content Engine: send a Reel or video for a post you can edit, in pieces of up to 2.5 MB (action part: id, upload (8-32 lowercase letters and digits, the same for every piece), index from 0, data base64), then check them (action done: id, upload, parts, size, sha256 hex, mime video/mp4 or video/quicktime, optional name). done returns the video to save in the post\'s final snapshot. Up to 150 MB.', inputSchema: obj({ action: { type: 'string', enum: ['part', 'done'] }, id: { type: 'string' }, upload: { type: 'string' }, index: { type: 'number' }, data: { type: 'string' }, parts: { type: 'number' }, size: { type: 'number' }, sha256: { type: 'string' }, mime: { type: 'string', enum: ['video/mp4', 'video/quicktime'] }, name: { type: 'string' } }, ['action', 'id', 'upload']), handler: engineVideo },
   { name: 'engine_inbox', description: 'Content Engine Inbox: comments and DMs on one of your teams\' Facebook Pages and Instagram accounts, newest first (status open by default, or done, or all; optional platform facebook/instagram, kind comment/message, before an ISO time), each with its tone from its words (positive, negative, mixed, neutral; tone of the words, not whether they agree with us), with open counts, the open items\' tone, actions still in their undo window and pile-on alerts from the last 24 hours. thread returns one post\'s comments or one conversation, oldest first. q searches the words, the person\'s name and the post; accounts limits to some account keys; since an ISO time. Also lists actions waiting for a check (checks) and whether yours need one (me).', inputSchema: obj({ team: { type: 'string' }, status: { type: 'string', enum: ['open', 'done', 'all'] }, platform: { type: 'string', enum: ['facebook', 'instagram'] }, kind: { type: 'string', enum: ['comment', 'message', 'mention'] }, thread: { type: 'string' }, before: { type: 'string' }, since: { type: 'string' }, accounts: { type: 'array', items: { type: 'string' } }, q: { type: 'string' }, limit: { type: 'number' } }, ['team']), handler: engineInbox },
-  { name: 'engine_inbox_act', description: 'Content Engine Inbox: act on a comment or message. done, reopen, assign (assign_to, or empty to unassign) and label (labels) apply at once. reply, private_reply (Facebook comments, within 7 days), like (Facebook only), hide, unhide, delete and ban / unban (block the author from the Facebook Page; threats can be hidden but not deleted) go to Meta from the Mini with your own Page token after 10 seconds, so they can be undone; message replies only within 24 hours of their last message. A public reply to a Facebook comment can carry one attachment: a desk picture (kind image) or a GIPHY GIF (kind gif). If your actions need a check, they wait for a team admin instead (check). tone (positive, neutral, negative, mixed) fixes a wrong tone by hand.', inputSchema: obj({ id: { type: 'string' }, action: { type: 'string', enum: ['reply', 'private_reply', 'like', 'hide', 'unhide', 'delete', 'ban', 'unban', 'done', 'reopen', 'assign', 'label', 'tone'] }, text: { type: 'string' }, attachment: obj({ url: { type: 'string' }, kind: { type: 'string', enum: ['image', 'gif'] } }, ['url']), assign_to: { type: 'string' }, labels: { type: 'array', items: { type: 'string' } }, tone: { type: 'string', enum: ['positive', 'neutral', 'negative', 'mixed'] } }, ['id', 'action']), handler: engineInboxAct },
+  { name: 'engine_inbox_act', description: 'Content Engine Inbox: act on a comment or message. done, reopen, assign (assign_to, or empty to unassign) and label (labels) apply at once. reply, private_reply (Facebook comments, within 7 days), like (Facebook only), hide, unhide, delete and ban / unban (block the author from the Facebook Page; threats can be hidden but not deleted) go to Meta from the Mini with your own Page token after 10 seconds, so they can be undone; message replies only within 24 hours of their last message. A public reply to a Facebook comment can carry one desk picture (attachment, kind image; no GIFs). If your actions need a check, they wait for a team admin instead (check). tone (positive, neutral, negative, mixed) fixes a wrong tone by hand.', inputSchema: obj({ id: { type: 'string' }, action: { type: 'string', enum: ['reply', 'private_reply', 'like', 'hide', 'unhide', 'delete', 'ban', 'unban', 'done', 'reopen', 'assign', 'label', 'tone'] }, text: { type: 'string' }, attachment: obj({ url: { type: 'string' }, kind: { type: 'string', enum: ['image'] } }, ['url']), assign_to: { type: 'string' }, labels: { type: 'array', items: { type: 'string' } }, tone: { type: 'string', enum: ['positive', 'neutral', 'negative', 'mixed'] } }, ['id', 'action']), handler: engineInboxAct },
   { name: 'engine_inbox_check', description: 'Content Engine Inbox checks (team admins): approve or send back (decision approve / reject, optional note) a teammate\'s reply, hide, delete or ban waiting for a check (action_id from engine_inbox checks), or switch checks on or off for a teammate (person, needs_check).', inputSchema: obj({ team: { type: 'string' }, action_id: { type: 'number' }, decision: { type: 'string', enum: ['approve', 'reject'] }, note: { type: 'string' }, person: { type: 'string' }, needs_check: { type: 'boolean' } }, ['team']), handler: engineInboxCheck },
   { name: 'engine_inbox_post', description: "Content Engine Inbox: the post a conversation is on (thread_id from engine_inbox), with its newest nightly figures (reactions by type, shares, comments, views), the post's own tone and how many comments are open on it.", inputSchema: obj({ team: { type: 'string' }, thread_id: { type: 'string' } }, ['team', 'thread_id']), handler: engineInboxPost },
   { name: 'engine_inbox_similar', description: "Content Engine Inbox: up to three of the team's own past replies to comments like this one (id of an inbox item, or text), matched by shared words, best first. No AI.", inputSchema: obj({ team: { type: 'string' }, id: { type: 'string' }, text: { type: 'string' } }, ['team']), handler: engineInboxSimilar },
@@ -2139,4 +2205,4 @@ const ENGINE_TOOLS = [
   { name: 'engine_calendar', description: 'Content Engine calendar: every team\'s scheduled and posted items (read-only for teams you are not in) plus your own teams\' drafts and holds, and the key dates (CitizenGO-wide and your teams\' own), between from and to (YYYY-MM-DD).', inputSchema: obj({ from: { type: 'string' }, to: { type: 'string' } }), handler: engineCalendar },
 ];
 
-module.exports = { cached, wellFormed, signaturesFor, CACHE_MS, addDayGain, convergence, convergenceBuilding, topicsOf, langOf, storyKeys, ENGINE_TOOLS, context };
+module.exports = { cached, wellFormed, signaturesFor, CACHE_MS, addDayGain, addPictures, convergence, convergenceBuilding, topicsOf, langOf, storyKeys, ENGINE_TOOLS, context };
