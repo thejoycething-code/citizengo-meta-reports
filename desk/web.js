@@ -226,5 +226,8 @@
   window.DESK_WEB = true;
   window.deskInvite = invite;
   window.deskFile = (name) => api('file', { query: `&name=${encodeURIComponent(name)}` });
+  // Priority Three (4 Nov): a picture from a Canva, Drive or public link (41C), and the GIF search key (18A).
+  window.deskFromLink = (url) => api('fromlink', { method: 'POST', body: { url } });
+  window.deskGifCfg = () => api('gifcfg');
   window.deskSignOut = async () => { try { await api('logout', { method: 'POST' }); } catch (e) {} location.href = '/desk/login'; };
 })();
