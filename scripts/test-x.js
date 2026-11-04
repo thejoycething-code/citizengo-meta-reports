@@ -376,6 +376,12 @@ eq('expired invite -> null', xauth.verifyInvite('s', xauth.signInvite('s', { lab
 const [body] = inv.split('.');
 const forgedBody = Buffer.from(JSON.stringify({ ...JSON.parse(Buffer.from(body, 'base64url')), kind: 'organisation', label: 'HazteOir' })).toString('base64url');
 eq('altered payload -> null', xauth.verifyInvite('invite-secret-0123456789abcdef', `${forgedBody}.${inv.split('.')[1]}`), null);
+{
+  const fullInv = xauth.verifyInvite('s', xauth.signInvite('s', { label: 'R', kind: 'spokesperson', platform: 'instagram', full: true }));
+  eq('full-collection invite round-trips', [fullInv.full, fullInv.platform], [true, 'instagram']);
+  eq('full is never set on an organisation invite', xauth.verifyInvite('s', xauth.signInvite('s', { label: 'O', kind: 'organisation', full: true })).full, undefined);
+  eq('ordinary invite has no full', xauth.verifyInvite('s', xauth.signInvite('s', { label: 'R', kind: 'spokesperson' })).full, undefined);
+}
 eq('unknown kind -> null', xauth.verifyInvite('s', xauth.signInvite('s', { label: 'x', kind: 'admin' })), null);
 
 // ---------------------------------------------------------------------------

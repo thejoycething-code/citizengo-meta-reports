@@ -28,6 +28,11 @@ create table if not exists public.ig_accounts (
   constraint ig_accounts_kind check (kind in ('organisation', 'spokesperson'))
 );
 
+-- Added 4 Nov 2026 (migration ig_accounts_full_collection). A spokesperson whose
+-- holder consented IN WRITING to collection of the whole account: every post is
+-- kept, not only those about CitizenGO. kind stays 'spokesperson'.
+alter table public.ig_accounts add column if not exists full_collection boolean not null default false;
+
 -- How we reach the account (migration ig_accounts_access_route, 16 Oct 2026):
 --   login   - the holder connected through Instagram Login; token in ig_oauth_tokens.
 --   partner - the holder added CitizenGO's Business Manager as a partner with

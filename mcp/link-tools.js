@@ -256,10 +256,13 @@ async function igConnectedPosts(store, args = {}) {
     cell(r.media_product_type === 'REELS' ? 'Reel' : (r.media_type || '').toLowerCase().replace('_', ' '), 12), cell(r.caption, 60),
     n(r.reach), n(r.views), n(r.likes), n(r.comments), n(r.shares), n(r.saved)]))
     : '_No posts in this window._';
-  const spokes = accounts.some((a) => a.kind === 'spokesperson');
+  // Spokespersons collected only for posts about us; a holder's written consent
+  // to full collection (ig_accounts.full_collection) takes an account out.
+  const spokes = accounts.filter((a) => a.kind === 'spokesperson' && a.full_collection !== true).map((a) => '@' + a.username);
   return { text: `**Connected Instagram accounts**\n\n${acctLines}\n\n**Posts, ${w.label}**\n\n${body}`
     + (rows.length === clampRows(args.limit, 25) ? `\n\n_More posts may follow: call again with offset ${off + rows.length}._` : '')
-    + (spokes ? '\n\n_Spokesperson accounts are collected only for posts that link to or mention CitizenGO, so these figures describe those posts, not the whole account. Stories are not collected. For signatures from the links, use link_performance._' : ''), rows };
+    + (spokes.length ? `\n\n_${spokes.join(', ')} ${spokes.length === 1 ? 'is a spokesperson account' : 'are spokesperson accounts'} collected only for posts that link to or mention CitizenGO, so those figures describe those posts, not the whole account._` : '')
+    + '\n\n_Stories are not collected. For signatures from the links, use link_performance._', rows };
 }
 
 const LINK_TOOLS = [
@@ -289,7 +292,7 @@ const LINK_TOOLS = [
   },
   {
     name: 'ig_connected_posts',
-    description: 'Instagram accounts connected by their holders (for example a spokesperson\'s professional account, such as Rocío D\'Angelo\'s), whether each connection is healthy, and their posts with reach, views, likes, comments, shares and saves. Spokesperson accounts only include posts that link to or mention CitizenGO. CitizenGO\'s own Page-linked Instagram accounts are in the other Instagram tools; signatures from links are in link_performance.',
+    description: 'Instagram accounts connected by their holders (for example a spokesperson\'s professional account, such as Rocío D\'Angelo\'s), whether each connection is healthy, and their posts with reach, views, likes, comments, shares and saves. Spokesperson accounts only include posts that link to or mention CitizenGO, unless the holder consented to full collection (the answer says which). CitizenGO\'s own Page-linked Instagram accounts are in the other Instagram tools; signatures from links are in link_performance.',
     inputSchema: {
       type: 'object',
       properties: {

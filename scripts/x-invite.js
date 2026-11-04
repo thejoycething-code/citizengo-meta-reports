@@ -36,12 +36,18 @@ const platform = opt('platform', 'x');
 if (!['x', 'instagram'].includes(platform)) { console.error('--platform must be x or instagram'); process.exit(2); }
 if (!['organisation', 'spokesperson'].includes(kind)) { console.error('--kind must be organisation or spokesperson'); process.exit(2); }
 
+// --full-collection: a spokesperson who consented IN WRITING to collection of the
+// whole account. Instagram only: the X callback does not read it (X's flag is set
+// on x_accounts.full_collection directly).
+const full = args.includes('--full-collection');
+if (full && (platform !== 'instagram' || kind !== 'spokesperson')) { console.error('--full-collection is for --kind spokesperson --platform instagram'); process.exit(2); }
+
 const token = xauth.signInvite(secret, {
   label, kind, country: opt('country', null), days: Number(opt('days', 7)),
-  by: process.env.X_INVITE_BY || process.env.USER || null, platform,
+  by: process.env.X_INVITE_BY || process.env.USER || null, platform, full,
 });
 const base = (process.env.X_PUBLIC_URL || 'https://meta-organic-reporting.vercel.app').replace(/\/+$/, '');
-console.log(`\nInvite for "${label}" (${kind}${opt('country') ? ', ' + opt('country') : ''}), valid ${opt('days', 7)} day(s):\n`);
+console.log(`\nInvite for "${label}" (${kind}${full ? ', full account by consent' : ''}${opt('country') ? ', ' + opt('country') : ''}), valid ${opt('days', 7)} day(s):\n`);
 const route = platform === 'instagram' ? 'ig' : 'x';
 console.log(`  ${base}/api/${route}/authorize?t=${token}\n`);
 console.log(`Send it to the person who holds the ${platform === 'instagram' ? 'Instagram' : 'X'} account. They must be signed into THAT account when they click Continue.`);
