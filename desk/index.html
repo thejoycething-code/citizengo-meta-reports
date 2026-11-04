@@ -476,6 +476,15 @@ header.top .filters{padding-block:0;margin-left:auto}
 .hrrules{display:flex;flex-direction:column;gap:8px}.hrrh{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}.hrtbl td:nth-child(n+3),.hrtbl th:nth-child(n+3){text-align:center;width:1%;white-space:nowrap}.hrtbl td:nth-child(2){white-space:nowrap}.hrsw input{width:16px;height:16px;accent-color:var(--accent)}
 .hradd{display:flex;gap:8px}.hradd input{flex:1;min-width:0;font:inherit;font-size:13.5px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg)}
 @media (max-width:760px){.stwrap{grid-template-columns:1fr;gap:12px}.stnav{flex-direction:row;overflow-x:auto;gap:6px;top:0;z-index:3;background:var(--bg);padding:6px 0;scrollbar-width:none}.stnav button{width:auto;flex:0 0 auto;white-space:nowrap;border:1px solid var(--line);border-radius:999px;padding:5px 12px;font-size:13px}.stnav button[aria-current]{box-shadow:none;background:var(--fg);color:var(--bg);border-color:var(--fg)}.sthead input{min-width:0;flex:1 1 100%}.hrsecs{grid-template-columns:1fr}.hrtbl td:nth-child(2),.hrtbl th:nth-child(2){display:none}}
+/* 26A chart tools and 37E leaderboard (4 Nov) */
+.ctools{display:inline-flex;gap:2px;flex:none;opacity:0;transition:opacity .12s}.ancard:hover .ctools,.ancard:focus-within .ctools,.ancard.anfull .ctools{opacity:1}@media (hover:none){.ctools{opacity:1}}
+.cti{display:inline-grid;place-items:center;width:28px;height:28px;border:1px solid transparent;border-radius:8px;background:none;color:var(--muted);cursor:pointer}.cti:hover,.cti:focus-visible{background:var(--bg);border-color:var(--line);color:var(--fg)}
+.ctm{position:relative}.ctmenu{position:absolute;right:0;top:calc(100% + 4px);z-index:30;display:flex;flex-direction:column;min-width:180px;background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow,0 10px 28px rgba(0,0,0,.18));padding:4px}.ctmenu button{font:inherit;font-size:13px;text-align:left;background:none;border:0;border-radius:6px;padding:7px 10px;color:var(--fg);cursor:pointer}.ctmenu button:hover{background:var(--bg)}
+.ancard.anfull{position:fixed;inset:16px;z-index:60;overflow:auto;box-shadow:0 0 0 100vmax rgba(10,14,24,.55);padding:20px}.ancard.anfull svg.anchart{width:100%;height:auto;max-height:70vh}body.anfullon{overflow:hidden}
+.cttbl{margin-top:8px;max-height:320px;overflow:auto}
+.lbtros{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px;margin:4px 0 12px}.lbtro{display:flex;flex-direction:column;gap:2px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:10px 12px;min-width:0}.lbtro b{font-size:15px}.lbtro .n{font-size:13px;overflow:hidden;text-overflow:ellipsis}
+.lbtbl tr.ours td{background:var(--accent-soft,rgba(37,99,217,.08))}.lbtbl td.lbk{font-weight:700}.lbmv{font-size:12px;font-weight:700;color:var(--muted)}.lbmv.up{color:var(--ok)}.lbmv.dn{color:var(--bad)}.lbmv.new{color:var(--accent)}
+@media (max-width:640px){.ancard.anfull{inset:0;border-radius:0}}
 .ibsug{display:flex;flex-direction:column;gap:6px}.ibsugs{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:6px}
 .ibs{font:inherit;font-size:13px;text-align:left;border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:10px;padding:8px 10px;cursor:pointer;line-height:1.4}.ibs:hover{border-color:var(--accent);background:var(--accent-soft)}.ibs small{display:block;font-weight:700;font-size:11.5px;color:var(--accent);margin-bottom:2px}
 .ibperson{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px;display:flex;flex-direction:column;gap:10px;font-size:13px;position:sticky;top:12px}
@@ -3138,7 +3147,7 @@ const sideSvg=(k,n=18)=>`<svg width="${n}" height="${n}" viewBox="0 0 24 24" fil
 const SIDE_NAV=[["make","Create",[["compose","Compose"],["posts","Review board"],["evergreen","Evergreen"]]],["plan","Plan",[["plan","Month"],["calendar:week","Week"],["calendar:list","List"],["calendar:grid","Instagram grid"]]],
   ["talk","Talk",[["inbox:inbox","Conversations"],["inbox:mine","Assigned to me"],["inbox:posts","By post"],["inbox:autos","Automations"],["inbox:history","Moderation"],["inbox:team","Team"]]],
   ["listen","Listen",[["listening:rising","Rising now"],["listening:mentions","Mentions"],["listening:allies","Allies and opponents"],["listening:topics","Topics"],["listening:parliament","Parliament"],["listening:watches","Watches"]]],
-  ["learn","Analytics",[["analytics:overview","Overview"],["analytics:audience","Audience"],["analytics:posts","Posts"],["analytics:talk","Conversations"],["analytics:campaigns","Campaigns"],["analytics:countries","Countries"]]],["tools","Tools",[["tools:home","All tools"],["tools:inviter","Page Inviter"],["tools:links","Tracked links"],["tools:bio","Link in bio"],["tools:make","Make"],["tools:health","Health check"]]]];
+  ["learn","Analytics",[["analytics:overview","Overview"],["analytics:audience","Audience"],["analytics:posts","Posts"],["analytics:talk","Conversations"],["analytics:campaigns","Campaigns"],["analytics:leaderboard","Leaderboard"],["analytics:countries","Countries"]]],["tools","Tools",[["tools:home","All tools"],["tools:inviter","Page Inviter"],["tools:links","Tracked links"],["tools:bio","Link in bio"],["tools:make","Make"],["tools:health","Health check"]]]];
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}};const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 const SIDE={open:lsGet("desk.sideOpen",{make:true}),fold:lsGet("desk.sideFold",false)};
 function applyTheme(t){const r=document.documentElement;if(t==="light"||t==="dark")r.setAttribute("data-theme",t);else r.removeAttribute("data-theme");
@@ -4870,7 +4879,7 @@ function anCountries(D){const T=D.teams||[];if(!T.length)return `<p class="src">
    Countries; any date range with a comparison window; Ask your Claude on
    every section (the person's own Claude); CSV and print export; saved views
    for the team. Every figure comes from the nightly Meta collection. */
-const AN_TABS=[["overview","Overview"],["audience","Audience"],["posts","Posts"],["talk","Conversations"],["campaigns","Campaigns"],["allies","Allies"],["countries","Countries"]];
+const AN_TABS=[["overview","Overview"],["audience","Audience"],["posts","Posts"],["talk","Conversations"],["campaigns","Campaigns"],["allies","Allies"],["leaderboard","Leaderboard"],["countries","Countries"]];
 const AN_MET=[["reach","Reach","reach"],["views","Views","views"],["engagements","Engagements","engagements"],["rate","Engagement rate","rate_per_view"],["net","Net follows","net_follows"],["video","Video views","video_views"]];
 const anUseR=()=>AN.custom||AN.cmp!=="previous";
 const anSrc=()=>anUseR()?AN.rdata:AN.data;
@@ -4908,9 +4917,10 @@ function anChart(o){const W=Math.max(260,Math.round(o.w||700)),H=o.h||220,L=46,R
   /* hover readout: one transparent column a day with every series in its title */
   const all=[...stacks,...(o.mirror?[o.mirror]:[]),...lines];
   for(let i=0;i<n;i++)s+=`<rect x="${(L+i*cw/n).toFixed(1)}" y="${T}" width="${(cw/n).toFixed(1)}" height="${ch}" fill="transparent"><title>${esc(anDay(o.dates[i]))}${all.map(x=>`\n${x.label}: ${num(x.vals[i])?fmt(x.vals[i]):"—"}`).join("")}</title></rect>`;
-  return `<svg class="anchart" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(o.label||"Chart")}">${s}</svg>`}
+  const chid="ch"+(++AN_CHN);if(AN_CHN%300===0)for(const x in AN_CH)delete AN_CH[x];AN_CH[chid]={dates:o.dates,series:all.map(x=>({label:x.label,vals:x.vals}))};
+  return `<svg class="anchart" data-chid="${chid}" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(o.label||"Chart")}">${s}</svg>`}
 function anLegend(items){return `<div class="anlegend">${items.map(([l,c,dash])=>`<span><i style="${dash?`border-top:2px dashed ${c};height:0`:`background:${c}`}"></i>${esc(l)}</span>`).join("")}</div>`}
-function anCard(title,body,{desc="",ask="",cls=""}={}){return `<section class="rsbox ancard ${cls}"><div class="anchd"><div><h3>${esc(title)}</h3>${desc?`<span class="src">${desc}</span>`:""}</div>${ask?`<button class="btn small" data-an-ask="${esc(ask)}" title="Ask your own Claude about this">✨ Ask Claude</button>`:""}</div>${body}${AN.ask&&AN.ask.key===ask&&ask?anAskBox():""}</section>`}
+function anCard(title,body,{desc="",ask="",cls=""}={}){const k=ask||"card:"+title;return `<section class="rsbox ancard ${cls}"><div class="anchd"><div><h3>${esc(title)}</h3>${desc?`<span class="src">${desc}</span>`:""}</div>${anTools(title,ask)}</div>${body}${AN.ask&&AN.ask.key===k?anAskBox():""}</section>`}
 function anAskBox(){const A=AN.ask;return `<div class="anask" aria-live="polite">${A.busy?`<span class="src">Asking your Claude…</span>`:A.err?`<span class="bad">${esc(A.err)}</span>`:`<div class="anasktext">${esc(A.text).replace(/\n/g,"<br>")}</div><span class="src">From your own Claude, given the figures on this page. Check before you quote it.</span>`}</div>`}
 function anTile(label,value,chg,vs,spark){return `<div class="antile"><span class="src">${esc(label)}</span><span class="antv"><b>${value}</b>${chg}${spark||""}</span><span class="src">${vs}</span></div>`}
 function anW(frac){const el=$("#anView");const w=(el&&el.clientWidth?el.clientWidth:1000)-2;return Math.max(260,Math.floor(w*frac)-40)}
@@ -4935,7 +4945,7 @@ function anSpike(D,R){const m=AN_MET.find(x=>x[0]===AN.bm)||AN_MET[0],d=R.daily,
   const pins=["reach","views"].includes(m[0])?(R.peaks||[]).map((p,k)=>({i:p.index,k:k+1})):[];
   const peaks=(R.peaks||[]).map((p,k)=>`<div class="anpeak"><span class="anpinb">${k+1}</span><div><span class="src">${anDay(p.date)} · ${anN(p.value)} reached, ${anN(p.x_day)}× a normal day</span>${p.post?`<span>${esc(p.post.text||"(no text)")}</span><span class="anbadges"><span class="ibtag">${anN(p.post.views)} views</span>${p.post.x_median!=null?`<span class="ibtag good">${anN(p.post.x_median)}× its Page's normal</span>`:""}${p.post.beyond_pct!=null?`<span class="ibtag">${anN(p.post.beyond_pct)}% beyond followers</span>`:""}</span><span class="src">${esc(p.post.page||"")}${p.post.url?` · <a href="${esc(p.post.url)}" target="_blank" rel="noopener">Open post ↗</a>`:""}</span>`:`<span class="src">No post of ours that day or the day before: likely an older post travelling, or a share.</span>`}</div></div>`).join("");
   const wide=!anPhone();
-  return `<section class="rsbox anspike"><div class="tabs" role="group" aria-label="Measure">${AN_MET.map(([k,l])=>`<button class="tab" data-an-bm="${k}" aria-pressed="${m[0]===k}">${l}</button>`).join("")}</div>
+  return `<section class="rsbox anspike ancard"><div class="anchd"><div><h3>${esc(m[1])} each day</h3></div>${anTools(m[1]+" each day","peaks")}</div><div class="tabs" role="group" aria-label="Measure">${AN_MET.map(([k,l])=>`<button class="tab" data-an-bm="${k}" aria-pressed="${m[0]===k}">${l}</button>`).join("")}</div>
     <div class="anbig"><b>${big}</b>${anDelta(ch,{pts:m[0]==="rate"})}<span class="src">${esc(m[1].toLowerCase())}${R.previous?` · vs ${m[0]==="rate"?anPct(prev):m[0]==="net"?anS(prev):anN(prev)} in the comparison window`:""}</span></div>
     <div class="anspikeg"><div>${anChart({dates:R.dates,w:anW(wide?.66:1),h:wide?300:200,lines:[{vals:series[0],col:"var(--s1)",label:m[1]},...(series[1]?[{vals:series[1],col:"var(--s-med)",dash:1,label:"Comparison window"}]:[])],pins,marks:d.posts.map(x=>x>0),fmt,label:`${m[1]} each day, with the posts behind the peaks`})}
       ${anLegend([["This window","var(--s1)"],...(series[1]?[["Comparison window, day by day","var(--s-med)",1]]:[]),["Dots: days we posted","var(--muted)"]])}</div>
@@ -5019,6 +5029,7 @@ function anAskPrompt(key){const D=AN.data||{},R=anRep();const t=R&&R.totals,p=R&
   if(key==="followers"&&R)L.push(`Daily new followers: ${R.daily.follows.join(",")}. Daily unfollows: ${R.daily.unfollows.join(",")}.`);
   if(key==="engagement"&&R)L.push(`Daily reactions: ${R.daily.reactions.join(",")}. Comments: ${R.daily.comments.join(",")}. Shares: ${R.daily.shares.join(",")}. Posts a day: ${R.daily.posts.join(",")}.`);
   if(key==="views"&&R)L.push(`Daily views: ${R.daily.views.join(",")}. Daily reach: ${R.daily.reach.join(",")}.`);
+  if(String(key).startsWith("card:")){const t=key.slice(5);L.push(`The card "${t}" on the ${(AN_TABS.find(x=>x[0]===AN.tab)||[])[1]||AN.tab} tab shows:\n${(AN.cardCtx||{})[t]||""}`)}
   if(D.changed&&D.changed.length&&!AN.custom)L.push("Already noticed from the figures: "+D.changed.map(x=>x.text).join(" "));
   L.push(key==="page"?"In plain English, under 200 words: what went well, what didn't, the likely reasons, and two or three things to try next. Use only these figures; say when something can't be told from them.":"In plain English, under 150 words: what does this show, what probably explains it, and one thing to try. Use only these figures; say when something can't be told from them.");
   return L.join("\n")}
@@ -5043,6 +5054,7 @@ function renderAnalytics(){const el=$("#anView");if(!el||el.hidden)return;const 
   const lede=AN.tab==="countries"?"Every country team side by side.":AN.scope==="hazteoir"?"HazteOir, shown apart and never mixed into CitizenGO totals.":AN.scope==="team"?"Your team's own accounts.":"Every CitizenGO Page and account.";
   const head=`<div class="anhead"><div><p class="lede">${lede} Organic figures from Meta and X, collected every night.</p></div></div>${AN.tab==="countries"?`<div class="anbar"><span class="tabs">${[7,30,90].map(d=>`<button class="tab" data-an-days="${d}" aria-pressed="${AN.days===d}">${d} days</button>`).join("")}</span><span class="anbarr"><button class="btn small" data-an-csv>Export CSV</button><button class="btn small" data-an-print>Print or PDF</button></span></div>`:anBar(t)}${tabs}`;
   if(AN.tab==="allies"){el.innerHTML=head+anAllies();return}
+  if(AN.tab==="leaderboard"){el.innerHTML=head+anLeaderboard();return}
   if(AN.err){el.innerHTML=head+`<p class="offline">Couldn't load Analytics (${esc(whyFailed(AN.err))}).</p>`;return}
   if(!D){el.innerHTML=head+`<p class="src">${AN.loading?"Loading the figures…":"No figures yet."}</p>`;return}
   if(AN.tab==="countries"){el.innerHTML=head+(D.scope==="countries"?anCountries(D):`<p class="src">Loading…</p>`);return}
@@ -5937,7 +5949,72 @@ document.addEventListener("click",ev=>{if(S.view!=="analytics")return;const st=A
   const pp=ev.target.closest("[data-anp]");if(pp){const a=pp.dataset.anp;if(a==="close"){$("#anPrintD")?.remove();return}if(a==="go")anPrintGo();return}
 });
 document.addEventListener("change",ev=>{const t=ev.target;if(!t.matches||S.view!=="analytics"||!AN.al)return;if(t.matches("[data-al-country]")){AN.al.country=t.value;renderAnalytics()}else if(t.matches("[data-al-measure]")){AN.al.measure=t.value;renderAnalytics()}});
-const AN_PRINT_TABS=[["overview","Overview"],["audience","Audience"],["posts","Posts"],["talk","Conversations"],["campaigns","Campaigns"],["allies","Allies"]];
+/* 26A (Chris, 4 Nov): tools on every Analytics card. Ask Claude and Full screen as icons (on hover; always on a phone), and a "…" menu with the rest. */
+const AN_CH={};let AN_CHN=0;
+const CT_IC={ask:'<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/>',full:'<path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/>',more:'<circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/>'};
+const ctSvg=k=>`<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${CT_IC[k]}</svg>`;
+function anTools(title,ask){return `<span class="ctools"><button class="cti" ${ask?`data-an-ask="${esc(ask)}"`:`data-ct="ask"`} title="Ask your own Claude about this" aria-label="Ask Claude about ${esc(title)}">${ctSvg("ask")}</button><button class="cti" data-ct="full" title="Full screen" aria-label="Open ${esc(title)} full screen">${ctSvg("full")}</button><span class="ctm"><button class="cti" data-ct="more" title="More" aria-label="More for ${esc(title)}" aria-haspopup="menu">${ctSvg("more")}</button></span></span>`}
+function ctData(card){const svg=card.querySelector("svg[data-chid]");const c=svg&&AN_CH[svg.dataset.chid];
+  if(c)return [["date",...c.series.map(s=>s.label)],...c.dates.map((d,i)=>[d,...c.series.map(s=>s.vals[i]??"")])];
+  const t=card.querySelector("table");if(t)return [...t.rows].map(r=>[...r.cells].map(x=>x.innerText.replace(/\s+/g," ").trim()));
+  return null}
+function ctTitle(card){return (card.querySelector(".anchd h3")?.textContent||"chart").trim()}
+function ctFile(card,ext){return `${ctTitle(card).toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"")||"chart"}-${S.team||"cgo"}.${ext}`}
+function ctSave(blob,name){const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500)}
+function ctCsv(card){const d=ctData(card);if(!d){toast("Nothing to download in this one");return}const q=v=>{const x=v==null?"":String(v);return /[",\n]/.test(x)?`"${x.replace(/"/g,'""')}"`:x};ctSave(new Blob([d.map(r=>r.map(q).join(",")).join("\n")],{type:"text/csv"}),ctFile(card,"csv"))}
+/* PNG: the chart's SVG with its styles written inline, on a white card with the title and the date range. */
+function ctPng(card){const svg=card.querySelector("svg.anchart")||card.querySelector("svg.anspark")||[...card.querySelectorAll("svg")].find(x=>!x.closest(".ctools"));if(!svg){toast("This one is a table: use Download CSV");return}
+  const cl=svg.cloneNode(true);const src=[svg,...svg.querySelectorAll("*")],dst=[cl,...cl.querySelectorAll("*")];
+  src.forEach((el,i)=>{const cs=getComputedStyle(el);["fill","stroke","stroke-width","stroke-dasharray","font-size","font-family","font-weight","opacity"].forEach(p=>{const v=cs.getPropertyValue(p);if(v)dst[i].style.setProperty(p,v)})});
+  const w=svg.viewBox.baseVal&&svg.viewBox.baseVal.width||svg.clientWidth||700,h=svg.viewBox.baseVal&&svg.viewBox.baseVal.height||svg.clientHeight||220;cl.setAttribute("width",w);cl.setAttribute("height",h);cl.setAttribute("xmlns","http://www.w3.org/2000/svg");
+  const img=new Image();img.onload=()=>{const k=2,pad=24,head=44,c=document.createElement("canvas");c.width=(w+pad*2)*k;c.height=(h+pad*2+head)*k;const g=c.getContext("2d");g.scale(k,k);g.fillStyle="#fff";g.fillRect(0,0,w+pad*2,h+pad*2+head);
+    g.fillStyle="#202124";g.font="700 16px system-ui,sans-serif";g.fillText(ctTitle(card),pad,pad+12);const R=anRep();g.fillStyle="#5f6673";g.font="12px system-ui,sans-serif";g.fillText(((R?anRangeLine(R).replace(/<[^>]+>/g,""):"")+" · CitizenGO").trim(),pad,pad+30);g.drawImage(img,pad,pad+head,w,h);
+    c.toBlob(b=>b?ctSave(b,ctFile(card,"png")):toast("Couldn't make the picture"),"image/png")};
+  img.onerror=()=>toast("Couldn't make the picture");img.src="data:image/svg+xml;charset=utf-8,"+encodeURIComponent(new XMLSerializer().serializeToString(cl))}
+function ctTable(card){const old=card.querySelector(".cttbl");if(old){old.remove();return}const d=ctData(card);if(!d){toast("No figures to show");return}
+  card.insertAdjacentHTML("beforeend",`<div class="awrap cttbl"><table class="atbl"><thead><tr>${d[0].map(x=>`<th>${esc(x)}</th>`).join("")}</tr></thead><tbody>${d.slice(1).map(r=>`<tr>${r.map((x,i)=>`<td class="${i?"n":""}">${esc(typeof x==="number"?anN(x):x)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`)}
+function ctPrint(card){const el=card.cloneNode(true);el.classList.remove("anfull");el.querySelectorAll(".ctools,button,.ctmenu").forEach(x=>x.remove());const R=anRep();
+  printSheet(`<div class="psband"><img src="/desk/go.png" alt="CitizenGO" width="30" height="30"><b>${esc(ctTitle(card))}</b><span>${esc(R?anRangeLine(R).replace(/<[^>]+>/g,""):"")}</span></div>${el.outerHTML}<div class="psfoot">CitizenGO, for the team only · ${esc(new Date().toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"}))}</div>`,"Chart · print preview")}
+function ctClose(){document.querySelectorAll(".ctmenu").forEach(m=>m.remove())}
+function ctFull(card,on){const f=document.querySelector(".ancard.anfull");if(f&&f!==card){f.classList.remove("anfull")}card.classList.toggle("anfull",on);document.body.classList.toggle("anfullon",!!document.querySelector(".ancard.anfull"))}
+document.addEventListener("click",ev=>{const mi=ev.target.closest("[data-ctm]");if(mi){const card=mi.closest(".ancard");ctClose();if(!card)return;const a=mi.dataset.ctm;
+    if(a==="png")ctPng(card);else if(a==="csv")ctCsv(card);else if(a==="table")ctTable(card);else if(a==="print")ctPrint(card);return}
+  const b=ev.target.closest("[data-ct]");if(!b){if(!ev.target.closest(".ctmenu"))ctClose();return}const card=b.closest(".ancard");if(!card)return;const a=b.dataset.ct;
+  if(a==="full"){ctFull(card,!card.classList.contains("anfull"));return}
+  if(a==="ask"){const t=ctTitle(card),d=ctData(card);AN.cardCtx=AN.cardCtx||{};AN.cardCtx[t]=d?d.slice(0,120).map(r=>r.join(", ")).join("\n"):card.innerText.slice(0,3000);anAsk("card:"+t);return}
+  if(a==="more"){const open=b.parentElement.querySelector(".ctmenu");ctClose();if(open)return;const hasSvg=[...card.querySelectorAll("svg")].some(x=>!x.closest(".ctools")),hasData=!!ctData(card);
+    b.parentElement.insertAdjacentHTML("beforeend",`<div class="ctmenu" role="menu">${hasSvg?'<button role="menuitem" data-ctm="png">Download PNG</button>':""}${hasData?'<button role="menuitem" data-ctm="csv">Download CSV</button>':""}${hasSvg&&hasData?`<button role="menuitem" data-ctm="table">${card.querySelector(".cttbl")?"Hide the table":"Show as a table"}</button>`:""}<button role="menuitem" data-ctm="print">Print this card</button></div>`)}});
+document.addEventListener("keydown",ev=>{if(ev.key!=="Escape")return;const f=document.querySelector(".ancard.anfull");if(f){ctFull(f,false);ev.stopPropagation()}ctClose()},true);
+
+/* 37E + 37C (Chris, 4 Nov): a friendly CitizenGO leaderboard. Trophies of the period first, then every CitizenGO Facebook Page, sortable by any measure, with how many places each moved on that measure against the period before. */
+const LB_COLS=[["followers","Followers"],["growth","Growth"],["engagements","Engagement"],["posts","Posts"],["per_post","Per post"],["per_1k","Per 1k followers"]];
+const lbFmt=(k,v)=>v==null?"—":k==="growth"?(v>0?"+":"")+v+"%":k==="per_1k"?anN(Math.round(v*10)/10):anN(v);
+function lbRank(list,k,side){const r={};list.filter(p=>p[side]&&p[side][k]!=null&&(!/^per_/.test(k)||(p[side].posts||0)>=3)).sort((a,b)=>b[side][k]-a[side][k]).forEach((p,i)=>r[p.page_id]=i+1);return r}
+function anLeaderboard(){const st=AN.lbs||(AN.lbs={days:30,sort:"per_1k"});const key=String(st.days);
+  if(!AN.lbd||AN.lbd.key!==key){AN.lbd={key,busy:true};(async()=>{try{const r=await eng("engine_analytics",{scope:"leaderboard",days:st.days});if(AN.lbd.key===key)AN.lbd={key,...r}}catch(e){if(AN.lbd.key===key)AN.lbd={key,err:e}}if(AN.tab==="leaderboard")renderAnalytics()})()}
+  const ctrl=`<div class="anbar"><span class="tabs">${[7,30,90].map(d=>`<button class="tab" data-lb-days="${d}" aria-pressed="${st.days===d}">${d} days</button>`).join("")}</span><span class="sp"></span><button class="btn small" data-lb-csv>⬇ CSV</button></div>`;
+  const D=AN.lbd;if(!D||D.busy)return ctrl+`<p class="src">Loading the leaderboard…</p>`;if(D.err)return ctrl+`<p class="offline">Couldn't load the leaderboard (${esc(whyFailed(D.err))}).</p>`;
+  const P=(D.pages||[]).slice();if(!P.length)return ctrl+`<div class="empty2"><span class="ei">🏆</span><b>No figures for these days yet</b><p>Try a longer window.</p></div>`;
+  const nm=p=>`${p.flag?p.flag+" ":""}${p.name}`;const k=st.sort;const rc=lbRank(P,k,"cur"),rp=lbRank(P,k,"prev");
+  const top=(m,min3)=>P.filter(p=>p.cur&&p.cur[m]!=null&&(!min3||(p.cur.posts||0)>=3)).sort((a,b)=>b.cur[m]-a.cur[m])[0];
+  const r1k=lbRank(P,"per_1k","cur"),r1kp=lbRank(P,"per_1k","prev");const climb=P.filter(p=>r1k[p.page_id]&&r1kp[p.page_id]).map(p=>({p,up:r1kp[p.page_id]-r1k[p.page_id]})).sort((a,b)=>b.up-a.up)[0];
+  const bestPost=P.filter(p=>p.best&&p.best.x).sort((a,b)=>b.best.x-a.best.x)[0];
+  const tro=[["🏆","Most engagement",top("engagements"),p=>anN(p.cur.engagements)],["🚀","Fastest growing",top("growth"),p=>lbFmt("growth",p.cur.growth)],["⚖️","Best per 1k followers",top("per_1k",true),p=>lbFmt("per_1k",p.cur.per_1k)],["⭐","Best per post",top("per_post",true),p=>anN(p.cur.per_post)]]
+    .filter(t=>t[2]).map(([i,l,p,v])=>`<div class="lbtro"><span class="src">${i} ${esc(l)}</span><b>${esc(nm(p))}</b><span class="n">${v(p)}</span></div>`);
+  if(climb&&climb.up>0)tro.push(`<div class="lbtro"><span class="src">📈 Biggest climber</span><b>${esc(nm(climb.p))}</b><span class="n">up ${climb.up} place${climb.up===1?"":"s"} per 1k followers</span></div>`);
+  if(bestPost)tro.push(`<div class="lbtro"><span class="src">📌 Post of the period</span><b>${esc(nm(bestPost))}</b><span class="n">${bestPost.best.url?`<a href="${esc(bestPost.best.url)}" target="_blank" rel="noopener">${esc((bestPost.best.text||"Post").slice(0,50))}</a>`:esc((bestPost.best.text||"").slice(0,50))} · ${anN(bestPost.best.x)}× its normal</span></div>`);
+  const rows=P.slice().sort((a,b)=>(rc[a.page_id]||1e9)-(rc[b.page_id]||1e9)||String(a.name).localeCompare(b.name));
+  const mv=p=>{const a=rc[p.page_id],b=rp[p.page_id];if(!a)return "";if(!b)return '<span class="lbmv new">new</span>';const d=b-a;return d>0?`<span class="lbmv up" title="Up ${d} from the ${D.days} days before">▲${d}</span>`:d<0?`<span class="lbmv dn" title="Down ${-d} from the ${D.days} days before">▼${-d}</span>`:'<span class="lbmv">—</span>'};
+  const medal=i=>i<3?["🥇","🥈","🥉"][i]:String(i+1);
+  return ctrl+`<p class="src">Every CitizenGO Facebook Page (HazteOir kept apart), last ${D.days} days. Move is the change in place on the measure you sort by, against the ${D.days} days before. Per post and per 1k followers count Pages with 3 posts or more, so a small Page can top it.</p>
+  <div class="lbtros">${tro.join("")}</div>
+  ${anCard("The leaderboard",`<div class="awrap"><table class="atbl lbtbl"><thead><tr><th class="n">#</th><th>Page</th>${LB_COLS.map(([c,l])=>`<th class="n"><button class="linkish" data-lb-sort="${c}" aria-sort="${k===c?"descending":"none"}">${esc(l)}${k===c?" ▾":""}</button></th>`).join("")}<th class="n">Move</th></tr></thead><tbody>${rows.map(p=>{const r=rc[p.page_id];return `<tr class="${p.mine?"ours":""}"><td class="n">${r?medal(r-1):"·"}</td><td><b>${esc(nm(p))}</b>${p.mine?' <span class="pill acc">yours</span>':""}</td>${LB_COLS.map(([c])=>`<td class="n${c===k?" lbk":""}">${lbFmt(c,p.cur[c])}</td>`).join("")}<td class="n">${mv(p)}</td></tr>`}).join("")}</tbody></table></div>`,{desc:"Tap a heading to rank by it."})}`}
+document.addEventListener("click",ev=>{if(S.view!=="analytics"||!AN.lbs)return;
+  const d=ev.target.closest("[data-lb-days]");if(d){AN.lbs.days=Number(d.dataset.lbDays);renderAnalytics();return}
+  const so=ev.target.closest("[data-lb-sort]");if(so){AN.lbs.sort=so.dataset.lbSort;renderAnalytics();return}
+  if(ev.target.closest("[data-lb-csv]")&&AN.lbd&&AN.lbd.pages){const q=v=>{const x=v==null?"":String(v);return /[",\n]/.test(x)?`"${x.replace(/"/g,'""')}"`:x};const cols=LB_COLS.map(c=>c[0]);
+    const rows=[["page",...cols,...cols.map(c=>c+"_before")],...AN.lbd.pages.map(p=>[p.name,...cols.map(c=>p.cur&&p.cur[c]),...cols.map(c=>p.prev&&p.prev[c])])];ctSave(new Blob([rows.map(r=>r.map(q).join(",")).join("\n")],{type:"text/csv"}),`citizengo-leaderboard-${AN.lbd.days}d.csv`)}});
+const AN_PRINT_TABS=[["overview","Overview"],["audience","Audience"],["posts","Posts"],["talk","Conversations"],["campaigns","Campaigns"],["allies","Allies"],["leaderboard","Leaderboard"]];
 function anPrintOpen(){let o;try{o=JSON.parse(localStorage.getItem("desk.anPrint")||"null")}catch(e){}const t=(S.teams||[]).find(x=>x.id===S.team);const who=AN.scope==="team"?(t&&t.name)||"My team":AN.scope==="hazteoir"?"HazteOir":"CitizenGO";
   /* Countries has its own dataset (AN.data is countries-only there), so it prints on its own; the other tabs print together. */
   const ctry=AN.tab==="countries",list=ctry?[["countries","Countries"]]:AN_PRINT_TABS;o=Object.assign({by:nameOf(S.whoId),cover:false},o||{});o.tabs=ctry?["countries"]:(o.tabs||[]).filter(k=>list.some(x=>x[0]===k));if(!o.tabs.length)o.tabs=[AN.tab];o.title=`${who} social media report`;

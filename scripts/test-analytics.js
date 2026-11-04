@@ -215,6 +215,17 @@ const callErr = async (args, who) => { try { await call(args, who); return null;
     const r3 = await call({ scope: 'team', team: 'uk', days: 30, fresh: true });
     eq('presets carry the round-two report too', [r3.report.dates.length, r3.report.totals.net_follows > 0, !!r3.talk], [30, true, true]);
   }
+  {
+    // Leaderboard (37E + 37C): CitizenGO Pages only, this window and the one before, fair measures.
+    const recent = new Date(Date.now() - 3 * 864e5).toISOString(), older = new Date(Date.now() - 40 * 864e5).toISOString();
+    store.loadAll = async () => ({ pages, posts: [{ page_id: '105', created_time: recent }, { page_id: '105', created_time: recent }, { page_id: '434', created_time: recent }, { page_id: '105', created_time: older }, { page_id: '154', created_time: recent }] });
+    const lb = await call({ scope: 'leaderboard', fresh: true });
+    const uk = lb.pages.find((p) => p.name === 'Citizen GO UK');
+    eq('leaderboard: CitizenGO Pages only (HazteOir apart), ours marked', [lb.scope, lb.pages.map((p) => p.name).sort(), uk.mine, uk.team], ['leaderboard', ['Citizen GO UK', 'CitizenGO'], true, 'uk']);
+    eq('leaderboard: posts per window, per post, per 1k followers, growth', [uk.cur.posts, uk.prev.posts, uk.cur.per_post, uk.cur.per_1k, uk.cur.growth], [2, 1, 56315, 10452.9, 7.4]);
+    eq('leaderboard: best post of the window, against its own Page median', [uk.best.text, uk.best.x > 1], ['uk-big', true]);
+    store.loadAll = async () => ({ pages });
+  }
   console.log(`\n${passed} passed, ${failed} failed`);
   process.exit(failed ? 1 : 0);
 })().catch((e) => { console.error(e); process.exit(1); });
