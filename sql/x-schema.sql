@@ -47,7 +47,12 @@ create table if not exists public.x_accounts (
   -- Added 30 Sep 2026 (migration x_accounts_history_complete). False until the
   -- account's full history, to X's 3,200-post limit, has been backfilled; the
   -- collector keeps resuming the backfill each night until it is true.
-  history_complete boolean not null default false
+  history_complete boolean not null default false,
+  -- Added 4 Nov 2026 (migration x_accounts_full_collection). A spokesperson
+  -- whose holder has consented IN WRITING to collection of the whole account:
+  -- every post is kept, not only those about CitizenGO. kind stays
+  -- 'spokesperson' so the account stays out of organisation reporting.
+  full_collection  boolean not null default false
 );
 
 -- ---------------------------------------------------------------------------

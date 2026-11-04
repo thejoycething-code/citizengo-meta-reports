@@ -10,7 +10,9 @@
 //     exist only for posts collected while X still served them (documented 30
 //     days, observed ~89 on 30 Sep 2026);
 //   * a spokesperson account is collected ONLY for posts carrying a CitizenGO
-//     link or mentioning CitizenGO, so its totals are not the account's totals.
+//     link or mentioning CitizenGO, so its totals are not the account's totals
+//     - unless its holder consented to full collection (x_accounts.full_collection),
+//     so the note names the filtered accounts rather than every spokesperson.
 
 const sched = require('../lib/xschedule');
 
@@ -35,8 +37,14 @@ function truncate(s, len) {
   const one = (s || '(no text)').replace(/\s+/g, ' ');
   return one.length > len ? one.slice(0, len - 1) + '…' : one;
 }
-const spokesNote = (rows) => (rows.some((r) => r.kind === 'spokesperson')
-  ? '\n\n_Spokesperson accounts are collected only for posts that carry a CitizenGO link or mention CitizenGO. Their figures describe those posts, not the whole account._' : '');
+// Account ids collected only for posts about us: spokespersons without full-collection consent.
+const filteredIds = (accounts) => new Set(accounts
+  .filter((a) => a.kind === 'spokesperson' && a.full_collection !== true).map((a) => String(a.account_id)));
+const spokesNote = (rows, filtered) => {
+  const handles = [...new Set(rows.filter((r) => filtered.has(String(r.account_id))).map((r) => '@' + r.username))];
+  if (!handles.length) return '';
+  return `\n\n_${handles.join(', ')} ${handles.length === 1 ? 'is a spokesperson account' : 'are spokesperson accounts'} collected only for posts that carry a CitizenGO link or mention CitizenGO. Those figures describe those posts, not the whole account. Other accounts are collected in full._`;
+};
 // Two different reasons a click column is empty, and they must not be
 // confused: X had stopped serving private metrics when the post was collected,
 // or the post simply had no link (X then returns no link-click field at all).
@@ -88,7 +96,7 @@ async function listAccounts(store) {
       ['Account', 'Handle', 'Kind', 'Country', 'Followers', 'Credential'],
       rows.map((a) => [a.name || a.label || a.account_id, `@${a.username}`, a.kind, a.country || '—',
         n(a.followers_count), a.credential_status || '—']),
-    ) + spokesNote(rows),
+    ) + spokesNote(rows, filteredIds(rows)),
     accounts: rows.map((a) => ({ account_id: a.account_id, username: a.username, kind: a.kind, country: a.country })),
   };
 }
@@ -154,7 +162,7 @@ async function topPosts(store, { account_id, days, month, from, to, sort = 'impr
       ['#', 'Account', 'Post', 'Date', 'Type', 'Impressions', 'Likes', 'Reposts', 'Replies', 'Bookmarks', 'Link clicks', 'Eng. rate'],
       rows.map((r, i) => [String(off + i + 1), `@${r.username}`, link(r, truncate(r.text, width)), String(r.created_at).slice(0, 10), role(r),
         n(r.impressions), n(r.likes), n(r.reposts), n(r.replies), n(r.bookmarks), n(r.url_link_clicks), p(r.engagement_rate_pct)]),
-    ) + pageNote(off, rows.length, total) + privateNote(rows) + spokesNote(rows),
+    ) + pageNote(off, rows.length, total) + privateNote(rows) + spokesNote(rows, filteredIds(await store.xAccounts())),
     rows, total, offset: off,
   };
 }
@@ -177,7 +185,7 @@ async function searchPosts(store, { query, hashtag, topic, account_id, days, mon
       ['#', 'Account', 'Post', 'Date', 'Type', 'Impressions', 'Interactions', 'Link clicks'],
       rows.map((r, i) => [String(off + i + 1), `@${r.username}`, link(r, truncate(r.text, width)), String(r.created_at).slice(0, 10), role(r),
         n(r.impressions), n(r.interactions), n(r.url_link_clicks)]),
-    ) + pageNote(off, rows.length, total) + cover + privateNote(rows) + spokesNote(rows),
+    ) + pageNote(off, rows.length, total) + cover + privateNote(rows) + spokesNote(rows, filteredIds(await store.xAccounts())),
     rows, total, offset: off,
   };
 }
@@ -384,7 +392,7 @@ async function periodSummary(store, { month, from, to, account_id } = {}) {
   if (idle.length) notes.push(`No posts in the period: ${idle.join(', ')}.`);
   return {
     text: `**X summary, ${per.label}**${account_id ? '' : ` · ${rows.length} accounts · ${n(tot.posts)} posts · ${n(tot.imp)} impressions · ${n(tot.eng)} engagements`}\n\n`
-      + body + '\n\n' + notes.map((x) => `_${x}_`).join('\n\n') + spokesNote(rows),
+      + body + '\n\n' + notes.map((x) => `_${x}_`).join('\n\n') + spokesNote(rows, filteredIds(await store.xAccounts())),
     rows, period: per,
   };
 }
