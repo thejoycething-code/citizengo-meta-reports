@@ -1919,7 +1919,9 @@ function rulesBox(d){
    A published page can't reach the engine's storage, so the video goes to the
    engine through engine_video in 2 MB pieces; the publisher on the Mini joins
    them, checks them against this SHA-256, and uploads to Facebook and Instagram. */
-function isVideoPost(d){return !!(d.video&&d.video.url)||!!(d.card&&d.card.template==="reel")||!!d.publishVideo}
+/* 4 Nov: a post the engine marks as a video (type Video or Reel, or a video note saying "upload manually")
+   counts too, so its "Video to publish" upload shows. Choosing Post, Carousel or Text in Compose overrides it. */
+function isVideoPost(d){if(d.cpType&&d.cpType!=="reel")return false;return !!d.video||!!(d.card&&d.card.template==="reel")||!!d.publishVideo||/^(video|reel)$/i.test(String(d.type||""))}
 const VID_PART=2*1024*1024,VID_MAX=150*1024*1024;
 function videoUploadBox(d){const v=d.publishVideo,up=S.vidUp&&S.vidUp.id===d.id?S.vidUp:null;
   const mb=n=>(n/1048576).toFixed(n<10485760?1:0)+" MB";
@@ -1974,7 +1976,8 @@ function videoSuggestions(d){
   return out}
 function videoBox(d){
   const v=d.video;let h="";
-  if(v)h+=`<div class="action"><span class="eyebrow">Video${v.status==="ready"||!v.status?" · ready":""}</span><b>${esc(v.label)}</b><small>${esc(v.cut||"")}</small><small style="font-family:var(--mono)">${esc(v.file||"")}</small>${(v.words||[]).length&&S.db?`<button class="btn small" data-act="trimOpen" data-kind="v">Trim it</button>`:""}</div>`;
+  if(v&&!v.url&&!v.label&&!v.file&&v.note)h+=`<div class="action"><span class="eyebrow">Video · to add</span><small>${esc(v.note)}</small></div>`;
+  else if(v)h+=`<div class="action"><span class="eyebrow">Video${v.status==="ready"||!v.status?" · ready":""}</span><b>${esc(v.label)}</b><small>${esc(v.cut||"")}</small><small style="font-family:var(--mono)">${esc(v.file||"")}</small>${(v.words||[]).length&&S.db?`<button class="btn small" data-act="trimOpen" data-kind="v">Trim it</button>`:""}</div>`;
   const list=videoSuggestions(d);if(!list.length||d.videoDismissed)return h+(list.length&&d.videoDismissed&&S.db?`<div class="src">No video for this post · <a href="#" data-act="vsUndo">show the clips it found (${list.length})</a></div>`:"");
   if(v&&v.status==="ready")return h;
   const i=Math.min(S.vsIdx&&S.vsIdx.id===d.id?S.vsIdx.i:0,list.length-1);const o=list[i];
@@ -5933,7 +5936,7 @@ const CP_TPL=[
   {k:"event",label:"Event reminder",hint:"A vigil, a march, a meeting",title:"Event: [WHAT] on [DAY]",
     fb:"Join us on [DAY] at [TIME], [PLACE].\n\n[WHAT IT IS AND WHY]\n\n[HOW TO COME]",ig:"[DAY] · [TIME] · [PLACE]\n\n[WHAT IT IS AND WHY]\n\nLink in bio",card:{template:"ig1d",kicker:"JOIN US",headline:"[What] on [day]",sub:""}}];
 const CP_EMOJI=["🙏","🙌","❤️","👉","✍️","📢","⏰","🇬🇧","✅","🔴","🕯️","👶","⚖️","🏛️","📣","💪"];
-const CP_TYPES=[["post","Post","One picture or a house design"],["carousel","Carousel","2 to 10 pictures"],["reel","Reel","A video: a Facebook video and an Instagram Reel"],["text","Text or link","Facebook only, no picture"]];
+const CP_TYPES=[["post","Post","One picture or a house design"],["carousel","Carousel","2 to 10 pictures"],["reel","Video","A video: goes out as a Facebook video and an Instagram Reel"],["text","Text or link","Facebook only, no picture"]];
 const cpEl=s=>$("#cpBox")?.querySelector(s);
 const cpPlats=d=>[...new Set(((d.posting||{}).destinations||[]).map(platOfKey))];
 const cpHas=(d,p)=>cpPlats(d).includes(p);
