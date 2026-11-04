@@ -6083,7 +6083,7 @@ function fpSync(){document.querySelectorAll("[data-fpanel]").forEach(p=>{const i
   document.querySelectorAll(`.fbtn[data-fp="${id}"] .fpn`).forEach(n=>{if(n.hidden!==!a.length)n.hidden=!a.length;if(n.textContent!==String(a.length))n.textContent=a.length});
   const ch=document.querySelector(`[data-fchips="${id}"]`);if(!ch)return;
   const h=a.map((x,i)=>`<button type="button" class="fchip" data-fchip-x="${id}:${i}" title="Remove this filter">${esc(x.label)}: ${esc(x.val)}<span aria-hidden="true">×</span></button>`).join("")+(a.length>1?`<button type="button" class="linkbtn fclear" data-fp-clear="${id}">Clear all</button>`:"");
-  if(ch.innerHTML!==h)ch.innerHTML=h})}
+  if(ch._fpH!==h){ch._fpH=h;ch.innerHTML=h}})}
 function fpReset(x){if(x.el.tagName==="SELECT")x.el.selectedIndex=0;else x.el.checked=x.el.dataset.fdef==="true";x.el.dispatchEvent(new Event("change",{bubbles:true}))}
 function fpToggle(id,open){if(!FP_OPEN)return;if(open)FP_OPEN.add(id);else FP_OPEN.delete(id);const p=fpPanel(id);if(p)p.hidden=!open;document.querySelectorAll(`.fbtn[data-fp="${id}"]`).forEach(b=>b.setAttribute("aria-expanded",String(open)))}
 document.addEventListener("click",ev=>{const b=ev.target.closest("[data-fp]");if(b){fpToggle(b.dataset.fp,!FP_OPEN.has(b.dataset.fp));return}
