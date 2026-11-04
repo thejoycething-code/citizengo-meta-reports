@@ -327,6 +327,18 @@ const callErr = async (store, name, args, who) => { try { await tool(name)(store
   }
 
   {
+    const { addPictures } = require('../mcp/engine-tools');
+    const posts = [{ media_id: '11' }, { post_id: '22_33' }, { media_id: '44' }, { post_id: '55' }];
+    let asked;
+    await addPictures({ listenPictures: async (q) => { asked = q; return { 11: 'https://scontent.cdninstagram.com/a.jpg', '22_33': 'https://scontent.xx.fbcdn.net/b.jpg', 55: 'javascript:alert(1)' }; } }, posts);
+    eq('listening pictures (37A): Instagram and Facebook pictures by id, https only', [posts.map((p) => p.img || null), asked], [['https://scontent.cdninstagram.com/a.jpg', 'https://scontent.xx.fbcdn.net/b.jpg', null, null], { ig_ids: ['11', '44'], fb_ids: ['22_33', '55'] }]);
+    const p2 = [{ media_id: '1' }];
+    await addPictures({ listenPictures: async () => { throw new Error('no column'); } }, p2);
+    await addPictures({}, p2);
+    eq('listening pictures: a store without them leaves the words alone', JSON.stringify(p2), '[{"media_id":"1"}]');
+  }
+
+  {
     const LT = require('../lib/listen-topics');
     const { storyKeys } = require('../mcp/engine-tools');
     const now = Date.parse('2026-11-02T12:00:00Z'), d = (n) => new Date(now - n * 864e5).toISOString();

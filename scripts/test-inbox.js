@@ -248,21 +248,20 @@ function fakeMeta() {
     delete s.personTagsGet; delete s.personTagsPut;
   }
 
-  // Priority Three 18A: a picture or GIF on a Facebook comment reply.
+  // Priority Three 18A: a picture on a Facebook comment reply (no GIFs: Chris, 4 Nov).
   {
     const fbc = { kind: 'comment', platform: 'facebook', created_at: new Date(NOW).toISOString() };
     const pic = { url: 'https://abc.supabase.co/storage/v1/object/public/desk-assets/desk/2026-11/x.png', kind: 'image' };
-    const gif = { url: 'https://media2.giphy.com/media/abc/giphy.gif?cid=1', kind: 'gif' };
-    eq('attachments: our pictures and GIPHY GIFs on a Facebook comment reply; a picture alone is a reply', [I.allowed(fbc, 'reply', { text: 'Thanks', attachment: pic, now: NOW }).ok, I.allowed(fbc, 'reply', { text: '', attachment: gif, now: NOW }).ok], [true, true]);
+    eq('attachments: our pictures on a Facebook comment reply; a picture alone is a reply', [I.allowed(fbc, 'reply', { text: 'Thanks', attachment: pic, now: NOW }).ok, I.allowed(fbc, 'reply', { text: '', attachment: pic, now: NOW }).ok], [true, true]);
     eq('attachments: not on Instagram, messages or private replies', [I.allowed({ ...fbc, platform: 'instagram' }, 'reply', { text: 'x', attachment: pic }).ok, I.allowed({ kind: 'message', platform: 'facebook' }, 'reply', { text: 'x', attachment: pic, lastIncomingAt: new Date(NOW).toISOString(), now: NOW }).ok, I.allowed(fbc, 'private_reply', { text: 'x', attachment: pic, now: NOW }).ok], [false, false, false]);
-    eq('attachments: no pictures from anywhere else, https only', [I.allowed(fbc, 'reply', { text: 'x', attachment: { url: 'https://evil.example/x.png' } }).ok, I.allowed(fbc, 'reply', { text: 'x', attachment: { url: 'http://media.giphy.com/x.gif', kind: 'gif' } }).ok, I.allowed(fbc, 'reply', { text: 'x', attachment: { url: 'https://media.giphy.com/x.gif', kind: 'image' } }).ok], [false, false, false]);
+    eq('attachments: no pictures from anywhere else, https only, no GIFs at all', [I.allowed(fbc, 'reply', { text: 'x', attachment: { url: 'https://evil.example/x.png' } }).ok, I.allowed(fbc, 'reply', { text: 'x', attachment: { url: pic.url.replace('https', 'http') } }).ok, I.allowed(fbc, 'reply', { text: 'x', attachment: { url: 'https://media.giphy.com/x.gif', kind: 'gif' } }).ok, I.allowed(fbc, 'reply', { text: 'x', attachment: { url: pic.url.replace('.png', '.gif') } }).ok, I.allowed(fbc, 'reply', { text: 'x', attachment: { ...pic, kind: 'gif' } }).error], [false, false, false, false, "GIFs can't go in replies."]);
     const sent = [];
     const fakeFetch = async (url, o) => { sent.push([url, Object.fromEntries(new URLSearchParams(String(o.body)))]); return { ok: true, json: async () => ({ id: 'r1' }) }; };
     await I.perform({ action: 'reply', item: { ...fbc, object_id: 'c9' }, account: {}, token: 'T', text: 'Thanks', attachment: pic, fetchImpl: fakeFetch });
-    await I.perform({ action: 'reply', item: { ...fbc, object_id: 'c9' }, account: {}, token: 'T', text: null, attachment: gif, fetchImpl: fakeFetch });
-    eq('attachments: still pictures go as attachment_url, GIFs as attachment_share_url so they move', [sent[0][1].attachment_url, sent[0][1].message, sent[1][1].attachment_share_url, 'message' in sent[1][1]], [pic.url, 'Thanks', gif.url, false]);
-    const q = await call(s, 'engine_inbox_act', { id: 'fbc_c1', action: 'reply', text: '', attachment: gif }, 'chris');
-    eq('attachments: queued with the reply for the Mini', [q.ok, q.queued && q.queued.detail.attachment], [true, { url: gif.url, kind: 'gif' }]);
+    await I.perform({ action: 'reply', item: { ...fbc, object_id: 'c9' }, account: {}, token: 'T', text: null, attachment: pic, fetchImpl: fakeFetch });
+    eq('attachments: pictures go as attachment_url, with no message when there are no words', [sent[0][1].attachment_url, sent[0][1].message, sent[1][1].attachment_url, 'message' in sent[1][1], 'attachment_share_url' in sent[0][1]], [pic.url, 'Thanks', pic.url, false, false]);
+    const q = await call(s, 'engine_inbox_act', { id: 'fbc_c1', action: 'reply', text: '', attachment: pic }, 'chris');
+    eq('attachments: queued with the reply for the Mini', [q.ok, q.queued && q.queued.detail.attachment], [true, { url: pic.url, kind: 'image' }]);
     if (q.queued) await call(s, 'engine_inbox_undo', { action_id: q.queued.id }, 'chris');
   }
 
@@ -506,6 +505,34 @@ function fakeMeta() {
     eq('team: first reply only, cancelled ignored', T.median_reply_min, 75);
     eq('team: newest-first actions (as the store gives them) still time the first reply', I.teamStats({ items, actions: actions.slice().reverse(), people: ['Chris', 'Tobias', 'Sam'], now, tz: 'UTC' }).median_reply_min, 75);
     eq('team: arrivals by hour skip our own', [T.hours[9].arrived, T.hours[9].median_reply_min, T.hours[14].arrived], [1, 30, 1]);
+  }
+
+  // 40A + 40C (4 Nov): Report a problem. Chris (ENGINE_ADMINS) sees all, people their own.
+  {
+    const s = engine();
+    const reps = {};
+    s.reportsList = async () => Object.entries(clone(reps)).map(([id, d]) => ({ id, ...d }));
+    s.reportsPut = async (id, d) => { reps[id] = clone(d); return { id }; };
+    const was = process.env.ENGINE_ADMINS; process.env.ENGINE_ADMINS = 'chris';
+    try {
+      const r1 = await call(s, 'engine_report', { action: 'send', text: 'Post now did nothing on the Scotland Page', page: 'Drafts · Compose', team: 'uk' }, 'sam');
+      eq('report: sent with the page, open', [r1.ok, r1.report.by, r1.report.page, r1.report.status], [true, 'sam', 'Drafts · Compose', 'open']);
+      eq('report: needs words; only your own teams', [(await call(s, 'engine_report', { action: 'send', text: ' ' }, 'sam')).ok, (await call(s, 'engine_report', { action: 'send', text: 'broken', team: 'mx' }, 'sam')).ok], [false, false]);
+      await call(s, 'engine_report', { action: 'send', text: 'Chris own note' }, 'chris');
+      const sam = await call(s, 'engine_report', { action: 'list' }, 'sam'), ch = await call(s, 'engine_report', { action: 'list' }, 'chris');
+      eq('report: people see their own, Chris sees all', [sam.reports.length, sam.maintainer, ch.reports.length, ch.maintainer], [1, false, 2, true]);
+      eq('report: only Chris marks fixed', (await call(s, 'engine_report', { action: 'fix', id: r1.report.id }, 'sam')).ok, false);
+      const bc = await call(s, 'engine_bell', { team: 'uk' }, 'chris');
+      eq('report: in Chris\'s bell, not his own', bc.items.filter((i) => i.kind === 'report').map((i) => i.ref), [r1.report.id]);
+      const fx = await call(s, 'engine_report', { action: 'fix', id: r1.report.id, reply: 'Fixed in today\'s update' }, 'chris');
+      eq('report: fixed with a note', [fx.ok, fx.report.status, fx.report.fixed_by], [true, 'fixed', 'chris']);
+      const bs = await call(s, 'engine_bell', { team: 'uk' }, 'sam');
+      eq('report: the sender hears it was fixed', bs.items.some((i) => i.kind === 'fixed' && /Fixed in today/.test(i.text)), true);
+      reps[r1.report.id].fixed_at = new Date(Date.now() - 31 * 864e5).toISOString();
+      eq('report: gone 30 days after it was fixed', (await call(s, 'engine_report', { action: 'list' }, 'sam')).reports.length, 0);
+      for (let k = 0; k < 20; k++) reps[`x${k}`] = { by: 'sam', text: 'x', at: new Date().toISOString(), status: 'open' };
+      eq('report: at most 20 a day each', (await call(s, 'engine_report', { action: 'send', text: 'one more' }, 'sam')).ok, false);
+    } finally { if (was === undefined) delete process.env.ENGINE_ADMINS; else process.env.ENGINE_ADMINS = was; }
   }
 
   console.log(`\n${passed} passed, ${failed} failed`);
