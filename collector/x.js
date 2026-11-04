@@ -28,7 +28,9 @@
 //
 // Spokesperson accounts are collected only for posts carrying a CitizenGO link
 // or mentioning CitizenGO (lib/xschedule.js isAboutUs). Everything else on a
-// personal account is discarded before it is written.
+// personal account is discarded before it is written - unless the holder has
+// consented in writing to full collection (x_accounts.full_collection), when
+// every post is kept like an organisation account's.
 //
 // Usage:
 //   node collector/x.js [--dry-run] [--lookback-days 8] [--backfill-days 3650] [--backfill-from-days 90] [--rescan]
@@ -352,7 +354,8 @@ async function collectAccount(account, out) {
   const log = out;
   const started = new Date().toISOString();
   const now = new Date();
-  log(`\n── ${account.label || account.account_id || '?'}${account.kind === 'spokesperson' ? ' (spokesperson: CitizenGO links and mentions only)' : ''}`);
+  const filtered = account.kind === 'spokesperson' && account.full_collection !== true;
+  log(`\n── ${account.label || account.account_id || '?'}${filtered ? ' (spokesperson: CitizenGO links and mentions only)' : account.kind === 'spokesperson' ? ' (spokesperson: full account, by consent)' : ''}`);
 
   const runRow = (status, extra = {}) => ({
     run_id: RUN_ID, account_id: account.account_id || null, started_at: started,
@@ -406,7 +409,7 @@ async function collectAccount(account, out) {
   // posts, and "zero posts" must never be reported as "ok" - that is the
   // silent-failure shape this project keeps meeting (see README, Failure modes).
   const passFailures = [];
-  const keep = (p) => account.kind !== 'spokesperson' || sched.isAboutUs(p);
+  const keep = (p) => !filtered || sched.isAboutUs(p);
 
   function absorb(res, privateWindow, label) {
     const data = (res.body && res.body.data) || [];

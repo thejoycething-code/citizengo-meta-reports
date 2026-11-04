@@ -328,6 +328,24 @@ ok('spokesperson: "citizen going" is not us', !sched.isAboutUs(sp({ text: 'every
 ok('spokesperson: a non-CitizenGO link is dropped', !sched.isAboutUs(sp({ text: 'read this https://bbc.co.uk/x' })));
 ok('trailing dot host is normalised', sched.isOurHost('citizengo.org.'));
 
+// Full-collection consent (4 Nov 2026): a spokesperson with x_accounts.full_collection
+// is listed in full and drops out of the "collected only for posts about us" note.
+{
+  const xt = require('../mcp/x-tools');
+  const accts = [
+    { account_id: '1186305860', username: 'rociodangelo6', kind: 'spokesperson', full_collection: true },
+    { account_id: '77', username: 'filtered_spokes', kind: 'spokesperson', full_collection: false },
+    { account_id: '1264712994', username: 'CitizenGO', kind: 'organisation' },
+  ];
+  const list = (rows) => xt.X_TOOLS.find((t) => t.name === 'x_list_accounts').handler({ async xAccounts() { return rows; } }, {});
+  (async () => {
+    const both = (await list(accts)).text;
+    ok('note names the filtered spokesperson', /@filtered_spokes is a spokesperson account collected only/.test(both));
+    ok('note leaves out the full-collection spokesperson', !/_[^_]*@rociodangelo6[^_]*collected only/.test(both));
+    ok('no filtered spokesperson: no note', !/collected only/.test((await list([accts[0], accts[2]])).text));
+  })();
+}
+
 // ---------------------------------------------------------------------------
 console.log('\nSealed box (lib/xauth.js)\n');
 const kp = xauth.generateKeyPair();
