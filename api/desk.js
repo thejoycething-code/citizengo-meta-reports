@@ -7,6 +7,7 @@
 //   GET  /api/desk?op=docs&collection=…&team=… the desk's shared documents
 //   POST /api/desk?op=docs   {collection, id?, data, merge?}
 //   POST /api/desk?op=invite {who, team_id, role}   team admins: a sign-in link
+//   GET  /api/desk?op=img&u=…                 one of our Instagram/Facebook pictures (for saving the grid)
 //   POST /api/desk?op=logout
 //
 // Every POST must come from the desk's own page (Origin + X-Desk header), so
@@ -22,7 +23,7 @@ const DESK_TOOLS = new Set(['engine_me', 'engine_posts', 'engine_save', 'engine_
   'engine_evergreen', 'engine_evergreen_update', 'engine_connect', 'engine_media', 'engine_pause', 'engine_video', 'engine_inbox', 'engine_inbox_act',
   'engine_inbox_undo', 'engine_inbox_history', 'engine_inbox_team', 'engine_ig_grid', 'engine_bio', 'engine_parliament', 'engine_inbox_person', 'engine_inbox_posts', 'engine_inbox_rules', 'engine_inbox_rule', 'engine_inbox_alert',
   'engine_inbox_bulk', 'engine_analytics', 'engine_listening', 'engine_automations', 'engine_automation', 'engine_access', 'page_inviter_usage', 'engine_inviter', 'engine_links', 'engine_health', 'engine_preview', 'engine_trash',
-  'engine_create', 'engine_inbox_check', 'engine_prefs', 'engine_bell']);
+  'engine_create', 'engine_inbox_check', 'engine_prefs', 'engine_bell', 'engine_inbox_post', 'engine_inbox_similar', 'engine_benchmark', 'engine_house_rules']);
 
 function send(res, status, body, cookie) {
   res.statusCode = status;
@@ -94,6 +95,22 @@ module.exports = async (req, res) => {
       const job = await D.aiJobGet(String(url.searchParams.get('id') || ''), who);
       if (!job) return send(res, 404, { error: 'No such request.' });
       return send(res, 200, { id: job.id, status: job.status, text: job.status === 'done' ? job.text : null, error: job.error || null });
+    }
+    // 16 (Priority Two, 3 Nov): our own Instagram and Facebook pictures, fetched
+    // for the signed-in desk so the grid can be saved as one image (the CDNs
+    // send no CORS headers, so the browser can't draw them into a picture).
+    // Meta's picture hosts only, images only, 6 MB at most.
+    if (op === 'img' && req.method === 'GET') {
+      let u;
+      try { u = new URL(String(url.searchParams.get('u') || '')); } catch (e) { return send(res, 400, { error: 'Bad picture address.' }); }
+      if (u.protocol !== 'https:' || !/(^|\.)(cdninstagram\.com|fbcdn\.net)$/i.test(u.hostname)) return send(res, 400, { error: 'Only Instagram and Facebook pictures.' });
+      const r = await fetch(u.toString(), { redirect: 'follow' }).catch(() => null);
+      const type = r && r.headers.get('content-type') || '';
+      if (!r || !r.ok || !/^image\//.test(type)) return send(res, 502, { error: 'Picture not available.' });
+      const buf = Buffer.from(await r.arrayBuffer());
+      if (buf.length > 6e6) return send(res, 413, { error: 'Picture too big.' });
+      res.statusCode = 200; res.setHeader('Content-Type', type); res.setHeader('Cache-Control', 'private, max-age=3600');
+      return res.end(buf);
     }
     if (op === 'file' && req.method === 'GET') {
       try { return send(res, 200, await D.fileLink(String(url.searchParams.get('name') || ''))); }

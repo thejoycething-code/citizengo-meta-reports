@@ -227,6 +227,50 @@ function fakeMeta() {
     [[['105_9', 1, 1, 0, true], ['105_1', 1, 0, 1, false], ['m1', 1, 0, 1, false]], ['105_9']]);
   eq('by post: another team cannot look', await callErr(s, 'engine_inbox_posts', { team: 'uk' }, 'tamara'), 'ENGINE_NOT_MEMBER');
 
+  // Priority Two: the post card (10A) and our past replies to similar comments (35A).
+  {
+    s.postFigures = async ({ platform, id }) => id === '105_1' ? { platform, text: 'Burnham: put it in writing', url: 'https://fb/105_1', img: null, collected_date: '2026-11-02', views: 900, reactions: { total: 40, like: 30, love: 8, anger: 2 }, shares: 12, comments: 5 } : null;
+    const pc = await call(s, 'engine_inbox_post', { team: 'uk', thread_id: '105_1' }, 'sam');
+    eq('post card: nightly figures, reactions by type, shares, the post tone and counts here', [pc.figures.reactions.love, pc.figures.shares, pc.figures.as_of, typeof pc.tone, pc.here.comments], [8, 12, '2026-11-02', 'string', 1]);
+    eq('post card: another team cannot look', await callErr(s, 'engine_inbox_post', { team: 'uk', thread_id: '105_1' }, 'tamara'), 'ENGINE_NOT_MEMBER');
+    eq('post card: unknown conversation', (await call(s, 'engine_inbox_post', { team: 'uk', thread_id: 'nope' }, 'sam')).ok, false);
+    const t0 = new Date().toISOString();
+    s.db.inbox.push({ id: 'fbc_p1', team_id: 'uk', account_key: 'uk-fb', platform: 'facebook', kind: 'comment', thread_id: '105_1', object_id: 'p1', text: 'Where do I sign the petition? The link in your bio is broken', author_name: 'Ann', created_at: t0, status: 'done', labels: [] },
+      { id: 'fbc_p2', team_id: 'uk', account_key: 'uk-fb', platform: 'facebook', kind: 'comment', thread_id: '105_1', object_id: 'p2', text: 'Lovely weather in Leeds today', author_name: 'Bob', created_at: t0, status: 'done', labels: [] },
+      { id: 'fbc_p3', team_id: 'uk', account_key: 'uk-fb', platform: 'facebook', kind: 'comment', thread_id: '105_1', object_id: 'p3', text: 'The petition link in your bio is broken, where can I sign?', author_name: 'Cat', created_at: t0, status: 'open', labels: [] });
+    s.db.actions.push({ id: 901, item_id: 'fbc_p1', team_id: 'uk', account_key: 'uk-fb', action: 'reply', text: 'Sorry! The link is fixed now: cgo.ac/x', by: 'fiona', created_at: t0, run_after: t0, status: 'done' },
+      { id: 902, item_id: 'fbc_p2', team_id: 'uk', account_key: 'uk-fb', action: 'reply', text: 'Enjoy the sun!', by: 'chris', created_at: t0, run_after: t0, status: 'done' });
+    s.engineInboxByIds = async (ids) => clone(s.db.inbox.filter((r) => ids.includes(r.id)));
+    const sim = await call(s, 'engine_inbox_similar', { team: 'uk', id: 'fbc_p3' }, 'sam');
+    eq('past replies: best match first with who wrote it, at most three, unrelated replies left out', [sim.replies[0].text, sim.replies[0].by, sim.replies.length <= 3, sim.replies.some((r) => r.text === 'Enjoy the sun!')], ['Sorry! The link is fixed now: cgo.ac/x', 'fiona', true, false]);
+    eq('past replies: another team cannot look', await callErr(s, 'engine_inbox_similar', { team: 'uk', id: 'fbc_p3' }, 'tamara'), 'ENGINE_NOT_MEMBER');
+    s.db.teams[0].accounts.find((a) => a.key === 'uk-ig').ig_id = '178';
+    s.allyBenchmark = async ({ country, ig_ids }) => ({ accounts: [{ username: 'rtl', label: 'Right To Life UK', country, followers_count: 40000 }, { username: 'quiet', label: 'Quiet one', country, followers_count: 10 }],
+      posts: [{ username: 'rtl', media_id: 'a', like_count: 300, comments_count: 20, permalink: 'https://ig/a', caption: 'Best' }, { username: 'rtl', media_id: 'b', like_count: 100, comments_count: 0 }],
+      ours: ig_ids.map((x) => ({ ig_id: x.ig_id, key: x.key, username: 'citizengo_uk', followers: 18000, media: [{ media_id: 'm1' }], metrics: [{ media_id: 'm1', likes: 50, comments: 10 }] })) });
+    const bm = await call(s, 'engine_benchmark', { team: 'uk' }, 'sam');
+    eq('benchmark: allies with posts, ours marked, sorted by per post, team country by default', [bm.country, bm.rows.map((r) => [r.handle, r.ours, r.posts, r.engagement, r.per_post]), bm.rows[0].top.url], ['UK', [['rtl', false, 2, 420, 210], ['citizengo_uk', true, 1, 60, 60]], 'https://ig/a']);
+    eq('benchmark: another team cannot look', await callErr(s, 'engine_benchmark', { team: 'uk' }, 'tamara'), 'ENGINE_NOT_MEMBER');
+    // House rules (33): built-in default, then the team's saved copy over it; each rule says where it applies.
+    s.houseRulesDoc = async () => null;
+    const hd = await call(s, 'engine_house_rules', { team: 'uk' }, 'sam');
+    eq('house rules: the built-in default, every section, prompt text', [hd.is_default, hd.sections_order.length, /^House rules for this team/.test(hd.text), /British spelling/.test(hd.text)], [true, 6, true, true]);
+    s.houseRulesDoc = async () => ({ sections: { voice: 'Bold and kind.' }, rules: [{ id: 'r1', text: 'Say MPs, never politicians', by: 'sam', on: { compose: false, inbox: true } }], updated_by: 'sam' });
+    const hi = await call(s, 'engine_house_rules', { team: 'uk', for: 'inbox' }, 'sam');
+    const hc = await call(s, 'engine_house_rules', { team: 'uk' }, 'sam');
+    eq('house rules: saved sections over the default, rules only where switched on, morning off unless set', [hi.is_default, hi.sections.voice, hi.sections.tone === hd.sections.tone, /Say MPs/.test(hi.text), /Say MPs/.test(hc.text), hi.rules[0].on.morning], [false, 'Bold and kind.', true, true, false, false]);
+    eq('house rules: another team cannot look', await callErr(s, 'engine_house_rules', { team: 'uk' }, 'tamara'), 'ENGINE_NOT_MEMBER');
+    let put = null; s.houseRulesPut = async (team, doc) => { put = doc; }; s.houseRulesDoc = async () => put;
+    const hs = await call(s, 'engine_house_rules', { team: 'uk', set: { sections: { tone: 'Gentle.' }, rules: [{ id: 'r2', text: 'Thank people first', on: { inbox: true, compose: false } }] } }, 'sam');
+    eq('house rules: a teammate saves; who and when recorded; returned merged', [put.updated_by, hs.sections.tone, hs.sections.voice === hd.sections.voice, hs.rules.map((r) => r.text)], ['sam', 'Gentle.', true, ['Thank people first']]);
+    eq('house rules: another team cannot save', await callErr(s, 'engine_house_rules', { team: 'uk', set: { sections: { tone: 'x' } } }, 'tamara'), 'ENGINE_NOT_MEMBER');
+    eq('house rules: reset goes back to the built-in rules', (await call(s, 'engine_house_rules', { team: 'uk', reset: true }, 'sam')).rules.length, 7);
+    let refused = false; try { await require('../lib/desk').docsList('houseRules', {}); } catch (e) { refused = e.status === 400; }
+    eq('house rules: not open through the generic docs endpoint', refused, true);
+    const mx = require('../lib/house-rules').defaults('mx');
+    eq('house rules: Spanish default for Mexico', [/Cercana/.test(mx.sections.voice), mx.rules.length], [true, 7]);
+  }
+
   // Auto-hide list.
   {
     const R = [{ kind: 'scams' }, { kind: 'links' }, { kind: 'word', value: 'idiot' }];

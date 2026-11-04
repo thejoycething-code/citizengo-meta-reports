@@ -580,6 +580,116 @@ async function engineInboxPerson(store, args, { who }) {
   });
 }
 
+// 33 (Priority Two, 3 Nov): a team's house rules (voice, tone, audience,
+// always, never, style, and the rules people added), the saved copy over the
+// built-in default, with prompt-ready text for compose, inbox or the morning run.
+async function engineHouseRules(store, args, { who }) {
+  const ctx = await context(store, who);
+  const team = String(args.team || '');
+  if (!E.canEditTeam(ctx, team)) throw err('You are not in that team.', 'ENGINE_NOT_MEMBER');
+  const HR = require('../lib/house-rules');
+  const D = () => require('../lib/desk');
+  // Save (anyone in the team): sections and rules, or reset: true for the built-in default.
+  if (args.set || args.reset) {
+    const s = args.set || {};
+    const doc = args.reset ? { team, updated_by: who, updated_at: new Date().toISOString() }
+      : { team, sections: s.sections && typeof s.sections === 'object' ? s.sections : undefined, rules: Array.isArray(s.rules) ? s.rules : undefined, updated_by: who, updated_at: new Date().toISOString() };
+    const clean = HR.merge(team, doc);
+    const out = { team, updated_by: who, updated_at: doc.updated_at, ...(args.reset ? {} : { sections: clean.sections, rules: clean.rules }) };
+    if (store.houseRulesPut) await store.houseRulesPut(team, out);
+    else await D().docsPut('houseRules', `hr_${team}`, out, who, { engine: true });
+  }
+  let saved = null;
+  if (store.houseRulesDoc) saved = await store.houseRulesDoc(team);
+  else { try { const rows = await D().docsList('houseRules', { team, engine: true }); saved = (rows.find((r) => r.id === `hr_${team}`) || {}).data || null; } catch (e) { saved = null; } }
+  const h = HR.merge(team, saved);
+  const where = ['compose', 'inbox', 'morning'].includes(args.for) ? args.for : 'compose';
+  return json({ ...h, sections_order: HR.SECTIONS, default_sections: HR.defaults(team).sections, default_rules: HR.defaults(team).rules, text: HR.text(h, where), for: where });
+}
+
+// 28A/B (Priority Two, 3 Nov): our Instagram beside allied organisations'
+// Instagram over the last days (30 by default): followers, posts, likes +
+// comments, and per post. Allies only: opponents are left out on purpose.
+const TEAM_COUNTRY = { uk: 'UK', scotland: 'UK', ie: 'IE', us: 'US' };
+async function engineBenchmark(store, args, { who }) {
+  const ctx = await context(store, who);
+  const team = String(args.team || '');
+  const t = teamById(ctx, team);
+  if (!t || !E.canEditTeam(ctx, team)) throw err('You are not in that team.', 'ENGINE_NOT_MEMBER');
+  const days = [7, 30, 90].includes(Number(args.days)) ? Number(args.days) : 30;
+  const since = new Date(Date.now() - days * 864e5).toISOString();
+  const country = args.country === 'all' ? null : String(args.country || TEAM_COUNTRY[team] || '') || null;
+  const igs = (t.accounts || []).filter((a) => a.platform === 'instagram' && (a.ig_id || a.handle));
+  const B = await store.allyBenchmark({ country, since, ig_ids: igs.map((a) => ({ ig_id: a.ig_id || null, handle: a.handle || null, key: a.key })) });
+  const row = (o) => ({ ...o, engagement: o.likes + o.comments, per_post: o.posts ? Math.round((o.likes + o.comments) / o.posts) : 0, per_1k_followers: o.followers ? Math.round((o.likes + o.comments) / o.posts / o.followers * 1000 * 10) / 10 || 0 : null });
+  const rows = (B.accounts || []).map((a) => {
+    const ps = (B.posts || []).filter((p) => p.username === a.username);
+    const top = ps.slice().sort((x, y) => ((y.like_count || 0) + (y.comments_count || 0)) - ((x.like_count || 0) + (x.comments_count || 0)))[0];
+    return row({ name: a.label || a.username, handle: a.username, country: a.country, topic: a.topic, ours: false, followers: a.followers_count || null, posts: ps.length,
+      likes: ps.reduce((n, p) => n + (p.like_count || 0), 0), comments: ps.reduce((n, p) => n + (p.comments_count || 0), 0),
+      top: top ? { url: top.permalink, text: String(top.caption || '').slice(0, 140), engagement: (top.like_count || 0) + (top.comments_count || 0), at: top.timestamp } : null });
+  }).filter((r) => r.posts);
+  for (const o of B.ours || []) {
+    const by = Object.fromEntries((o.metrics || []).map((m) => [m.media_id, m]));
+    const likes = o.media.reduce((n, m) => n + ((by[m.media_id] || {}).likes || 0), 0), comments = o.media.reduce((n, m) => n + ((by[m.media_id] || {}).comments || 0), 0);
+    const acc = igs.find((a) => a.key === o.key) || {};
+    rows.push(row({ name: acc.name || ('@' + (o.username || 'us')), handle: o.username, country: TEAM_COUNTRY[team] || null, ours: true, followers: o.followers, posts: o.media.length, likes, comments, top: null }));
+  }
+  rows.sort((a, b) => b.per_post - a.per_post);
+  return json({ team, days, country: country || 'all', measure: 'likes + comments on Instagram', rows, note: 'Allies only. Their figures come from Instagram business discovery: likes and comments, no reach.' });
+}
+
+// 10A (Priority Two, 3 Nov): the post a conversation is on, with its newest
+// nightly figures (reactions by type, shares, comments, views) and the post's
+// own tone. Facebook pictures can't be shown (Meta's stored picture links
+// expire); Instagram thumbnails can.
+async function engineInboxPost(store, args, { who }) {
+  const ctx = await context(store, who);
+  const team = String(args.team || '');
+  if (!E.canEditTeam(ctx, team)) throw err('You are not in that team.', 'ENGINE_NOT_MEMBER');
+  const thread = String(args.thread_id || '');
+  if (!thread) return json({ ok: false, error: 'thread_id is needed.' });
+  const rows = await store.engineInbox({ team_ids: [team], thread_id: thread, limit: 1000 });
+  if (!rows.length) return json({ ok: false, error: 'No conversation with that id in this team.' });
+  const r0 = rows[0];
+  const fig = store.postFigures ? await store.postFigures({ platform: r0.platform, id: thread }).catch(() => null) : null;
+  const text = (fig && fig.text) || r0.post_text || '';
+  const t = text ? SENT.toneOf(text, { lang: langOf(text) }) : null;
+  const theirs = rows.filter((r) => !r.from_us);
+  return json({
+    team, thread_id: thread, platform: r0.platform, account_key: r0.account_key, is_ad: !!r0.is_ad,
+    text: String(text).slice(0, 600), url: (fig && fig.url) || r0.post_url || null, img: (fig && fig.img) || null, type: (fig && fig.type) || null, at: (fig && fig.at) || null,
+    figures: fig && fig.collected_date ? { as_of: fig.collected_date, views: fig.views ?? null, reactions: fig.reactions, shares: fig.shares ?? null, comments: fig.comments ?? null, saved: fig.saved ?? null } : null,
+    tone: (t && t.tone) || 'neutral',
+    here: { comments: theirs.length, open: theirs.filter((r) => r.status === 'open').length, ours: rows.length - theirs.length },
+  });
+}
+
+// 35A (Priority Two, 3 Nov): the team's own past replies to comments like
+// this one, matched by shared words (no AI). Up to three, best first.
+const SIM_STOP = new Set('the and for you your our are was this that with have has had not but they them their what when where who why how can could would will just about from into its is be been being a an to of in on at by or as if so do does did i me my we us he she his her him all any more most some such than too very also there here then now only own same other out up down off over under again once yes no ok please thanks thank'.split(' '));
+const simWords = (t) => new Set(String(t || '').toLowerCase().normalize('NFKD').replace(/https?:\S+/g, ' ').split(/[^\p{L}\p{N}']+/u).filter((w) => w.length > 2 && !SIM_STOP.has(w)));
+function simScore(a, b) { if (!a.size || !b.size) return 0; let n = 0; for (const w of a) if (b.has(w)) n++; return n / Math.min(a.size, b.size) * (n >= 2 ? 1 : 0.5); }
+async function engineInboxSimilar(store, args, { who }) {
+  const ctx = await context(store, who);
+  const team = String(args.team || '');
+  if (!E.canEditTeam(ctx, team)) throw err('You are not in that team.', 'ENGINE_NOT_MEMBER');
+  const item = args.id && store.engineInboxItem ? await store.engineInboxItem(String(args.id)) : null;
+  const text = String(args.text || (item && item.team_id === team ? item.text : '') || '');
+  const mine = simWords(text);
+  if (!mine.size) return json({ team, replies: [] });
+  const acts = (await store.engineInboxActions({ team_ids: [team], limit: 1000 })).filter((a) => a.action === 'reply' && a.status === 'done' && a.text && a.item_id !== args.id);
+  const parents = store.engineInboxByIds ? await store.engineInboxByIds(acts.map((a) => a.item_id)) : [];
+  const byId = Object.fromEntries(parents.map((p) => [p.id, p]));
+  const seen = new Set();
+  const out = acts.map((a) => { const p = byId[a.item_id]; return p ? { a, p, score: simScore(mine, simWords(p.text)) } : null; })
+    .filter((x) => x && x.score >= 0.34).sort((x, y) => y.score - x.score || String(y.a.created_at).localeCompare(String(x.a.created_at)))
+    .filter((x) => { const k = String(x.a.text).toLowerCase().replace(/\s+/g, ' ').trim(); if (seen.has(k)) return false; seen.add(k); return true; })
+    .slice(0, 3)
+    .map((x) => ({ text: x.a.text, by: x.a.by, at: x.a.created_at, to: String(x.p.text || '').slice(0, 160), to_name: x.p.author_name || null, platform: x.p.platform, score: Math.round(x.score * 100) / 100 }));
+  return json({ team, replies: out });
+}
+
 // By post: the last 7 days' comments grouped by the post or ad they're on,
 // busiest unanswered first.
 async function engineInboxPosts(store, args, { who }) {
@@ -758,10 +868,11 @@ async function engineAnalytics(store, args, ctx0) {
     const off = (store.engineAccessLimits ? await store.engineAccessLimits({ who: ctx0.who }) : []).filter((l) => l.account_key === '*' && l.can_analytics === false).map((l) => l.team_id);
     if (Object.keys(ctx.myTeams).every((t) => off.includes(t))) throw err('A team admin has turned Analytics off for you.', 'ENGINE_NOT_ALLOWED');
   }
-  const scope = ['citizengo', 'hazteoir', 'team', 'countries'].includes(args.scope) ? args.scope : 'citizengo';
+  const scope = ['citizengo', 'hazteoir', 'team', 'countries', 'leaderboard'].includes(args.scope) ? args.scope : 'citizengo';
   const days = [7, 30, 90].includes(Number(args.days)) ? Number(args.days) : 30;
   const team = scope === 'team' ? String(args.team || '') : '';
   if (team && !E.canEditTeam(ctx, team)) throw err('You are not in that team.', 'ENGINE_NOT_MEMBER');
+  if (scope === 'leaderboard') return cached(store, `analytics:v2:leaderboard:${days}`, args, () => leaderboardCompute(store, ctx, days));
   if (scope === 'countries') return cached(store, `analytics:v2:countries:${days}`, args, () => countriesCompute(store, ctx, days));
   // A date range of the person's own choosing (and, optionally, the window to
   // compare it with): only the round-two report, posts and conversations.
@@ -1268,6 +1379,56 @@ async function analyticsCompute(store, args, { who }) {
 // Board E, every country: each team's own Facebook Pages, reach and net
 // follows against the window before, 12 weeks of weekly reach, signatures
 // from its tracked links, and its best post against its Page's normal.
+// 37E + 37C (Chris, 4 Nov): a friendly leaderboard of CitizenGO's own Facebook
+// Pages (HazteOir kept apart), this window against the one before, so the desk
+// can rank by any measure and show who moved. Trophies are picked on the desk.
+// Only figures we already collect nightly; nothing about other organisations.
+async function leaderboardCompute(store, ctx, days, now = Date.now()) {
+  const { TOOLS } = require('./tools');
+  const run = (name, a) => TOOLS.find((t) => t.name === name).handler(store, a);
+  const ymd = (t) => new Date(t).toISOString().slice(0, 10);
+  const all = await store.loadAll();
+  const pages = (all.pages || []).filter((p) => !IS_HO.test(p.name || ''));
+  const byName = Object.fromEntries(pages.map((p) => [p.name, p]));
+  const pStart = now - 2 * days * 864e5, cStart = now - days * 864e5;
+  const [cur, prev, tp] = await Promise.all([
+    run('page_growth', { days }), run('page_growth', { since: ymd(pStart), until: ymd(cStart - 864e5) }),
+    run('top_posts', { days, sort: 'views', compact: true, limit: 1000 }),
+  ]);
+  const count = { cur: {}, prev: {} };
+  for (const x of all.posts || []) {
+    const t = Date.parse(x.created_time); if (!t) continue;
+    const k = t >= cStart ? 'cur' : t >= pStart ? 'prev' : null; if (k) count[k][x.page_id] = (count[k][x.page_id] || 0) + 1;
+  }
+  const rowsTp = (tp.data && tp.data.rows) || [];
+  const med = {};
+  for (const r of rowsTp) if (typeof r.views_total === 'number') (med[r.page_id] = med[r.page_id] || []).push(r.views_total);
+  for (const k of Object.keys(med)) med[k] = median(med[k]);
+  const teamOf = {};
+  for (const t of ctx.teams || []) for (const a of t.accounts || []) if (a.platform === 'facebook' && a.page_id) teamOf[a.page_id] = { id: t.id, flag: t.flag || '' };
+  const fig = (r, posts) => {
+    if (!r) return null;
+    const start = typeof r.followers === 'number' && typeof r.netFollows === 'number' ? r.followers - r.netFollows : null;
+    return { followers: r.followers, net_follows: r.netFollows, growth: start > 0 && r.netFollows != null ? Math.round((r.netFollows / start) * 1000) / 10 : null,
+      engagements: r.engagements, reach: r.reach, posts: posts || 0,
+      per_post: posts && r.engagements != null ? Math.round(r.engagements / posts) : null,
+      per_1k: r.followers && r.engagements != null ? Math.round((r.engagements / r.followers) * 10000) / 10 : null };
+  };
+  const curRows = (cur.data && cur.data.facebook) || [], prevRows = (prev.data && prev.data.facebook) || [];
+  const out = [];
+  for (const r of curRows) {
+    const p = byName[r.name]; if (!p) continue;
+    const pr = prevRows.find((x) => x.name === r.name);
+    const best = rowsTp.filter((x) => x.page_id === p.page_id && med[x.page_id] && typeof x.views_total === 'number').sort((a, b) => b.views_total - a.views_total)[0];
+    const tm = teamOf[p.page_id] || null;
+    // Shared cache: no viewer-specific fields here (the desk marks its own teams' Pages).
+    out.push({ page_id: p.page_id, name: r.name, team: tm && tm.id, flag: tm ? tm.flag : '',
+      cur: fig(r, count.cur[p.page_id]), prev: fig(pr, count.prev[p.page_id]),
+      best: best ? { text: String(best.message || '').slice(0, 140), url: best.permalink_url, views: best.views_total, x: Math.round((best.views_total / med[best.page_id]) * 10) / 10 } : null });
+  }
+  return json({ scope: 'leaderboard', days, to: ymd(now), pages: out.filter((x) => x.cur && (x.cur.posts || x.cur.engagements)) });
+}
+
 async function countriesCompute(store, ctx, days, now = Date.now()) {
   const { TOOLS } = require('./tools');
   const AX = require('../lib/analytics-extra');
@@ -1889,6 +2050,10 @@ const ENGINE_TOOLS = [
   { name: 'engine_inbox', description: 'Content Engine Inbox: comments and DMs on one of your teams\' Facebook Pages and Instagram accounts, newest first (status open by default, or done, or all; optional platform facebook/instagram, kind comment/message, before an ISO time), each with its tone from its words (positive, negative, mixed, neutral; tone of the words, not whether they agree with us), with open counts, the open items\' tone, actions still in their undo window and pile-on alerts from the last 24 hours. thread returns one post\'s comments or one conversation, oldest first. q searches the words, the person\'s name and the post; accounts limits to some account keys; since an ISO time. Also lists actions waiting for a check (checks) and whether yours need one (me).', inputSchema: obj({ team: { type: 'string' }, status: { type: 'string', enum: ['open', 'done', 'all'] }, platform: { type: 'string', enum: ['facebook', 'instagram'] }, kind: { type: 'string', enum: ['comment', 'message', 'mention'] }, thread: { type: 'string' }, before: { type: 'string' }, since: { type: 'string' }, accounts: { type: 'array', items: { type: 'string' } }, q: { type: 'string' }, limit: { type: 'number' } }, ['team']), handler: engineInbox },
   { name: 'engine_inbox_act', description: 'Content Engine Inbox: act on a comment or message. done, reopen, assign (assign_to, or empty to unassign) and label (labels) apply at once. reply, private_reply (Facebook comments, within 7 days), like (Facebook only), hide, unhide, delete and ban / unban (block the author from the Facebook Page; threats can be hidden but not deleted) go to Meta from the Mini with your own Page token after 10 seconds, so they can be undone; message replies only within 24 hours of their last message. If your actions need a check, they wait for a team admin instead (check). tone (positive, neutral, negative, mixed) fixes a wrong tone by hand.', inputSchema: obj({ id: { type: 'string' }, action: { type: 'string', enum: ['reply', 'private_reply', 'like', 'hide', 'unhide', 'delete', 'ban', 'unban', 'done', 'reopen', 'assign', 'label', 'tone'] }, text: { type: 'string' }, assign_to: { type: 'string' }, labels: { type: 'array', items: { type: 'string' } }, tone: { type: 'string', enum: ['positive', 'neutral', 'negative', 'mixed'] } }, ['id', 'action']), handler: engineInboxAct },
   { name: 'engine_inbox_check', description: 'Content Engine Inbox checks (team admins): approve or send back (decision approve / reject, optional note) a teammate\'s reply, hide, delete or ban waiting for a check (action_id from engine_inbox checks), or switch checks on or off for a teammate (person, needs_check).', inputSchema: obj({ team: { type: 'string' }, action_id: { type: 'number' }, decision: { type: 'string', enum: ['approve', 'reject'] }, note: { type: 'string' }, person: { type: 'string' }, needs_check: { type: 'boolean' } }, ['team']), handler: engineInboxCheck },
+  { name: 'engine_inbox_post', description: "Content Engine Inbox: the post a conversation is on (thread_id from engine_inbox), with its newest nightly figures (reactions by type, shares, comments, views), the post's own tone and how many comments are open on it.", inputSchema: obj({ team: { type: 'string' }, thread_id: { type: 'string' } }, ['team', 'thread_id']), handler: engineInboxPost },
+  { name: 'engine_inbox_similar', description: "Content Engine Inbox: up to three of the team's own past replies to comments like this one (id of an inbox item, or text), matched by shared words, best first. No AI.", inputSchema: obj({ team: { type: 'string' }, id: { type: 'string' }, text: { type: 'string' } }, ['team']), handler: engineInboxSimilar },
+  { name: 'engine_benchmark', description: "Content Engine Analytics: your team's Instagram beside allied organisations' Instagram over the last days (7, 30 or 90; 30 by default): followers, posts, likes + comments, per post and each ally's best post. country: UK, US, IE... or all (default the team's country). Allies only.", inputSchema: obj({ team: { type: 'string' }, days: { type: 'number' }, country: { type: 'string' } }, ['team']), handler: engineBenchmark },
+  { name: 'engine_house_rules', description: "Content Engine: read or save a team's house rules (voice, tone, audience, always, never, spelling and style, plus the rules teammates added, each marked for compose, inbox and/or the morning run): the team's saved copy over the built-in default, and prompt-ready text for: compose (default), inbox or morning.", inputSchema: obj({ team: { type: 'string' }, for: { type: 'string', enum: ['compose', 'inbox', 'morning'] }, set: { type: 'object', description: 'Save: { sections, rules } (anyone in the team)' }, reset: { type: 'boolean', description: 'Back to the built-in default' } }, ['team']), handler: engineHouseRules },
   { name: 'engine_bell', description: 'Content Engine: what needs you in one team (the desk bell): Inbox items assigned to you, teammates\' actions waiting for your check, your actions checked, sent back or failed, your posts approved or sent back, publishing failures, and your Facebook connection running out. Read state is engine_prefs bell_seen.', inputSchema: obj({ team: { type: 'string' } }, ['team']), handler: engineBell },
   { name: 'engine_prefs', description: 'Content Engine: your own desk settings and saved Inbox views. No set reads them; set merges keys (inbox_views, settings; null removes one).', inputSchema: obj({ set: { type: 'object' } }), handler: enginePrefsTool },
   { name: 'engine_inbox_undo', description: 'Content Engine Inbox: undo a reply, like, hide, unhide or delete you did while it is still in its window (action_id from engine_inbox_act), or a whole bulk action (action_ids from engine_inbox_bulk).', inputSchema: obj({ action_id: { type: 'number' }, action_ids: { type: 'array', items: { type: 'number' } } }), handler: engineInboxUndo },
@@ -1912,7 +2077,7 @@ const ENGINE_TOOLS = [
   { name: 'engine_ig_grid', description: 'Content Engine Calendar › Instagram grid for one of your teams: each Instagram account with its latest 12 posts (type, caption start, link, preview image, time) from the nightly collection.', inputSchema: obj({ team: { type: 'string' } }, ['team']), handler: engineIgGrid },
   { name: 'engine_inbox_team', description: 'Content Engine Inbox › Team for one of your teams: open conversations per person and unassigned, each person\'s replies and median first-reply time, what has waited over 2 hours, and comments arriving by hour (in the team\'s own time zone) against reply times, over the last 7 days (days up to 30).', inputSchema: obj({ team: { type: 'string' }, days: { type: 'number' } }, ['team']), handler: engineInboxTeam },
   { name: 'engine_inbox_history', description: 'Content Engine Inbox moderation history for one of your teams: every reply, hide, delete, like, assignment, label and done, by whom, newest first.', inputSchema: obj({ team: { type: 'string' }, limit: { type: 'number' } }, ['team']), handler: engineInboxHistory },
-  { name: 'engine_analytics', description: 'Content Engine Analytics for the desk, as data: page reach, views, engagements and net follows, Instagram follower movement, top Facebook posts against their own Page\'s median, top Instagram posts and X totals, for the last 7, 30 or 90 days. scope citizengo (every CitizenGO Page, default), hazteoir (kept apart), team (with team) or countries (every team side by side).', inputSchema: obj({ scope: { type: 'string', enum: ['citizengo', 'hazteoir', 'team', 'countries'] }, team: { type: 'string' }, days: { type: 'number', enum: [7, 30, 90] }, from: { type: 'string', description: 'Custom range start, YYYY-MM-DD (up to 92 days). Returns only the report, ranked posts and conversations.' }, to: { type: 'string', description: 'Custom range end, inclusive; defaults to today.' }, compare_from: { type: 'string', description: 'First day of the window to compare with (same length). Default: the days just before.' }, compare: { type: 'string', enum: ['previous', 'none'] }, fresh: { type: 'boolean' } }), handler: engineAnalytics },
+  { name: 'engine_analytics', description: 'Content Engine Analytics for the desk, as data: page reach, views, engagements and net follows, Instagram follower movement, top Facebook posts against their own Page\'s median, top Instagram posts and X totals, for the last 7, 30 or 90 days. scope citizengo (every CitizenGO Page, default), hazteoir (kept apart), team (with team), countries (every team side by side) or leaderboard (every CitizenGO Facebook Page, this window and the one before: followers, growth, engagements, posts, per post, per 1,000 followers, best post).', inputSchema: obj({ scope: { type: 'string', enum: ['citizengo', 'hazteoir', 'team', 'countries', 'leaderboard'] }, team: { type: 'string' }, days: { type: 'number', enum: [7, 30, 90] }, from: { type: 'string', description: 'Custom range start, YYYY-MM-DD (up to 92 days). Returns only the report, ranked posts and conversations.' }, to: { type: 'string', description: 'Custom range end, inclusive; defaults to today.' }, compare_from: { type: 'string', description: 'First day of the window to compare with (same length). Default: the days just before.' }, compare: { type: 'string', enum: ['previous', 'none'] }, fresh: { type: 'boolean' } }), handler: engineAnalytics },
   { name: 'engine_listening', description: 'Content Engine Listening for the desk, as data: posts beating their own normal (min_multiple, default 3). tab citizengo: other CitizenGO Pages\' posts (not your team\'s, with team) by views against that Page\'s 90-day median, last 7 or 30 days. tab allies: watched ally Instagram accounts (optional country UK, US, IE, CA, AU), last 7, 10 or 30 days. tab opponents: watched opponent accounts plus their Meta Ad Library issue ads. tab beyond: hashtag posts from anyone (config/listen-hashtags.json), UK headlines per topic, and accounts our watched posts keep tagging that are not on our lists. tab opponents_mix: each opponent organisation\'s last 7 or 14 days split by topic (posts, best post, ads, spend). tab watches: watches [{id, words, not, sources}] matched against the last 14 days of those posts. tab overview: English posts from all of those in the last 14 days sorted into campaign topics (posts, change, share of voice, words, top posts, gaps) plus rising hashtags, links and names.', inputSchema: obj({ tab: { type: 'string', enum: ['citizengo', 'allies', 'opponents', 'overview', 'watches', 'opponents_mix', 'beyond'] }, watches: { type: 'array', items: { type: 'object' } }, team: { type: 'string' }, country: { type: 'string' }, days: { type: 'number' }, min_multiple: { type: 'number' }, fresh: { type: 'boolean' } }), handler: engineListening },
   { name: 'engine_record', description: 'Content Engine: record bookkeeping on a post in any status, posted and rejected included: results, posted (the real post links and time), stale, and posting.asanaTaskGid / asanaUrl / syncedAt / removedAt. Nothing else; the post itself is saved with engine_save. version must be the one you read.', inputSchema: obj({ id: { type: 'string' }, version: { type: 'number' }, patch: { type: 'object' } }, ['id', 'version', 'patch']), handler: engineRecord },
   { name: 'engine_trash', description: "Content Engine: the desk's bin of rejected posts for one of your teams. action count (default) says how many the morning run has already learnt from (ready) and how many are newer (waiting); action empty archives the ready ones: they leave the desk but the morning run still reads them like rejected posts.", inputSchema: obj({ team: { type: 'string' }, action: { type: 'string', enum: ['count', 'empty'] } }, ['team']), handler: engineTrash },

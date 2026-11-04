@@ -442,6 +442,49 @@ header.top .filters{padding-block:0;margin-left:auto}
 .ibx3{grid-template-columns:minmax(0,.9fr) minmax(0,1.4fr) 240px}@media (max-width:1180px){.ibx3{grid-template-columns:minmax(0,1fr) minmax(0,1.5fr)}.ibx3 .ibperson{grid-column:1 / -1}}@media (max-width:860px){.ibx3{grid-template-columns:minmax(0,1fr)}}
 .ibwait{font-family:var(--mono);font-size:10.5px;color:var(--muted);margin-left:6px}.ibwait.late{color:var(--bad);font-weight:700}.ibtag.pr{background:#efe8fb;color:#6a3fc1}
 .ibpost{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--line);border-radius:10px;padding:8px;background:var(--bg)}.ibpost>div{display:flex;flex-direction:column;gap:2px;min-width:0;font-size:13px}.ibpost small{color:var(--muted)}
+.ibpost2 .ibpimg,.ibpost2 .cthumb.big{width:84px;height:84px;object-fit:cover;border-radius:8px;flex:none;background:var(--sunk)}.ibptx{color:var(--muted);font-size:12.5px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}.ibpfig{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}.ibpfig .pill{font-size:11.5px}
+.ibsep{flex:1}.ibemo{position:relative}.ibemenu{position:absolute;bottom:calc(100% + 6px);left:0;z-index:20;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow,0 10px 28px rgba(0,0,0,.18));padding:8px;width:min(272px,80vw);display:flex;flex-direction:column;gap:4px}.ibemenu .eyebrow{font-size:10.5px}.ibemenu div{display:flex;flex-wrap:wrap;gap:2px}.ibemenu button{border:0;background:none;font-size:19px;line-height:1;padding:4px;border-radius:6px;cursor:pointer}.ibemenu button:hover,.ibemenu button:focus-visible{background:var(--sunk)}
+.ibx.ibfull{position:fixed;inset:0;z-index:70;background:var(--bg);padding:16px max(16px,env(safe-area-inset-right)) 24px max(16px,env(safe-area-inset-left));overflow:auto;grid-template-columns:minmax(0,1fr) 280px;align-content:start}.ibx.ibfull>.ibl{display:none}.ibx.ibfull #ibText{min-height:160px}.ibfullbar{display:flex;align-items:center;gap:10px;justify-content:space-between;border-bottom:1px solid var(--line);padding-bottom:8px}@media (max-width:860px){.ibx.ibfull{grid-template-columns:minmax(0,1fr)}}
+.ibpast{border:1px solid var(--accent);border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:8px;background:var(--surface)}.ibpast .ibpr{display:flex;flex-direction:column;gap:4px;border-top:1px solid var(--line);padding-top:8px}.ibpast .ibpr:first-of-type{border-top:0;padding-top:0}.ibpast .ibpr p{margin:0;font-size:13.5px}
+.empty2{display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px;padding:24px 16px;border:1px dashed var(--line);border-radius:12px;background:var(--surface);margin:8px}.empty2 .ei{font-size:28px;line-height:1}.empty2 p{margin:0;color:var(--muted);max-width:46ch}.empty2 .ibacts{justify-content:center}
+.calf select.on{border-color:var(--accent);color:var(--accent);font-weight:600}.calexp{position:relative}.calexpm{right:0;left:auto;min-width:240px}.calexpm .ibmrow{border:0;background:none;text-align:left;width:100%;font:inherit;color:inherit;cursor:pointer;border-radius:6px}.calexpm .ibmrow:hover{background:var(--sunk)}
+.calexpd{position:fixed;z-index:81;left:50%;top:10vh;transform:translateX(-50%);width:min(560px,calc(100vw - 32px));background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:0 20px 50px rgba(0,0,0,.3);padding:16px;display:flex;flex-direction:column;gap:10px}.calexpd h3{margin:0}.calexpd input[type=date]{font:inherit;padding:3px 6px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg)}
+.igtools{display:flex;flex-wrap:wrap;gap:6px;margin-left:auto}.igopts{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;margin:8px 0}
+#printSheet{position:fixed;inset:0;z-index:90;background:#e9edf3;overflow:auto;color:#202124}.psbar{position:sticky;top:0;display:flex;flex-wrap:wrap;gap:8px;align-items:center;background:var(--surface);color:var(--fg);border-bottom:1px solid var(--line);padding:10px 16px}.psbar .sp{flex:1}
+.pspage{background:#fff;max-width:900px;margin:20px auto;padding:28px 32px;box-shadow:0 4px 20px rgba(0,0,0,.12);font:13px/1.45 "Public Sans",system-ui,sans-serif}@media (max-width:640px){.pspage{margin:0;padding:16px}}
+.pshead{display:flex;gap:12px;align-items:center;border-bottom:3px solid #4285F4;padding-bottom:10px;margin-bottom:14px;flex-wrap:wrap}.pshead b{font:700 22px/1.1 "Barlow Condensed",Arial,sans-serif;display:block}.pshead small{color:#5f6673}.pshead .sp{flex:1}
+.pstbl{width:100%;border-collapse:collapse}.pstbl th{font:600 10.5px "IBM Plex Mono",monospace;letter-spacing:.06em;text-transform:uppercase;color:#5f6673;text-align:left;border-bottom:1px solid #dfe4ee;padding:6px}.pstbl td{border-bottom:1px solid #eef2f8;padding:6px;vertical-align:top}
+.psrow{display:grid;grid-template-columns:120px minmax(0,1fr) auto;gap:14px;align-items:start;border-bottom:1px solid #eef2f8;padding:12px 0;break-inside:avoid}.psrow img,.psph{width:120px;height:120px;object-fit:cover;border-radius:6px;background:#eef2f8;display:grid;place-items:center;text-align:center;font-size:12px;color:#5f6673}.psrow p{margin:4px 0 0;white-space:pre-wrap}.psrow small{color:#5f6673}.psok{font-weight:600;white-space:nowrap}
+@media print{body.printsheet>*:not(#printSheet){display:none!important}body.printsheet #printSheet{position:static;background:#fff;overflow:visible}body.printsheet .noprint{display:none!important}body.printsheet .pspage{box-shadow:none;margin:0;max-width:none;padding:0}}
+.anment{display:flex;flex-direction:column;gap:6px;margin:10px 0}.anmh{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap}.anbig{font:700 28px/1 var(--display)}.anment .good{color:var(--ok);font-weight:600}.anment .bad{color:var(--bad);font-weight:600}.anmbars{display:flex;align-items:flex-end;gap:2px;height:54px}.anmbars span{flex:1;height:100%;display:flex;align-items:flex-end;background:var(--sunk);border-radius:2px}.anmbars i{display:block;width:100%;background:var(--accent);border-radius:2px;min-height:1px}
+.altbl tr.ours td{background:var(--accent-soft)}.altbl th .linkish{font:inherit;color:inherit;text-transform:inherit;letter-spacing:inherit}.alrank{display:flex;flex-direction:column;gap:6px}.alrow{display:grid;grid-template-columns:24px minmax(120px,220px) minmax(0,1fr) 70px;gap:8px;align-items:center;font-size:13px}.alrow .albar{height:14px;background:var(--sunk);border-radius:4px;overflow:hidden}.alrow .albar i{display:block;height:100%;background:var(--muted)}.alrow.ours .albar i{background:var(--accent)}.alrow.ours .alname{font-weight:700;color:var(--accent)}@media (max-width:560px){.alrow{grid-template-columns:20px minmax(0,1fr) 56px}.alrow .albar{grid-column:2 / -1;grid-row:2}}
+#anPrintD input[type=text]{display:block;width:100%;font:inherit;padding:5px 8px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg);margin-top:3px}
+#printSheet{--bg:#ffffff;--surface:#ffffff;--sunk:#eef2f8;--line:#dfe4ee;--fg:#202124;--muted:#5f6673;--accent:#2563d9;--accent-fg:#fff;--accent-soft:#e6eefe;--ok:#1d7a46;--ok-soft:#e1f3e8;--warn:#9a5b00;--warn-soft:#fdf0d9;--bad:#b4282e;--bad-soft:#fbe4e4;color-scheme:light}
+.psband{display:flex;align-items:center;gap:10px;background:#4285F4;color:#fff;padding:8px 12px;border-radius:6px;margin-bottom:12px}.psband b{font:700 18px/1.1 "Barlow Condensed",Arial,sans-serif}.psband span{margin-left:auto;font-size:12px}.psband img{background:#fff;border-radius:50%}
+.psec{break-before:auto;margin-bottom:18px}.psec h2{font:700 20px/1.1 "Barlow Condensed",Arial,sans-serif;border-bottom:1px solid #dfe4ee;padding-bottom:4px}.psec+.psec{break-before:page}.psfoot{border-top:1px solid #dfe4ee;margin-top:16px;padding-top:6px;font-size:11px;color:#5f6673}
+.pscover{min-height:70vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:6px;break-after:page}.pscover h1{font:700 40px/1.05 "Barlow Condensed",Arial,sans-serif;margin:10px 0 0}.pscover p{margin:0;color:#5f6673}
+@media print{.psband{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+/* Settings 36A, labels 30A, house rules 33 (3 Nov) */
+.sthead{display:flex;gap:12px;align-items:flex-end;justify-content:space-between;flex-wrap:wrap}.sthead input{font:inherit;font-size:14px;padding:8px 12px;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--fg);min-width:260px;flex:0 1 340px}
+.stwrap{display:grid;grid-template-columns:190px minmax(0,1fr);gap:20px;align-items:start}.stnav{position:sticky;top:12px;display:flex;flex-direction:column;align-items:stretch;gap:2px}.stnav button{display:block;width:100%;font:inherit;font-size:13.5px;text-align:left;background:none;border:0;border-radius:8px;padding:7px 10px;color:var(--fg);cursor:pointer}.stnav button:hover{background:var(--surface)}.stnav button[aria-current]{background:var(--surface);font-weight:700;box-shadow:inset 3px 0 0 var(--accent)}
+.stmain{display:flex;flex-direction:column;gap:22px;min-width:0}.stsec{display:flex;flex-direction:column;gap:10px;scroll-margin-top:12px}.stsec>h3{margin:0;font-size:17px}.stsec>div{display:flex;flex-direction:column;gap:10px}
+.stlinks{gap:0!important;padding:4px 0!important}.stlink{display:grid;grid-template-columns:1fr auto;grid-template-rows:auto auto;column-gap:10px;text-align:left;font:inherit;background:none;border:0;border-top:1px solid var(--line);padding:10px 14px;color:var(--fg);cursor:pointer}.stlink:first-child{border-top:0}.stlink:hover{background:var(--bg)}.stlink span{grid-column:1;font-size:13px;color:var(--muted)}.stlink i{grid-row:1/3;grid-column:2;align-self:center;font-style:normal;font-size:20px;color:var(--muted)}
+.lblgrp{display:flex;flex-direction:column;gap:6px}.lblgrp>small{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}.lblgrp>div{display:flex;flex-wrap:wrap;gap:6px}.lbl{font:inherit;font-size:12.5px;font-weight:600;border:1px solid var(--line);border-left:4px solid var(--cc);background:var(--bg);color:var(--fg);border-radius:6px;padding:3px 8px;cursor:pointer}.lbl small{color:var(--muted);font-weight:600;margin-left:3px}
+.hrtop{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.hrtop .sp{flex:1}.hrghost{background:transparent!important;color:var(--fg)!important;border:1px solid var(--line)!important}
+.hrsecs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.hrsec{display:flex;flex-direction:column;gap:4px}.hrh{display:flex;gap:8px;align-items:baseline}.hrh small{font-size:11.5px;color:var(--muted)}.hrh small.chg{color:var(--accent);font-weight:700}.hrh .lnk{font-size:12px;margin-left:auto}
+.hrsec textarea{font:inherit;font-size:13.5px;line-height:1.45;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg);resize:vertical;min-height:70px}
+.hrrules{display:flex;flex-direction:column;gap:8px}.hrrh{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}.hrtbl td:nth-child(n+3),.hrtbl th:nth-child(n+3){text-align:center;width:1%;white-space:nowrap}.hrtbl td:nth-child(2){white-space:nowrap}.hrsw input{width:16px;height:16px;accent-color:var(--accent)}
+.hradd{display:flex;gap:8px}.hradd input{flex:1;min-width:0;font:inherit;font-size:13.5px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg)}
+@media (max-width:760px){.stwrap{grid-template-columns:1fr;gap:12px}.stnav{flex-direction:row;overflow-x:auto;gap:6px;top:0;z-index:3;background:var(--bg);padding:6px 0;scrollbar-width:none}.stnav button{width:auto;flex:0 0 auto;white-space:nowrap;border:1px solid var(--line);border-radius:999px;padding:5px 12px;font-size:13px}.stnav button[aria-current]{box-shadow:none;background:var(--fg);color:var(--bg);border-color:var(--fg)}.sthead input{min-width:0;flex:1 1 100%}.hrsecs{grid-template-columns:1fr}.hrtbl td:nth-child(2),.hrtbl th:nth-child(2){display:none}}
+/* 26A chart tools and 37E leaderboard (4 Nov) */
+.ctools{display:inline-flex;gap:2px;flex:none;opacity:0;transition:opacity .12s}.ancard:hover .ctools,.ancard:focus-within .ctools,.ancard.anfull .ctools{opacity:1}@media (hover:none){.ctools{opacity:1}}
+.cti{display:inline-grid;place-items:center;width:28px;height:28px;border:1px solid transparent;border-radius:8px;background:none;color:var(--muted);cursor:pointer}.cti:hover,.cti:focus-visible{background:var(--bg);border-color:var(--line);color:var(--fg)}
+.ctm{position:relative}.ctmenu{position:absolute;right:0;top:calc(100% + 4px);z-index:30;display:flex;flex-direction:column;min-width:180px;background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow,0 10px 28px rgba(0,0,0,.18));padding:4px}.ctmenu button{font:inherit;font-size:13px;text-align:left;background:none;border:0;border-radius:6px;padding:7px 10px;color:var(--fg);cursor:pointer}.ctmenu button:hover{background:var(--bg)}
+.ancard.anfull{position:fixed;inset:16px;z-index:60;overflow:auto;box-shadow:0 0 0 100vmax rgba(10,14,24,.55);padding:20px}.ancard.anfull svg.anchart{width:100%;height:auto;max-height:70vh}body.anfullon{overflow:hidden}
+.cttbl{margin-top:8px;max-height:320px;overflow:auto}
+.lbtros{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px;margin:4px 0 12px}.lbtro{display:flex;flex-direction:column;gap:2px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:10px 12px;min-width:0}.lbtro b{font-size:15px}.lbtro .n{font-size:13px;overflow:hidden;text-overflow:ellipsis}
+.lbtbl tr.ours td{background:var(--accent-soft,rgba(37,99,217,.08))}.lbtbl td.lbk{font-weight:700}.lbmv{font-size:12px;font-weight:700;color:var(--muted)}.lbmv.up{color:var(--ok)}.lbmv.dn{color:var(--bad)}.lbmv.new{color:var(--accent)}
+@media (max-width:640px){.ancard.anfull{inset:0;border-radius:0}}
 .ibsug{display:flex;flex-direction:column;gap:6px}.ibsugs{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:6px}
 .ibs{font:inherit;font-size:13px;text-align:left;border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:10px;padding:8px 10px;cursor:pointer;line-height:1.4}.ibs:hover{border-color:var(--accent);background:var(--accent-soft)}.ibs small{display:block;font-weight:700;font-size:11.5px;color:var(--accent);margin-bottom:2px}
 .ibperson{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px;display:flex;flex-direction:column;gap:10px;font-size:13px;position:sticky;top:12px}
@@ -1093,7 +1136,17 @@ body.cpopen{overflow:hidden}
   <section id="anView" class="egv" hidden aria-label="Analytics"></section>
   <section id="toolsView" class="egv" hidden aria-label="Tools"></section>
   <section id="lsView" class="egv" hidden aria-label="Listening"></section>
-  <section id="stView" class="egv" hidden aria-label="Settings"><div><h2>Settings</h2><p class="lede">Your own settings, your access, and your Facebook connection.</p></div><div id="stMine"></div><div id="stBody"></div><div class="ibd"><b>Facebook connection</b><p class="src" style="margin:0">Connect your own Facebook account so the Pages you manage there become the accounts you can approve posts for and reply as. Reconnect to refresh them.</p><div><span id="fbConnect"></span></div></div></section>
+  <section id="stView" class="egv" hidden aria-label="Settings"><div class="sthead"><div><h2>Settings</h2><p class="lede">Everything you can set, in one place. Search, or jump to a section.</p></div><input type="search" id="stQ" placeholder="Search settings, e.g. voice, initials, auto-hide" aria-label="Search settings" autocomplete="off"></div>
+  <div class="stwrap"><nav class="stnav" id="stNav" aria-label="Settings sections"></nav><div class="stmain" id="stMain">
+  <div class="stsec" id="st-me" data-st="me" data-kw="me theme light dark time zone notifications my settings"><h3>Me</h3><div id="stMine"></div></div>
+  <div class="stsec" id="st-team" data-st="team" data-kw="team access role initials invite people admin permissions"><h3>Team and access</h3><div id="stBody"></div></div>
+  <div class="stsec" id="st-conn" data-st="conn" data-kw="connections facebook instagram pages reconnect login"><h3>Connections</h3><div class="ibd"><b>Facebook connection</b><p class="src" style="margin:0">Connect your own Facebook account so the Pages you manage there become the accounts you can approve posts for and reply as. Reconnect to refresh them.</p><div><span id="fbConnect"></span></div></div></div>
+  <div class="stsec" id="st-inbox" data-st="inbox" data-kw="inbox shortcuts rules automations auto-hide banned words auto replies moderation"><h3>Inbox shortcuts</h3><div id="stInbox"></div></div>
+  <div class="stsec" id="st-pub" data-st="pub" data-kw="publishing link in bio labels tags campaigns"><h3>Publishing</h3><div id="stPub"></div></div>
+  <div class="stsec" id="st-rules" data-st="rules" data-kw="house rules voice tone audience always never spelling style claude ai prompts"><h3>House rules</h3><div id="stRules"></div></div>
+  <div class="stsec" id="st-listen" data-st="listen" data-kw="listening watches topics keywords parliament"><h3>Listening</h3><div id="stListen"></div></div>
+  <p class="src" id="stNone" hidden>No settings match that. Try another word.</p>
+  </div></div></section>
 </div>
 <div class="pauseline" id="pauseLine" hidden></div>
 <div class="help" id="pauseDlg" hidden role="dialog" aria-modal="true" aria-label="Pause publishing"><div class="helpbox pdlg" id="pauseBox"></div></div>
@@ -1191,7 +1244,9 @@ function renderFilters(){
 }
 /* Drafts board [Priority One 9A]: who made a draft, its labels, and the words search reads. */
 function draftBy(d){return d.own?(d.own.name||d.own.by||"A teammate"):"The engine"}
-function draftLabels(d){const l=[];if(d.launch)l.push("Launch pack");if(d.own)l.push(d.own.translatedFrom?"Translated":"Own post");if(d.action&&d.action.title)l.push(d.action.title);if(d.evergreen_id||/evergreen/i.test(d.type||""))l.push("Evergreen");return l}
+/* 30A (3 Nov): labels are automatic and never longer than three words (campaign names are cut to their first three). */
+function short3(t){const w=String(t||"").replace(/\s+/g," ").trim().split(" ").filter(Boolean);return w.slice(0,3).join(" ")}
+function draftLabels(d){const l=[];if(d.launch)l.push("Launch pack");if(d.own)l.push(d.own.translatedFrom?"Translated":"Own post");if(d.action&&d.action.title)l.push(short3(d.action.title));if(d.evergreen_id||/evergreen/i.test(d.type||""))l.push("Evergreen");return l}
 function draftText(d){const p=d.platforms||{};return [d.title,d.issue,d.type,d.rationale,p.facebook,p.instagram,p.x,p.facebookComment,(d.source||{}).label,(d.action||{}).title,...(d.notes||[]).map(n=>n&&n.text)].filter(Boolean).join(" \n").toLowerCase()}
 function hasChecks(d){return (d.facts||[]).some(f=>f.status==="check")}
 function renderQueue(){
@@ -1201,7 +1256,7 @@ function renderQueue(){
     $("#queue").innerHTML=newBar()+`<div class="empty">No drafts yet. The engine adds each day's batch here, or start your own with Compose.</div>`;
     return;
   }
-  if(!list.length){$("#queue").innerHTML=newBar()+trashBar()+`<div class="empty">Nothing in “${esc(STATUS.find(s=>s.key===S.status).label)}”.</div>`;return}
+  if(!list.length){$("#queue").innerHTML=newBar()+trashBar()+draftsEmpty();return}
   if(!list.find(d=>d.id===S.openId)) { S.openId=list[0].id; resetDraftUi(); }
   const grouped=!["posted","rejected"].includes(S.status);let lastG=null;
   const qday=d=>{const g=groupOf(d);if(["Needs a new time","No date yet"].includes(g))return g;const t=whenOf(d);const dl=t.toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"});return g==="Today"||g==="Tomorrow"?`${g} · ${dl}`:dl};
@@ -1382,7 +1437,9 @@ document.addEventListener("input",ev=>{if(ev.target.id!=="ieText"||!S.inline)ret
 
 /* say WHY a save failed, and keep the details for Claude */
 /* Web app: S.sample is the "Ask Claude" round trip (desk/web.js), so no timeout: the person takes as long as they need. */
-function askAI(prompt){return S.sample(prompt,{modelTier:"default"})}
+/* 33 (3 Nov): the team's house rules go with every writing prompt (posts and Inbox replies), not with graphics, sorting or analysis. */
+function hrWhere(p){p=String(p||"");if(/^(You write replies|Rewrite this private message)/.test(p))return "inbox";if(/^(You are (rewriting|redrafting|writing one new)|You are .{0,40}social content creator|Rewrite this first comment)/.test(p))return "compose";return ""}
+async function askAI(prompt){const w=hrWhere(prompt);if(w){try{const t=await hrPromptText(S.team,w);if(t)prompt+=`\n\n${t}\n(Keep to the output format asked for above.)`}catch(e){}}return S.sample(prompt,{modelTier:"default"})}
 /* Whose voice and language Claude writes in, by team (3 Nov 2026: México drafts and replies are in Mexican Spanish). */
 const TEAM_VOICE={uk:{org:"CitizenGO UK",lang:"UK English",spell:"British spelling"},global:{org:"CitizenGO",lang:"English",spell:"British spelling"},mx:{org:"CitizenGO México",lang:"Mexican Spanish (español de México)",spell:"written in Mexican Spanish (español de México): ustedes, never vosotros"}};
 function voice(team){const id=team||S.team;if(TEAM_VOICE[id])return TEAM_VOICE[id];const t=(S.teams||[]).find(x=>x.id===id);return {org:`CitizenGO ${t?t.name:""}`.trim(),lang:"the language the page's followers read",spell:"in the language the page's followers read"}}
@@ -3090,7 +3147,7 @@ const sideSvg=(k,n=18)=>`<svg width="${n}" height="${n}" viewBox="0 0 24 24" fil
 const SIDE_NAV=[["make","Create",[["compose","Compose"],["posts","Review board"],["evergreen","Evergreen"]]],["plan","Plan",[["plan","Month"],["calendar:week","Week"],["calendar:list","List"],["calendar:grid","Instagram grid"]]],
   ["talk","Talk",[["inbox:inbox","Conversations"],["inbox:mine","Assigned to me"],["inbox:posts","By post"],["inbox:autos","Automations"],["inbox:history","Moderation"],["inbox:team","Team"]]],
   ["listen","Listen",[["listening:rising","Rising now"],["listening:mentions","Mentions"],["listening:allies","Allies and opponents"],["listening:topics","Topics"],["listening:parliament","Parliament"],["listening:watches","Watches"]]],
-  ["learn","Analytics",[["analytics:overview","Overview"],["analytics:audience","Audience"],["analytics:posts","Posts"],["analytics:talk","Conversations"],["analytics:campaigns","Campaigns"],["analytics:countries","Countries"]]],["tools","Tools",[["tools:home","All tools"],["tools:inviter","Page Inviter"],["tools:links","Tracked links"],["tools:bio","Link in bio"],["tools:make","Make"],["tools:health","Health check"]]]];
+  ["learn","Analytics",[["analytics:overview","Overview"],["analytics:audience","Audience"],["analytics:posts","Posts"],["analytics:talk","Conversations"],["analytics:campaigns","Campaigns"],["analytics:leaderboard","Leaderboard"],["analytics:countries","Countries"]]],["tools","Tools",[["tools:home","All tools"],["tools:inviter","Page Inviter"],["tools:links","Tracked links"],["tools:bio","Link in bio"],["tools:make","Make"],["tools:health","Health check"]]]];
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}};const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 const SIDE={open:lsGet("desk.sideOpen",{make:true}),fold:lsGet("desk.sideFold",false)};
 function applyTheme(t){const r=document.documentElement;if(t==="light"||t==="dark")r.setAttribute("data-theme",t);else r.removeAttribute("data-theme");
@@ -3344,7 +3401,7 @@ function renderSettings(){renderMine();const el=$("#stBody");if(!el)return;const
     <div class="awrap"><table class="atbl"><thead><tr><th>Account</th><th>Can you post and reply?</th></tr></thead><tbody>${(t.accounts||[]).map(a=>`<tr><td>${esc(a.name||a.key)} <small class="src">${esc(a.platform)}</small></td><td>${a.platform==="x"?"Posted by hand: copy the text from the post":conn.has(a.key)?"✓ Yes, through your Facebook connection":rights.has(a.key)?"✓ Yes, set up by hand (connect Facebook to confirm it)":"🔒 No: you need a role on this Page in Facebook"}</td></tr>`).join("")}</tbody></table></div></div>`).join("")||`<p class="src">You aren't in a Content Engine team yet.</p>`;
   if(!$("#stAccess")){const d=document.createElement("div");d.id="stAccess";el.after(d)}
   if(!ACC.data||ACC.team!==S.team)loadAccess();else renderAccess();
-  renderConnect()}
+  renderConnect();stExtras()}
 document.addEventListener("click",async ev=>{if(!ev.target.closest("[data-acc-invite]"))return;const who=String($("#invWho")?.value||"").trim().toLowerCase();if(!who){toast("Give the desk name first");return}
   try{const r=await window.deskInvite({who,team_id:S.team,role:$("#invRole")?.value||"editor"});const out=$("#invOut");if(out)out.innerHTML=`<div class="aurow"><input type="text" readonly value="${esc(r.link)}" class="acini" style="flex:1;min-width:200px;text-transform:none"><button class="btn small" data-inv-copy>Copy</button><span class="src">expires ${esc(new Date(r.expires_at).toLocaleDateString("en-GB",{day:"numeric",month:"short"}))}</span></div>`}catch(e){toast(e.message||"Couldn't create the invite")}});
 document.addEventListener("click",async ev=>{if(!ev.target.closest("[data-inv-copy]"))return;const i=$("#invOut input");try{await navigator.clipboard.writeText(i.value);toast("Invite link copied: send it to them directly")}catch(e){i.select()}});
@@ -3353,6 +3410,63 @@ document.addEventListener("change",ev=>{const k=ev.target.closest("[data-acc-kin
 document.addEventListener("click",ev=>{const n=ev.target.closest("[data-nav]");if(n){navGo(n.dataset.nav);return}
   const o=ev.target.closest("[data-side]");if(o){$("#side").classList.add("open");$("#sideShade").hidden=false;return}
   if(ev.target.id==="sideShade"){$("#side").classList.remove("open");$("#sideShade").hidden=true}});
+/* 36A (3 Nov): one Settings page with a search box and a section list (left on a laptop, chips on a phone). */
+const ST_SECS=[["me","Me"],["team","Team and access"],["conn","Connections"],["inbox","Inbox shortcuts"],["pub","Publishing"],["rules","House rules"],["listen","Listening"]];
+const ST={q:"",at:"me"};
+function stExtras(){const nav=$("#stNav");if(nav)nav.innerHTML=ST_SECS.map(([k,l])=>`<button data-st-go="${k}"${ST.at===k?' aria-current="true"':""}>${esc(l)}</button>`).join("");
+  const ib=$("#stInbox");if(ib)ib.innerHTML=`<div class="ibd stlinks">${[["inbox:autos","Automations","Auto-replies and the auto-hide list: banned words, phrases, links and scam phrases."],["inbox:history","Moderation","What was hidden, deleted or banned, and by whom, so you can undo it."],["inbox:team","Team","Who is answering what, and what is assigned to whom."]].map(([k,t,d])=>`<button class="stlink" data-nav="${k}"><b>${esc(t)}</b><span>${esc(d)}</span><i aria-hidden="true">›</i></button>`).join("")}</div>`;
+  const ls=$("#stListen");if(ls)ls.innerHTML=`<div class="ibd stlinks">${[["listening:watches","Watches","Your own word lists: what to look for, what to leave out, and where."],["listening:topics","Topics","The topics Listening follows for the team."],["listening:parliament","Parliament","What MPs and peers say on our issues."]].map(([k,t,d])=>`<button class="stlink" data-nav="${k}"><b>${esc(t)}</b><span>${esc(d)}</span><i aria-hidden="true">›</i></button>`).join("")}</div>`;
+  stPub();hrRender();stFilter()}
+function stFilter(){const q=ST.q.trim().toLowerCase();let any=false;
+  document.querySelectorAll("#stMain .stsec").forEach(sec=>{const hit=!q||(sec.dataset.kw+" "+sec.textContent).toLowerCase().includes(q);sec.hidden=!hit;if(hit)any=true});
+  document.querySelectorAll("#stNav [data-st-go]").forEach(b=>{const sec=$("#st-"+b.dataset.stGo);b.hidden=!!(sec&&sec.hidden)});
+  const n=$("#stNone");if(n)n.hidden=any}
+document.addEventListener("input",ev=>{if(ev.target.id==="stQ"){ST.q=ev.target.value;stFilter()}});
+document.addEventListener("click",ev=>{const g=ev.target.closest("[data-st-go]");if(!g)return;ST.at=g.dataset.stGo;document.querySelectorAll("#stNav [data-st-go]").forEach(b=>b.toggleAttribute("aria-current",b===g));const sec=$("#st-"+ST.at);if(sec)sec.scrollIntoView({behavior:"smooth",block:"start"})});
+
+/* 30A (3 Nov): labels are made for you, never managed. From the post (campaign, cut to three words; launch pack; own post; translated; evergreen) and from the Inbox (Question, Supporter, auto-hidden and the like). */
+function lblColor(n){let h=0;for(const c of String(n))h=(h*31+c.charCodeAt(0))>>>0;return CAMP_COLORS[h%CAMP_COLORS.length]}
+function stPub(){const el=$("#stPub");if(!el)return;const cnt=(arr)=>{const m=new Map();arr.forEach(l=>{if(!l)return;const k=short3(l);m.set(k,(m.get(k)||0)+1)});return [...m].sort((a,b)=>b[1]-a[1]).slice(0,40)};
+  const dl=cnt((S.drafts||[]).flatMap(draftLabels)),il=cnt((IB.items||[]).flatMap(i=>ibTags(i)));
+  const chips=(l,kind)=>l.length?l.map(([n,c])=>`<button class="lbl" style="--cc:${lblColor(n)}" data-st-lbl="${esc(n)}" data-kind="${kind}" title="Show ${kind==="ib"?"conversations":"posts"} labelled ${esc(n)}">${esc(n)} <small>${c}</small></button>`).join(""):`<span class="src">${kind==="ib"?"Open the Inbox once and its labels show here.":"No posts on the board right now."}</span>`;
+  el.innerHTML=`<div class="ibd stlinks"><button class="stlink" data-nav="tools:bio"><b>Link in bio</b><span>Your Instagram link page, filled with recent campaigns for you.</span><i aria-hidden="true">›</i></button></div>
+  <div class="ibd"><b>Labels</b><p class="src" style="margin:0">Labels are added for you, so there is nothing to create, rename or tidy. Posts get the campaign (its first three words), and whether they are a launch pack, your own post, a translation or evergreen. Conversations get Question, Supporter and the moderation labels. Tap one to see what has it.</p>
+  <div class="lblgrp"><small>On posts</small><div>${chips(dl,"dr")}</div></div><div class="lblgrp"><small>In the Inbox</small><div>${chips(il,"ib")}</div></div></div>`}
+document.addEventListener("click",ev=>{const b=ev.target.closest("[data-st-lbl]");if(!b)return;const n=b.dataset.stLbl;
+  if(b.dataset.kind==="ib"){IB.f={...(IB.f||IBF0),label:n};IB.fOpen=true;navGo("inbox:inbox");return}
+  S.label=n;navGo("posts");try{renderAll()}catch(e){}});
+
+/* 33A + 33B + 33E (3 Nov): house rules per team. Sections (voice, tone and the rest) start from a built-in default the team amends; anyone in the team adds rules; each rule says where it applies. Saved through engine_house_rules (team members only). */
+const HRS={team:null,data:null,busy:false,dirty:false,err:null};
+async function hrLoad(team){const r=await eng("engine_house_rules",{team});HRS.team=team;HRS.data=r;HRS.dirty=false;HRS.err=null;return r}
+async function hrPromptText(team,where){if(!team)return "";if(HRS.team!==team||!HRS.data)await hrLoad(team);const h=HRS.data;if(!h||!h.sections)return "";
+  const order=h.sections_order||[];const lines=order.map(([k,l])=>h.sections[k]?`${l}: ${h.sections[k]}`:"").filter(Boolean);const rules=(h.rules||[]).filter(r=>r.on&&r.on[where]).map(r=>`- ${r.text}`);
+  return `House rules for this team (follow them):\n${lines.join("\n")}${rules.length?`\nRules:\n${rules.join("\n")}`:""}`}
+function hrRender(){const el=$("#stRules");if(!el)return;
+  if(!S.team){el.innerHTML='<p class="src">Join a team to see its house rules.</p>';return}
+  if(HRS.team!==S.team||!HRS.data){el.innerHTML='<p class="src">Loading the house rules…</p>';if(!HRS.busy){HRS.busy=true;hrLoad(S.team).catch(e=>{HRS.err=whyFailed(e)}).finally(()=>{HRS.busy=false;if(HRS.err)el.innerHTML=`<p class="src">Couldn't load the house rules (${esc(HRS.err)}).</p>`;else hrRender()})}return}
+  const h=HRS.data,df=h.default_sections||{},tm=(S.teams||[]).find(t=>t.id===S.team);
+  const when=h.updated_at?new Date(h.updated_at).toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"}):"";
+  el.innerHTML=`<div class="ibd hr"><div class="hrtop"><span class="src">${h.is_default?"The built-in default for "+esc(tm?tm.name:"this team")+". Change anything: it saves for the whole team.":`Edited${h.updated_by?" by "+esc(h.updated_by):""}${when?" on "+esc(when):""}.`}</span><span class="sp"></span><button class="btn small hrghost" data-hr-reset ${h.is_default?"disabled":""}>Reset to the default</button><button class="btn small" data-hr-save ${HRS.dirty?"":"disabled"}>${HRS.dirty?"Save changes":"Saved"}</button></div>
+  <div class="hrsecs">${(h.sections_order||[]).map(([k,l])=>{const same=(h.sections[k]||"")===(df[k]||"");return `<label class="hrsec"><span class="hrh"><b>${esc(l)}</b><small class="${same?"":"chg"}">${same?"Built-in default":"Changed"}</small>${same?"":`<button class="lnk" data-hr-def="${k}" title="Put the built-in text back">Use default</button>`}</span><textarea data-hr-sec="${k}" rows="3">${esc(h.sections[k]||"")}</textarea></label>`}).join("")}</div>
+  <div class="hrrules"><div class="hrrh"><b>Rules</b><span class="src">Short rules Claude follows on top of the sections. Switch each on where it applies.</span></div>
+  <div class="awrap"><table class="atbl hrtbl"><thead><tr><th>Rule</th><th>Added by</th><th title="Compose, rewrites and redrafts">Compose</th><th title="Suggested Inbox replies">Inbox</th><th title="The morning run uses these once Chris turns it on">Morning run</th><th><span class="vh">Remove</span></th></tr></thead><tbody>
+  ${(h.rules||[]).map(r=>`<tr><td>${esc(r.text)}</td><td class="src">${r.by==="default"?"Built in":esc(r.by||"")}</td>${["compose","inbox","morning"].map(w=>`<td><label class="hrsw"><input type="checkbox" data-hr-on="${esc(r.id)}" data-w="${w}" ${r.on&&r.on[w]?"checked":""}><span class="vh">${w}</span></label></td>`).join("")}<td><button class="lnk" data-hr-del="${esc(r.id)}" aria-label="Remove this rule">✕</button></td></tr>`).join("")||'<tr><td colspan="6" class="src">No rules yet.</td></tr>'}
+  </tbody></table></div>
+  <div class="hradd"><input type="text" id="hrNew" maxlength="300" placeholder="Add a rule, e.g. Say 'MPs', never 'politicians'"><button class="btn small" data-hr-add>Add rule</button></div>
+  <p class="src" style="margin:6px 0 0">Claude uses these in Compose (new posts, rewrites, redrafts) and in suggested Inbox replies, for everyone in the team. The morning run will read them too once that is switched on.</p></div></div>`}
+function hrMark(){HRS.dirty=true;const b=document.querySelector("[data-hr-save]");if(b){b.disabled=false;b.textContent="Save changes"}}
+document.addEventListener("input",ev=>{const t=ev.target.closest("[data-hr-sec]");if(!t||!HRS.data)return;HRS.data.sections[t.dataset.hrSec]=t.value.slice(0,2000);hrMark()});
+document.addEventListener("change",ev=>{const t=ev.target.closest("[data-hr-on]");if(!t||!HRS.data)return;const r=(HRS.data.rules||[]).find(x=>x.id===t.dataset.hrOn);if(r){r.on={...(r.on||{}),[t.dataset.w]:t.checked};hrMark()}});
+document.addEventListener("click",async ev=>{if(!HRS.data)return;const h=HRS.data;
+  const d=ev.target.closest("[data-hr-def]");if(d){h.sections[d.dataset.hrDef]=(h.default_sections||{})[d.dataset.hrDef]||"";hrMark();hrRender();return}
+  const x=ev.target.closest("[data-hr-del]");if(x){h.rules=(h.rules||[]).filter(r=>r.id!==x.dataset.hrDel);hrMark();hrRender();return}
+  if(ev.target.closest("[data-hr-add]")){const i=$("#hrNew");const v=String(i?.value||"").trim();if(!v){toast("Write the rule first");return}
+    h.rules=[...(h.rules||[]),{id:"r"+Date.now().toString(36),text:v.slice(0,300),by:S.meName||S.me||"",at:new Date().toISOString(),on:{compose:true,inbox:true,morning:false}}];hrMark();hrRender();$("#hrNew")?.focus();return}
+  if(ev.target.closest("[data-hr-reset]")){if(!confirm("Put this team's house rules back to the built-in default? Rules teammates added will go."))return;
+    try{HRS.data=await eng("engine_house_rules",{team:S.team,reset:true});HRS.team=S.team;HRS.dirty=false;hrRender();toast("House rules reset to the default")}catch(e){failToast(e,"Couldn't reset the house rules")}return}
+  if(ev.target.closest("[data-hr-save]")){const b=ev.target.closest("[data-hr-save]");b.disabled=true;b.textContent="Saving…";
+    try{HRS.data=await eng("engine_house_rules",{team:S.team,set:{sections:h.sections,rules:h.rules}});HRS.team=S.team;HRS.dirty=false;hrRender();toast("House rules saved for the team")}catch(e){b.disabled=false;b.textContent="Save changes";failToast(e,"Couldn't save the house rules")}}});
 function renderTeams(){
   const ts=S.teams||[],t=ts.find(x=>x.id===S.team);
   $("#teamLine").textContent=t?`${t.flag||""} ${t.name}`.trim():"CitizenGO";
@@ -3481,6 +3595,9 @@ function calItems(){const ctry=CAL.country||"";const foreign=ctry&&ctry!=="all"&
   if(f.net&&f.net.length)items=items.filter(i=>(i.dests||[]).some(k=>f.net.includes(leadOf(k))));
   if(f.status)items=items.filter(i=>f.status==="review"?["pending","changes"].includes(i.status):i.status===f.status);
   if(f.q){const q=f.q.toLowerCase();items=items.filter(i=>String(i.title).toLowerCase().includes(q))}
+  if(f.acct)items=items.filter(i=>(i.dests||[]).includes(f.acct));
+  if(f.by||f.kind||f.camp){items=items.filter(i=>{const d=i.mine?S.drafts.find(x=>x.id===i.id):null;if(!d)return false;
+    if(f.by&&(f.by==="__me"?!draftIsMine(d):f.by==="__engine"?!!d.own:draftBy(d)!==f.by))return false;if(f.kind&&postKind(d)!==f.kind)return false;if(f.camp&&short3(campOf(d))!==f.camp)return false;return true})}
   return items}
 const calNets=i=>[...new Set((i.dests||[]).map(k=>({fb:"FB",ig:"IG",x:"X"})[leadOf(k)]))].join(" ");
 function calChip(i,mode){const d=i.mine?S.drafts.find(x=>x.id===i.id):null;const cc=d?campColor(campOf(d)):"";
@@ -3495,10 +3612,10 @@ function calHeader(label,count){const v=CAL.view;const f=CAL.filter||{};const ne
     <button class="btn small" data-cal="prev" aria-label="Previous">‹</button><button class="btn small" data-cal="today">Today</button><button class="btn small" data-cal="next" aria-label="Next">›</button>
     <span class="tabs">${[["month","Month"],["week","Week"],["list","List"],["grid","Instagram grid"]].map(([k,l])=>`<button class="tab" data-cal="${k}" aria-pressed="${v===k}">${l}</button>`).join("")}</span>
     <select class="calctry" data-cal-country aria-label="Whose calendar">${[["","My team"],["all","All countries"]].concat(((CAL.data&&CAL.data.teams)||[]).filter(t=>t.id!==S.team).map(t=>[t.id,`${t.flag||""} ${t.name}`.trim()])).map(([x,l])=>`<option value="${esc(x)}"${(CAL.country||"")===x?" selected":""}>${esc(l)}</option>`).join("")}</select>
-    <span class="calf">${nets.map(n=>`<button class="tab small" data-cal-net="${n}" aria-pressed="${!!(f.net||[]).includes(n)}">${({fb:"FB",ig:"IG",x:"X"})[n]}</button>`).join("")}
+    <span class="calf">${calFilterMenus()}
     <select data-cal-status aria-label="Status"><option value="">All statuses</option>${[["scheduled","Scheduled"],["review","In review"],["posted","Posted"]].map(([x,l])=>`<option value="${x}"${f.status===x?" selected":""}>${l}</option>`).join("")}</select>
     <input type="search" data-cal-q placeholder="Search" value="${esc(f.q||"")}" aria-label="Search posts">
-    <label class="lg"><input type="checkbox" data-cal-best${CAL.best!==false?" checked":""}> Best slots</label></span></div>
+    <label class="lg"><input type="checkbox" data-cal-best${CAL.best!==false?" checked":""}> Best slots</label>${calExportBtn()}</span></div>
     ${!CAL.country||CAL.country===S.team?`<div class="calpins"><span class="src">Also show:</span>${((CAL.data&&CAL.data.teams)||[]).filter(t=>t.id!==S.team).map(t=>`<button class="tab small" data-cal-pin="${esc(t.id)}" aria-pressed="${calPins().includes(t.id)}">${esc(`${t.flag||""} ${t.name}`.trim())}</button>`).join("")}<span class="src">Pinned countries show faintly in your calendar; the rest as 🌍 badges.</span></div>`:""}
     <div class="calnote">${CAL.loading?"Loading the calendar…":CAL.err?esc("Couldn't load key dates and other teams: "+whyFailed(CAL.err)):esc(count)}${lsGet("desk.calTzSeen","")===teamTz()+"|"+myTz()?tzBanner():""}</div>${lsGet("desk.calTzSeen","")===teamTz()+"|"+myTz()?"":tzBanner()}`}
 /* ---- month ---- */
@@ -3540,7 +3657,7 @@ function calList(days,byDay){const today=calToday();const nowZ=Z(Date.now());con
   return calBulkBar()+`<div class="clist">${rows}</div>`}
 function calBulkBar(){const sel=CAL.sel;if(!sel||!sel.size)return"";const ds=[...sel].map(id=>S.drafts.find(x=>x.id===id)).filter(Boolean);const sch=ds.filter(d=>d.status==="scheduled").length;
   return `<div class="calbulk" role="region" aria-label="Ticked posts"><b>${sel.size} ticked</b>${CAL.bulkMove?`<label>Move to <input type="date" id="calBulkDay" min="${esc(calToday())}" value="${esc(CAL.bulkDay||"")}" aria-label="Day to move them to"></label><button class="btn small primary" data-cal-bulk="moveGo">Move ${sch} scheduled</button><button class="btn small" data-cal-bulk="moveCancel">Cancel</button>`
-    :`<button class="btn small" data-cal-bulk="move"${sch?"":" disabled title=\"Only scheduled posts can be moved from here\""}>Move…</button><button class="btn small" data-cal-bulk="hold"${sch?"":" disabled"}>Pause</button><button class="btn small" data-cal-bulk="pending">Back to Review</button>`}<span class="sp"></span><button class="btn small" data-cal-bulk="clear">Clear</button></div>`}
+    :`<button class="btn small" data-cal-bulk="move"${sch?"":" disabled title=\"Only scheduled posts can be moved from here\""}>Move…</button><button class="btn small" data-cal-bulk="hold"${sch?"":" disabled"}>Pause</button><button class="btn small" data-cal-bulk="pending">Back to Review</button><button class="btn small" data-cal-exp="ticked">⬇ Export ${sel.size}</button>`}<span class="sp"></span><button class="btn small" data-cal-bulk="clear">Clear</button></div>`}
 async function calBulk(act){const sel=CAL.sel||new Set();const ds=[...sel].map(id=>S.drafts.find(x=>x.id===id)).filter(Boolean);
   if(act==="clear"){sel.clear();CAL.bulkMove=false;renderCal();return}
   if(act==="move"){CAL.bulkMove=true;renderCal();$("#calBulkDay")?.focus();return}
@@ -3576,7 +3693,7 @@ function renderCal(){
   const label=CAL.view==="week"?`${s.toLocaleDateString("en-GB",{day:"numeric",month:"short"})} – ${new Date(e-864e5).toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"})}`:new Date(CAL.anchor).toLocaleDateString("en-GB",{month:"long",year:"numeric"});
   const ctry=CAL.country||"";const foreign=ctry&&ctry!=="all"&&ctry!==S.team;
   const camps=[...new Set(inRange.flatMap(d=>(byDay[dayKey(d)]||[]).filter(i=>i.mine).map(i=>campOf(S.drafts.find(x=>x.id===i.id))).filter(Boolean)))];
-  const campRow=camps.length?`<div class="camprow">${camps.map(c=>{const n=inRange.reduce((a,d)=>a+(byDay[dayKey(d)]||[]).filter(i=>i.mine&&campOf(S.drafts.find(x=>x.id===i.id))===c).length,0);return `<span class="camp" style="--cc:${campColor(c)}">${esc(c)} · ${n} post${n===1?"":"s"}</span>`}).join("")}</div>`:"";
+  const campRow=camps.length?`<div class="camprow">${camps.map(c=>{const n=inRange.reduce((a,d)=>a+(byDay[dayKey(d)]||[]).filter(i=>i.mine&&campOf(S.drafts.find(x=>x.id===i.id))===c).length,0);return `<span class="camp" style="--cc:${campColor(c)}" title="${esc(c)}">${esc(short3(c))} · ${n} post${n===1?"":"s"}</span>`}).join("")}</div>`:"";
   const head=calHeader(label,`${count} post${count===1?"":"s"} to go out · ${quietN} quiet day${quietN===1?"":"s"} ahead`)+(foreign?`<div class="callock">🔒 ${esc(calTeamName(ctry))}'s calendar is read-only for you. Use “→ copy as an idea” on a post to add it to ${esc(calTeamName(S.team))}'s calendar. <button class="btn small" data-cal-country-back>Back to my team</button></div>`:"");
   const grid=CAL.view==="week"?calWeek(days,byDay):CAL.view==="list"?calList(inRange,byDay):calMonth(days,month,byDay);
   el.innerHTML=`<div>${head}${campRow}${grid}<div class="kdlegend">${Object.entries(KD_CATS).map(([k,l])=>`<span class="kc-${k}">${l}</span>`).join("")}</div>${calPeekHtml()}</div>${calSide(CAL.view==="week"?days:inRange,items)}`;
@@ -3606,7 +3723,8 @@ function calGrid(){const G=CAL.ig;const head=`<div class="calbar"><h2>Instagram 
   if(drafts)notes.push(`${drafts} of the ${plan.length} planned ${plan.length===1?"post is":"posts are"} still in Review (dashed).`);
   if(!plan.length)notes.push("Nothing is planned for this account yet. Posts with this account ticked show here once they have a time.");
   if(!acc.media.length)notes.push("No live posts collected for this account yet; they arrive with the nightly collection.");
-  return head+pick+`</div><div class="iggrid-wrap"><div class="igphone"><div class="iggrid">${tiles||'<p class="src">Nothing to show yet.</p>'}</div></div><div class="rsside"><section class="rsbox"><h3>How it reads</h3>${notes.map(n=>`<p class="src" style="margin:0">${n}</p>`).join("")||'<p class="src" style="margin:0">Looks fine.</p>'}</section><section class="rsbox"><h3>How it works</h3><p class="src" style="margin:0">Newest first, like the profile. Planned posts sit on top of the ${acc.media.length} latest live ones from last night's collection. Click a planned post to open it; to change its place, change its time in Month or Week.</p></section></div></div>`}
+  CAL.igAcc=acc;CAL.igPlan=plan;CAL.igLive=live;
+  return head+pick+igGridTools()+`</div>${igOptsPanel()}<div class="iggrid-wrap"><div class="igphone"><div class="iggrid">${tiles||'<p class="src">Nothing to show yet.</p>'}</div></div><div class="rsside"><section class="rsbox"><h3>How it reads</h3>${notes.map(n=>`<p class="src" style="margin:0">${n}</p>`).join("")||'<p class="src" style="margin:0">Looks fine.</p>'}</section><section class="rsbox"><h3>How it works</h3><p class="src" style="margin:0">Newest first, like the profile. Planned posts sit on top of the ${acc.media.length} latest live ones from last night's collection. Click a planned post to open it; to change its place, change its time in Month or Week.</p></section></div></div>`}
 function drawCalThumbs(){document.querySelectorAll("canvas[data-cthumb]").forEach(cv=>{const d=S.drafts.find(x=>x.id===cv.dataset.cthumb);if(!d||!d.card)return;const c=d.card.template==="carousel"&&HOUSE_T.has(d.card.slides?.[0]?.template)?d.card.slides[0]:d.card;try{const k=S.slide;S.slide=0;drawCard(d,cv,c);S.slide=k}catch(e){}})}
 /* The side: pause switch, then the Plan's ideas to drag onto a day. */
 function calSide(days,items){const today=calToday();const reqOn=k=>(PLAN.reqs||[]).filter(r=>r.for_date===k);
@@ -3792,22 +3910,24 @@ async function loadInbox(){if(!S.team)return;if(IB.loading){IB.again=true;render
     if(IB.tab==="posts"){const p=await eng("engine_inbox_posts",{team:S.team,ads:IB.postsAds});IB.posts=p.posts||[]}
     if(IB.open){const it=IB.items.find(x=>x.id===IB.open.id);if(it)IB.open=it;await loadThread()}}
   catch(e){IB.err=e}finally{IB.loading=false;renderInbox();if(IB.again)loadInbox()}}
-async function loadThread(){const it=IB.open;if(!it)return;try{const r=await eng("engine_inbox",{team:S.team,thread:it.thread_id});IB.thread=r.items||[]}catch(e){IB.thread=[]}
+async function loadThread(){const it=IB.open;if(!it)return;ibPostLoad(it);ibPastLoad(it);try{const r=await eng("engine_inbox",{team:S.team,thread:it.thread_id});IB.thread=r.items||[]}catch(e){IB.thread=[]}
   if(it.author_id&&!it.from_us&&(!IB.person||IB.person.author_id!==it.author_id)){try{IB.person=await eng("engine_inbox_person",{team:S.team,author_id:it.author_id})}catch(e){IB.person=null}}}
 function ibVisible(){const me=String(S.whoId||"").toLowerCase();let l=IB.items.filter(i=>IB.filter!=="mine"||String(i.assigned_to||"").toLowerCase()===me);
   if(IB.status==="moderated")l=l.filter(i=>i.hidden);if(IB.ads==="ads")l=l.filter(i=>i.is_ad);
-  const F=IB.f||IBF0;if(F.tone)l=l.filter(i=>F.tone==="neutral"?!i.tone:i.tone===F.tone);if(F.label)l=l.filter(i=>(i.labels||[]).some(x=>String(x).toLowerCase()===F.label.toLowerCase()));
+  const F=IB.f||IBF0;if(F.tone)l=l.filter(i=>F.tone==="neutral"?!i.tone:i.tone===F.tone);if(F.label)l=l.filter(i=>ibHasLabel(i,F.label));
   if(F.hidden==="only")l=l.filter(i=>i.hidden);else if(F.hidden==="hide")l=l.filter(i=>!i.hidden);
   if(IB.status==="open"&&(IB.sort||"priority")==="priority")l=l.slice().sort((a,b)=>ibScore(b)-ibScore(a));
   if(IB.sort==="supporters"){const n={};IB.items.forEach(i=>{if(i.author_id)n[i.author_id]=(n[i.author_id]||0)+1});const sc=i=>(ibTags(i).includes("Supporter")?100:0)+(n[i.author_id]||0);l=l.slice().sort((a,b)=>sc(b)-sc(a)||String(b.created_at).localeCompare(String(a.created_at)))}
   if(IB.sort==="negative"){const r={negative:0,mixed:1};l=l.slice().sort((a,b)=>(r[a.tone]??2)-(r[b.tone]??2)||String(b.created_at).localeCompare(String(a.created_at)))}
   return l}
+/* A label filter matches what people see: the automatic tags and labels cut to three words, as well as the stored label. */
+function ibHasLabel(i,lab){const q=String(lab||"").toLowerCase();return ibTags(i).concat(i.labels||[]).some(x=>String(x).toLowerCase()===q)}
 /* Tags by rule (no paid AI): a question, or a supporter (praying, thanking, signing, or a regular). */
 function ibTags(i){if(i.from_us||i.kind==="mention")return[];const t=String(i.text||"");const out=[];
   if(/\?\s*$|^(how|where|what|when|why|can|could|is|are|do|does|will)\b/i.test(t.trim()))out.push("Question");
   const regular=IB.items.filter(x=>x.author_id&&x.author_id===i.author_id).length>=3;
   if(regular||/\b(pray(ing|ed)?|amen|god bless|thank(s| you)|signed|sharing|well done|bless)\b|🙏|❤️/i.test(t))out.push("Supporter");
-  return out.concat((i.labels||[]).filter(l=>!out.map(x=>x.toLowerCase()).includes(String(l).toLowerCase())))}
+  return out.concat((i.labels||[]).map(short3).filter(l=>l&&!out.map(x=>x.toLowerCase()).includes(String(l).toLowerCase())))}
 /* Tone from the engine (lib/sentiment.js, word lists, no paid AI): the tone of the words, not whether they agree with us. */
 const IB_TONE={positive:["Positive","q"],negative:["Negative","hid"],mixed:["Mixed",""]};
 function ibToneChip(i){const t=IB_TONE[i.tone];if(!t||(i.tone==="negative"&&ibIntent(i).has("hostile")))return"";return `<span class="ibtag${t[1]?" "+t[1]:""}" title="${i.tone_fixed?"Set by "+esc(i.tone_set_by||"a teammate"):"Tone of the words, not whether they agree with us"}">${t[0]}${i.tone_fixed?" ✎":""}</span>`}
@@ -3857,9 +3977,9 @@ function renderInbox(){renderSide();ibPresence();const el=$("#ibView");const c=I
   const sel=IB.sel||(IB.sel=new Set());
   const bulk=sel.size?`<div class="pswitch" style="flex-direction:row;flex-wrap:wrap;align-items:center"><b>${sel.size} ticked</b>${IB.bulkLabel?`<input type="text" id="ibBulkLabel" placeholder="label, e.g. press" style="font:inherit;font-size:13px;padding:4px 8px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg)"><button class="btn small primary" data-ib-bulklabel>Add label</button>`:""}<button class="btn small" data-ib-bulkrow="like">👍 Like</button><button class="btn small" data-ib-bulkrow="hide">Hide</button><button class="btn small" data-ib-bulkrow="label">Label…</button><button class="btn small" data-ib-bulkrow="assign">Assign to me</button><button class="btn small" data-ib-bulkrow="done">Done</button><button class="btn small" data-ib-bulkrow="delete" style="color:var(--bad)">Delete…</button><button class="btn small" data-ib-bulkrow="clear">Clear</button></div>`:"";
   const rows=list.length?list.map(i=>`<div class="ibrow"><input type="checkbox" class="ibtick" data-ib-tick="${esc(i.id)}" aria-label="Tick ${esc(i.author_name||"this")}"${sel.has(i.id)?" checked":""}><button class="ibi" data-ib-open="${esc(i.id)}" aria-current="${IB.open&&IB.open.id===i.id}"><span class="av">${esc((i.author_name||"?").slice(0,1).toUpperCase())}</span><span><b>${ibHl(i.author_name||"Someone")}</b>${ibWaiting(i).length?'<span class="ibtag warn">waiting for a check</span>':""}${i.is_ad?'<span class="ibtag ad">AD</span>':""}${i.hidden?'<span class="ibtag hid">hidden</span>':""}${ibPending(i).length?'<span class="ibtag q">sending…</span>':""}${ibTags(i).map(l=>`<span class="ibtag${l==="Supporter"?" q":""}">${esc(l)}</span>`).join("")}${ibIntent(i).has("press")?'<span class="ibtag pr">Press</span>':""}${ibIntent(i).has("hostile")?'<span class="ibtag hid">Hostile</span>':""}${ibToneChip(i)}${ibWaitChip(i)}<span class="w">${esc(ibWhere(i))} · ${esc(ibWhen(i.created_at))}${i.assigned_to?" · → "+esc(i.assigned_to):""}</span><span class="tx">${ibHl(i.text||"(no text)")}</span>${IB.q&&IB.q.length>=2&&i.post_text&&String(i.post_text).toLowerCase().includes(IB.q.trim().toLowerCase())?`<span class="w">on “${ibHl(String(i.post_text).slice(0,70))}”</span>`:""}</span></button>${ibQuick(i)}</div>`).join("")
-    :(IB.q||ibFilterCount()||(IB.accts||[]).length)&&!IB.loading?`<div style="padding:14px;color:var(--muted)">Nothing matches${IB.q?` “${esc(IB.q)}”`:""}${ibFilterCount()?" with these filters":""}. ${IB.q&&IB.status==="open"&&!IB.qAll?'<button class="btn small" data-ib-qall>Search Done too</button> ':""}<button class="btn small" data-ib-clearall>Clear search and filters</button></div>`
+    :(IB.q||ibFilterCount()||(IB.accts||[]).length)&&!IB.loading?ibEmptyHtml()
     :`<p style="padding:14px;margin:0;color:var(--muted)">${IB.loading?"Loading…":IB.status==="open"?"Nothing open. New comments and messages appear here within a few minutes; if nobody in the team has connected Facebook yet, nothing can be read.":"Nothing marked done yet."}</p>`;
-  el.innerHTML=head+tools+filt+ibAfterHtml()+bulk+`<div class="ibx ibx3"><div class="ibl">${rows}</div><div>${IB.open?ibDetail(IB.open):`<div class="ibd"><p style="margin:0;color:var(--muted)">Pick a comment or message to read it in context and reply. Keys: J / K move, R reply, E done, H hide.</p></div>`}</div>${IB.open?ibPersonPanel(IB.open):""}</div>`+ibDrawer();drawIbThumbs();ibRefocus()}
+  el.innerHTML=head+tools+filt+ibAfterHtml()+bulk+`<div class="ibx ibx3${IB.full&&IB.open?" ibfull":""}"><div class="ibl">${rows}</div><div>${IB.open?ibDetail(IB.open):`<div class="ibd"><p style="margin:0;color:var(--muted)">Pick a comment or message to read it in context and reply. Keys: J / K move, R reply, E done, H hide.</p></div>`}</div>${IB.open?ibPersonPanel(IB.open):""}</div>`+ibDrawer();drawIbThumbs();ibRefocus()}
 /* 1A search, 2A accounts, 3A filters and saved views: one row above the tabs. */
 function ibFilterCount(){const F=IB.f||IBF0;return (F.days?1:0)+(F.tone?1:0)+(F.label?1:0)+(F.hidden?1:0)}
 function ibToolbar(){const accs=ibTeamAccts();const c=(IB.counts||{}).accounts||{};const sel=IB.accts||[];const tot=(IB.counts||{}).all_open;
@@ -3871,7 +3991,7 @@ function ibToolbar(){const accs=ibTeamAccts();const c=(IB.counts||{}).accounts||
     <button class="btn small${nf?" on":""}" data-ib-drawer aria-expanded="${!!IB.fOpen}">Filters${nf?` · ${nf}`:""}</button>
     ${views.length?`<select data-ib-view aria-label="Saved views"><option value="">${IB.viewName?esc(IB.viewName):"Saved views…"}</option>${views.map((v,n)=>`<option value="${n}">${esc(v.name)}</option>`).join("")}${IB.viewName?'<option value="__del">Delete this view</option>':""}</select>`:""}
     ${IB.q&&IB.q.length>=2?`<span class="src">${ibVisible().length} match${ibVisible().length===1?"":"es"}${IB.status==="open"?IB.qAll?' · Open and Done <button class="linkish" data-ib-qall>Open only</button>':' in Open · <button class="linkish" data-ib-qall>search Done too</button>':""}</span>`:""}</div>`}
-function ibDrawer(){if(!IB.fOpen)return"";const F=IB.f||IBF0;const labels=[...new Set(IB.items.flatMap(i=>i.labels||[]))].slice(0,30);
+function ibDrawer(){if(!IB.fOpen)return"";const F=IB.f||IBF0;const labels=[...new Set(IB.items.flatMap(i=>ibTags(i)))].slice(0,30);
   const pills=(k,opts)=>`<div class="ibpills">${opts.map(([v,l])=>`<button class="ibpill${String(F[k])===String(v)?" on":""}" data-ib-f="${k}" data-v="${esc(String(v))}" aria-pressed="${String(F[k])===String(v)}">${l}</button>`).join("")}</div>`;
   return `<div class="ibscrim" data-ib-drawer></div><aside class="ibdrawer" aria-label="Filters"><div class="ibdh"><h3>Filters</h3><button class="btn small" data-ib-drawer>Close</button></div>
     <span class="eyebrow">When</span>${pills("days",[[0,"Any time"],[1,"Today"],[7,"7 days"],[30,"30 days"]])}
@@ -3917,26 +4037,28 @@ function ibPetitions(){const seen=new Set();return S.drafts.filter(d=>d.action&&
 /* Live: who else is looking at this conversation (room presence). */
 function ibViewers(i){const peers=(IB.peers||[]).filter(p=>!p.self&&p.state&&p.state.item===i.id).map(p=>p.state.name||"Someone");return peers.length?`<div class="src">👀 ${esc(peers.join(", "))} ${peers.length===1?"is":"are"} also viewing</div>`:""}
 function ibDetail(i){const mention=i.kind==="mention";const canAct=(S.rights||[]).includes(i.account_key)&&!mention;const fb=i.platform==="facebook",msg=i.kind==="message";
-  const thread=(msg?IB.thread:IB.thread.filter(x=>x.id===i.id||x.parent_id===i.object_id||(i.parent_id&&(x.object_id===i.parent_id||x.parent_id===i.parent_id)))).slice(-30);
+  const thread=(msg?IB.thread:IB.thread.filter(x=>x.id===i.id||x.parent_id===i.object_id||(i.parent_id&&(x.object_id===i.parent_id||x.parent_id===i.parent_id)))).slice(IB.allThread?-1000:-30);
   const pend=ibPending(i);
   const drafts=IB.drafts&&IB.drafts.id===i.id?(IB.drafts.busy?`<p class="src">Claude is drafting replies in CitizenGO's voice…</p>`:(IB.drafts.list||[]).map((d,n)=>`<button class="ibdraft" data-ib-usedraft="${n}"><small>${esc(d.label||"Option")}</small>${esc(d.text)}</button>`).join("")||`<p class="src">${esc(IB.drafts.error||"No drafts.")}</p>`):"";
-  const acts=[];
-  if(i.status==="open")acts.push(`<button class="btn small" data-ib-act="done">Done</button>`);else acts.push(`<button class="btn small" data-ib-act="reopen">Reopen</button>`);
-  const can=(IB.people||[]).filter(p=>p.accounts.includes(i.account_key));
+  const acts=[];const can=(IB.people||[]).filter(p=>p.accounts.includes(i.account_key));
+  if(canAct&&!i.from_us)acts.push(`<button class="btn small primary" data-ib-act="focusreply">↩ Reply</button>`);
+  if(canAct&&!msg&&!i.from_us){if(fb)acts.push(`<button class="btn small" data-ib-act="like" title="Facebook only lets a Page send a Like on a comment. Love, Haha and the rest aren't open to Pages">👍 Like</button>`);acts.push(`<button class="btn small" data-ib-act="${i.hidden?"unhide":"hide"}">${i.hidden?"Unhide":"🙈 Hide"}</button>`);
+    if(fb&&i.author_id)acts.push(IB.confirmBan?`<button class="btn small" data-ib-act="ban" style="color:var(--bad)">Yes, ban ${esc(i.author_name||"them")}</button><button class="btn small" data-ib-act="noban">Don't</button>`:`<button class="btn small" data-ib-act="askban">⛔ Ban…</button>`)}
+  if(i.status==="open")acts.push(`<button class="btn small ok" data-ib-act="done">✓ Done</button>`);else acts.push(`<button class="btn small" data-ib-act="reopen">Reopen</button>`);
+  acts.push(`<span class="ibsep" aria-hidden="true"></span>`);
   acts.push(`<select class="ibassign" data-ib-assign aria-label="Assign to"><option value="">${i.assigned_to?"Assigned to "+esc(i.assigned_to):"Assign…"}</option><option value="__me">To me</option>${can.filter(p=>p.who!==S.whoId).map(p=>`<option value="${esc(p.who)}">${esc(p.who)}</option>`).join("")}${i.assigned_to?'<option value="__none">Unassign</option>':""}</select>`);
   acts.push(`<button class="btn small" data-ib-act="label">Label…</button>`);
-  if(canAct&&!msg&&!i.from_us){if(fb)acts.push(`<button class="btn small" data-ib-act="like">👍 Like</button>`);acts.push(`<button class="btn small" data-ib-act="${i.hidden?"unhide":"hide"}">${i.hidden?"Unhide":"Hide"}</button>`);
-    acts.push(IB.confirmDel?`<button class="btn small" data-ib-act="delete" style="color:var(--bad)">Yes, delete it</button><button class="btn small" data-ib-act="nodelete">Keep it</button>`:`<button class="btn small" data-ib-act="askdelete">Delete…</button>`);
-    if(fb&&i.author_id)acts.push(IB.confirmBan?`<button class="btn small" data-ib-act="ban" style="color:var(--bad)">Yes, ban ${esc(i.author_name||"them")}</button><button class="btn small" data-ib-act="noban">Don't</button>`:`<button class="btn small" data-ib-act="askban">Ban…</button>`)}
-  return `<div class="ibd"><div><b>${esc(i.author_name||"Someone")}</b> ${ibToneSel(i)} <span class="src">${esc(ibWhere(i))} · ${esc(new Date(i.created_at).toLocaleString("en-GB",{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}))}</span>${i.is_ad?'<span class="ibtag ad">AD</span>':""}${i.hidden?'<span class="ibtag hid">hidden</span>':""}</div>
+  if(canAct&&!msg&&!i.from_us)acts.push(IB.confirmDel?`<button class="btn small" data-ib-act="delete" style="color:var(--bad)">Yes, delete it</button><button class="btn small" data-ib-act="nodelete">Keep it</button>`:`<button class="btn small" data-ib-act="askdelete">Delete…</button>`);
+  if(!IB.full)acts.push(`<button class="btn small ic" data-ib-full title="Widen the conversation to full screen" aria-label="Full screen">⤢</button>`);
+  return `<div class="ibd">${IB.full?`<div class="ibfullbar"><b>Conversation with ${esc(i.author_name||"someone")}</b><button class="btn small" data-ib-full>Close ⤡ <kbd>Esc</kbd></button></div>`:""}<div><b>${esc(i.author_name||"Someone")}</b> ${ibToneSel(i)} <span class="src">${esc(ibWhere(i))} · ${esc(new Date(i.created_at).toLocaleString("en-GB",{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}))}</span>${i.is_ad?'<span class="ibtag ad">AD</span>':""}${i.hidden?'<span class="ibtag hid">hidden</span>':""}</div>
     ${ibViewers(i)}${i.is_ad?`<div class="pswitch" style="border-color:var(--warn);background:var(--warn-soft)"><b>On the ad “${esc(String(i.post_text||"").slice(0,70))}” · ${esc(accLabel(i.account_key))} · ${IB.items.filter(x=>x.thread_id===i.thread_id).length} comment${IB.items.filter(x=>x.thread_id===i.thread_id).length===1?"":"s"} here</b><span class="src">Replies under an ad are seen by everyone the ad reaches.</span><div class="ibacts"><button class="btn small" data-ib-adall="${esc(i.thread_id)}">Open all comments on this ad</button></div></div>`:""}${mention?`<div class="ctx">${esc(i.author_name||"Someone")} tagged ${esc(accLabel(i.account_key))} in their own post.${i.post_url?` <a href="${esc(i.post_url)}" target="_blank" rel="noopener">Open their post ↗</a>`:""} Replying means commenting there, so do it on ${i.platform==="instagram"?"Instagram":"Facebook"}.</div>`:""}${ibPostCard(i)}
     <div style="display:flex;flex-direction:column;gap:6px">${(thread.length?thread:[i]).map(m=>`<div class="ibmsg${m.from_us?" us":""}">${esc(m.text||"(no text)")}<small>${esc(m.from_us?"Us":m.author_name||"")} · ${esc(ibWhen(m.created_at))}</small></div>`).join("")}</div>
     ${pend.length?`<div class="src">${pend.map(a=>`Sending ${esc(a.action.replace("_"," "))}… <button class="btn small" data-ib-undo="${a.id}">Undo</button>`).join(" ")}</div>`:""}
     <div class="ibacts">${acts.join("")}</div>
-    ${canAct&&!i.from_us&&i.status==="open"?ibSuggestHtml(i):""}
+    ${canAct&&!i.from_us&&i.status==="open"?ibPastHtml(i)+ibSuggestHtml(i):""}
     ${canAct&&!i.from_us?`<div class="ibreply"><label for="ibText" class="src">${msg?"Reply in the conversation":"Reply"}</label><textarea id="ibText" placeholder="Write a reply as ${esc(accLabel(i.account_key))}…">${esc(IB.text||"")}</textarea>
       <div class="ibacts" style="margin-bottom:6px"><select data-ib-saved aria-label="Saved replies"><option value="">Saved replies…</option>${(IB.saved||[]).map((r,n)=>`<option value="${n}">${esc(r.title)}</option>`).join("")}<option value="__save">+ Save this reply…</option></select><select data-ib-petition aria-label="Insert a petition link"><option value="">Petition…</option>${ibPetitions().map((x,n)=>`<option value="${n}">${esc(x.title.slice(0,60))}</option>`).join("")}</select></div>
-      <div class="ibacts"><button class="btn small primary" data-ib-replynext>${IB.sugMode==="replydm"?"Reply + DM, next":"Reply & next"}</button><button class="btn small" data-ib-act="reply">Send${msg?"":" reply"} only</button>${fb&&!msg?`<button class="btn small" data-ib-act="private_reply">Send as private message</button>`:""}${S.sample?`<button class="btn small" data-ib-act="draft">✨ Draft with Claude</button>`:""}<span class="ibchecks" id="ibChecks">${ibChecks(i,IB.text)}</span></div>${drafts}</div>`
+      <div class="ibacts"><span class="ibemo"><button class="btn small ic" data-ib-emo aria-expanded="${!!IB.emoOpen}" title="Emoji" aria-label="Emoji">🙂</button>${IB.emoOpen?ibEmojiMenu():""}</span><button class="btn small primary" data-ib-replynext>${IB.sugMode==="replydm"?"Reply + DM, next":"Reply & next"}</button><button class="btn small" data-ib-act="reply">Send${msg?"":" reply"} only</button>${fb&&!msg?`<button class="btn small" data-ib-act="private_reply">Send as private message</button>`:""}${S.sample?`<button class="btn small" data-ib-act="draft">✨ Draft with Claude</button>`:""}<span class="ibchecks" id="ibChecks">${ibChecks(i,IB.text)}</span></div>${drafts}</div>`
     :mention?"":!canAct?`<p class="src">You can't reply for ${esc(accLabel(i.account_key))}: connect Facebook with a role on that Page, or leave it for someone who has one.</p>`:""}
   </div>`}
 /* ---------- Inbox triage (2 Nov): urgency, the post, the person, bespoke suggestions, clean-up ----------
@@ -4013,7 +4135,15 @@ function ibSuggestHtml(i){const {list,why}=ibSuggest(i);if(!list.length)return""
   return `<div class="ibsug"><div class="src">Suggested for this one${why?" · "+esc(why):""}</div><div class="ibsugs">${list.map((x,n)=>`<button class="ibs" data-ib-sug="${n}"><small>${esc(x.label)}${x.mode==="replydm"?" · reply + DM":x.mode==="likedone"?" · no reply":x.mode==="done"?" · no reply":x.mode==="assignme"?" · + assign to me":""}</small>${x.text?esc(x.text):x.mode==="likedone"?"Like the comment and mark it done":"Mark done without replying"}</button>`).join("")}</div></div>`}
 /* The post card above a conversation, and the person on the right. */
 function ibPostCard(i){if(i.kind==="message"||i.is_ad||!i.post_text&&!i.post_url)return"";const d=ibDraftFor(i);const n=IB.items.filter(x=>x.thread_id===i.thread_id);const open=n.filter(x=>x.status==="open"&&!x.from_us).length;
-  return `<div class="ibpost">${d&&d.card?`<canvas class="cthumb big" data-ibthumb="${esc(d.id)}" width="10" height="10" aria-hidden="true"></canvas>`:""}<div><b>${i.is_ad?"On the ad":"On"} “${esc(String((d&&d.title)||i.post_text||"").slice(0,80))}”</b><small>${esc(accLabel(i.account_key))} · ${n.length} comment${n.length===1?"":"s"} here, ${open} open${i.post_url?` · <a href="${esc(i.post_url)}" target="_blank" rel="noopener">open on ${i.platform==="instagram"?"Instagram":"Facebook"} ↗</a>`:""}</small></div></div>`}
+  const P=(IB.postFig||{})[i.thread_id];const F=P&&P.figures;const r=(F&&F.reactions)||{};const net=i.platform==="instagram"?"Instagram":"Facebook";
+  const pic=d&&d.card?`<canvas class="cthumb big" data-ibthumb="${esc(d.id)}" width="10" height="10" aria-hidden="true"></canvas>`:P&&P.img?`<img class="ibpimg" src="${esc(P.img)}" alt="" loading="lazy" referrerpolicy="no-referrer">`:"";
+  const rx=i.platform==="instagram"?(r.total!=null?[["❤️",r.total,"likes"]]:[]):[["👍",r.like,"Like"],["❤️",r.love,"Love"],["😆",r.haha,"Haha"],["😮",r.wow,"Wow"],["😢",r.sorry,"Sad"],["😡",r.anger,"Angry"]].filter(x=>x[1]);
+  const tone={positive:["Post tone: positive","ok"],negative:["Post tone: negative","bad"],mixed:["Post tone: mixed","warn"]}[P&&P.tone]||["Post tone: neutral",""];
+  const figs=F?`<div class="ibpfig">${rx.map(([e,v,l])=>`<span class="pill" title="${l}">${e} ${fmtN(v)}</span>`).join("")}${F.shares!=null?`<span class="pill" title="Shares">↗ ${fmtN(F.shares)} shares</span>`:""}${F.comments!=null?`<span class="pill">${fmtN(F.comments)} comments</span>`:""}${F.views!=null?`<span class="pill" title="Views">👁 ${fmtN(F.views)}</span>`:""}<span class="pill ${tone[1]}">${tone[0]}</span></div><small>Figures from the nightly pull, ${esc(new Date(F.as_of+"T12:00:00").toLocaleDateString("en-GB",{day:"numeric",month:"short"}))}.</small>`:P?`<small>No nightly figures for this post yet.</small>`:`<small>Loading the post's figures…</small>`;
+  const text=String((P&&P.text)||i.post_text||"");
+  const earlier=(IB.thread||[]).length>30&&!IB.allThread?`<button class="linkish" data-ib-earlier>↑ Show ${IB.thread.length-30} earlier comments</button>`:"";
+  return `<div class="ibpost ibpost2">${pic}<div><span class="src">${esc(accLabel(i.account_key))} · ${esc(net)}${P&&P.at?" · posted "+esc(ibWhen(P.at)):""}${P&&P.type?" · "+esc(String(P.type).toLowerCase().replace(/_/g," ")):""}</span><b>${esc(String((d&&d.title)||text.split(/\n/)[0]||"").slice(0,90))}</b>${text.length>90?`<span class="ibptx">${esc(text.slice(0,260))}${text.length>260?"…":""}</span>`:""}${figs}
+    <small>${n.length} comment${n.length===1?"":"s"} here, ${open} open${i.post_url||(P&&P.url)?` · <a href="${esc((P&&P.url)||i.post_url)}" target="_blank" rel="noopener">View on ${net} ↗</a>`:""} ${earlier}</small></div></div>`}
 function ibPersonPanel(i){if(i.from_us||!i.author_id)return `<aside class="ibperson"><p class="src">Pick a comment to see who wrote it.</p></aside>`;const p=IB.person&&IB.person.author_id===i.author_id?IB.person:null;const c=(p&&p.counts)||{};
   const recent=((p&&p.recent)||[]).filter(r=>r.id!==i.id).slice(0,4);const tags=[...ibIntent(i)].map(x=>({press:"Press",link:"Can't sign",hostile:"Hostile",question:"Question",support:"Supporter",spam:"Link spam"})[x]);
   return `<aside class="ibperson"><div class="ibph"><span class="av">${esc((i.author_name||"?").slice(0,1).toUpperCase())}</span><div><b>${esc(i.author_name||"Someone")}</b><small>${esc(i.platform==="instagram"?"Instagram":"Facebook")}</small></div></div>
@@ -4113,7 +4243,7 @@ function ibPosts(){const ps=IB.posts||[];
   return bar+`<div class="ibx"><div class="ibl">${list}</div><div>${right}</div></div>`}
 function ibPerson(i){const p=IB.person;if(!p||p.author_id!==i.author_id||i.from_us)return"";const c=p.counts||{};
   const recent=(p.recent||[]).filter(r=>r.id!==i.id).slice(0,3);
-  return `<div class="ctx" style="border-left-color:var(--accent)"><b>${esc(p.author_name||"This person")}</b>, last 90 days: ${c.comments||0} comment${c.comments===1?"":"s"}${c.messages?`, ${c.messages} message${c.messages===1?"":"s"}`:""}${c.on_ads?`, ${c.on_ads} on ads`:""}${c.hidden?`, <span style="color:var(--bad)">${c.hidden} hidden by us</span>`:""}${(p.labels||[]).length?` · ${(p.labels||[]).map(l=>`<span class="ibtag">${esc(l)}</span>`).join("")}`:""}${recent.length?`<br>${recent.map(r=>`“${esc((r.text||"").slice(0,70))}” · ${esc(ibWhen(r.created_at))}`).join("<br>")}`:""}</div>`}
+  return `<div class="ctx" style="border-left-color:var(--accent)"><b>${esc(p.author_name||"This person")}</b>, last 90 days: ${c.comments||0} comment${c.comments===1?"":"s"}${c.messages?`, ${c.messages} message${c.messages===1?"":"s"}`:""}${c.on_ads?`, ${c.on_ads} on ads`:""}${c.hidden?`, <span style="color:var(--bad)">${c.hidden} hidden by us</span>`:""}${(p.labels||[]).length?` · ${(p.labels||[]).map(l=>`<span class="ibtag" title="${esc(l)}">${esc(short3(l))}</span>`).join("")}`:""}${recent.length?`<br>${recent.map(r=>`“${esc((r.text||"").slice(0,70))}” · ${esc(ibWhen(r.created_at))}`).join("<br>")}`:""}</div>`}
 function ibRules(){const R=IB.rules;if(!R)return"";const rules=R.rules||[],edit=R.can_edit;
   const has=k=>rules.find(r=>r.kind===k);
   const label=r=>r.kind==="word"?`Word: “${esc(r.value)}”`:r.kind==="phrase"?`Phrase: “${esc(r.value)}”`:r.kind==="links"?"Any link that isn't citizengo.org or cgo.ac":`Scam phrases (${(R.scam_phrases||[]).length} built in)`;
@@ -4178,7 +4308,7 @@ async function auRewrite(){const ta=$("#auDm");if(!ta||!S.sample)return;const t=
 async function ibAutoChange(args){try{const r=await eng("engine_automation",{team:S.team,...args});if(!r||r.ok===false){toast((r&&r.error)||"That didn't work.");return}IB.autos=r;if(["add","update"].includes(args.action))IB.auEdit=null;toast({add:"Automation added.",update:"Saved.",pause:"Paused.",resume:"Back on.",remove:"Removed."}[args.action]);renderInbox()}catch(e){failToast(e,"Couldn't change the automation")}}
 async function ibRuleChange(args){try{const r=await eng("engine_inbox_rule",{team:S.team,...args});if(!r||!r.ok){toast((r&&r.error)||"That didn't work.");return}IB.rules={...IB.rules,rules:r.rules};toast(args.action==="add"?"Added to the auto-hide list.":"Removed.");renderInbox()}catch(e){failToast(e,"Couldn't change the list")}}
 function ibFlaggedList(){const l=IB.flagged;if(!l)return '<p class="src">Loading…</p>';
-  return l.length?`<div class="ibl">${l.map(i=>`<div class="ibrow"><button class="ibi" data-ib-flag="${esc(i.id)}"><span class="av">${esc((i.author_name||"?").slice(0,1).toUpperCase())}</span><span><b>${esc(i.author_name||"Someone")}</b>${i.hidden?'<span class="ibtag hid">hidden</span>':""}${(i.labels||[]).map(x=>`<span class="ibtag">${esc(x)}</span>`).join("")}<span class="w">${esc(ibWhere(i))} · ${esc(ibWhen(i.created_at))}</span><span class="tx">${esc(i.text||"")}</span></span></button></div>`).join("")}</div><p class="src">Hidden comments stay visible to the writer and their friends. Threats are hidden, never deleted, so the copy here stays for safeguarding.</p>`:'<p class="src">Nothing flagged.</p>'}
+  return l.length?`<div class="ibl">${l.map(i=>`<div class="ibrow"><button class="ibi" data-ib-flag="${esc(i.id)}"><span class="av">${esc((i.author_name||"?").slice(0,1).toUpperCase())}</span><span><b>${esc(i.author_name||"Someone")}</b>${i.hidden?'<span class="ibtag hid">hidden</span>':""}${(i.labels||[]).map(x=>`<span class="ibtag" title="${esc(x)}">${esc(short3(x))}</span>`).join("")}<span class="w">${esc(ibWhere(i))} · ${esc(ibWhen(i.created_at))}</span><span class="tx">${esc(i.text||"")}</span></span></button></div>`).join("")}</div><p class="src">Hidden comments stay visible to the writer and their friends. Threats are hidden, never deleted, so the copy here stays for safeguarding.</p>`:'<p class="src">Nothing flagged.</p>'}
 function ibBanned(){const h=(IB.history||[]).filter(a=>(a.action==="ban"||a.action==="unban")&&a.status!=="cancelled").slice().reverse();const by={};
   for(const a of h){const k=a.item_id;by[k]={a,banned:a.action==="ban"}}
   const list=Object.values(by).filter(x=>x.banned);
@@ -4269,11 +4399,12 @@ document.addEventListener("click",async ev=>{
   if(t.dataset.ibTab){IB.tab=t.dataset.ibTab;loadInbox();return}
   if(t.dataset.ibFilter){IB.filter=t.dataset.ibFilter;loadInbox();return}
   if(t.dataset.ibStatus){IB.status=t.dataset.ibStatus;IB.open=null;loadInbox();return}
-  if(t.dataset.ibOpen){IB.open=IB.items.find(x=>x.id===t.dataset.ibOpen)||null;IB.text="";IB.sugMode=null;IB.drafts=null;IB.confirmDel=false;IB.thread=[];renderInbox();await loadThread();renderInbox();return}
+  if(t.dataset.ibOpen){IB.open=IB.items.find(x=>x.id===t.dataset.ibOpen)||null;IB.text="";IB.sugMode=null;IB.drafts=null;IB.confirmDel=false;IB.thread=[];IB.allThread=false;IB.emoOpen=false;renderInbox();await loadThread();renderInbox();return}
   if(t.dataset.ibUndo){const u=await eng("engine_inbox_undo",{action_id:Number(t.dataset.ibUndo)});toast(u&&u.ok?"Undone. Nothing was sent.":(u&&u.error)||"Couldn't undo");IB.pending=IB.pending.filter(a=>String(a.id)!==t.dataset.ibUndo);renderInbox();return}
   if(t.dataset.ibUsedraft!=null){const d=IB.drafts&&IB.drafts.list&&IB.drafts.list[Number(t.dataset.ibUsedraft)];if(d){IB.text=d.text;renderInbox();$("#ibText")?.focus()}return}
   const a=t.dataset.ibAct;const i=IB.open;if(!i)return;
   if(a==="draft"){ibDraft(i);return}
+  if(a==="focusreply"){const ta=$("#ibText");if(ta){ta.scrollIntoView({block:"center",behavior:"smooth"});ta.focus()}return}
   if(a==="askdelete"){IB.confirmDel=true;renderInbox();return}
   if(a==="nodelete"){IB.confirmDel=false;renderInbox();return}
   if(a==="assignme"){ibAct("assign",{assign_to:S.whoId||""});return}
@@ -4748,7 +4879,7 @@ function anCountries(D){const T=D.teams||[];if(!T.length)return `<p class="src">
    Countries; any date range with a comparison window; Ask your Claude on
    every section (the person's own Claude); CSV and print export; saved views
    for the team. Every figure comes from the nightly Meta collection. */
-const AN_TABS=[["overview","Overview"],["audience","Audience"],["posts","Posts"],["talk","Conversations"],["campaigns","Campaigns"],["countries","Countries"]];
+const AN_TABS=[["overview","Overview"],["audience","Audience"],["posts","Posts"],["talk","Conversations"],["campaigns","Campaigns"],["allies","Allies"],["leaderboard","Leaderboard"],["countries","Countries"]];
 const AN_MET=[["reach","Reach","reach"],["views","Views","views"],["engagements","Engagements","engagements"],["rate","Engagement rate","rate_per_view"],["net","Net follows","net_follows"],["video","Video views","video_views"]];
 const anUseR=()=>AN.custom||AN.cmp!=="previous";
 const anSrc=()=>anUseR()?AN.rdata:AN.data;
@@ -4786,9 +4917,10 @@ function anChart(o){const W=Math.max(260,Math.round(o.w||700)),H=o.h||220,L=46,R
   /* hover readout: one transparent column a day with every series in its title */
   const all=[...stacks,...(o.mirror?[o.mirror]:[]),...lines];
   for(let i=0;i<n;i++)s+=`<rect x="${(L+i*cw/n).toFixed(1)}" y="${T}" width="${(cw/n).toFixed(1)}" height="${ch}" fill="transparent"><title>${esc(anDay(o.dates[i]))}${all.map(x=>`\n${x.label}: ${num(x.vals[i])?fmt(x.vals[i]):"—"}`).join("")}</title></rect>`;
-  return `<svg class="anchart" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(o.label||"Chart")}">${s}</svg>`}
+  const chid="ch"+(++AN_CHN);if(AN_CHN%300===0)for(const x in AN_CH)delete AN_CH[x];AN_CH[chid]={dates:o.dates,series:all.map(x=>({label:x.label,vals:x.vals}))};
+  return `<svg class="anchart" data-chid="${chid}" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(o.label||"Chart")}">${s}</svg>`}
 function anLegend(items){return `<div class="anlegend">${items.map(([l,c,dash])=>`<span><i style="${dash?`border-top:2px dashed ${c};height:0`:`background:${c}`}"></i>${esc(l)}</span>`).join("")}</div>`}
-function anCard(title,body,{desc="",ask="",cls=""}={}){return `<section class="rsbox ancard ${cls}"><div class="anchd"><div><h3>${esc(title)}</h3>${desc?`<span class="src">${desc}</span>`:""}</div>${ask?`<button class="btn small" data-an-ask="${esc(ask)}" title="Ask your own Claude about this">✨ Ask Claude</button>`:""}</div>${body}${AN.ask&&AN.ask.key===ask&&ask?anAskBox():""}</section>`}
+function anCard(title,body,{desc="",ask="",cls=""}={}){const k=ask||"card:"+title;return `<section class="rsbox ancard ${cls}"><div class="anchd"><div><h3>${esc(title)}</h3>${desc?`<span class="src">${desc}</span>`:""}</div>${anTools(title,ask)}</div>${body}${AN.ask&&AN.ask.key===k?anAskBox():""}</section>`}
 function anAskBox(){const A=AN.ask;return `<div class="anask" aria-live="polite">${A.busy?`<span class="src">Asking your Claude…</span>`:A.err?`<span class="bad">${esc(A.err)}</span>`:`<div class="anasktext">${esc(A.text).replace(/\n/g,"<br>")}</div><span class="src">From your own Claude, given the figures on this page. Check before you quote it.</span>`}</div>`}
 function anTile(label,value,chg,vs,spark){return `<div class="antile"><span class="src">${esc(label)}</span><span class="antv"><b>${value}</b>${chg}${spark||""}</span><span class="src">${vs}</span></div>`}
 function anW(frac){const el=$("#anView");const w=(el&&el.clientWidth?el.clientWidth:1000)-2;return Math.max(260,Math.floor(w*frac)-40)}
@@ -4813,7 +4945,7 @@ function anSpike(D,R){const m=AN_MET.find(x=>x[0]===AN.bm)||AN_MET[0],d=R.daily,
   const pins=["reach","views"].includes(m[0])?(R.peaks||[]).map((p,k)=>({i:p.index,k:k+1})):[];
   const peaks=(R.peaks||[]).map((p,k)=>`<div class="anpeak"><span class="anpinb">${k+1}</span><div><span class="src">${anDay(p.date)} · ${anN(p.value)} reached, ${anN(p.x_day)}× a normal day</span>${p.post?`<span>${esc(p.post.text||"(no text)")}</span><span class="anbadges"><span class="ibtag">${anN(p.post.views)} views</span>${p.post.x_median!=null?`<span class="ibtag good">${anN(p.post.x_median)}× its Page's normal</span>`:""}${p.post.beyond_pct!=null?`<span class="ibtag">${anN(p.post.beyond_pct)}% beyond followers</span>`:""}</span><span class="src">${esc(p.post.page||"")}${p.post.url?` · <a href="${esc(p.post.url)}" target="_blank" rel="noopener">Open post ↗</a>`:""}</span>`:`<span class="src">No post of ours that day or the day before: likely an older post travelling, or a share.</span>`}</div></div>`).join("");
   const wide=!anPhone();
-  return `<section class="rsbox anspike"><div class="tabs" role="group" aria-label="Measure">${AN_MET.map(([k,l])=>`<button class="tab" data-an-bm="${k}" aria-pressed="${m[0]===k}">${l}</button>`).join("")}</div>
+  return `<section class="rsbox anspike ancard"><div class="anchd"><div><h3>${esc(m[1])} each day</h3></div>${anTools(m[1]+" each day","peaks")}</div><div class="tabs" role="group" aria-label="Measure">${AN_MET.map(([k,l])=>`<button class="tab" data-an-bm="${k}" aria-pressed="${m[0]===k}">${l}</button>`).join("")}</div>
     <div class="anbig"><b>${big}</b>${anDelta(ch,{pts:m[0]==="rate"})}<span class="src">${esc(m[1].toLowerCase())}${R.previous?` · vs ${m[0]==="rate"?anPct(prev):m[0]==="net"?anS(prev):anN(prev)} in the comparison window`:""}</span></div>
     <div class="anspikeg"><div>${anChart({dates:R.dates,w:anW(wide?.66:1),h:wide?300:200,lines:[{vals:series[0],col:"var(--s1)",label:m[1]},...(series[1]?[{vals:series[1],col:"var(--s-med)",dash:1,label:"Comparison window"}]:[])],pins,marks:d.posts.map(x=>x>0),fmt,label:`${m[1]} each day, with the posts behind the peaks`})}
       ${anLegend([["This window","var(--s1)"],...(series[1]?[["Comparison window, day by day","var(--s-med)",1]]:[]),["Dots: days we posted","var(--muted)"]])}</div>
@@ -4824,7 +4956,7 @@ function anAccountsTbl(D){const rows=[].concat((D.pages||[]).map(p=>({n:p.name,p
   if(!rows.length)return"";const mx=Math.max(1,...rows.map(r=>r.reach||0));
   return anCard("Every account, same scale",`<div class="awrap"><table class="atbl"><thead><tr><th>Account</th><th class="n">Reach</th><th class="anbarc"></th><th class="n">Followers</th><th class="n">Net follows</th></tr></thead><tbody>${rows.sort((a,b)=>(b.reach||0)-(a.reach||0)).map(r=>`<tr><td>${esc(r.n)} <small class="src">${r.plat}</small></td><td class="n">${r.reach==null?"—":anN(r.reach)}</td><td class="anbarc">${r.reach?`<div class="abar" style="width:${Math.max(2,Math.round(100*r.reach/mx))}%"></div>`:""}</td><td class="n">${anN(r.f)}</td><td class="n">${r.net==null?"—":anS(r.net)}</td></tr>`).join("")}</tbody></table></div><span class="src">Last ${D.days} days. X reach is impressions; Instagram reach is on each post (Posts tab).</span>`)}
 
-function anOverview(D,R){return anTiles2(D,R)+anSpike(D,R)+(AN.custom?"":`<div class="angrid">${anBest2(D)}${anChanged(D)}</div>`)+anAccountsTbl(D)}
+function anOverview(D,R){return anTiles2(D,R)+anMentions(R)+anSpike(D,R)+(AN.custom?"":`<div class="angrid">${anBest2(D)}${anChanged(D)}</div>`)+anAccountsTbl(D)}
 
 /* A: the full report. */
 function anAudience(D,R){const d=R.daily,pd=R.prev_daily,t=R.totals,p=R.previous,c=R.change,half=anPhone()?1:.5;const marks=d.posts.map(x=>x>0);
@@ -4897,6 +5029,7 @@ function anAskPrompt(key){const D=AN.data||{},R=anRep();const t=R&&R.totals,p=R&
   if(key==="followers"&&R)L.push(`Daily new followers: ${R.daily.follows.join(",")}. Daily unfollows: ${R.daily.unfollows.join(",")}.`);
   if(key==="engagement"&&R)L.push(`Daily reactions: ${R.daily.reactions.join(",")}. Comments: ${R.daily.comments.join(",")}. Shares: ${R.daily.shares.join(",")}. Posts a day: ${R.daily.posts.join(",")}.`);
   if(key==="views"&&R)L.push(`Daily views: ${R.daily.views.join(",")}. Daily reach: ${R.daily.reach.join(",")}.`);
+  if(String(key).startsWith("card:")){const t=key.slice(5);L.push(`The card "${t}" on the ${(AN_TABS.find(x=>x[0]===AN.tab)||[])[1]||AN.tab} tab shows:\n${(AN.cardCtx||{})[t]||""}`)}
   if(D.changed&&D.changed.length&&!AN.custom)L.push("Already noticed from the figures: "+D.changed.map(x=>x.text).join(" "));
   L.push(key==="page"?"In plain English, under 200 words: what went well, what didn't, the likely reasons, and two or three things to try next. Use only these figures; say when something can't be told from them.":"In plain English, under 150 words: what does this show, what probably explains it, and one thing to try. Use only these figures; say when something can't be told from them.");
   return L.join("\n")}
@@ -4920,6 +5053,8 @@ function renderAnalytics(){const el=$("#anView");if(!el||el.hidden)return;const 
   const tabs=`<div class="tabs antabs" role="tablist" aria-label="Analytics sections">${AN_TABS.map(([k,l])=>`<button class="tab" role="tab" data-an-tab="${k}" aria-selected="${AN.tab===k}" aria-pressed="${AN.tab===k}">${l}</button>`).join("")}</div>`;
   const lede=AN.tab==="countries"?"Every country team side by side.":AN.scope==="hazteoir"?"HazteOir, shown apart and never mixed into CitizenGO totals.":AN.scope==="team"?"Your team's own accounts.":"Every CitizenGO Page and account.";
   const head=`<div class="anhead"><div><p class="lede">${lede} Organic figures from Meta and X, collected every night.</p></div></div>${AN.tab==="countries"?`<div class="anbar"><span class="tabs">${[7,30,90].map(d=>`<button class="tab" data-an-days="${d}" aria-pressed="${AN.days===d}">${d} days</button>`).join("")}</span><span class="anbarr"><button class="btn small" data-an-csv>Export CSV</button><button class="btn small" data-an-print>Print or PDF</button></span></div>`:anBar(t)}${tabs}`;
+  if(AN.tab==="allies"){el.innerHTML=head+anAllies();return}
+  if(AN.tab==="leaderboard"){el.innerHTML=head+anLeaderboard();return}
   if(AN.err){el.innerHTML=head+`<p class="offline">Couldn't load Analytics (${esc(whyFailed(AN.err))}).</p>`;return}
   if(!D){el.innerHTML=head+`<p class="src">${AN.loading?"Loading the figures…":"No figures yet."}</p>`;return}
   if(AN.tab==="countries"){el.innerHTML=head+(D.scope==="countries"?anCountries(D):`<p class="src">Loading…</p>`);return}
@@ -4992,7 +5127,7 @@ document.addEventListener("click",async ev=>{const t=ev.target;if(!t.closest||!t
   if(t.closest("[data-an-apply]")){if(AN.custom&&(!AN.from||!AN.to)){toast("Pick both dates");return}if(AN.cmp==="custom"&&!AN.cfrom){toast("Pick when the comparison starts");return}AN.rdata=null;loadAnRange();return}
   const ak=t.closest("[data-an-ask]");if(ak){if(AN.ask&&AN.ask.key===ak.dataset.anAsk&&!AN.ask.busy){AN.ask=null;renderAnalytics();return}anAsk(ak.dataset.anAsk);return}
   if(t.closest("[data-an-csv]")){anCsv();return}
-  if(t.closest("[data-an-print]")){window.print();return}
+  if(t.closest("[data-an-print]")){anPrintOpen();return}
   const pf=t.closest("[data-an-pfmt]");if(pf){AN.pfmt=pf.dataset.anPfmt;renderAnalytics();return}
   if(t.closest("[data-an-pmore]")){AN.plim=(AN.plim||25)+25;renderAnalytics();return}
   if(t.closest("[data-an-saveview]")){const box=$(".anbarr");if(!box||box.querySelector("[data-an-vname]"))return;box.insertAdjacentHTML("beforeend",`<input type="text" data-an-vname maxlength="40" placeholder="Name, e.g. Monthly report" class="acini" style="width:12em;text-transform:none"><button class="btn small primary" data-an-vsave>Save</button>`);$("[data-an-vname]").focus();return}
@@ -5628,6 +5763,272 @@ window.addEventListener("beforeunload",ev=>{if(CP.open&&CP.state&&/Unsaved|Savin
   setInterval(()=>{if(document.visibilityState==="visible"&&!busy()&&!S.editing&&!S.gedit&&!S.inline)refreshPosts()},45000);
   document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"&&!busy())refreshPosts()});
 })();
+
+/* ---------- Priority Two (3 Nov): Inbox ----------
+   10A the post card with its nightly figures; 14A/14C friendlier empty states that point to where
+   the items are; 15A emoji and widen, 15C full-screen conversation; 35A up to three of the team's
+   own past replies to similar comments (matched by words, no AI). */
+async function ibPostLoad(i){if(!i||i.kind==="message"||i.is_ad)return;IB.postFig=IB.postFig||{};if(IB.postFig[i.thread_id])return;
+  try{const r=await eng("engine_inbox_post",{team:S.team,thread_id:i.thread_id});IB.postFig[i.thread_id]=r&&r.ok!==false?r:{figures:null}}catch(e){IB.postFig[i.thread_id]={figures:null}}
+  if(IB.open&&IB.open.thread_id===i.thread_id)renderInbox()}
+async function ibPastLoad(i){if(!i||i.from_us||!i.text)return;if(IB.past&&IB.past.id===i.id)return;IB.past={id:i.id,busy:true,list:[]};
+  try{const r=await eng("engine_inbox_similar",{team:S.team,id:i.id});if(IB.past.id===i.id)IB.past={id:i.id,list:(r&&r.replies)||[]}}catch(e){if(IB.past.id===i.id)IB.past={id:i.id,list:[]}}
+  if(IB.open&&IB.open.id===i.id)renderInbox()}
+function ibPastHtml(i){const P=IB.past;if(!P||P.id!==i.id||P.busy||!P.list.length)return"";
+  return `<div class="ibpast"><div class="src"><b style="color:var(--fg)">We said this before</b> · our replies to similar comments, best match first</div>${P.list.map((x,n)=>`<div class="ibpr"><span class="src">To ${esc(x.to_name||"someone")}: “${esc(String(x.to||"").slice(0,90))}” · ${esc(x.by||"a teammate")}, ${esc(new Date(x.at).toLocaleDateString("en-GB",{day:"numeric",month:"short"}))}</span><p>${esc(x.text)}</p><div class="ibacts"><button class="btn small${n===0?" primary":""}" data-ib-past="${n}">Use this</button></div></div>`).join("")}</div>`}
+const IB_EMO="🙏 ❤️ 💙 👍 🙌 👏 💪 😊 🥰 😢 😮 🎉 ✅ ✍️ 📢 🗳️ 🇬🇧 🏴 🇲🇽 ✝️ 🕊️ 🌹 🤝 💌 👉 ⬇️ ⭐ 🔥 🙂 😀".split(" ");
+function ibEmoUse(){try{return JSON.parse(localStorage.getItem("desk.emoUse")||"{}")}catch(e){return{}}}
+function ibEmojiMenu(){const u=ibEmoUse();const top=Object.keys(u).sort((a,b)=>u[b]-u[a]).slice(0,6);const most=(top.length?top:["🙏","❤️","💙","👍","🙌"]);
+  return `<div class="ibemenu" role="dialog" aria-label="Emoji"><span class="eyebrow">${top.length?"You use most":"Most used"}</span><div>${most.map(e=>`<button data-ib-emoji="${e}" aria-label="${e}">${e}</button>`).join("")}</div><span class="eyebrow">All</span><div>${IB_EMO.map(e=>`<button data-ib-emoji="${e}" aria-label="${e}">${e}</button>`).join("")}</div></div>`}
+function ibEmptyKey(){return JSON.stringify([S.team,IB.q||"",IB.accts||[],IB.f||{},IB.status,IB.filter,IB.ads||"all",IB.qAll])}
+function ibEmptyHtml(){const key=ibEmptyKey();const E2=IB.elsewhere&&IB.elsewhere.key===key?IB.elsewhere:null;if(!E2){IB.elsewhere={key,busy:true};setTimeout(()=>ibElsewhere(key),0)}
+  const F=IB.f||IBF0;const why=[IB.q?`the search “${esc(IB.q)}”`:"",ibFilterCount()?`${ibFilterCount()} filter${ibFilterCount()===1?"":"s"}`:"",(IB.accts||[]).length?`${IB.accts.length===1?esc(ibAccName(IB.accts[0])):IB.accts.length+" accounts"} only`:""].filter(Boolean).join(", ");
+  const st=IB.status==="open"?"open":IB.status==="done"?"done":IB.status;const go=[];
+  if(E2&&!E2.busy){if(E2.done&&IB.status==="open")go.push(`<button class="btn small" data-ib-goto="done">${E2.done} in Done</button>`);if(E2.open&&IB.status!=="open")go.push(`<button class="btn small" data-ib-goto="open">${E2.open} in Open</button>`);
+    Object.entries(E2.accts||{}).sort((a,b)=>b[1]-a[1]).slice(0,3).forEach(([k,n])=>go.push(`<button class="btn small" data-ib-goacct="${esc(k)}">${n} on ${esc(ibAccName(k))}</button>`));
+    if(F.days&&E2.older)go.push(`<button class="btn small" data-ib-goto="anytime">${E2.older} from any time</button>`)}
+  return `<div class="empty2"><span class="ei" aria-hidden="true">🔍</span><b>Nothing ${esc(st)} matches this view</b><p>${why?`It's narrowed by ${why}.`:""} ${E2&&E2.busy?"Looking for matches elsewhere…":go.length?"But there are matches elsewhere:":"Nothing elsewhere matches either."}</p>${go.length?`<div class="ibacts">${go.join("")}</div>`:""}<div class="ibacts"><button class="btn small primary" data-ib-clearall>Clear search and filters</button>${ibFilterCount()?'<button class="btn small" data-ib-drawer>Edit filters</button>':""}</div></div>`}
+async function ibElsewhere(key){if(!IB.elsewhere||IB.elsewhere.key!==key)return;const F=IB.f||IBF0;const out={key,done:0,open:0,accts:{},older:0};
+  try{const args={team:S.team,status:"all",limit:500};Object.assign(args,IB_CHAN[IB.filter]||{});if((IB.q||"").trim().length>=2)args.q=IB.q.trim();
+    const r=await eng("engine_inbox",args);const me=String(S.whoId||"").toLowerCase();const since=ibSince(F.days);const sel=IB.accts||[];
+    (r.items||[]).filter(i=>!i.from_us).filter(i=>IB.filter!=="mine"||String(i.assigned_to||"").toLowerCase()===me).filter(i=>IB.ads!=="ads"||i.is_ad)
+      .filter(i=>!F.tone||(F.tone==="neutral"?!i.tone:i.tone===F.tone)).filter(i=>!F.label||ibHasLabel(i,F.label)).filter(i=>F.hidden!=="only"||i.hidden).filter(i=>F.hidden!=="hide"||!i.hidden)
+      .forEach(i=>{const inAcct=!sel.length||sel.includes(i.account_key);const inTime=!since||i.created_at>=since;
+        if(inAcct&&inTime){if(i.status==="done")out.done++;else out.open++}else if(!inAcct&&inTime)out.accts[i.account_key]=(out.accts[i.account_key]||0)+1;else if(inAcct&&!inTime)out.older++})}catch(e){}
+  if(IB.elsewhere&&IB.elsewhere.key===key){IB.elsewhere=out;renderInbox()}}
+function draftsEmpty(){const label=esc(STATUS.find(x=>x.key===S.status).label);const on=!!(String(S.q||"").trim()||S.issue||S.type||S.by||S.label);
+  if(!on)return `<div class="empty2"><span class="ei" aria-hidden="true">🗂️</span><b>Nothing in “${label}”</b><p>${S.status==="pending"?"The morning run adds the day's drafts here, or start your own with Compose.":"Posts move here as they go through Review."}</p></div>`;
+  const q=String(S.q||"").trim().toLowerCase();const m=d=>(!S.issue||d.issue===S.issue)&&(!S.type||d.type===S.type)&&(!S.by||draftBy(d)===S.by)&&(!S.label||draftLabels(d).includes(S.label))&&(!q||draftText(d).includes(q));
+  const els=STATUS.filter(x=>x.key!==S.status&&x.key!=="evergreen").map(x=>[x,S.drafts.filter(d=>(d.status||"pending")===x.key&&m(d)).length]).filter(x=>x[1]);
+  return `<div class="empty2"><span class="ei" aria-hidden="true">🔍</span><b>Nothing in “${label}” matches</b><p>Your search or filters may be too narrow.${els.length?" But there are matches in other tabs:":""}</p>${els.length?`<div class="ibacts">${els.map(([x,n])=>`<button class="btn small" data-dr-goto="${esc(x.key)}">${n} in ${esc(x.label)}</button>`).join("")}</div>`:""}<div class="ibacts"><button class="btn small primary" data-dr-clear>Clear search and filters</button></div></div>`}
+document.addEventListener("click",async ev=>{
+  const dg=ev.target.closest("[data-dr-goto]");if(dg){S.status=dg.dataset.drGoto;renderAll();return}
+  if(ev.target.closest("[data-dr-clear]")){S.q="";S.issue=S.type=S.by=S.label="";const q=$("#fQ");if(q)q.value="";renderAll();return}
+  if(S.view!=="inbox")return;
+  if(ev.target.closest("[data-ib-earlier]")){IB.allThread=true;renderInbox();return}
+  if(ev.target.closest("[data-ib-full]")){IB.full=!IB.full;IB.emoOpen=false;renderInbox();if(IB.full)$("#ibText")?.focus();return}
+  if(ev.target.closest("[data-ib-emo]")){IB.text=$("#ibText")?.value??IB.text;IB.emoOpen=!IB.emoOpen;renderInbox();return}
+  const em=ev.target.closest("[data-ib-emoji]");if(em){const ta=$("#ibText");const e=em.dataset.ibEmoji;if(ta){const a=ta.selectionStart??ta.value.length,b=ta.selectionEnd??a;ta.value=ta.value.slice(0,a)+e+ta.value.slice(b);IB.text=ta.value;ta.focus();ta.setSelectionRange(a+e.length,a+e.length);ta.dispatchEvent(new Event("input",{bubbles:true}))}const u=ibEmoUse();u[e]=(u[e]||0)+1;try{localStorage.setItem("desk.emoUse",JSON.stringify(u))}catch(_){}return}
+  if(IB.emoOpen&&!ev.target.closest(".ibemo")){IB.emoOpen=false;IB.text=$("#ibText")?.value??IB.text;renderInbox()}
+  const pr=ev.target.closest("[data-ib-past]");if(pr&&IB.past){const x=IB.past.list[+pr.dataset.ibPast];if(x){IB.text=x.text;IB.sugMode=null;renderInbox();const ta=$("#ibText");if(ta){ta.focus();ta.setSelectionRange(ta.value.length,ta.value.length)}}return}
+  const gt=ev.target.closest("[data-ib-goto]");if(gt){const g=gt.dataset.ibGoto;if(g==="done"||g==="open"){IB.status=g;IB.qAll=false}else if(g==="anytime"){IB.f={...(IB.f||IBF0),days:0}}IB.open=null;loadInbox();return}
+  const ga=ev.target.closest("[data-ib-goacct]");if(ga){IB.accts=[ga.dataset.ibGoacct];ibAcctsSave();IB.open=null;loadInbox();return}
+});
+document.addEventListener("keydown",ev=>{if(ev.key==="Escape"&&S.view==="inbox"&&(IB.full||IB.emoOpen)){if(IB.emoOpen)IB.emoOpen=false;else IB.full=false;IB.text=$("#ibText")?.value??IB.text;renderInbox()}});
+
+/* ---------- Priority Two (3 Nov): Plan ----------
+   11B a row of small menus (accounts, created by, type, campaign) plus Mine; the default is the
+   team's own calendar with every post. 13A-E calendar export: CSV, Print/PDF view, a window to pick
+   dates and columns, the ticked posts, and Copy as table. Downloads only, nothing is emailed.
+   16A-E the Instagram grid as a picture: download, options, copy, phone frame, sign-off sheet. */
+function draftIsMine(d){const me=String(S.whoId||"").toLowerCase();return !!(d&&d.own&&[d.own.by,d.own.who,d.own.name].some(x=>x&&String(x).toLowerCase()===me))}
+function postKind(d){if(!d)return"";if(d.card&&d.card.template==="story")return"Story";if(isVideoPost(d))return"Reel or video";if(d.card&&d.card.template==="carousel")return"Carousel";if(d.card||d.photo||(d.own&&d.own.media&&d.own.media.length))return"Picture";return"Link or text"}
+function calFilterMenus(){const f=CAL.filter||{};const t=(S.teams||[]).find(x=>x.id===S.team)||{};const accs=(t.accounts||[]);
+  const mine=S.drafts.filter(d=>d.status!=="rejected");const people=[...new Set(mine.filter(d=>d.own).map(draftBy))].sort();const kinds=["Picture","Carousel","Reel or video","Story","Link or text"].filter(k=>mine.some(d=>postKind(d)===k));
+  const camps=[...new Set(mine.map(d=>short3(campOf(d))).filter(Boolean))].sort();
+  const sel=(k,label,opts)=>`<select data-cal-f="${k}" aria-label="${label}"${f[k]?' class="on"':""}>${opts.map(([v,l])=>`<option value="${esc(v)}"${String(f[k]||"")===v?" selected":""}>${esc(l)}</option>`).join("")}</select>`;
+  return sel("acct","Accounts",[["","All accounts"],...accs.map(a=>[a.key,accLabel(a.key)])])+sel("by","Created by",[["","Anyone"],["__me","Me"],["__engine","The engine"],...people.map(p=>[p,p])])+sel("kind","Post type",[["","Any type"],...kinds.map(k=>[k,k])])+(camps.length?sel("camp","Campaign",[["","Any campaign"],...camps.map(c=>[c,c])]):"")+`<button class="tab small" data-cal-mine aria-pressed="${f.by==="__me"}">Mine</button>`}
+function calExportBtn(){return `<span class="calexp"><button class="btn small" data-cal-exp="menu" aria-expanded="${!!CAL.expOpen}">⬇ Export</button>${CAL.expOpen?`<div class="ibmenu calexpm" role="menu"><button class="ibmrow" data-cal-exp="csv">CSV of what's on screen</button><button class="ibmrow" data-cal-exp="print">Print / PDF</button><button class="ibmrow" data-cal-exp="pick">Choose dates and columns…</button><button class="ibmrow" data-cal-exp="copy">Copy as table</button><div class="ibmfoot"><span class="src">For the team only. Nothing is emailed.</span></div></div>`:""}</span>`}
+const CAL_COLS=[["date","Date"],["time","Time"],["accounts","Accounts"],["title","Post"],["text","Text"],["status","Status"],["by","Created by"],["campaign","Campaign"],["type","Type"],["link","Link"]];
+const CAL_COLS0=["date","time","accounts","title","status","by","campaign","link"];
+function calExportRows(opt={}){const {s,e,month}=calRange();let from=opt.from?new Date(opt.from+"T00:00:00"):s,to=opt.to?new Date(opt.to+"T23:59:59"):new Date(e-1);
+  if(!opt.from&&CAL.view==="month"){from=new Date(new Date(CAL.anchor).getFullYear(),month,1);to=new Date(new Date(CAL.anchor).getFullYear(),month+1,0,23,59,59)}
+  const k0=dayKey(from),k1=dayKey(to);let items=calItems().filter(i=>{const k=dayKey(Z(i.at));return k>=k0&&k<=k1});if(opt.ids)items=items.filter(i=>opt.ids.has(i.id));if(opt.acct)items=items.filter(i=>(i.dests||[]).includes(opt.acct));
+  items.sort((a,b)=>String(a.at).localeCompare(String(b.at)));
+  const rows=items.map(i=>{const d=i.mine?S.drafts.find(x=>x.id===i.id):null;const links=d?liveLinks(d):(i.links||[]).map(x=>[accLabel(x.account),x.url]);const z=Z(i.at);
+    return {date:z.toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short",year:"numeric"}),time:calHM(i.at),accounts:(i.dests||[]).map(accLabel).join(", "),title:i.title||"",text:d?String((d.platforms||{}).facebook||(d.platforms||{}).instagram||"").replace(/\s+/g," ").slice(0,500):"",
+      status:i.status==="posted"?"Posted":["pending","changes"].includes(i.status)?"In review":i.mine?"Scheduled":calTeamName(i.team),by:d?draftBy(d):calTeamName(i.team),campaign:d?short3(campOf(d)):"",type:d?postKind(d):"",link:links.map(x=>x[1]).join(" ")}});
+  return {rows,from,to,k0,k1}}
+function calCsv(R,cols,name){const q=v=>{const x=v==null?"":String(v);return /[",\n]/.test(x)?`"${x.replace(/"/g,'""')}"`:x};const head=cols.map(c=>(CAL_COLS.find(x=>x[0]===c)||[c,c])[1]);
+  const blob=new Blob([[head,...R.rows.map(r=>cols.map(c=>r[c]))].map(r=>r.map(q).join(",")).join("\n")],{type:"text/csv"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name||`plan-${S.team}-${R.k0}-to-${R.k1}.csv`;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500);toast(`Downloaded ${R.rows.length} post${R.rows.length===1?"":"s"} as CSV. For the team only.`)}
+function printSheet(html,title){let el=$("#printSheet");if(!el){el=document.createElement("div");el.id="printSheet";document.body.appendChild(el)}
+  el.innerHTML=`<div class="psbar noprint"><b>${esc(title||"Print preview")}</b><span class="src">For the team only. Use your browser's Save as PDF to keep a copy.</span><span class="sp"></span><button class="btn small primary" data-ps="print">Print / Save PDF</button><button class="btn small" data-ps="close">Back</button></div><div class="pspage">${html}</div>`;document.body.classList.add("printsheet");el.querySelector("[data-ps=print]")?.focus()}
+function psHead(title,sub){const t=(S.teams||[]).find(x=>x.id===S.team)||{};return `<div class="pshead"><img src="/desk/go.png" alt="CitizenGO" width="34" height="34"><div><b>${esc(title)}</b><small>${esc([t.flag,t.name].filter(Boolean).join(" "))}${sub?" · "+esc(sub):""}</small></div><span class="sp"></span><small>Printed by ${esc(nameOf?nameOf(S.whoId):S.whoId||"")} · ${esc(new Date().toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"}))} · team only</small></div>`}
+function calPrint(R,cols){const lab=`${R.from.toLocaleDateString("en-GB",{day:"numeric",month:"short"})} – ${R.to.toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"})}`;
+  printSheet(psHead("Plan",lab)+(R.rows.length?`<table class="pstbl"><thead><tr>${cols.map(c=>`<th>${esc((CAL_COLS.find(x=>x[0]===c)||[c,c])[1])}</th>`).join("")}</tr></thead><tbody>${R.rows.map(r=>`<tr>${cols.map(c=>`<td>${esc(c==="link"?String(r[c]).split(" ")[0]||"":r[c])}</td>`).join("")}</tr>`).join("")}</tbody></table>`:'<p>Nothing planned in these dates.</p>'),"Plan · print preview")}
+async function calCopy(R,cols){const head=cols.map(c=>(CAL_COLS.find(x=>x[0]===c)||[c,c])[1]);const tsv=[head,...R.rows.map(r=>cols.map(c=>String(r[c]??"").replace(/[\t\n]/g," ")))].map(r=>r.join("\t")).join("\n");
+  const html=`<table><tr>${head.map(h=>`<th>${esc(h)}</th>`).join("")}</tr>${R.rows.map(r=>`<tr>${cols.map(c=>`<td>${esc(r[c]??"")}</td>`).join("")}</tr>`).join("")}</table>`;
+  try{if(window.ClipboardItem)await navigator.clipboard.write([new ClipboardItem({"text/plain":new Blob([tsv],{type:"text/plain"}),"text/html":new Blob([html],{type:"text/html"})})]);else await navigator.clipboard.writeText(tsv);toast(`Copied ${R.rows.length} post${R.rows.length===1?"":"s"}. Paste into a doc or chat.`)}catch(e){toast("Your browser didn't allow copying. Use CSV instead.")}}
+function calExpDialog(){const X=CAL.expPick;if(!X)return"";const t=(S.teams||[]).find(x=>x.id===S.team)||{};
+  return `<div class="ibscrim" data-cal-exp="close"></div><div class="calexpd" role="dialog" aria-label="Export the plan"><h3>Export the plan</h3><div class="ibacts"><label>From <input type="date" data-cal-xp="from" value="${esc(X.from)}"></label><label>To <input type="date" data-cal-xp="to" value="${esc(X.to)}"></label><select data-cal-xp="acct" aria-label="Accounts"><option value="">All accounts</option>${(t.accounts||[]).map(a=>`<option value="${esc(a.key)}"${X.acct===a.key?" selected":""}>${esc(accLabel(a.key))}</option>`).join("")}</select></div>
+    <span class="eyebrow">Columns</span><div class="ibacts">${CAL_COLS.map(([k,l])=>`<label class="lg"><input type="checkbox" data-cal-xcol="${k}"${X.cols.includes(k)?" checked":""}> ${esc(l)}</label>`).join("")}</div>
+    <div class="ibacts"><span class="tabs"><button class="tab" data-cal-xp-fmt="csv" aria-pressed="${X.fmt==="csv"}">CSV</button><button class="tab" data-cal-xp-fmt="pdf" aria-pressed="${X.fmt==="pdf"}">Print / PDF</button><button class="tab" data-cal-xp-fmt="copy" aria-pressed="${X.fmt==="copy"}">Copy</button></span><span class="sp"></span><button class="btn small" data-cal-exp="close">Cancel</button><button class="btn small primary" data-cal-exp="go">${X.fmt==="csv"?"Download":X.fmt==="pdf"?"Open print view":"Copy"}</button></div><span class="src">For the team only. Nothing is emailed or scheduled.</span></div>`}
+/* 16: the grid as one picture. */
+function igOpt(){if(!CAL.igOpt){try{CAL.igOpt=JSON.parse(localStorage.getItem("desk.igOpt")||"null")}catch(e){}CAL.igOpt=Object.assign({tiles:9,mark:true,dates:true,name:false},CAL.igOpt||{})}return CAL.igOpt}
+function igOptSave(){try{localStorage.setItem("desk.igOpt",JSON.stringify(CAL.igOpt))}catch(e){}}
+function igGridTools(){return `<span class="igtools"><button class="btn small primary" data-ig-dl="png">⬇ Download image</button><button class="btn small" data-ig-dl="copy">Copy image</button><button class="btn small" data-ig-dl="phone">⬇ As a phone</button><button class="btn small" data-ig-dl="sheet">Sign-off sheet</button><button class="btn small" data-ig-dl="opts" aria-expanded="${!!CAL.igOptOpen}">Options</button></span>`}
+function igOptsPanel(){if(!CAL.igOptOpen)return"";const o=igOpt();return `<div class="igopts rsbox"><b>Grid picture</b><label>Tiles <select data-ig-o="tiles">${[9,12,15].map(n=>`<option${o.tiles===n?" selected":""}>${n}</option>`).join("")}</select></label><label class="lg"><input type="checkbox" data-ig-o="mark"${o.mark?" checked":""}> Mark planned posts</label><label class="lg"><input type="checkbox" data-ig-o="dates"${o.dates?" checked":""}> Show post dates</label><label class="lg"><input type="checkbox" data-ig-o="name"${o.name?" checked":""}> Account name on top</label><span class="src">Remembered on this device.</span></div>`}
+const igImg=src=>new Promise(ok=>{const im=new Image();im.onload=()=>ok(im);im.onerror=()=>ok(null);im.src=/^https:\/\/[^/]*(cdninstagram\.com|fbcdn\.net)\//i.test(src)?"/api/desk?op=img&u="+encodeURIComponent(src):src});
+function igCover(ctx,src,x,y,w,h){const sw=src.width,sh=src.height;const r=Math.max(w/sw,h/sh);const cw=w/r,ch=h/sh*sh/r*(sh/sh);const cx=(sw-w/r)/2,cy=(sh-h/r)/2;ctx.drawImage(src,Math.max(0,cx),Math.max(0,cy),w/r,h/r,x,y,w,h)}
+async function igTiles(){const o=igOpt();const plan=(CAL.igPlan||[]).slice().reverse().slice(-o.tiles).reverse();const live=(CAL.igLive||[]).slice(0,Math.max(0,o.tiles-plan.length));const out=[];
+  for(const i of plan){const d=S.drafts.find(x=>x.id===i.id);let src=null,tainted=false;if(d&&d.card){try{const cv=document.createElement("canvas");const k=S.slide;S.slide=0;drawCard(d,cv,d.card.template==="carousel"&&d.card.slides?d.card.slides[0]:d.card);S.slide=k;try{cv.getContext("2d").getImageData(0,0,1,1);src=cv}catch(e){tainted=true}}catch(e){}}
+    out.push({plan:true,review:["pending","changes"].includes(i.status),src,title:i.title,at:i.at,d,tainted})}
+  for(const m of live){out.push({plan:false,src:m.img?await igImg(m.img):null,title:m.caption||"",at:m.at,url:m.url})}
+  return out}
+async function igCanvas({phone}={}){const o=igOpt();const tiles=await igTiles();const T=360,G=6,cols=3,rows=Math.ceil(tiles.length/cols);const acc=CAL.igAcc||{};
+  const headH=(o.name||phone)?(phone?150:70):0;const pad=phone?36:0;const W=cols*T+(cols-1)*G+pad*2,H=headH+rows*T+(rows-1)*G+pad*2+(phone?40:0);
+  const cv=document.createElement("canvas");cv.width=W;cv.height=H;const c=cv.getContext("2d");const css=getComputedStyle(document.documentElement);
+  c.fillStyle="#ffffff";c.fillRect(0,0,W,H);
+  if(phone){c.fillStyle="#111";c.beginPath();c.roundRect?c.roundRect(4,4,W-8,H-8,56):c.rect(4,4,W-8,H-8);c.fill();c.fillStyle="#fff";c.beginPath();c.roundRect?c.roundRect(18,18,W-36,H-36,44):c.rect(18,18,W-36,H-36);c.fill()}
+  if(headH){const y0=pad+(phone?24:0);c.fillStyle="#4285F4";c.beginPath();c.arc(pad+50,y0+40,34,0,7);c.fill();c.fillStyle="#fff";c.font="700 28px 'Barlow Condensed',Arial,sans-serif";c.textAlign="center";c.fillText("GO",pad+50,y0+50);c.textAlign="left";c.fillStyle="#202124";c.font="600 30px 'Public Sans',Arial,sans-serif";c.fillText(acc.handle?"@"+acc.handle:(acc.name||"Instagram"),pad+100,y0+38);c.font="400 22px 'Public Sans',Arial,sans-serif";c.fillStyle="#5f6673";c.fillText(`Planned grid · ${new Date().toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"})}`,pad+100,y0+68)}
+  tiles.forEach((t,n)=>{const x=pad+(n%cols)*(T+G),y=pad+headH+(phone?16:0)+Math.floor(n/cols)*(T+G);c.fillStyle="#eef2f8";c.fillRect(x,y,T,T);
+    if(t.src)try{igCover(c,t.src,x,y,T,T)}catch(e){}else{c.fillStyle="#5f6673";c.font="600 22px 'Public Sans',Arial,sans-serif";wrapText(c,t.title||"",x+18,y+44,T-36,28,6)}
+    if(t.plan&&o.mark){c.strokeStyle=t.review?"#9a5b00":"#2563d9";c.lineWidth=8;if(t.review)c.setLineDash([18,10]);c.strokeRect(x+4,y+4,T-8,T-8);c.setLineDash([]);const lab=t.review?"In review":"Planned";c.font="600 20px 'Public Sans',Arial,sans-serif";const w=c.measureText(lab).width+20;c.fillStyle=t.review?"#fdf0d9":"#e6eefe";c.fillRect(x+12,y+12,w,32);c.fillStyle=t.review?"#9a5b00":"#2563d9";c.fillText(lab,x+22,y+35)}
+    if(o.dates&&t.at){const lab=new Date(t.at).toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"});c.font="500 19px 'IBM Plex Mono',monospace";const w=c.measureText(lab).width+16;c.fillStyle="rgba(255,255,255,.92)";c.fillRect(x+10,y+T-42,w,30);c.fillStyle="#202124";c.fillText(lab,x+18,y+T-21)}});
+  return {cv,tiles}}
+function wrapText(c,t,x,y,w,lh,max){const ws=String(t).split(/\s+/);let line="",n=0;for(const wd of ws){const tst=line?line+" "+wd:wd;if(c.measureText(tst).width>w&&line){c.fillText(line,x,y);y+=lh;line=wd;if(++n>=max-1)break}else line=tst}if(line)c.fillText(line,x,y)}
+async function igDownload(mode){if(!CAL.igAcc){toast("Open the Instagram grid first");return}
+  if(mode==="sheet"){const tiles=(await igTiles()).filter(t=>t.plan);if(!tiles.length){toast("Nothing planned for this account yet");return}
+    const rows=tiles.map(t=>{let img="";try{img=t.src&&t.src.toDataURL?t.src.toDataURL("image/jpeg",.8):""}catch(e){}const cap=t.d?String((t.d.platforms||{}).instagram||(t.d.platforms||{}).facebook||""):"";
+      return `<div class="psrow">${img?`<img src="${img}" alt="">`:`<span class="psph">${esc(short3(t.title))}</span>`}<div><small>${esc(new Date(t.at).toLocaleString("en-GB",{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}))} · ${t.review?"In review":"Scheduled"}</small><b>${esc(t.title||"")}</b><p>${esc(cap.slice(0,600))}</p></div><span class="psok">☐ OK</span></div>`}).join("");
+    printSheet(psHead("Instagram sign-off",(CAL.igAcc.handle?"@"+CAL.igAcc.handle:CAL.igAcc.name||""))+rows,"Instagram sign-off sheet");return}
+  toast("Making the picture…");const {cv,tiles}=await igCanvas({phone:mode==="phone"});
+  const name=`instagram-grid-${(CAL.igAcc.handle||S.team||"team")}-${new Date().toISOString().slice(0,10)}${mode==="phone"?"-phone":""}.png`;
+  let blob;try{blob=await new Promise((ok,no)=>cv.toBlob(b=>b?ok(b):no(new Error("blank")),"image/png"))}catch(e){toast("A picture in the grid couldn't be used. Try again after the next collection.");return}
+  const miss=tiles.filter(t=>!t.src).length;const note=miss?` (${miss} tile${miss===1?"":"s"} shown as text: picture not available)`:"";
+  if(mode==="copy"){try{await navigator.clipboard.write([new ClipboardItem({"image/png":blob})]);toast("Grid copied. Paste it into your chat"+note)}catch(e){toast("Your browser didn't allow copying a picture. Use Download instead.")}return}
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500);toast("Grid picture downloaded"+note)}
+document.addEventListener("click",async ev=>{
+  const ps=ev.target.closest("[data-ps]");if(ps){if(ps.dataset.ps==="print")window.print();else{document.body.classList.remove("printsheet");$("#printSheet")?.remove()}return}
+  if(S.view!=="calendar")return;
+  const ig=ev.target.closest("[data-ig-dl]");if(ig){const m=ig.dataset.igDl;if(m==="opts"){CAL.igOptOpen=!CAL.igOptOpen;renderCal();return}igDownload(m);return}
+  if(ev.target.closest("[data-cal-mine]")){const f=CAL.filter||(CAL.filter={});f.by=f.by==="__me"?"":"__me";renderCal();return}
+  const x=ev.target.closest("[data-cal-exp]");if(x){const a=x.dataset.calExp;
+    if(a==="menu"){CAL.expOpen=!CAL.expOpen;renderCal();return}CAL.expOpen=false;
+    if(a==="csv"){calCsv(calExportRows(),CAL_COLS0);renderCal();return}
+    if(a==="print"){renderCal();calPrint(calExportRows(),CAL_COLS0.filter(c=>c!=="link"));return}
+    if(a==="copy"){renderCal();calCopy(calExportRows(),CAL_COLS0);return}
+    if(a==="ticked"){const R=calExportRows({ids:new Set(CAL.sel||[]),from:"2000-01-01",to:"2100-01-01"});calCsv(R,CAL_COLS0,`plan-${S.team}-ticked-${new Date().toISOString().slice(0,10)}.csv`);return}
+    if(a==="pick"){const R=calExportRows();CAL.expPick={from:R.k0,to:R.k1,acct:"",cols:CAL_COLS0.slice(),fmt:"csv"};renderCal();$("#calView").insertAdjacentHTML("beforeend",calExpDialog());return}
+    if(a==="close"){CAL.expPick=null;renderCal();return}
+    if(a==="go"&&CAL.expPick){const X=CAL.expPick;const R=calExportRows({from:X.from,to:X.to,acct:X.acct});CAL.expPick=null;renderCal();const cols=CAL_COLS.map(c=>c[0]).filter(c=>X.cols.includes(c));if(!cols.length){toast("Pick at least one column");return}if(X.fmt==="csv")calCsv(R,cols);else if(X.fmt==="pdf")calPrint(R,cols);else calCopy(R,cols);return}
+    return}
+  const fm=ev.target.closest("[data-cal-xp-fmt]");if(fm&&CAL.expPick){CAL.expPick.fmt=fm.dataset.calXpFmt;$(".calexpd")?.previousElementSibling?.remove();$(".calexpd")?.remove();$("#calView").insertAdjacentHTML("beforeend",calExpDialog());return}
+  if(CAL.expOpen&&!ev.target.closest(".calexp")){CAL.expOpen=false;renderCal()}
+});
+document.addEventListener("change",ev=>{const t=ev.target;if(!t.matches)return;
+  if(t.matches("[data-cal-f]")){const f=CAL.filter||(CAL.filter={});f[t.dataset.calF]=t.value;renderCal();return}
+  if(t.matches("[data-cal-xp]")&&CAL.expPick){CAL.expPick[t.dataset.calXp]=t.value;return}
+  if(t.matches("[data-cal-xcol]")&&CAL.expPick){const k=t.dataset.calXcol;const c=CAL.expPick.cols;CAL.expPick.cols=t.checked?[...new Set(c.concat(k))]:c.filter(x=>x!==k);return}
+  if(t.matches("[data-ig-o]")){const o=igOpt();const k=t.dataset.igO;o[k]=k==="tiles"?Number(t.value):t.checked;igOptSave();return}});
+document.addEventListener("keydown",ev=>{if(ev.key==="Escape"&&document.body.classList.contains("printsheet")){document.body.classList.remove("printsheet");$("#printSheet")?.remove()}});
+
+/* ---------- Priority Two (3 Nov): Analytics ----------
+   27B a Mentions card (how often people tagged our Pages, by day, against the days before; no
+   names). 28A/28B our Instagram beside allies: a sortable table and ranked bars. 31A+D Print/PDF
+   asks for a title, who prepared it and which sections, then prints them under a CitizenGO band. */
+function anMentions(R){if(AN.scope!=="team"||!R||!R.dates||!R.dates.length)return"";const key=[S.team,R.from,R.to].join("|");
+  if(!AN.ment||AN.ment.key!==key){AN.ment={key,busy:true};anMentLoad(key,R)}const M=AN.ment;if(M.busy)return `<div class="anment rsbox"><b>Mentions</b><span class="src">Counting…</span></div>`;if(M.err)return"";
+  const mx=Math.max(1,...M.daily);const ch=M.prev?Math.round((M.total-M.prev)/M.prev*100):null;
+  return `<div class="anment rsbox"><div class="anmh"><div><span class="src">@ Mentions · times people tagged our Pages</span><div><b class="anbig">${anN(M.total)}</b> ${ch!=null?`<span class="${ch>=0?"good":"bad"}">${ch>=0?"+":""}${ch}% vs the days before</span>`:M.prevKnown?'<span class="src">none the days before</span>':""}</div></div><button class="btn small" data-an-ment>Open in the Inbox</button></div>
+    <div class="anmbars" role="img" aria-label="Mentions per day">${M.daily.map((v,i)=>`<span title="${esc(R.dates[i])}: ${v}"><i style="height:${Math.round(v/mx*100)}%"></i></span>`).join("")}</div><span class="src">From the Inbox, which collects tags of our Pages${M.first?" since "+esc(new Date(M.first).toLocaleDateString("en-GB",{day:"numeric",month:"short"})):""}. Instagram tags in Stories aren't included.</span></div>`}
+async function anMentLoad(key,R){const days=R.dates.length;const from=new Date(R.from+"T00:00:00"),pfrom=new Date(from-days*864e5);
+  try{const r=await eng("engine_inbox",{team:S.team,kind:"mention",status:"all",since:pfrom.toISOString(),limit:1000});const l=(r.items||[]).filter(i=>i.kind==="mention");
+    const idx=Object.fromEntries(R.dates.map((d,i)=>[d,i]));const daily=R.dates.map(()=>0);let prev=0,total=0;
+    for(const i of l){const d=String(i.created_at).slice(0,10);if(d in idx){daily[idx[d]]++;total++}else if(d<R.from)prev++}
+    const first=l.map(i=>i.created_at).sort()[0];
+    if(AN.ment&&AN.ment.key===key)AN.ment={key,daily,total,prev,prevKnown:first&&first.slice(0,10)<=pfrom.toISOString().slice(0,10),first}}catch(e){if(AN.ment&&AN.ment.key===key)AN.ment={key,err:e}}
+  renderAnalytics()}
+const AL_COLS=[["name","Account"],["followers","Followers"],["posts","Posts"],["engagement","Likes + comments"],["per_post","Per post"],["per_1k_followers","Per post per 1k followers"]];
+function anAllies(){const st=AN.al||(AN.al={days:30,country:"",sort:"per_post",dir:-1,view:"table",measure:"per_post"});const key=[S.team,st.days,st.country].join("|");
+  if(!AN.ald||AN.ald.key!==key){AN.ald={key,busy:true};(async()=>{try{const r=await eng("engine_benchmark",{team:S.team,days:st.days,...(st.country?{country:st.country}:{})});if(AN.ald.key===key)AN.ald={key,...r}}catch(e){if(AN.ald.key===key)AN.ald={key,err:e}}if(AN.tab==="allies")renderAnalytics()})()}
+  const D=AN.ald;const ctrl=`<div class="anbar"><span class="tabs">${[7,30,90].map(d=>`<button class="tab" data-al-days="${d}" aria-pressed="${st.days===d}">${d} days</button>`).join("")}</span><label class="src">Allies in <select class="calctry" data-al-country>${[["","our country"],["all","every country"],["UK","UK"],["IE","Ireland"],["US","US"],["CA","Canada"],["AU","Australia"]].map(([v,l])=>`<option value="${v}"${st.country===v?" selected":""}>${l}</option>`).join("")}</select></label><span class="tabs">${[["table","Table"],["bars","Ranked bars"]].map(([k,l])=>`<button class="tab" data-al-view="${k}" aria-pressed="${st.view===k}">${l}</button>`).join("")}</span>${st.view==="bars"?`<label class="src">Measure <select class="calctry" data-al-measure>${AL_COLS.slice(1).map(([k,l])=>`<option value="${k}"${st.measure===k?" selected":""}>${l}</option>`).join("")}</select></label>`:""}<span class="anbarr"><button class="btn small" data-al-csv>Export CSV</button></span></div>`;
+  if(!D||D.busy)return ctrl+`<p class="src">Loading the allies…</p>`;if(D.err)return ctrl+`<p class="offline">Couldn't load the allies (${esc(whyFailed(D.err))}).</p>`;
+  const rows=(D.rows||[]).slice();if(!rows.length)return ctrl+`<div class="empty2"><span class="ei">🤝</span><b>No allies posted in these days</b><p>Try every country or a longer window.</p></div>`;
+  const lede=`<p class="src">Instagram only, likes + comments, last ${D.days} days, allies ${D.country==="all"?"in every country":"in "+esc(D.country)}. ${esc(D.note||"")} Opponents are left out.</p>`;
+  if(st.view==="bars"){const m=st.measure;const list=rows.filter(r=>r[m]!=null).sort((a,b)=>(b[m]||0)-(a[m]||0));const mx=Math.max(1,...list.map(r=>r[m]||0));const lab=(AL_COLS.find(c=>c[0]===m)||[])[1];
+    return ctrl+lede+`<div class="alrank" role="list" aria-label="Ranked by ${esc(lab)}">${list.map((r,i)=>`<div class="alrow${r.ours?" ours":""}" role="listitem"><span class="n">${i+1}</span><span class="alname">${esc(r.name)}${r.ours?' <small>us</small>':""}</span><span class="albar"><i style="width:${Math.max(2,Math.round((r[m]||0)/mx*100))}%"></i></span><b class="n">${anN(r[m])}</b></div>`).join("")}</div>`}
+  const k=st.sort,dir=st.dir;rows.sort((a,b)=>k==="name"?dir*String(a.name).localeCompare(String(b.name)):dir*(((a[k]??-1))-((b[k]??-1))));
+  return ctrl+lede+`<div class="awrap"><table class="atbl altbl"><thead><tr>${AL_COLS.map(([c,l])=>`<th class="${c==="name"?"":"n"}"><button class="linkish" data-al-sort="${c}" aria-sort="${k===c?(dir<0?"descending":"ascending"):"none"}">${esc(l)}${k===c?(dir<0?" ▾":" ▴"):""}</button></th>`).join("")}<th>Best post</th></tr></thead><tbody>${rows.map(r=>`<tr class="${r.ours?"ours":""}"><td><b>${esc(r.name)}</b>${r.ours?' <span class="pill acc">us</span>':""}<br><small class="src">@${esc(r.handle||"")}${r.topic?" · "+esc(r.topic):""}</small></td><td class="n">${anN(r.followers)}</td><td class="n">${anN(r.posts)}</td><td class="n">${anN(r.engagement)}</td><td class="n"><b>${anN(r.per_post)}</b></td><td class="n">${r.per_1k_followers==null?"—":r.per_1k_followers}</td><td>${r.top?`<a href="${esc(r.top.url)}" target="_blank" rel="noopener">${esc(String(r.top.text||"post").slice(0,60))}</a> <small class="src">${anN(r.top.engagement)}</small>`:'<span class="src">—</span>'}</td></tr>`).join("")}</tbody></table></div>`}
+document.addEventListener("click",ev=>{if(S.view!=="analytics")return;const st=AN.al;
+  if(ev.target.closest("[data-an-ment]")){navGo("inbox:inbox");IB.status="open";IB.filter="mention";loadInbox();return}
+  const d=ev.target.closest("[data-al-days]");if(d&&st){st.days=Number(d.dataset.alDays);renderAnalytics();return}
+  const v=ev.target.closest("[data-al-view]");if(v&&st){st.view=v.dataset.alView;renderAnalytics();return}
+  const so=ev.target.closest("[data-al-sort]");if(so&&st){const c=so.dataset.alSort;st.dir=st.sort===c?-st.dir:(c==="name"?1:-1);st.sort=c;renderAnalytics();return}
+  if(ev.target.closest("[data-al-csv]")&&AN.ald&&AN.ald.rows){const q=v=>{const x=v==null?"":String(v);return /[",\n]/.test(x)?`"${x.replace(/"/g,'""')}"`:x};const rows=[["account","handle","ours","followers","posts","likes","comments","per_post","per_post_per_1k_followers","best_post"],...AN.ald.rows.map(r=>[r.name,r.handle,r.ours?"yes":"",r.followers,r.posts,r.likes,r.comments,r.per_post,r.per_1k_followers,r.top&&r.top.url])];const blob=new Blob([rows.map(r=>r.map(q).join(",")).join("\n")],{type:"text/csv"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`allies-${S.team}-${AN.ald.days}d.csv`;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500);return}
+  const pp=ev.target.closest("[data-anp]");if(pp){const a=pp.dataset.anp;if(a==="close"){$("#anPrintD")?.remove();return}if(a==="go")anPrintGo();return}
+});
+document.addEventListener("change",ev=>{const t=ev.target;if(!t.matches||S.view!=="analytics"||!AN.al)return;if(t.matches("[data-al-country]")){AN.al.country=t.value;renderAnalytics()}else if(t.matches("[data-al-measure]")){AN.al.measure=t.value;renderAnalytics()}});
+/* 26A (Chris, 4 Nov): tools on every Analytics card. Ask Claude and Full screen as icons (on hover; always on a phone), and a "…" menu with the rest. */
+const AN_CH={};let AN_CHN=0;
+const CT_IC={ask:'<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/>',full:'<path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/>',more:'<circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/>'};
+const ctSvg=k=>`<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${CT_IC[k]}</svg>`;
+function anTools(title,ask){return `<span class="ctools"><button class="cti" ${ask?`data-an-ask="${esc(ask)}"`:`data-ct="ask"`} title="Ask your own Claude about this" aria-label="Ask Claude about ${esc(title)}">${ctSvg("ask")}</button><button class="cti" data-ct="full" title="Full screen" aria-label="Open ${esc(title)} full screen">${ctSvg("full")}</button><span class="ctm"><button class="cti" data-ct="more" title="More" aria-label="More for ${esc(title)}" aria-haspopup="menu">${ctSvg("more")}</button></span></span>`}
+function ctData(card){const svg=card.querySelector("svg[data-chid]");const c=svg&&AN_CH[svg.dataset.chid];
+  if(c)return [["date",...c.series.map(s=>s.label)],...c.dates.map((d,i)=>[d,...c.series.map(s=>s.vals[i]??"")])];
+  const t=card.querySelector("table");if(t)return [...t.rows].map(r=>[...r.cells].map(x=>x.innerText.replace(/\s+/g," ").trim()));
+  return null}
+function ctTitle(card){return (card.querySelector(".anchd h3")?.textContent||"chart").trim()}
+function ctFile(card,ext){return `${ctTitle(card).toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"")||"chart"}-${S.team||"cgo"}.${ext}`}
+function ctSave(blob,name){const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500)}
+function ctCsv(card){const d=ctData(card);if(!d){toast("Nothing to download in this one");return}const q=v=>{const x=v==null?"":String(v);return /[",\n]/.test(x)?`"${x.replace(/"/g,'""')}"`:x};ctSave(new Blob([d.map(r=>r.map(q).join(",")).join("\n")],{type:"text/csv"}),ctFile(card,"csv"))}
+/* PNG: the chart's SVG with its styles written inline, on a white card with the title and the date range. */
+function ctPng(card){const svg=card.querySelector("svg.anchart")||card.querySelector("svg.anspark")||[...card.querySelectorAll("svg")].find(x=>!x.closest(".ctools"));if(!svg){toast("This one is a table: use Download CSV");return}
+  const cl=svg.cloneNode(true);const src=[svg,...svg.querySelectorAll("*")],dst=[cl,...cl.querySelectorAll("*")];
+  src.forEach((el,i)=>{const cs=getComputedStyle(el);["fill","stroke","stroke-width","stroke-dasharray","font-size","font-family","font-weight","opacity"].forEach(p=>{const v=cs.getPropertyValue(p);if(v)dst[i].style.setProperty(p,v)})});
+  const w=svg.viewBox.baseVal&&svg.viewBox.baseVal.width||svg.clientWidth||700,h=svg.viewBox.baseVal&&svg.viewBox.baseVal.height||svg.clientHeight||220;cl.setAttribute("width",w);cl.setAttribute("height",h);cl.setAttribute("xmlns","http://www.w3.org/2000/svg");
+  const img=new Image();img.onload=()=>{const k=2,pad=24,head=44,c=document.createElement("canvas");c.width=(w+pad*2)*k;c.height=(h+pad*2+head)*k;const g=c.getContext("2d");g.scale(k,k);g.fillStyle="#fff";g.fillRect(0,0,w+pad*2,h+pad*2+head);
+    g.fillStyle="#202124";g.font="700 16px system-ui,sans-serif";g.fillText(ctTitle(card),pad,pad+12);const R=anRep();g.fillStyle="#5f6673";g.font="12px system-ui,sans-serif";g.fillText(((R?anRangeLine(R).replace(/<[^>]+>/g,""):"")+" · CitizenGO").trim(),pad,pad+30);g.drawImage(img,pad,pad+head,w,h);
+    c.toBlob(b=>b?ctSave(b,ctFile(card,"png")):toast("Couldn't make the picture"),"image/png")};
+  img.onerror=()=>toast("Couldn't make the picture");img.src="data:image/svg+xml;charset=utf-8,"+encodeURIComponent(new XMLSerializer().serializeToString(cl))}
+function ctTable(card){const old=card.querySelector(".cttbl");if(old){old.remove();return}const d=ctData(card);if(!d){toast("No figures to show");return}
+  card.insertAdjacentHTML("beforeend",`<div class="awrap cttbl"><table class="atbl"><thead><tr>${d[0].map(x=>`<th>${esc(x)}</th>`).join("")}</tr></thead><tbody>${d.slice(1).map(r=>`<tr>${r.map((x,i)=>`<td class="${i?"n":""}">${esc(typeof x==="number"?anN(x):x)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`)}
+function ctPrint(card){const el=card.cloneNode(true);el.classList.remove("anfull");el.querySelectorAll(".ctools,button,.ctmenu").forEach(x=>x.remove());const R=anRep();
+  printSheet(`<div class="psband"><img src="/desk/go.png" alt="CitizenGO" width="30" height="30"><b>${esc(ctTitle(card))}</b><span>${esc(R?anRangeLine(R).replace(/<[^>]+>/g,""):"")}</span></div>${el.outerHTML}<div class="psfoot">CitizenGO, for the team only · ${esc(new Date().toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"}))}</div>`,"Chart · print preview")}
+function ctClose(){document.querySelectorAll(".ctmenu").forEach(m=>m.remove())}
+function ctFull(card,on){const f=document.querySelector(".ancard.anfull");if(f&&f!==card){f.classList.remove("anfull")}card.classList.toggle("anfull",on);AN.full=on?ctTitle(card):null;document.body.classList.toggle("anfullon",!!document.querySelector(".ancard.anfull"))}
+/* A re-render (new measure, a sort, an answer from Claude) rebuilds the cards: keep the same card full screen, or unlock the page. */
+function ctRestore(){const c=AN.full&&[...document.querySelectorAll("#anView .ancard")].find(x=>ctTitle(x)===AN.full);if(c)c.classList.add("anfull");else AN.full=null;document.body.classList.toggle("anfullon",!!c)}
+document.addEventListener("click",ev=>{const mi=ev.target.closest("[data-ctm]");if(mi){const card=mi.closest(".ancard");ctClose();if(!card)return;const a=mi.dataset.ctm;
+    if(a==="png")ctPng(card);else if(a==="csv")ctCsv(card);else if(a==="table")ctTable(card);else if(a==="print")ctPrint(card);return}
+  const b=ev.target.closest("[data-ct]");if(!b){if(!ev.target.closest(".ctmenu"))ctClose();return}const card=b.closest(".ancard");if(!card)return;const a=b.dataset.ct;
+  if(a==="full"){ctFull(card,!card.classList.contains("anfull"));return}
+  if(a==="ask"){const t=ctTitle(card),d=ctData(card);AN.cardCtx=AN.cardCtx||{};AN.cardCtx[t]=d?d.slice(0,120).map(r=>r.join(", ")).join("\n"):card.innerText.slice(0,3000);anAsk("card:"+t);return}
+  if(a==="more"){const open=b.parentElement.querySelector(".ctmenu");ctClose();if(open)return;const hasSvg=[...card.querySelectorAll("svg")].some(x=>!x.closest(".ctools")),hasData=!!ctData(card);
+    b.parentElement.insertAdjacentHTML("beforeend",`<div class="ctmenu" role="menu">${hasSvg?'<button role="menuitem" data-ctm="png">Download PNG</button>':""}${hasData?'<button role="menuitem" data-ctm="csv">Download CSV</button>':""}${hasSvg&&hasData?`<button role="menuitem" data-ctm="table">${card.querySelector(".cttbl")?"Hide the table":"Show as a table"}</button>`:""}<button role="menuitem" data-ctm="print">Print this card</button></div>`)}});
+document.addEventListener("keydown",ev=>{if(ev.key!=="Escape")return;const f=document.querySelector(".ancard.anfull");if(f){ctFull(f,false);ev.stopPropagation()}ctClose()},true);
+
+/* 37E + 37C (Chris, 4 Nov): a friendly CitizenGO leaderboard. Trophies of the period first, then every CitizenGO Facebook Page, sortable by any measure, with how many places each moved on that measure against the period before. */
+const LB_COLS=[["followers","Followers"],["growth","Growth"],["engagements","Engagement"],["posts","Posts"],["per_post","Per post"],["per_1k","Per 1k followers"]];
+const lbFmt=(k,v)=>v==null?"—":k==="growth"?(v>0?"+":"")+v+"%":k==="per_1k"?anN(Math.round(v*10)/10):anN(v);
+function lbRank(list,k,side){const r={};list.filter(p=>p[side]&&p[side][k]!=null&&(!/^per_/.test(k)||(p[side].posts||0)>=3)).sort((a,b)=>b[side][k]-a[side][k]).forEach((p,i)=>r[p.page_id]=i+1);return r}
+function anLeaderboard(){const st=AN.lbs||(AN.lbs={days:30,sort:"per_1k"});const key=String(st.days);
+  if(!AN.lbd||AN.lbd.key!==key){AN.lbd={key,busy:true};(async()=>{try{const r=await eng("engine_analytics",{scope:"leaderboard",days:st.days});if(AN.lbd.key===key)AN.lbd={key,...r}}catch(e){if(AN.lbd.key===key)AN.lbd={key,err:e}}if(AN.tab==="leaderboard")renderAnalytics()})()}
+  const ctrl=`<div class="anbar"><span class="tabs">${[7,30,90].map(d=>`<button class="tab" data-lb-days="${d}" aria-pressed="${st.days===d}">${d} days</button>`).join("")}</span><span class="sp"></span><button class="btn small" data-lb-csv>⬇ CSV</button></div>`;
+  const D=AN.lbd;if(!D||D.busy)return ctrl+`<p class="src">Loading the leaderboard…</p>`;if(D.err)return ctrl+`<p class="offline">Couldn't load the leaderboard (${esc(whyFailed(D.err))}).</p>`;
+  const P=(D.pages||[]).slice();if(!P.length)return ctrl+`<div class="empty2"><span class="ei">🏆</span><b>No figures for these days yet</b><p>Try a longer window.</p></div>`;
+  const myT=new Set((S.teams||[]).map(t=>t.id));P.forEach(p=>p.mine=!!(p.team&&myT.has(p.team)));const nm=p=>`${p.flag?p.flag+" ":""}${p.name}`;const k=st.sort;const rc=lbRank(P,k,"cur"),rp=lbRank(P,k,"prev");
+  const top=(m,min3)=>P.filter(p=>p.cur&&p.cur[m]!=null&&(!min3||(p.cur.posts||0)>=3)).sort((a,b)=>b.cur[m]-a.cur[m])[0];
+  const r1k=lbRank(P,"per_1k","cur"),r1kp=lbRank(P,"per_1k","prev");const climb=P.filter(p=>r1k[p.page_id]&&r1kp[p.page_id]).map(p=>({p,up:r1kp[p.page_id]-r1k[p.page_id]})).sort((a,b)=>b.up-a.up)[0];
+  const bestPost=P.filter(p=>p.best&&p.best.x).sort((a,b)=>b.best.x-a.best.x)[0];
+  const tro=[["🏆","Most engagement",top("engagements"),p=>anN(p.cur.engagements)],["🚀","Fastest growing",top("growth"),p=>lbFmt("growth",p.cur.growth)],["⚖️","Best per 1k followers",top("per_1k",true),p=>lbFmt("per_1k",p.cur.per_1k)],["⭐","Best per post",top("per_post",true),p=>anN(p.cur.per_post)]]
+    .filter(t=>t[2]).map(([i,l,p,v])=>`<div class="lbtro"><span class="src">${i} ${esc(l)}</span><b>${esc(nm(p))}</b><span class="n">${v(p)}</span></div>`);
+  if(climb&&climb.up>0)tro.push(`<div class="lbtro"><span class="src">📈 Biggest climber</span><b>${esc(nm(climb.p))}</b><span class="n">up ${climb.up} place${climb.up===1?"":"s"} per 1k followers</span></div>`);
+  if(bestPost)tro.push(`<div class="lbtro"><span class="src">📌 Post of the period</span><b>${esc(nm(bestPost))}</b><span class="n">${bestPost.best.url?`<a href="${esc(bestPost.best.url)}" target="_blank" rel="noopener">${esc((bestPost.best.text||"Post").slice(0,50))}</a>`:esc((bestPost.best.text||"").slice(0,50))} · ${anN(bestPost.best.x)}× its normal</span></div>`);
+  const rows=P.slice().sort((a,b)=>(rc[a.page_id]||1e9)-(rc[b.page_id]||1e9)||String(a.name).localeCompare(b.name));
+  const mv=p=>{const a=rc[p.page_id],b=rp[p.page_id];if(!a)return "";if(!b)return '<span class="lbmv new">new</span>';const d=b-a;return d>0?`<span class="lbmv up" title="Up ${d} from the ${D.days} days before">▲${d}</span>`:d<0?`<span class="lbmv dn" title="Down ${-d} from the ${D.days} days before">▼${-d}</span>`:'<span class="lbmv">—</span>'};
+  const medal=i=>i<3?["🥇","🥈","🥉"][i]:String(i+1);
+  return ctrl+`<p class="src">Every CitizenGO Facebook Page (HazteOir kept apart), last ${D.days} days. Move is the change in place on the measure you sort by, against the ${D.days} days before. Per post and per 1k followers count Pages with 3 posts or more, so a small Page can top it.</p>
+  <div class="lbtros">${tro.join("")}</div>
+  ${anCard("The leaderboard",`<div class="awrap"><table class="atbl lbtbl"><thead><tr><th class="n">#</th><th>Page</th>${LB_COLS.map(([c,l])=>`<th class="n"><button class="linkish" data-lb-sort="${c}" aria-sort="${k===c?"descending":"none"}">${esc(l)}${k===c?" ▾":""}</button></th>`).join("")}<th class="n">Move</th></tr></thead><tbody>${rows.map(p=>{const r=rc[p.page_id];return `<tr class="${p.mine?"ours":""}"><td class="n">${r?medal(r-1):"·"}</td><td><b>${esc(nm(p))}</b>${p.mine?' <span class="pill acc">yours</span>':""}</td>${LB_COLS.map(([c])=>`<td class="n${c===k?" lbk":""}">${lbFmt(c,p.cur[c])}</td>`).join("")}<td class="n">${mv(p)}</td></tr>`}).join("")}</tbody></table></div>`,{desc:"Tap a heading to rank by it."})}`}
+document.addEventListener("click",ev=>{if(S.view!=="analytics"||!AN.lbs)return;
+  const d=ev.target.closest("[data-lb-days]");if(d){AN.lbs.days=Number(d.dataset.lbDays);renderAnalytics();return}
+  const so=ev.target.closest("[data-lb-sort]");if(so){AN.lbs.sort=so.dataset.lbSort;renderAnalytics();return}
+  if(ev.target.closest("[data-lb-csv]")&&AN.lbd&&AN.lbd.pages){const q=v=>{const x=v==null?"":String(v);return /[",\n]/.test(x)?`"${x.replace(/"/g,'""')}"`:x};const cols=LB_COLS.map(c=>c[0]);
+    const rows=[["page",...cols,...cols.map(c=>c+"_before")],...AN.lbd.pages.map(p=>[p.name,...cols.map(c=>p.cur&&p.cur[c]),...cols.map(c=>p.prev&&p.prev[c])])];ctSave(new Blob([rows.map(r=>r.map(q).join(",")).join("\n")],{type:"text/csv"}),`citizengo-leaderboard-${AN.lbd.days}d.csv`)}});
+{const r0=renderAnalytics;renderAnalytics=function(){const out=r0.apply(this,arguments);try{ctRestore()}catch(e){}return out}}
+const AN_PRINT_TABS=[["overview","Overview"],["audience","Audience"],["posts","Posts"],["talk","Conversations"],["campaigns","Campaigns"],["allies","Allies"],["leaderboard","Leaderboard"]];
+function anPrintOpen(){let o;try{o=JSON.parse(localStorage.getItem("desk.anPrint")||"null")}catch(e){}const t=(S.teams||[]).find(x=>x.id===S.team);const who=AN.scope==="team"?(t&&t.name)||"My team":AN.scope==="hazteoir"?"HazteOir":"CitizenGO";
+  /* Countries has its own dataset (AN.data is countries-only there), so it prints on its own; the other tabs print together. */
+  const ctry=AN.tab==="countries",list=ctry?[["countries","Countries"]]:AN_PRINT_TABS;o=Object.assign({by:nameOf(S.whoId),cover:false},o||{});o.tabs=ctry?["countries"]:(o.tabs||[]).filter(k=>list.some(x=>x[0]===k));if(!o.tabs.length)o.tabs=[AN.tab];o.title=`${who} social media report`;
+  $("#anPrintD")?.remove();document.body.insertAdjacentHTML("beforeend",`<div id="anPrintD"><div class="ibscrim" data-anp="close"></div><div class="calexpd" role="dialog" aria-label="Print or PDF"><h3>Print or PDF</h3><label class="src">Title<input type="text" id="anpTitle" value="${esc(o.title)}"></label><label class="src">Prepared by<input type="text" id="anpBy" value="${esc(o.by||"")}"></label><span class="eyebrow">Include</span>${ctry?'<p class="src" style="margin:0">Countries prints on its own. Open another tab to print those together.</p>':""}<div class="ibacts">${list.map(([k,l])=>`<label class="lg"><input type="checkbox" data-anp-tab="${k}"${o.tabs.includes(k)?" checked":""}> ${l}</label>`).join("")}</div><label class="lg"><input type="checkbox" id="anpCover"${o.cover?" checked":""}> Start with a cover page</label><div class="ibacts"><span class="sp"></span><button class="btn small" data-anp="close">Cancel</button><button class="btn small primary" data-anp="go">Open print view</button></div><span class="src">Every page carries the CitizenGO band, the team, the dates and who prepared it. For the team only.</span></div></div>`)}
+function anPrintGo(){const tabs=[...document.querySelectorAll("[data-anp-tab]")].filter(x=>x.checked).map(x=>x.dataset.anpTab);if(!tabs.length){toast("Pick at least one section");return}
+  const o={title:$("#anpTitle").value.trim()||"Social media report",by:$("#anpBy").value.trim(),tabs,cover:$("#anpCover").checked};try{localStorage.setItem("desk.anPrint",JSON.stringify({by:o.by,tabs:o.tabs,cover:o.cover}))}catch(e){}
+  $("#anPrintD")?.remove();const R=anRep();const range=R?anRangeLine(R).replace(/<[^>]+>/g,""):`last ${AN.days} days`;const was=AN.tab;const parts=[];
+  for(const k of tabs){AN.tab=k;renderAnalytics();const el=$("#anView").cloneNode(true);el.querySelectorAll(".anbar,.antabs,.anhead,button,select,input,[data-an-refresh],details.anmore summary").forEach(x=>x.remove());el.querySelectorAll("details").forEach(x=>x.setAttribute("open",""));parts.push(`<section class="psec"><h2>${esc((AN_PRINT_TABS.find(x=>x[0]===k)||[])[1]||(k==="countries"?"Countries":k))}</h2>${el.innerHTML}</section>`)}
+  AN.tab=was;renderAnalytics();const t=(S.teams||[]).find(x=>x.id===S.team)||{};const band=`<div class="psband"><img src="/desk/go.png" alt="CitizenGO" width="30" height="30"><b>${esc(o.title)}</b><span>${esc(range)}</span></div>`;
+  const cover=o.cover?`<div class="pscover"><img src="/desk/go.png" alt="CitizenGO" width="86" height="86"><h1>${esc(o.title)}</h1><p>${esc([t.flag,AN.scope==="team"?t.name:""].filter(Boolean).join(" "))}</p><p>${esc(range)}</p><p>Prepared by ${esc(o.by||"the team")} · ${esc(new Date().toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"}))}</p></div>`:"";
+  printSheet(cover+band+parts.join("")+`<div class="psfoot">Prepared by ${esc(o.by||"the team")} · ${esc(new Date().toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"}))} · CitizenGO, for the team only</div>`,"Analytics · print preview")}
 </script>
 
 </body></html>

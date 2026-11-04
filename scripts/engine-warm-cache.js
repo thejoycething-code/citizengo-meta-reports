@@ -24,6 +24,7 @@ async function main() {
     for (const team of teams) jobs.push(['engine_analytics', { scope: 'team', team, days }]);
   }
   for (const days of [7, 30, 90]) jobs.push(['engine_analytics', { scope: 'countries', days }]);
+  for (const days of [7, 30, 90]) jobs.push(['engine_analytics', { scope: 'leaderboard', days }]);
   // Listening: Rising now (per team), Topics (overview + beyond our list),
   // the Allies and Other CitizenGO tabs, and Opponents (7 and 14 days).
   for (const team of teams) {
