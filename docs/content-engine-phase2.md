@@ -170,7 +170,7 @@ on the Mini (`P.assembleVideo`: size, SHA-256 and the MP4/MOV header checked) an
 Meta: Facebook as a Page video (`graph-video …/{page}/videos`, the text as its description), Instagram as a Reel
 (resumable upload to rupload.facebook.com, then it waits up to about 4.5 minutes for Instagram to finish
 processing before publishing; longer and it tries again next run). No public link to the file is ever made. Up to
-150 MB; pieces live in the private `engine-media` bucket (which now also takes application/octet-stream).
+250 MB (150 MB until 5 Nov 2026); pieces live in the private `engine-media` bucket (which now also takes application/octet-stream).
 "Use the attached video" sends a clip already on the post (`video.url`). The Reel's cover is the post's card,
 stored with the snapshot (`final.instagram.cover`) and sent as `cover_url`. Once every Facebook and Instagram
 destination is out, the publisher removes all the post's video pieces, replaced uploads included
