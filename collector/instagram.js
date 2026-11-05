@@ -228,6 +228,13 @@ async function collectInstagram({ page, as, call, lookbackDays, maxPosts, runSta
   } catch (e) {
     log(`   instagram: @${ig.username} — stories failed (${String(e.message).slice(0, 120)})`);
   }
+  let tags = { rows: [] };
+  try {
+    tags = await collectTags({ ig, page, as, call, runStarted, since: cutoff });
+    if (tags.error) log(`   instagram: @${ig.username} — tags unavailable (${String(tags.error.message).slice(0, 120)})`);
+  } catch (e) {
+    log(`   instagram: @${ig.username} — tags failed (${String(e.message).slice(0, 120)})`);
+  }
   let audience = { rows: [], errorCount: 0 };
   try {
     audience = await collectAudience({ ig, page, as, call, runStarted, collectedDate });
@@ -235,7 +242,7 @@ async function collectInstagram({ page, as, call, lookbackDays, maxPosts, runSta
     log(`   instagram: @${ig.username} — audience failed (${String(e.message).slice(0, 120)})`);
   }
 
-  return { linked: true, username: ig.username, ig_user_id: ig.id, media, metrics, account, months, stories, audience };
+  return { linked: true, username: ig.username, ig_user_id: ig.id, media, metrics, account, months, stories, audience, tags };
 }
 
 // Account-level daily metrics. Nothing was collected here before 7 Sept 2026:
@@ -369,6 +376,23 @@ async function collectAccountMetrics({ ig, page, as, call, lookbackDays, runStar
       if (tv && typeof tv.value === 'number') rowFor(dayDescribed(end))[column] = tv.value;
     }
     if (failedDays && failedDays < closings.length) errors[metric].days_failed = failedDays;
+  }
+
+  // Profile button taps by button (call, email, directions, book...), per
+  // closed day like the totals above (5 Nov 2026).
+  for (const end of closings) {
+    const closing = Math.floor(Date.parse(end) / 1000);
+    const r = await call(`/${ig.id}/insights`, { metric: 'profile_links_taps', metric_type: 'total_value', period: 'day', breakdown: 'contact_button_type', since: closing - 86400 + 1, until: closing }, as);
+    if (!r.ok) { errors.profile_links_taps = { code: r.error ? r.error.code : null, message: r.error ? r.error.message : 'unknown' }; continue; }
+    const d = r.body && r.body.data && r.body.data[0];
+    const tv = d && d.total_value;
+    const bd = tv && tv.breakdowns && tv.breakdowns[0];
+    const out = {};
+    for (const x of (bd && bd.results) || []) {
+      if (x.dimension_values && typeof x.value === 'number') out[String(x.dimension_values[0]).toLowerCase()] = x.value;
+    }
+    if (Object.keys(out).length) rowFor(dayDescribed(end)).profile_links_taps = out;
+    else if (tv && typeof tv.value === 'number') rowFor(dayDescribed(end)).profile_links_taps = { total: tv.value };
   }
 
   const rows = [...byDate.values()];
@@ -590,10 +614,64 @@ async function collectAudience({ ig, page, as, call, runStarted, collectedDate }
       rows.push(row);
     }
   }
+  // When followers are online, by hour (5 Nov 2026): the data behind a best
+  // time to post. Lifetime, as values[0].value = { "0": n, ..., "23": n };
+  // Meta's hours are Pacific. Stored beside the demographics as kind 'online'.
+  const on = await call(`/${ig.id}/insights`, { metric: 'online_followers', period: 'lifetime' }, as);
+  const onRow = {
+    ig_user_id: ig.id, page_id: page.page_id, ig_username: ig.username || null,
+    collected_date: collectedDate, kind: 'online', breakdown: 'hour', data: null, errors: null,
+    collected_at: runStarted.toISOString(),
+  };
+  if (!on.ok) onRow.errors = { code: on.error ? on.error.code : null, message: on.error ? on.error.message : 'unknown' };
+  else {
+    const d = on.body && on.body.data && on.body.data[0];
+    const v = d && d.values && d.values[0] && d.values[0].value;
+    onRow.data = v && typeof v === 'object' && Object.keys(v).length ? v : null;
+  }
+  rows.push(onRow);
   return { rows, errorCount: rows.filter((r) => r.errors).length };
 }
 
+// POSTS OTHERS TAG US IN (5 Nov 2026): supporters, allies and press tagging
+// the account in their own posts - reach we earn without posting. The /tags
+// edge returns public media that tags the account.
+const IG_TAG_FIELDS = 'id,caption,media_type,permalink,timestamp,username,like_count,comments_count';
+
+async function collectTags({ ig, page, as, call, runStarted, since }) {
+  const items = [];
+  let after = null;
+  // Newest first: follow the cursor until a page reaches past `since`.
+  for (let guard = 0; guard < 10; guard++) {
+    const params = { fields: IG_TAG_FIELDS, limit: 50 };
+    if (after) params.after = after;
+    const r = await call(`/${ig.id}/tags`, params, as);
+    if (!r.ok) {
+      if (!items.length) return { rows: [], error: r.error || { message: 'unknown' } };
+      break;
+    }
+    const data = (r.body && r.body.data) || [];
+    items.push(...data);
+    after = r.body && r.body.paging && r.body.paging.cursors && r.body.paging.cursors.after;
+    if (!after || !data.length || (since && data.some((x) => x.timestamp && new Date(x.timestamp) < since))) break;
+  }
+  const rows = [];
+  for (const x of items) {
+    if (x.timestamp && since && new Date(x.timestamp) < since) continue;
+    rows.push({
+      platform: 'instagram', account_id: ig.id, page_id: page.page_id, account_name: ig.username || null,
+      item_id: x.id, author: x.username || null, text: x.caption || null,
+      media_type: x.media_type || null, permalink: x.permalink || null, created_at: x.timestamp || null,
+      likes: typeof x.like_count === 'number' ? x.like_count : null,
+      comments: typeof x.comments_count === 'number' ? x.comments_count : null,
+      collected_at: runStarted.toISOString(),
+    });
+  }
+  return { rows, error: null };
+}
+
 module.exports = {
+  collectTags,
   collectStories, collectAudience, IG_STORY_METRICS, IG_AUDIENCE, IG_AUDIENCE_BREAKDOWNS, IG_TOTAL_DAYS,
   collectInstagram, collectAccountMetrics, collectAccountMonths, monthWindows, pacificMidnight,
   IG_MONTH_METRICS,
