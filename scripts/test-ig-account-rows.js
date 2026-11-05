@@ -108,6 +108,17 @@ async function call(path, params) {
   check('the old no-breakdown request is gone',
     !calls.some((c) => c.params.metric === 'follows_and_unfollows' && !c.params.breakdown));
 
+  // follower_count down: the totals still run, on Pacific midnights.
+  const c2 = [];
+  const { rows: r2 } = await collectAccountMetrics({
+    ig: { id: 'IG1', username: 'hazteoir' }, page: { page_id: 'P1' }, as: null,
+    call: async (path, params) => { c2.push(params); return params.metric === 'follower_count' ? { ok: false, error: { code: 1, message: 'down' } } : call(path, params); },
+    lookbackDays: 30, runStarted: new Date('2026-09-28T20:05:00Z'), collectedDate: '2026-09-28',
+  });
+  check('with follower_count down, totals still asked for the last closed days',
+    c2.filter((c) => c.metric === 'views').length === 3 && r2.some((r) => r.metric_date === '2026-09-27' && r.views === 1000),
+    r2.filter((r) => 'views' in r).map((r) => r.metric_date).join(','));
+
   console.log(failed ? `\n${failed} failed` : '\nall passed');
   process.exit(failed ? 1 : 0);
 })().catch((e) => { console.error(e); process.exit(1); });

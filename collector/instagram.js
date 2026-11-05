@@ -346,7 +346,14 @@ async function collectAccountMetrics({ ig, page, as, call, lookbackDays, runStar
   // exactly its closing time (the same rule as follows_and_unfollows above),
   // and stored on the day it describes. Re-reading a few days lets a missed
   // night heal; a day Meta answers with nothing is left unset.
-  const closings = [...new Set(dayEnds)].sort().slice(-IG_TOTAL_DAYS);
+  // Closings come from follower_count; if that failed or came back empty,
+  // the Pacific midnights stand in, so the totals are not lost with it.
+  let closings = [...new Set(dayEnds)].sort().slice(-IG_TOTAL_DAYS);
+  if (!closings.length) {
+    const parts = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Los_Angeles', year: 'numeric', month: 'numeric', day: 'numeric' })
+      .formatToParts(runStarted).reduce((o, x) => { o[x.type] = Number(x.value); return o; }, {});
+    closings = Array.from({ length: IG_TOTAL_DAYS }, (_, i) => new Date(pacificMidnight(parts.year, parts.month, parts.day - IG_TOTAL_DAYS + 1 + i) * 1000).toISOString());
+  }
   for (const [metric, column] of Object.entries(IG_ACCOUNT_TOTALS)) {
     let failedDays = 0;
     for (const end of closings) {
