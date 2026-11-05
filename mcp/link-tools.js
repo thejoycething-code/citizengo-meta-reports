@@ -9,6 +9,7 @@
 // missing, never present a partial number as a total.
 
 const xt = require('./x-tools');
+const { attribute } = require('../lib/post-signups');
 
 const n = (v) => (v === null || v === undefined ? '—' : Number(v).toLocaleString('en-GB'));
 const clampRows = (v, dflt, max = 200) => Math.min(Math.max(Number(v) || dflt, 1), max);
@@ -265,7 +266,76 @@ async function igConnectedPosts(store, args = {}) {
     + '\n\n_Stories are not collected. For signatures from the links, use link_performance._', rows };
 }
 
+// post_signups (5 Nov 2026): petition sign-ups traced back to each POST, not
+// each link. Each day's sign-ups from a platform go to the post of that link on
+// that platform that was live that day (lib/post-signups.js), so a link posted
+// on two Pages or reposted a week later is split rather than counted twice.
+async function postSignups(store, args = {}) {
+  const { account, petition, platform } = args;
+  const w = xt.windowFor({ month: args.month, from: args.from, to: args.to, days: args.days }, 30);
+  if (w.error) return { text: w.error };
+  const pet = petition ? String(petition).replace(/\D/g, '') || undefined : undefined;
+  const inWindow = await store.linkPosts({ account, petition_id: pet, platform, since: w.since, until: w.until });
+  const traced = inWindow.filter((p) => p.campaign_code && PLATFORM_SOURCE[p.platform]);
+  const untracedLinks = new Set(inWindow.filter((p) => !p.campaign_code).map((p) => `${p.platform}|${p.post_id}`)).size;
+  const title = `**Petition sign-ups per post, ${w.label}**`;
+  if (!traced.length) return { text: `${title}\n\nNo posts with a tracked CitizenGO link in this window.${untracedLinks ? ` ${n(untracedLinks)} post(s) carried an untracked link.` : ''}`, rows: [] };
+  const codes = [...new Set(traced.map((p) => p.campaign_code))];
+  const [allPosts, days] = await Promise.all([store.linkPostsByCodes(codes), store.linkSignatureDays({ codes })]);
+  if (days === null) return { text: `${title}\n\nDaily sign-ups are not loaded yet (the first nightly pull after 6 Nov 2026 fills them). Until then, link_performance gives sign-ups per link.`, rows: [] };
+  const { posts } = attribute(allPosts.length ? allPosts : traced, days);
+  const keep = new Set(traced.map((p) => `${p.platform}|${p.post_id}`));
+  const rows = posts.filter((p) => keep.has(`${p.platform}|${p.post_id}`));
+  const want = { xPostIds: rows.filter((r) => r.platform === 'x').map((r) => r.post_id), fbPostIds: rows.filter((r) => r.platform === 'facebook').map((r) => r.post_id), igMediaIds: rows.filter((r) => r.platform === 'instagram').map((r) => r.post_id) };
+  const reach = new Map((store.linkPostReach ? await store.linkPostReach(want) : []).map((r) => [String(r.post_id), r]));
+  const sort = args.sort === 'per_1k' ? 'per_1k' : args.sort === 'new_members' ? 'new_members' : 'signatures';
+  for (const r of rows) {
+    const x = reach.get(String(r.post_id));
+    r.audience = x && x.impressions !== null && x.impressions !== undefined ? Number(x.impressions) : null;
+    r.per_1k = r.audience ? (r.signatures / r.audience) * 1000 : null;
+  }
+  rows.sort((a, b) => (sort === 'per_1k' ? (b.per_1k ?? -1) - (a.per_1k ?? -1) : (b[sort] || 0) - (a[sort] || 0)) || String(b.posted_at).localeCompare(String(a.posted_at)));
+  const off = Math.max(Number(args.offset) || 0, 0);
+  const page = rows.slice(off, off + clampRows(args.limit, 25, 200));
+  const tot = (k) => rows.reduce((a, r) => a + (r[k] || 0), 0);
+  const body = table(['Posted', 'Account', 'Post', 'Petition', 'Sign-ups', 'New members', 'First 7 days', 'Per 1,000 reached', 'Note'], page.map((r) => [
+    String(r.posted_at).slice(0, 10), cell(`${PLATFORM_LABEL[r.platform]} ${r.account_label || r.account_id}`, 36),
+    r.permalink_url ? `[open](${r.permalink_url})` : '—', r.petition_id || '—', n(r.signatures), n(r.new_members), n(r.first_days),
+    r.per_1k === null ? '—' : r.per_1k.toFixed(1),
+    r.shared_with ? `link also in ${r.shared_with} other ${PLATFORM_LABEL[r.platform]} post${r.shared_with === 1 ? '' : 's'}: split by date` : '']))
+    + xt.pageNote(off, page.length, rows.length, 'Posts').replace(/For totals over all.*rather than adding up pages\./, 'The totals above cover every post.');
+  const notes = [
+    'Sign-ups come from Looker (Bluebook), per day, for signers who arrived from the platform the post is on (a Facebook post gets Facebook arrivals). Each day goes to the most recent post of that link on that platform; posts made the same day share it. WhatsApp shares and other uses of the link are not credited to any post: link_performance shows them per link.',
+    '"Per 1,000 reached" uses each platform\'s own audience figure (Facebook views, Instagram reach, X impressions), so compare within a platform.',
+    'Only posts carrying a tracked link can be traced. A post without a link (most Instagram posts, which point to the bio) is not counted here; bio links are in the Link in bio view.',
+  ];
+  if (untracedLinks) notes.push(`${n(untracedLinks)} post(s) in this window carried a CitizenGO link with no campaign code, so their sign-ups cannot be traced. Make links in Campaign Copilot or with the desk's tracked links.`);
+  const head = `${title}\n\n${n(rows.length)} posts with a tracked link · **${n(tot('signatures'))} sign-ups** (${n(tot('new_members'))} new members), ${n(tot('first_days'))} of them in each post's first 7 days\n\n`;
+  return { text: head + body + '\n\n' + notes.map((x) => `_${x}_`).join('\n\n'), rows };
+}
+
 const LINK_TOOLS = [
+  {
+    name: 'post_signups',
+    description: 'Petition sign-ups traced back to each POST on Facebook, Instagram and X: sign-ups and new members each post brought, how many in its first 7 days, and sign-ups per 1,000 reached. A link posted more than once is split by date between its posts. Use for "which posts brought the most signatures", "sign-ups per post this month", "best converting posts for petition 19615". For figures per link or per person who made the link, use link_performance.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        account: { type: 'string', description: 'An account: Page name or id, Instagram @username, X handle. Partial names match.' },
+        petition: { type: 'string', description: 'Petition id, e.g. 19615.' },
+        platform: { type: 'string', enum: ['facebook', 'instagram', 'x'] },
+        days: { type: 'number', description: 'Posts from the last N days (default 30; daily sign-ups reach back 120 days).' },
+        month: { type: 'string', description: 'A month, e.g. "2026-10", instead of days.' },
+        from: { type: 'string', description: 'Start date (YYYY-MM-DD).' },
+        to: { type: 'string', description: 'End date inclusive (YYYY-MM-DD).' },
+        sort: { type: 'string', enum: ['signatures', 'new_members', 'per_1k'], description: 'Order (default signatures).' },
+        limit: { type: 'number', description: 'Rows (default 25, max 200).' },
+        offset: { type: 'number', description: 'Skip this many rows, for the next page.' },
+      },
+      additionalProperties: false,
+    },
+    handler: postSignups,
+  },
   {
     name: 'link_performance',
     description: 'Signatures, new members and reactivated members brought by the tracked CitizenGO links our accounts posted, joined on the campaign code (utm_campaign). Covers every connected account: Facebook Pages, Instagram, X and spokespeople such as Rocío D\'Angelo. Filter by account, by who made the link (owner initials in the code, e.g. RDA, CJO), petition or campaign text; group_by account/owner/petition for totals. Use for "how many signatures did Rocío bring this month", "which of our posts brought the most new members", "signatures per account for petition 19615". Signature figures come from Looker, all time per code.',
@@ -311,4 +381,4 @@ const LINK_TOOLS = [
   },
 ];
 
-module.exports = { LINK_TOOLS, aggregate, groupBy, linkPerformance, igConnectedPosts };
+module.exports = { LINK_TOOLS, aggregate, groupBy, linkPerformance, igConnectedPosts, postSignups };

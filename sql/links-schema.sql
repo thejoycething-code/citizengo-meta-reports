@@ -65,6 +65,23 @@ create table if not exists public.link_signatures (
 );
 create index if not exists link_signatures_owner_idx on public.link_signatures (owner, code_date desc);
 
+-- The same figures per DAY (5 Nov 2026), for signers arriving from Facebook,
+-- Instagram and X over the last 120 days: lets lib/post-signups.js credit
+-- each day's sign-ups to the post of that link that was live that day.
+-- day is Looker's own (Madrid) date. Replaced by each complete pull.
+create table if not exists public.link_signature_days (
+  campaign_code        text not null,
+  source               text not null,         -- fb | ig | tw
+  day                  date not null,
+  signatures           bigint,
+  new_members          bigint,
+  reactivated_members  bigint,
+  pulled_at            timestamptz not null default now(),
+  primary key (campaign_code, source, day)
+);
+create index if not exists link_signature_days_day_idx on public.link_signature_days (day desc);
+
 alter table public.link_shortcodes enable row level security;
 alter table public.link_posts enable row level security;
 alter table public.link_signatures enable row level security;
+alter table public.link_signature_days enable row level security;

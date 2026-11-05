@@ -54,6 +54,8 @@ const FB_POST = [
   { m: 'post_video_views_10s' },
   { m: 'post_video_social_actions' },
   { m: 'post_video_views_by_distribution_type' },
+  // Retired 26 Aug 2026 (empty everywhere); re-asked 5 Nov 2026.
+  { m: 'post_video_retention_graph' },
 ];
 
 const FB_PAGE = [
@@ -76,6 +78,14 @@ const FB_PAGE = [
   { m: 'page_video_views' },
   { m: 'page_video_view_time' },
   { m: 'page_actions_post_reactions_total' },
+  // Button clicks on the Page (Message, Sign up, Call, website). Meta retired
+  // most of these in 2024; asked 5 Nov 2026 before building anything on them.
+  { m: 'page_total_actions' },
+  { m: 'page_cta_clicks_logged_in_total' },
+  { m: 'page_cta_clicks_logged_in_unique' },
+  { m: 'page_call_phone_clicks_logged_in_unique' },
+  { m: 'page_website_clicks_logged_in_unique' },
+  { m: 'page_get_directions_clicks_logged_in_unique' },
 ];
 
 const IG_MEDIA = [
@@ -233,6 +243,36 @@ async function probeSet({ label, id, token, set, extra = {} }) {
       id: igAccount.id, token: igAccount.token, set: IG_ACCOUNT,
       extra: { period: 'day' },
     }));
+  }
+
+  // ---- Edges (5 Nov 2026): not insights, but lists we might collect ---------
+  // Facebook Page Stories and Instagram collaborators. Printed as counts and
+  // field names only; nothing is stored.
+  const edge = async (label, path, params, token) => {
+    const res = await client.get(path, params, { token });
+    if (res.ok) {
+      const data = (res.body && res.body.data) || [];
+      const keys = data[0] ? Object.keys(data[0]).join(',') : '';
+      console.log(`  OK  ${label.padEnd(38)} ${data.length} item(s)${keys ? ' · fields ' + keys : ''}`);
+    } else {
+      const e = res.error || {};
+      console.log(`  no  ${label.padEnd(38)} #${e.code ?? res.status} ${String(e.message || '').slice(0, 80)}`);
+    }
+  };
+  console.log('\nEDGES');
+  for (const p of fbAny) {
+    const token = await tokenFor(p.page_id);
+    if (!token) continue;
+    await edge(`page stories ${p.page_id}`, `/${p.page_id}/stories`, {}, token);
+    break;
+  }
+  let collabTried = 0;
+  for (const m of igMedia) {
+    if (m.media_product_type === 'STORY' || collabTried >= 3) continue;
+    const token = await tokenFor(m.page_id);
+    if (!token) continue;
+    collabTried++;
+    await edge(`ig collaborators ${m.media_id}`, `/${m.media_id}/collaborators`, {}, token);
   }
 
   // ---- Report --------------------------------------------------------------

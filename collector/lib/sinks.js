@@ -34,6 +34,7 @@ function jsonSink({ dir }) {
     if (table === 'link_shortcodes') return row.short_code;
     if (table === 'link_posts') return `${row.platform}|${row.post_id}|${row.url}`;
     if (table === 'link_signatures') return `${row.campaign_code}|${row.source}`;
+    if (table === 'link_signature_days') return `${row.campaign_code}|${row.source}|${row.day}`;
     if (table === 'ig_accounts') return row.ig_user_id;
     if (table === 'ig_media') return row.media_id;
     if (table === 'ig_media_metrics') return `${row.media_id}|${row.collected_date}`;
@@ -48,7 +49,10 @@ function jsonSink({ dir }) {
       const t = tables.get(table);
       for (const row of rows) {
         const k = keyOf(table, row);
-        t.set(k === null ? `#${t.size}` : k, row);
+        // Same as PostgREST merge-duplicates: a later row with fewer columns
+        // updates the ones it carries and leaves the rest as they were.
+        if (k !== null && t.has(k)) t.set(k, { ...t.get(k), ...row });
+        else t.set(k === null ? `#${t.size}` : k, row);
       }
       return { count: rows.length };
     },
@@ -86,6 +90,7 @@ function supabaseSink({ url, serviceKey }) {
     meta_ig_account_months: 'ig_user_id,month',
     meta_ig_audience: 'ig_user_id,collected_date,kind,breakdown',
     meta_social_tags: 'platform,account_id,item_id',
+    meta_fb_stories: 'post_id',
     meta_ig_media_transcript: 'media_id',
     meta_post_ad_spend: 'ad_id,date_start,date_stop',
     // X source - see sql/x-schema.sql. x_oauth_tokens is deliberately absent:
@@ -99,6 +104,7 @@ function supabaseSink({ url, serviceKey }) {
     link_shortcodes: 'short_code',
     link_posts: 'platform,post_id,url',
     link_signatures: 'campaign_code,source',
+    link_signature_days: 'campaign_code,source,day',
     // Instagram accounts connected by their holders - see sql/ig-schema.sql.
     // ig_oauth_tokens is absent on purpose: written by api/ig/callback.js and
     // PATCHed by the collector, never bulk-upserted.

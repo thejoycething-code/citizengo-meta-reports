@@ -61,7 +61,9 @@ const EXPECTED = {
   meta_collection_runs: ['run_id', 'page_id', 'started_at', 'finished_at', 'status',
     'posts_seen', 'metrics_written', 'api_calls', 'error_code', 'error_message'],
   meta_ig_media: ['media_id', 'page_id', 'ig_user_id', 'ig_username', 'media_type',
-    'media_product_type', 'caption', 'permalink', 'thumbnail_url', 'timestamp', 'first_seen_at'],
+    'media_product_type', 'caption', 'permalink', 'thumbnail_url', 'timestamp', 'first_seen_at',
+    // Co-authors of recent posts (5 Nov 2026); null = not asked.
+    'collaborators'],
   meta_ig_media_metrics: ['media_id', 'page_id', 'collected_date', 'collected_at',
     'reach', 'views', 'saved', 'total_interactions', 'likes', 'comments', 'shares', 'errors',
     // FEED-only follower attribution; null on Reels and Stories by design.
@@ -76,7 +78,7 @@ const EXPECTED = {
     'media_view_unique', 'post_engagements', 'follows', 'daily_follows',
     'followers_snapshot', 'collected_at', 'errors',
     'daily_unfollows', 'daily_follows_unique', 'video_views', 'video_view_time_ms',
-    'post_reactions_by_type'],
+    'post_reactions_by_type', 'total_actions'],
   // Instagram at account level, per day. The total_value columns are filled for
   // the current day only - see the DDL note.
   meta_ig_account_metrics: ['ig_user_id', 'page_id', 'ig_username', 'metric_date',
@@ -89,6 +91,7 @@ const EXPECTED = {
     'accounts_engaged_days', 'collected_at', 'errors'],
   meta_social_tags: ['platform', 'account_id', 'page_id', 'account_name', 'item_id', 'author',
     'text', 'media_type', 'permalink', 'created_at', 'likes', 'comments', 'collected_at'],
+  meta_fb_stories: ['post_id', 'page_id', 'status', 'media_type', 'media_id', 'url', 'created_at', 'collected_at'],
   meta_ig_audience: ['ig_user_id', 'page_id', 'ig_username', 'collected_date', 'kind',
     'breakdown', 'data', 'errors', 'collected_at'],
   // Per-person connector credentials. Only ever read by the service key, so the

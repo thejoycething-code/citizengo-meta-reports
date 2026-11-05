@@ -940,6 +940,7 @@ async function pageGrowth(store, { page_id, days: d = 30, since, until }) {
       engagements: sum('post_engagements'),
       newFollows: sum('daily_follows'),
       unfollows: sum('daily_unfollows'),
+      buttonClicks: sum('total_actions'),
       // Genuinely net, from Meta's own two daily metrics. Null rather than 0
       // when neither has data, so a page with no coverage does not read as a
       // page that neither gained nor lost anyone.
@@ -958,11 +959,11 @@ async function pageGrowth(store, { page_id, days: d = 30, since, until }) {
     text: `**Page-level trend · ${win.explicit ? win.label : `last ${days} days`}**\n\n`
       + '**Facebook**\n\n'
       + table(
-        ['Page', 'Days', 'Followers', 'Page views', 'Reach', 'Engagements', 'Follows', 'Unfollows', 'Net'],
+        ['Page', 'Days', 'Followers', 'Page views', 'Reach', 'Engagements', 'Follows', 'Unfollows', 'Net', 'Button clicks'],
         summary.map((s) => [
           s.name, s.days, n(s.followers),
           n(s.views), n(s.reach), n(s.engagements),
-          n(s.newFollows), n(s.unfollows), n(s.netFollows),
+          n(s.newFollows), n(s.unfollows), n(s.netFollows), n(s.buttonClicks),
         ])
       )
       + '\n\n_Page-level figures, not post totals: page views include profile visits, and reach counts people who saw anything from the page. '
@@ -970,6 +971,7 @@ async function pageGrowth(store, { page_id, days: d = 30, since, until }) {
       // Was "only collected since 7 September". The 7 Sept and 28 Sept
       // backfills re-read the page series, and unfollows now run from 10 June.
       + 'Unfollows are held from June 2026; "—" means Meta returned nothing for that window, not zero. '
+      + '"Button clicks" are clicks on the Page\'s contact details and action button (Message, Sign up, Call, website), collected from 6 Nov 2026; Meta no longer splits them by button. '
       + '"Followers" is the latest count held in the window. Before 29 Sept 2026 each collection wrote one day\'s count across its whole window, so older stored counts are not a history and the trend is taken from follows and unfollows instead._'
       + (ig ? ig.text : ''),
     data: { facebook: summary, instagram: ig ? ig.data : null },
@@ -1236,6 +1238,46 @@ async function taggedPosts(store, { days: d = 30, page_id, platform, limit: l = 
           n(r.likes), n(r.comments)]))
       + '\n\n_Public posts by other accounts that tag ours: earned reach, supporters and press. Likes and comments are Instagram only; Facebook does not give them for posts on other Pages. Kept 120 days._',
     data: rows,
+  };
+}
+
+// Instagram collab posts: posts co-authored with partner accounts.
+async function instagramCollabs(store, { days: d = 30, page_id }) {
+  const days = clampDays(d, 30);
+  const rows = await store.igCollabs({ since: sinceFor(days), page_id });
+  if (!rows || !rows.length) return { text: `No collab posts in the last ${days} days. Co-authors are read nightly from 6 Nov 2026 for posts from the last 14 days.`, data: null };
+  const who = (r) => (r.collaborators || []).map((c) => '@' + (c.username || c.id || '?') + (c.status && c.status !== 'Accepted' ? ` (${String(c.status).toLowerCase()})` : '')).join(', ');
+  return {
+    text: `**Instagram collab posts · last ${days} days**\n\n`
+      + table(['Date', 'Our account', 'With', 'Post', 'Reach', 'Views', 'Interactions'],
+        rows.map((r) => [String(r.timestamp || '').slice(0, 10), '@' + (r.ig_username || '—'), who(r),
+          r.permalink ? `[${truncate(r.caption || '(no caption)', 50).replace(/\|/g, '\\|')}](${r.permalink})` : truncate(r.caption || '', 50),
+          n(r.reach), n(r.views), n(r.total_interactions)]))
+      + '\n\n_A collab post shows on both profiles and its figures count the combined audience, so compare it with care against solo posts. "pending" means the partner has not accepted yet._',
+    data: rows,
+  };
+}
+
+// Facebook Page Stories: how often each Page posts Stories.
+async function facebookStories(store, { days: d = 30, page_id }) {
+  const days = clampDays(d, 30);
+  const rows = await store.fbStories({ since: sinceFor(days), page_id });
+  if (!rows || !rows.length) return { text: `No Facebook Stories recorded in the last ${days} days. Collected nightly from 6 Nov 2026.`, data: null };
+  const by = new Map();
+  for (const r of rows) {
+    const k = r.page_name || r.page_id;
+    if (!by.has(k)) by.set(k, { page: k, stories: 0, photo: 0, video: 0, last: null });
+    const e = by.get(k);
+    e.stories++;
+    if (/video/i.test(r.media_type || '')) e.video++; else e.photo++;
+    if (!e.last || r.created_at > e.last) e.last = r.created_at;
+  }
+  const out = [...by.values()].sort((a, b) => b.stories - a.stories);
+  return {
+    text: `**Facebook Page Stories · last ${days} days**\n\n`
+      + table(['Page', 'Stories', 'Photo', 'Video', 'Last story'], out.map((r) => [r.page, n(r.stories), n(r.photo), n(r.video), String(r.last || '').slice(0, 10) || '—']))
+      + '\n\n_Meta gives no views or reach for Facebook Page Stories through its API, so this counts what was posted. Instagram Stories with their figures: instagram_posts with type stories._',
+    data: { pages: out, stories: rows },
   };
 }
 
@@ -1566,6 +1608,24 @@ const TOOLS = [
       limit: { type: 'number', description: 'How many (default 25, max 100).' },
     }, additionalProperties: false },
     handler: (store, args) => taggedPosts(store, args),
+  },
+  {
+    name: 'instagram_collabs',
+    description: 'Instagram collab posts: our posts co-authored with partner accounts, who the partners were, and how the posts did. Use for "which partners did we collab with", "do collabs work".',
+    inputSchema: { type: 'object', properties: {
+      days: { type: 'number', description: 'Look back this many days (default 30).' },
+      page_id: { type: 'string', description: 'Restrict to the Instagram account linked to this Facebook page id.' },
+    }, additionalProperties: false },
+    handler: (store, args) => instagramCollabs(store, args),
+  },
+  {
+    name: 'facebook_stories',
+    description: 'Facebook Page Stories: how many Stories each Page posted, photo or video, and when the last one went out. Use for "are we using Facebook Stories".',
+    inputSchema: { type: 'object', properties: {
+      days: { type: 'number', description: 'Look back this many days (default 30).' },
+      page_id: { type: 'string', description: 'One Page only.' },
+    }, additionalProperties: false },
+    handler: (store, args) => facebookStories(store, args),
   },
   {
     name: 'instagram_best_times',

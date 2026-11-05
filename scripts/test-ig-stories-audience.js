@@ -2,7 +2,8 @@
 'use strict';
 // Stories, audience and missed Facebook Reels (5 Nov 2026), against fakes.
 
-const { collectStories, collectAudience, collectTags } = require('../collector/instagram');
+const { collectStories, collectAudience, collectTags, collectCollaborators } = require('../collector/instagram');
+const { collectFbStories } = require('../collector/fbstories');
 const { collectTagged } = require('../collector/tagged');
 const { collectMissingReels, isListed } = require('../collector/fbreels');
 const { callTool } = require('../mcp/tools');
@@ -139,6 +140,39 @@ const runStarted = new Date('2026-11-06T03:30:00Z');
   const cg = out.data.find((r) => r.account === 'citizengo');
   check('shares, largest first, gender named', cg.countries === 'ES 50%, MX 30%, AR 20%' && cg.gender === 'women 60%, men 40%', `${cg.countries} | ${cg.gender}`);
   check('a withheld account is explained', /withheld/.test(out.text));
+
+  console.log('collaborators');
+  const media = [
+    { media_id: 'M1', page_id: 'P1', ig_user_id: 'IG1', media_product_type: 'FEED', timestamp: '2026-11-04T10:00:00+0000' },
+    { media_id: 'M2', page_id: 'P1', ig_user_id: 'IG1', media_product_type: 'REELS', timestamp: '2026-11-03T10:00:00+0000' },
+    { media_id: 'M3', page_id: 'P1', ig_user_id: 'IG1', media_product_type: 'FEED', timestamp: '2026-09-01T10:00:00+0000' },
+    { media_id: 'S1', page_id: 'P1', ig_user_id: 'IG1', media_product_type: 'STORY', timestamp: '2026-11-05T10:00:00+0000' },
+  ];
+  const asked = [];
+  const co = await collectCollaborators({ media, as: {}, runStarted, call: async (path) => {
+    asked.push(path);
+    return path === '/M1/collaborators' ? { ok: true, body: { data: [{ id: '9', username: 'ally', invite_status: 'Accepted' }] } } : { ok: true, body: { data: [] } };
+  } });
+  check('only recent non-Story posts asked', asked.join() === '/M1/collaborators,/M2/collaborators', asked.join());
+  check('co-authors kept, none is an empty list', co.rows[0].collaborators[0].username === 'ally' && co.rows[1].collaborators.length === 0);
+  const refused = await collectCollaborators({ media, as: {}, runStarted, call: async () => ({ ok: false, error: { message: 'no' } }) });
+  check('a refusal stops after one call', refused.error && refused.rows.length === 0);
+
+  console.log('facebook stories');
+  const fs = await collectFbStories({ page: { page_id: 'P1' }, as: {}, runStarted, since: new Date('2026-10-01T00:00:00Z'),
+    call: async (path) => (path === '/P1/stories' ? { ok: true, body: { data: [
+      { post_id: 'P1_1', status: 'PUBLISHED', creation_time: '1793786400', media_type: 'photo', url: 'https://fb/s1' },
+      { post_id: 'P1_0', status: 'ARCHIVED', creation_time: '1788256800', media_type: 'video' },
+    ] } } : { ok: false }) });
+  check('stories in the window, unix time read', fs.rows.length === 1 && fs.rows[0].created_at === '2026-11-04T10:00:00.000Z', JSON.stringify(fs.rows));
+  const fst = await callTool({ async fbStories() { return [
+    { post_id: 'a', page_id: 'P1', page_name: 'UK', media_type: 'photo', created_at: '2026-11-04T10:00:00Z' },
+    { post_id: 'b', page_id: 'P1', page_name: 'UK', media_type: 'video', created_at: '2026-11-05T10:00:00Z' },
+  ]; } }, 'facebook_stories', {});
+  check('stories counted per Page', fst.data.pages[0].stories === 2 && fst.data.pages[0].video === 1 && fst.data.pages[0].last.startsWith('2026-11-05'));
+  const ct = await callTool({ async igCollabs() { return [{ media_id: 'M1', ig_username: 'citizengo', collaborators: [{ username: 'ally', status: 'Pending' }], reach: 900, timestamp: '2026-11-04' }]; } },
+    'instagram_collabs', {});
+  check('collabs table names the partner and status', /@ally \(pending\)/.test(ct.text));
 
   console.log(failed ? `\n${failed} FAILED` : '\nall passed');
   process.exit(failed ? 1 : 0);

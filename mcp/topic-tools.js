@@ -146,6 +146,84 @@ async function topicPerformance(store, args = {}) {
   return { text: `${head}\n\n${overview}\n\n${sections.join('\n\n')}${sections.length ? '\n\n' : ''}${notes.map((x) => `_${x}_`).join('\n\n')}`, summary: sum };
 }
 
+// hashtag_performance (5 Nov 2026): which hashtags in OUR OWN posts go with
+// posts that beat their account's normal. Same yardstick as topic_performance
+// (each post against its own account's median, so platforms and page sizes
+// compare). Public hashtag listening, posts by anyone, is Listening's job
+// (collector/listen-hashtags.js); this needs no new collection.
+const TAG_RE = /#([\p{L}\p{N}_]{2,60})/gu;
+function hashtagsOf(text) {
+  const out = new Set();
+  for (const m of String(text || '').matchAll(TAG_RE)) out.add(m[1].toLowerCase());
+  return out;
+}
+
+// Pure, exported for the tests. Returns one row per hashtag and platform.
+function hashtagStats(corpus, { minPosts = 3 } = {}) {
+  const out = [];
+  for (const [key, P] of Object.entries(PLATFORMS)) {
+    const rows = (corpus[key] || []).filter((r) => r.kind !== 'spokesperson');
+    if (!rows.length) continue;
+    const byAccount = new Map();
+    for (const r of rows) {
+      const v = P.value(r);
+      if (v === null || v === undefined) continue;
+      const a = P.account(r);
+      if (!byAccount.has(a)) byAccount.set(a, []);
+      byAccount.get(a).push(Number(v));
+    }
+    const normal = new Map([...byAccount].map(([a, vs]) => [a, vs.length >= 3 ? median(vs) : null]));
+    const tags = new Map();
+    for (const r of rows) {
+      const found = hashtagsOf(P.text(r).filter(Boolean).join(' '));
+      if (!found.size) continue;
+      const v = P.value(r); const base = normal.get(P.account(r));
+      const ratio = v !== null && v !== undefined && base > 0 ? Number(v) / base : null;
+      for (const t of found) {
+        if (!tags.has(t)) tags.set(t, { posts: 0, ratios: [], accounts: new Set(), best: null });
+        const e = tags.get(t);
+        e.posts++; e.accounts.add(P.name(r));
+        if (ratio !== null) {
+          e.ratios.push(ratio);
+          if (!e.best || ratio > e.best._ratio) e.best = { ...r, _ratio: ratio, _value: Number(v) };
+        }
+      }
+    }
+    for (const [tag, e] of tags) {
+      if (e.ratios.length < minPosts) continue;
+      out.push({ platform: key, hashtag: tag, posts: e.posts, scored: e.ratios.length, accounts: [...e.accounts].filter(Boolean),
+        typical: median(e.ratios), above: e.ratios.filter((x) => x > 1).length, best: e.best });
+    }
+  }
+  return out.sort((a, b) => b.typical - a.typical || b.posts - a.posts);
+}
+
+async function hashtagPerformance(store, args = {}) {
+  const w = xt.windowFor({ month: args.month, from: args.from, to: args.to, days: Math.min(Number(args.days ?? 90) || 0, 365) || 365 }, 90);
+  if (w.error) return { text: w.error };
+  const corpus = await store.topicCorpus({ since: w.since, until: w.until });
+  const platform = args.platform && PLATFORMS[args.platform] ? args.platform : null;
+  const minPosts = Math.max(1, Math.min(Number(args.min_posts) || 3, 50));
+  const stats = hashtagStats(platform ? { [platform]: corpus[platform] } : corpus, { minPosts });
+  if (!stats.length) return { text: `No hashtag was used on ${minPosts}+ measured posts ${w.label}.`, data: [] };
+  const limit = Math.max(1, Math.min(Number(args.limit) || 15, 50));
+  const fmt = (list) => table(['Hashtag', 'Platform', 'Posts', 'Accounts', 'Typical post vs normal', 'Above normal', 'Best post'],
+    list.map((r) => {
+      const P = PLATFORMS[r.platform]; const b = r.best;
+      const link = b && P.link(b) ? `[${times(b._ratio)}](${P.link(b)})` : (b ? times(b._ratio) : '—');
+      return ['#' + r.hashtag, P.label, n(r.posts), cell(r.accounts.slice(0, 3).join(', ') + (r.accounts.length > 3 ? ` +${r.accounts.length - 3}` : ''), 50),
+        times(r.typical), `${n(r.above)} of ${n(r.scored)}`, link];
+    }));
+  const top = stats.slice(0, limit);
+  const bottom = stats.length > limit ? stats.slice(-Math.min(5, stats.length - limit)).reverse() : [];
+  return {
+    text: `**Our hashtags, ${w.label}**\n\n${fmt(top)}`
+      + (bottom.length ? `\n\n**Weakest**\n\n${fmt(bottom)}` : '')
+      + `\n\n_Hashtags in our own posts (Facebook text, Instagram captions, X posts), each post scored against its own account's median in the same window, so 1× is an ordinary post for that account. Only hashtags on ${minPosts}+ measured posts are shown. A hashtag rides along with a topic, so this shows what travels with strong posts, not that the hashtag caused it. For public posts by anyone on a hashtag, see Listening._`,
+    data: stats,
+  };
+}
+
 const TOPIC_TOOLS = [
   {
     name: 'topic_performance',
@@ -164,6 +242,24 @@ const TOPIC_TOOLS = [
     },
     handler: topicPerformance,
   },
+  {
+    name: 'hashtag_performance',
+    description: 'Which hashtags in OUR OWN posts go with posts that beat their account\'s normal, on Facebook, Instagram and X: per hashtag, how many posts, which accounts, the typical post against its account\'s median, and the best post. Use for "which hashtags work for us", "is #killthebill helping", "our best and worst hashtags this quarter". Public posts by anyone on a hashtag are in Listening, not here.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        days: { type: 'number', description: 'Posts from the last N days (default 90, max 365).' },
+        month: { type: 'string', description: 'A month, e.g. "2026-10", instead of days.' },
+        from: { type: 'string', description: 'Start date (YYYY-MM-DD), instead of days.' },
+        to: { type: 'string', description: 'End date inclusive (YYYY-MM-DD).' },
+        platform: { type: 'string', enum: ['facebook', 'instagram', 'x'], description: 'One platform only.' },
+        min_posts: { type: 'number', description: 'Leave out hashtags on fewer measured posts (default 3).' },
+        limit: { type: 'number', description: 'Rows in the main table (default 15, max 50).' },
+      },
+      additionalProperties: false,
+    },
+    handler: hashtagPerformance,
+  },
 ];
 
-module.exports = { TOPIC_TOOLS, topicPerformance, summarise, termsOf };
+module.exports = { TOPIC_TOOLS, topicPerformance, summarise, termsOf, hashtagStats, hashtagsOf, hashtagPerformance };

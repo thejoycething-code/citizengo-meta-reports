@@ -28,6 +28,14 @@ claude -p "Use the CitizenGO Looker connector, read-only. Call its query tool ex
   --allowedTools "mcp__claude_ai_CitizenGO_Looker__query" --output-format stream-json --verbose > stream.jsonl 2>> err.txt
 node "$REPO/scripts/load-link-signatures.js" stream.jsonl >> run.log 2>&1
 echo "$(date -u +%FT%TZ) exit $?" >> run.log
+# Sign-ups per post [5 Nov 2026]: the same figures per DAY for signers who
+# arrived from Facebook, Instagram or X, last 120 days, so each day's sign-ups
+# can go to the post that was live that day (lib/post-signups.js).
+SINCE120=$(date -v-120d +%Y/%m/%d)
+claude -p "Use the CitizenGO Looker connector, read-only. Call its query tool exactly ONCE with model google_analytics_4, view (explore) petitions_signatures_3_0, fields petitions_signatures_3_0.utm_campaign, petitions_signatures_3_0.source, petitions_signatures_3_0.date_date, petitions_signatures_3_0.sum_signatures, petitions_signatures_3_0.sum_new_members, petitions_signatures_3_0.sum_reactivated_members, sorts petitions_signatures_3_0.date_date desc, limit 50000, filters petitions_signatures_3_0.source = 'fb,ig,tw' and petitions_signatures_3_0.date_date = 'after ${SINCE120}'. Do not call any other tool, do not summarise the rows. When the call returns, reply with the single word DONE." \
+  --allowedTools "mcp__claude_ai_CitizenGO_Looker__query" --output-format stream-json --verbose > days.jsonl 2>> err.txt
+node "$REPO/scripts/load-link-signature-days.js" days.jsonl >> run.log 2>&1
+echo "$(date -u +%FT%TZ) days exit $?" >> run.log
 # Link in bio [2 Nov 2026]: each petition's Bluebook total and signatures in
 # the last 14 days, then the campaigns' Asana projects (complete, archived,
 # evaluated, petition status updated), both read-only, into petition_status.
