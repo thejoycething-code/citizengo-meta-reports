@@ -48,7 +48,10 @@ function jsonSink({ dir }) {
       const t = tables.get(table);
       for (const row of rows) {
         const k = keyOf(table, row);
-        t.set(k === null ? `#${t.size}` : k, row);
+        // Same as PostgREST merge-duplicates: a later row with fewer columns
+        // updates the ones it carries and leaves the rest as they were.
+        if (k !== null && t.has(k)) t.set(k, { ...t.get(k), ...row });
+        else t.set(k === null ? `#${t.size}` : k, row);
       }
       return { count: rows.length };
     },
