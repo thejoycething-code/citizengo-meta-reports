@@ -624,7 +624,11 @@ async function collectAudience({ ig, page, as, call, runStarted, collectedDate }
   // When followers are online, by hour (5 Nov 2026): the data behind a best
   // time to post. Lifetime, as values[0].value = { "0": n, ..., "23": n };
   // Meta's hours are Pacific. Stored beside the demographics as kind 'online'.
-  const on = await call(`/${ig.id}/insights`, { metric: 'online_followers', period: 'lifetime' }, as);
+  // Asked for the last week: without a range Meta returns only the newest
+  // day, which is usually still empty ({}), so the first run stored nothing.
+  // The stored figure is the average of the days that have data.
+  const nowS = Math.floor(runStarted.getTime() / 1000);
+  const on = await call(`/${ig.id}/insights`, { metric: 'online_followers', period: 'lifetime', since: nowS - 8 * 86400, until: nowS }, as);
   const onRow = {
     ig_user_id: ig.id, page_id: page.page_id, ig_username: ig.username || null,
     collected_date: collectedDate, kind: 'online', breakdown: 'hour', data: null, errors: null,
@@ -633,11 +637,23 @@ async function collectAudience({ ig, page, as, call, runStarted, collectedDate }
   if (!on.ok) onRow.errors = { code: on.error ? on.error.code : null, message: on.error ? on.error.message : 'unknown' };
   else {
     const d = on.body && on.body.data && on.body.data[0];
-    const v = d && d.values && d.values[0] && d.values[0].value;
-    onRow.data = v && typeof v === 'object' && Object.keys(v).length ? v : null;
+    onRow.data = averageOnline((d && d.values) || []);
   }
   rows.push(onRow);
   return { rows, errorCount: rows.filter((r) => r.errors).length };
+}
+
+// Hourly online followers averaged over the days Meta filled in. Days that
+// came back empty ({}) are left out rather than counted as zero.
+function averageOnline(values) {
+  const days = values.map((x) => x && x.value).filter((v) => v && typeof v === 'object' && Object.keys(v).length);
+  if (!days.length) return null;
+  const out = {};
+  for (let h = 0; h < 24; h++) {
+    const vs = days.map((v) => v[h] ?? v[String(h)]).filter((x) => typeof x === 'number');
+    if (vs.length) out[h] = Math.round(vs.reduce((a, b) => a + b, 0) / vs.length);
+  }
+  return Object.keys(out).length ? out : null;
 }
 
 // POSTS OTHERS TAG US IN (5 Nov 2026): supporters, allies and press tagging
@@ -708,7 +724,7 @@ async function collectCollaborators({ media, as, call, runStarted }) {
 }
 
 module.exports = {
-  collectCollaborators, COLLAB_DAYS,
+  collectCollaborators, COLLAB_DAYS, averageOnline,
   collectTags,
   collectStories, collectAudience, IG_STORY_METRICS, IG_AUDIENCE, IG_AUDIENCE_BREAKDOWNS, IG_TOTAL_DAYS,
   collectInstagram, collectAccountMetrics, collectAccountMonths, monthWindows, pacificMidnight,

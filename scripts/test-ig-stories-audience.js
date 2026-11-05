@@ -2,7 +2,7 @@
 'use strict';
 // Stories, audience and missed Facebook Reels (5 Nov 2026), against fakes.
 
-const { collectStories, collectAudience, collectTags, collectCollaborators } = require('../collector/instagram');
+const { collectStories, collectAudience, collectTags, collectCollaborators, averageOnline } = require('../collector/instagram');
 const { collectFbStories } = require('../collector/fbstories');
 const { collectTagged } = require('../collector/tagged');
 const { collectMissingReels, isListed } = require('../collector/fbreels');
@@ -140,6 +140,11 @@ const runStarted = new Date('2026-11-06T03:30:00Z');
   const cg = out.data.find((r) => r.account === 'citizengo');
   check('shares, largest first, gender named', cg.countries === 'ES 50%, MX 30%, AR 20%' && cg.gender === 'women 60%, men 40%', `${cg.countries} | ${cg.gender}`);
   check('a withheld account is explained', /withheld/.test(out.text));
+
+  console.log('online followers');
+  const av = averageOnline([{ value: { 0: 10, 1: 20 } }, { value: {} }, { value: { 0: 30, 1: 40 } }]);
+  check('online followers averaged over days with data, empty days skipped', av && av[0] === 20 && av[1] === 30, JSON.stringify(av));
+  check('all days empty is null, not zeros', averageOnline([{ value: {} }]) === null);
 
   console.log('collaborators');
   const media = [
