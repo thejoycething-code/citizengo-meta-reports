@@ -85,6 +85,7 @@ function supabaseSink({ url, serviceKey }) {
     meta_ig_account_metrics: 'ig_user_id,metric_date',
     meta_ig_account_months: 'ig_user_id,month',
     meta_ig_audience: 'ig_user_id,collected_date,kind,breakdown',
+    meta_social_tags: 'platform,account_id,item_id',
     meta_ig_media_transcript: 'media_id',
     meta_post_ad_spend: 'ad_id,date_start,date_stop',
     // X source - see sql/x-schema.sql. x_oauth_tokens is deliberately absent:
@@ -146,9 +147,22 @@ function supabaseSink({ url, serviceKey }) {
     }
   }
 
+  // Deletes rows matching a PostgREST filter. Only for retention limits on
+  // third-party content (meta_social_tags), never for collected metrics.
+  const PRUNABLE = new Set(['meta_social_tags']);
+  async function prune(table, filter) {
+    if (!PRUNABLE.has(table)) throw new Error(`prune refused for ${table}`);
+    const res = await fetch(`${base}/rest/v1/${table}?${filter}`, {
+      method: 'DELETE',
+      headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}`, Prefer: 'return=minimal' },
+    });
+    if (!res.ok) throw new Error(`prune ${table}: HTTP ${res.status}`);
+  }
+
   return {
     name: 'supabase',
     knownPageIds,
+    prune,
     async upsert(table, rows) {
       if (!rows.length) return { count: 0 };
       const conflict = conflictFor(table);

@@ -1221,6 +1221,103 @@ function storyTaps(nav) {
   return `${g('tap_forward')} / ${g('tap_back')} / ${g('tap_exit')}`;
 }
 
+// Posts others tagged our Instagram accounts and Facebook Pages in.
+async function taggedPosts(store, { days: d = 30, page_id, platform, limit: l = 25 }) {
+  const days = clampDays(d, 30); const limit = clampRows(l, 25, 100);
+  const rows = await store.socialTags({ since: sinceFor(days), page_id, platform, limit });
+  if (!rows || !rows.length) {
+    return { text: `No posts tagging our accounts in the last ${days} days. Collected nightly from 6 Nov 2026 (Instagram /tags, Facebook /tagged).`, data: null };
+  }
+  return {
+    text: `**Posts others tagged us in · last ${days} days**\n\n`
+      + table(['Date', 'Platform', 'Our account', 'By', 'Post', 'Likes', 'Comments'],
+        rows.map((r) => [String(r.created_at || '').slice(0, 10), r.platform, r.account_name || r.account_id,
+          r.author || '—', r.permalink ? `[${truncate(r.text || '(no text)', 60).replace(/\|/g, '\\|')}](${r.permalink})` : truncate(r.text || '', 60),
+          n(r.likes), n(r.comments)]))
+      + '\n\n_Public posts by other accounts that tag ours: earned reach, supporters and press. Likes and comments are Instagram only; Facebook does not give them for posts on other Pages. Kept 120 days._',
+    data: rows,
+  };
+}
+
+// Hours of the day when each Instagram account's followers are online.
+function tzOffsetHours(tz, at = new Date()) {
+  const part = new Intl.DateTimeFormat('en-US', { timeZone: tz, timeZoneName: 'shortOffset' }).formatToParts(at).find((x) => x.type === 'timeZoneName');
+  const m = String(part && part.value || 'GMT').match(/GMT([+-]\d+)?(?::(\d+))?/);
+  return m && m[1] ? Number(m[1]) + (m[2] ? Math.sign(Number(m[1])) * Number(m[2]) / 60 : 0) : 0;
+}
+async function instagramBestTimes(store, { page_id, timezone = 'Europe/London' }) {
+  let tz = timezone;
+  try { new Intl.DateTimeFormat('en-US', { timeZone: tz }); } catch (e) { tz = 'Europe/London'; }
+  const rows = ((await store.igAudience({ page_id })) || []).filter((r) => r.kind === 'online' && r.data);
+  if (!rows.length) return { text: 'No online-follower data yet. It is collected nightly from 6 Nov 2026.', data: null };
+  const shift = tzOffsetHours(tz) - tzOffsetHours('America/Los_Angeles');
+  const out = rows.map((r) => {
+    const local = Array(24).fill(0);
+    for (const [h, v] of Object.entries(r.data)) if (typeof v === 'number') local[((Number(h) + Math.round(shift)) % 24 + 24) % 24] += v;
+    const ranked = local.map((v, h) => ({ h, v })).sort((a, b) => b.v - a.v);
+    const fmtH = (h) => `${String(h).padStart(2, '0')}:00`;
+    return { account: r.ig_username, best: ranked.slice(0, 3).map((x) => fmtH(x.h)).join(', '), quietest: fmtH(ranked[23].h), by_hour: local };
+  });
+  return {
+    text: `**Best times to post on Instagram · ${tz}**\n\n`
+      + table(['Account', 'Most followers online', 'Fewest'], out.map((r) => ['@' + r.account, r.best, r.quietest]))
+      + '\n\n_From Meta\'s online_followers: how many followers were on Instagram in each hour, averaged over recent days. A starting point, not a rule: what a post says matters more than when it goes out._',
+    data: out,
+  };
+}
+
+// Instagram profile actions: visits, link-in-bio clicks and button taps.
+async function instagramProfileActions(store, { page_id, days: d = 30, since, until }) {
+  const days = clampDays(d, 30);
+  const win = windowFor({ since, until, days });
+  const rows = await store.igProfileActions({ page_id, since: win.from, until: win.to });
+  if (!rows || !rows.length) return { text: 'No Instagram profile actions held for this window.', data: null };
+  const by = new Map();
+  for (const r of rows) {
+    const a = by.get(r.ig_username) || { account: r.ig_username, visits: null, link_clicks: null, taps: {} };
+    if (typeof r.profile_views === 'number') a.visits = (a.visits || 0) + r.profile_views;
+    if (typeof r.website_clicks === 'number') a.link_clicks = (a.link_clicks || 0) + r.website_clicks;
+    for (const [k, v] of Object.entries(r.profile_links_taps || {})) if (typeof v === 'number') a.taps[k] = (a.taps[k] || 0) + v;
+    by.set(r.ig_username, a);
+  }
+  const out = [...by.values()].sort((a, b) => (b.visits || 0) - (a.visits || 0));
+  return {
+    text: `**Instagram profile actions · ${win.label}**\n\n`
+      + table(['Account', 'Profile visits', 'Link clicks', 'Button taps'], out.map((r) => ['@' + r.account, n(r.visits), n(r.link_clicks),
+        Object.keys(r.taps).length ? Object.entries(r.taps).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k.replace(/_/g, ' ')} ${v}`).join(', ') : '—']))
+      + '\n\n_Days before 6 Nov 2026 hold part-day figures, so a window reaching back before then reads low. Button taps (call, email, directions...) are held from 6 Nov 2026._',
+    data: out,
+  };
+}
+
+// Facebook video retention: where viewers stop watching.
+async function videoRetention(store, { page_id, post_id, days: d = 30, limit: l = 10 }) {
+  const days = clampDays(d, 30); const limit = clampRows(l, 10, 50);
+  const rows = await store.videoRetention({ page_id, post_id, since: sinceFor(days) });
+  if (!rows || !rows.length) return { text: 'No video retention held yet. It is collected for Facebook video posts from 6 Nov 2026.', data: null };
+  const at = (curve, frac) => {
+    const keys = Object.keys(curve || {}).map(Number).filter((k) => !Number.isNaN(k)).sort((a, b) => a - b);
+    if (!keys.length) return null;
+    const k = keys[Math.min(keys.length - 1, Math.round(frac * (keys.length - 1)))];
+    const v = Number(curve[k]);
+    return Number.isFinite(v) ? Math.round((v <= 1 ? v * 100 : v)) : null;
+  };
+  const out = rows.sort((a, b) => (b.video_views || 0) - (a.video_views || 0)).slice(0, limit).map((r) => ({
+    post_id: r.post_id, date: String(r.created_time || '').slice(0, 10), text: r.message, permalink: r.permalink_url,
+    views: r.video_views, avg_seconds: r.video_avg_seconds_watched,
+    quarter: at(r.video_retention, 0.25), half: at(r.video_retention, 0.5), end: at(r.video_retention, 1),
+  }));
+  const pc = (v) => (v === null ? '—' : `${v}%`);
+  return {
+    text: `**Facebook video retention · last ${days} days**\n\n`
+      + table(['Date', 'Video', 'Views', 'Avg watched', 'Still watching at 25%', 'at 50%', 'at end'],
+        out.map((r) => [r.date, r.permalink ? `[${truncate(r.text || '(no text)', 50).replace(/\|/g, '\\|')}](${r.permalink})` : truncate(r.text || '', 50),
+          n(r.views), r.avg_seconds === null || r.avg_seconds === undefined ? '—' : `${r.avg_seconds}s`, pc(r.quarter), pc(r.half), pc(r.end)]))
+      + '\n\n_From Meta\'s post_video_retention_graph: the share of viewers still watching at each point of the video. A steep fall at 25% means the opening is losing people._',
+    data: out,
+  };
+}
+
 async function instagramPosts(store, { page_id, days: d = 30, since, until, sort = 'reach', type,
   limit: l = 15, offset: off = 0 }) {
   const days = clampDays(d, 30); const limit = clampRows(l, 15, 100);
@@ -1454,6 +1551,46 @@ const TOOLS = [
       additionalProperties: false,
     },
     handler: (store, args) => pageGrowth(store, args),
+  },
+  {
+    name: 'tagged_posts',
+    description: 'Posts OTHER accounts made that tag our Instagram accounts or Facebook Pages: supporters, allies and press. Use for "who is talking about us", "user-generated content", "who tagged us".',
+    inputSchema: { type: 'object', properties: {
+      days: { type: 'number', description: 'Look back this many days (default 30).' },
+      page_id: { type: 'string', description: 'Restrict to one of our Pages (and its Instagram).' },
+      platform: { type: 'string', enum: ['instagram', 'facebook'] },
+      limit: { type: 'number', description: 'How many (default 25, max 100).' },
+    }, additionalProperties: false },
+    handler: (store, args) => taggedPosts(store, args),
+  },
+  {
+    name: 'instagram_best_times',
+    description: 'Best hours to post on Instagram for each account: when its followers are online, converted to a time zone. Use for "when should we post".',
+    inputSchema: { type: 'object', properties: {
+      page_id: { type: 'string', description: 'Restrict to the Instagram account linked to this Facebook page id.' },
+      timezone: { type: 'string', description: 'IANA time zone for the hours, e.g. Europe/London (default), Europe/Madrid, America/Mexico_City.' },
+    }, additionalProperties: false },
+    handler: (store, args) => instagramBestTimes(store, args),
+  },
+  {
+    name: 'instagram_profile_actions',
+    description: 'What people do on each Instagram profile: profile visits, link-in-bio clicks and contact button taps (call, email, directions). Use for "are people clicking our bio link".',
+    inputSchema: { type: 'object', properties: {
+      page_id: { type: 'string' },
+      days: { type: 'number', description: 'Window in days (default 30). Ignored when since is given.' },
+      since: { type: 'string', description: 'YYYY-MM-DD' }, until: { type: 'string', description: 'YYYY-MM-DD, inclusive' },
+    }, additionalProperties: false },
+    handler: (store, args) => instagramProfileActions(store, args),
+  },
+  {
+    name: 'video_retention',
+    description: 'Facebook video retention: for each video post, the share of viewers still watching at 25%, 50% and the end. Use for "where do people stop watching", "is the opening working".',
+    inputSchema: { type: 'object', properties: {
+      page_id: { type: 'string' }, post_id: { type: 'string', description: 'One video post.' },
+      days: { type: 'number', description: 'Videos read in the last N days (default 30).' },
+      limit: { type: 'number', description: 'How many videos (default 10, max 50).' },
+    }, additionalProperties: false },
+    handler: (store, args) => videoRetention(store, args),
   },
   {
     name: 'instagram_audience',

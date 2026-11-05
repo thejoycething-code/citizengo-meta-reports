@@ -2,7 +2,8 @@
 'use strict';
 // Stories, audience and missed Facebook Reels (5 Nov 2026), against fakes.
 
-const { collectStories, collectAudience } = require('../collector/instagram');
+const { collectStories, collectAudience, collectTags } = require('../collector/instagram');
+const { collectTagged } = require('../collector/tagged');
 const { collectMissingReels, isListed } = require('../collector/fbreels');
 const { callTool } = require('../mcp/tools');
 
@@ -51,8 +52,10 @@ const runStarted = new Date('2026-11-06T03:30:00Z');
     ] }] } }] } };
   };
   const au = await collectAudience({ ig: { id: 'IG1', username: 'citizengo' }, page: { page_id: 'P1' }, as: {}, call: audCall, runStarted, collectedDate: '2026-11-06' });
-  check('two kinds x four breakdowns', au.rows.length === 8);
-  check('lifetime total_value, one breakdown per call', aCalls.every((c) => c.period === 'lifetime' && c.metric_type === 'total_value' && !String(c.breakdown).includes(',')));
+  check('two kinds x four breakdowns, plus online hours', au.rows.length === 9);
+  const online = au.rows.find((r) => r.kind === 'online');
+  check('online followers asked as lifetime', aCalls.some((c) => c.metric === 'online_followers' && c.period === 'lifetime') && online.breakdown === 'hour');
+  check('lifetime total_value, one breakdown per call', aCalls.filter((c) => c.metric !== 'online_followers').every((c) => c.period === 'lifetime' && c.metric_type === 'total_value' && !String(c.breakdown).includes(',')));
   check('retries follower_demographics with a timeframe once', au.rows.find((r) => r.kind === 'followers' && r.breakdown === 'country').data.ES === 60);
   check('engaged asked for this month', aCalls.filter((c) => c.metric === 'engaged_audience_demographics').every((c) => c.timeframe === 'this_month'));
   const city = au.rows.find((r) => r.kind === 'engaged' && r.breakdown === 'city');
@@ -84,6 +87,38 @@ const runStarted = new Date('2026-11-06T03:30:00Z');
   const mm = fr.metrics[0];
   check('plays as views, unique reach, seconds watched', mm.views_total === 900 && mm.views_unique === 700 && mm.video_avg_seconds_watched === 4.5);
   check('reactions, comments and shares', mm.reactions_total === 34 && mm.comments_total === 5 && mm.shares_total === 2);
+
+  console.log('tags');
+  const tg = await collectTags({ ig: { id: 'IG1', username: 'citizengo' }, page: { page_id: 'P1' }, as: {}, runStarted, since: new Date('2026-10-01T00:00:00Z'),
+    call: async (path) => (path === '/IG1/tags' ? { ok: true, body: { data: [
+      { id: 'T1', username: 'friend', caption: 'Sign this', like_count: 12, comments_count: 3, timestamp: '2026-11-01T10:00:00+0000', permalink: 'https://ig/t1' },
+      { id: 'T0', username: 'old', timestamp: '2026-09-01T10:00:00+0000' },
+    ] } } : { ok: false }) });
+  check('instagram tags in the window, with author and counts', tg.rows.length === 1 && tg.rows[0].author === 'friend' && tg.rows[0].likes === 12 && tg.rows[0].platform === 'instagram');
+  const fb = await collectTagged({ page: { page_id: 'P1', name: 'CitizenGO' }, as: {}, runStarted, since: new Date('2026-10-01T00:00:00Z'),
+    call: async (path, params) => (path === '/P1/tagged' && /from\{name\}/.test(params.fields) ? { ok: true, body: { data: [
+      { id: 'X_1', message: 'Thanks @CitizenGO', created_time: '2026-11-02T10:00:00+0000', from: { name: 'A Parish' }, permalink_url: 'https://fb/x1' },
+    ] } } : { ok: false, error: { message: 'no' } }) });
+  check('facebook tagged posts with author', fb.rows.length === 1 && fb.rows[0].author === 'A Parish' && fb.rows[0].platform === 'facebook');
+
+  console.log('instagram_best_times');
+  const hours = {}; for (let h = 0; h < 24; h++) hours[h] = h === 11 ? 900 : 100;
+  const bt = await callTool({ async igAudience() { return [{ ig_username: 'citizengo_uk', kind: 'online', breakdown: 'hour', data: hours }]; } },
+    'instagram_best_times', { timezone: 'Europe/London' });
+  // 11:00 Pacific is 19:00 in London (8 hours ahead in November).
+  check('peak hour converted from Pacific to the chosen zone', bt.data[0].best.startsWith('19:00'), bt.data[0].best);
+
+  console.log('video_retention');
+  const vr = await callTool({ async videoRetention() { return [{ post_id: 'P1_9', video_views: 500, video_avg_seconds_watched: 6.2, video_retention: { 0: 1, 10: 0.6, 20: 0.4, 30: 0.3, 40: 0.2 }, message: 'Clip', created_time: '2026-11-01T00:00:00Z' }]; } },
+    'video_retention', {});
+  check('retention at 25%, 50% and the end', vr.data[0].quarter === 60 && vr.data[0].half === 40 && vr.data[0].end === 20, JSON.stringify(vr.data[0]));
+
+  console.log('instagram_profile_actions');
+  const pa = await callTool({ async igProfileActions() { return [
+    { ig_username: 'citizengo', metric_date: '2026-11-03', profile_views: 10, website_clicks: 2, profile_links_taps: { email: 1 } },
+    { ig_username: 'citizengo', metric_date: '2026-11-04', profile_views: 5, website_clicks: 1, profile_links_taps: { email: 2, call: 1 } },
+  ]; } }, 'instagram_profile_actions', { since: '2026-11-01', until: '2026-11-05' });
+  check('visits, clicks and taps summed', pa.data[0].visits === 15 && pa.data[0].link_clicks === 3 && pa.data[0].taps.email === 3);
 
   console.log('instagram_audience');
   const store = { async igAudience() { return [

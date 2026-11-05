@@ -84,6 +84,8 @@ async function call(path, params) {
     }).length === 1), `${totalCalls.length}`);
   check('older days do NOT carry the snapshot key at all',
     older.every((r) => !('followers_snapshot' in r)), older.map((r) => r.metric_date).join(','));
+  const taps = calls.filter((c) => c.params.metric === 'profile_links_taps');
+  check('profile button taps asked per closed day, by button', taps.length === ENDS.length && taps.every((c) => c.params.breakdown === 'contact_button_type'));
   check('older days do NOT carry media_count (a null would overwrite the stored value)',
     older.every((r) => !('media_count' in r)));
   check('older days still get the series', byDate['2026-09-26'] && byDate['2026-09-26'].follower_count === 870);

@@ -116,8 +116,12 @@ create table if not exists public.meta_post_metrics (
   -- "not a video", never "no paid views".
   video_views_organic         bigint,
   video_views_paid            bigint,
-  video_views_by_distribution jsonb
+  video_views_by_distribution jsonb,
+  -- Video posts only (5 Nov 2026): post_video_retention_graph, the share of
+  -- viewers still watching at each of ~40 points through the video.
+  video_retention             jsonb
 );
+alter table public.meta_post_metrics add column if not exists video_retention jsonb;
 
 -- Makes reruns idempotent: a second run on the same day updates in place.
 -- Named columns (not an expression) so PostgREST's on_conflict can target it.
@@ -363,8 +367,12 @@ create table if not exists public.meta_ig_account_metrics (
   -- that unfollowed or left Instagram - and is the half that makes a net.
   daily_follows         bigint,
   daily_unfollows       bigint,
-  errors                jsonb
+  errors                jsonb,
+  -- Profile button taps by button (call, email, directions...), per closed
+  -- day, dated the day described (5 Nov 2026).
+  profile_links_taps    jsonb
 );
+alter table public.meta_ig_account_metrics add column if not exists profile_links_taps jsonb;
 -- For stores created before the columns existed.
 alter table public.meta_ig_account_metrics add column if not exists daily_follows bigint;
 alter table public.meta_ig_account_metrics add column if not exists daily_unfollows bigint;
@@ -427,6 +435,29 @@ create table if not exists public.meta_ig_audience (
 alter table public.meta_ig_audience enable row level security;
 revoke all on public.meta_ig_audience from anon, authenticated;
 grant select on public.meta_ig_audience to meta_readonly;
+
+-- Posts OTHERS tag our accounts in (5 Nov 2026): Instagram /tags and Facebook
+-- /tagged. Public posts only; author is the posting account's public name.
+-- Kept 120 days like other third-party content (collect.js prunes older rows).
+create table if not exists public.meta_social_tags (
+  platform      text not null,   -- instagram | facebook
+  account_id    text not null,   -- our IG user id or Page id
+  page_id       text not null references public.meta_pages(page_id),
+  account_name  text,
+  item_id       text not null,
+  author        text,
+  text          text,
+  media_type    text,
+  permalink     text,
+  created_at    timestamptz,
+  likes         bigint,
+  comments      bigint,
+  collected_at  timestamptz not null default now(),
+  primary key (platform, account_id, item_id)
+);
+alter table public.meta_social_tags enable row level security;
+revoke all on public.meta_social_tags from anon, authenticated;
+grant select on public.meta_social_tags to meta_readonly;
 -- ---------------------------------------------------------------------------
 
 -- ---------------------------------------------------------------------------

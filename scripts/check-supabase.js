@@ -53,7 +53,7 @@ const EXPECTED = {
     'comments_total', 'errors', 'video_view_time_ms', 'video_avg_seconds_watched',
     'video_complete_views_30s',
     // Video posts only; null on a photo.
-    'video_views_organic', 'video_views_paid', 'video_views_by_distribution'],
+    'video_views_organic', 'video_views_paid', 'video_views_by_distribution', 'video_retention'],
   // Written only on failed authentication, by lib/guard.js. Checked here so the
   // consistency check can see it - a table in the DDL that the preflight does
   // not verify is exactly the drift this project has hit repeatedly.
@@ -82,11 +82,13 @@ const EXPECTED = {
   meta_ig_account_metrics: ['ig_user_id', 'page_id', 'ig_username', 'metric_date',
     'collected_at', 'followers_snapshot', 'media_count', 'follower_count', 'reach',
     'views', 'profile_views', 'website_clicks', 'accounts_engaged',
-    'total_interactions', 'replies', 'follows_and_unfollows', 'daily_follows', 'daily_unfollows', 'errors'],
+    'total_interactions', 'replies', 'follows_and_unfollows', 'daily_follows', 'daily_unfollows', 'errors', 'profile_links_taps'],
   // Instagram at account level, per calendar month (Meta's own total_value).
   meta_ig_account_months: ['ig_user_id', 'page_id', 'ig_username', 'month', 'days_covered',
     'complete', 'reach', 'views', 'total_interactions', 'accounts_engaged', 'reach_days',
     'accounts_engaged_days', 'collected_at', 'errors'],
+  meta_social_tags: ['platform', 'account_id', 'page_id', 'account_name', 'item_id', 'author',
+    'text', 'media_type', 'permalink', 'created_at', 'likes', 'comments', 'collected_at'],
   meta_ig_audience: ['ig_user_id', 'page_id', 'ig_username', 'collected_date', 'kind',
     'breakdown', 'data', 'errors', 'collected_at'],
   // Per-person connector credentials. Only ever read by the service key, so the

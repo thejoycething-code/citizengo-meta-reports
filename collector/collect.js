@@ -22,6 +22,7 @@ const { mapLimit } = require('../lib/pool');
 const { makeSink } = require('./lib/sinks');
 const { collectInstagram } = require('./instagram');
 const { collectMissingReels } = require('./fbreels');
+const { collectTagged } = require('./tagged');
 const { collectAdSpend } = require('./adspend');
 
 loadEnv();
@@ -188,6 +189,9 @@ const VIDEO_METRICS = [
   'post_video_views_organic',
   'post_video_views_paid',
   'post_video_views_by_distribution_type',
+  // Share of viewers still watching at each point of the video, 0..40 steps
+  // (5 Nov 2026): where people drop off, which no total can show.
+  'post_video_retention_graph',
 ];
 
 async function collectPostMetrics(post, as) {
@@ -252,6 +256,7 @@ async function collectPostMetrics(post, as) {
     video_views_organic: num(firstValue(results.post_video_views_organic)),
     video_views_paid: num(firstValue(results.post_video_views_paid)),
     video_views_by_distribution: firstValue(results.post_video_views_by_distribution_type) || null,
+    video_retention: firstValue(results.post_video_retention_graph) || null,
 
     // Filled in by listCommentCounts() after this returns; stays null if the
     // token lacks pages_read_user_content.
@@ -630,6 +635,18 @@ async function collectPageInner(page, pageToken, out) {
     console.log(`   reels: failed — ${e.message.slice(0, 200)}`);
   }
 
+  // Posts others tag the Page in (collector/tagged.js). Own try, as above.
+  try {
+    const tg = await collectTagged({ page, call, as, since: new Date(RUN_STARTED.getTime() - LOOKBACK_DAYS * 86400000), runStarted: RUN_STARTED });
+    if (tg.error) console.log(`   tagged: unavailable — ${String(tg.error.message).slice(0, 100)}`);
+    else if (tg.rows.length) {
+      await sink.upsert('meta_social_tags', tg.rows);
+      console.log(`   tagged: ${tg.rows.length} post(s) tagging the Page`);
+    }
+  } catch (e) {
+    console.log(`   tagged: failed — ${e.message.slice(0, 200)}`);
+  }
+
   // Instagram. Silently skipped when no account is linked - most Pages have
   // none, and reporting that as a failure would be noise.
   try {
@@ -663,6 +680,14 @@ async function collectPageInner(page, pageToken, out) {
         console.log(`   instagram: @${ig.username} — ${ig.stories.media.length} live stor${ig.stories.media.length === 1 ? 'y' : 'ies'}`);
       } catch (e) {
         console.log(`   instagram: stories not saved — ${e.message.slice(0, 200)}`);
+      }
+    }
+    if (ig.linked && ig.tags && ig.tags.rows.length) {
+      try {
+        await sink.upsert('meta_social_tags', ig.tags.rows);
+        console.log(`   instagram: @${ig.username} — ${ig.tags.rows.length} post(s) tagging the account`);
+      } catch (e) {
+        console.log(`   instagram: tags not saved — ${e.message.slice(0, 200)}`);
       }
     }
     if (ig.linked && ig.audience && ig.audience.rows.length) {
@@ -876,6 +901,12 @@ async function main() {
   if (Object.keys(written).length) {
     console.log('\nWritten to data/:');
     for (const [t, n] of Object.entries(written)) console.log(`  ${t}.ndjson — ${n} rows`);
+  }
+
+  // Posts others tagged us in are third-party content: kept 120 days.
+  if (typeof sink.prune === 'function') {
+    try { await sink.prune('meta_social_tags', `created_at=lt.${new Date(Date.now() - 120 * 86400000).toISOString()}`); }
+    catch (e) { console.log(`  tags prune failed — ${e.message.slice(0, 120)}`); }
   }
 
   // Machine-readable summary for CI to surface, and a real exit code. A green
