@@ -101,8 +101,9 @@ create table if not exists public.meta_post_metrics (
   video_view_time_ms        bigint,   -- post_video_view_time
   video_avg_seconds_watched numeric,  -- post_video_avg_time_watched, ms converted to seconds
   video_complete_views_30s  bigint,   -- post_video_complete_views_30s
-  -- NOTE: post_video_retention_graph is retired. Confirmed 26 Aug 2026 - it
-  -- returned nothing on any video post across 36 pages. Not collected.
+  -- post_video_retention_graph returned nothing on 26 Aug 2026 but did on
+  -- 5 Nov 2026 (scripts/probe-coverage.js), so it is collected again: see
+  -- video_retention below.
 
   -- Requires pages_read_user_content, which the pilot token lacked. Stays NULL
   -- until that scope is granted.
@@ -176,8 +177,12 @@ create table if not exists public.meta_page_metrics (
   video_views            bigint,
   video_view_time_ms     bigint,
   -- Object per day, not a number - see PAGE_OBJECT_METRICS in collect.js.
-  post_reactions_by_type jsonb
+  post_reactions_by_type jsonb,
+  -- Added 5 Nov 2026: page_total_actions, clicks on the Page's contact details
+  -- and action button. The per-button split is no longer offered by Meta.
+  total_actions          bigint
 );
+alter table public.meta_page_metrics add column if not exists total_actions bigint;
 
 create unique index if not exists meta_page_metrics_page_day_key
   on public.meta_page_metrics (page_id, metric_date);
@@ -210,7 +215,8 @@ select
   m.daily_follows_unique,
   m.video_views,
   m.video_view_time_ms,
-  m.post_reactions_by_type
+  m.post_reactions_by_type,
+  m.total_actions
 from public.meta_page_metrics m
 join public.meta_pages g on g.page_id = m.page_id;
 
@@ -231,8 +237,13 @@ create table if not exists public.meta_ig_media (
   permalink          text,
   thumbnail_url      text,
   timestamp          timestamptz not null,
-  first_seen_at      timestamptz not null default now()
+  first_seen_at      timestamptz not null default now(),
+  collaborators      jsonb
 );
+-- Co-authors of each post from the last 14 days (5 Nov 2026), from the
+-- /collaborators edge: [{username, id, status}]. [] = no collaborators;
+-- null = not asked (older post, or the edge was refused).
+alter table public.meta_ig_media add column if not exists collaborators jsonb;
 
 create index if not exists meta_ig_media_page_time_idx
   on public.meta_ig_media (page_id, timestamp desc);
@@ -458,6 +469,23 @@ create table if not exists public.meta_social_tags (
 alter table public.meta_social_tags enable row level security;
 revoke all on public.meta_social_tags from anon, authenticated;
 grant select on public.meta_social_tags to meta_readonly;
+
+-- Facebook Page Stories (5 Nov 2026): what each Page posted as a Story and
+-- when. Meta gives no per-Story insights for Pages, so this is a record of use.
+create table if not exists public.meta_fb_stories (
+  post_id       text primary key,
+  page_id       text not null references public.meta_pages(page_id),
+  status        text,
+  media_type    text,
+  media_id      text,
+  url           text,
+  created_at    timestamptz,
+  collected_at  timestamptz not null default now()
+);
+create index if not exists meta_fb_stories_page_time_idx on public.meta_fb_stories (page_id, created_at desc);
+alter table public.meta_fb_stories enable row level security;
+revoke all on public.meta_fb_stories from anon, authenticated;
+grant select on public.meta_fb_stories to meta_readonly;
 -- ---------------------------------------------------------------------------
 
 -- ---------------------------------------------------------------------------

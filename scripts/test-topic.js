@@ -4,7 +4,7 @@
 // each is scored against its own account's normal, and that the answer never
 // adds one platform's audience to another's. Usage: node scripts/test-topic.js
 
-const { summarise, termsOf, topicPerformance } = require('../mcp/topic-tools');
+const { summarise, termsOf, topicPerformance, hashtagStats, hashtagPerformance } = require('../mcp/topic-tools');
 
 let passed = 0, failed = 0;
 function eq(name, actual, expected) {
@@ -61,6 +61,21 @@ eq('x: not collected is null, not zero', s.x, null);
   eq('answer: partial measurement labelled', out2.text.includes('3,500 views (2 of 3 posts measured)'), true);
   eq('answer: unmeasured platform says so', out2.text.includes('_not measured yet_'), true);
   eq('answer: spokesperson exclusion explained', out2.text.includes('spokesperson accounts are left out'), true);
+
+  // hashtag_performance
+  const tagCorpus = { facebook: [
+    { page_id: 'A', page_name: 'UK', message: 'Stop it #KillTheBill', views_total: 3000, created_time: '2026-11-01', permalink_url: 'https://fb/1' },
+    { page_id: 'A', page_name: 'UK', message: 'Again #killthebill', views_total: 2000, created_time: '2026-11-02' },
+    { page_id: 'A', page_name: 'UK', message: 'Once more #killthebill #other', views_total: 1000, created_time: '2026-11-03' },
+    { page_id: 'A', page_name: 'UK', message: 'Plain', views_total: 500, created_time: '2026-11-04' },
+    { page_id: 'A', page_name: 'UK', message: 'Plain two', views_total: 500, created_time: '2026-11-05' },
+  ], instagram: [], x: null };
+  const hs = hashtagStats(tagCorpus);
+  eq('hashtags: case folded, one row for 3+ posts', hs.map((r) => r.hashtag), ['killthebill']);
+  eq('hashtags: typical post vs page median (2000 / 1000)', hs[0].typical, 2);
+  eq('hashtags: best post kept with its link', hs[0].best.permalink_url, 'https://fb/1');
+  const ho = await hashtagPerformance({ topicCorpus: async () => tagCorpus }, { days: 30 });
+  eq('hashtags: answer lists the tag', ho.text.includes('#killthebill') && ho.text.includes('2.0×'), true);
 
   console.log(`\n${passed} passed, ${failed} failed`);
   process.exit(failed ? 1 : 0);

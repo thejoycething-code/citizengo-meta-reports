@@ -86,6 +86,7 @@ function supabaseSink({ url, serviceKey }) {
     meta_ig_account_months: 'ig_user_id,month',
     meta_ig_audience: 'ig_user_id,collected_date,kind,breakdown',
     meta_social_tags: 'platform,account_id,item_id',
+    meta_fb_stories: 'post_id',
     meta_ig_media_transcript: 'media_id',
     meta_post_ad_spend: 'ad_id,date_start,date_stop',
     // X source - see sql/x-schema.sql. x_oauth_tokens is deliberately absent:

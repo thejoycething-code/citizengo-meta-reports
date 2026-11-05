@@ -23,6 +23,7 @@ const { makeSink } = require('./lib/sinks');
 const { collectInstagram } = require('./instagram');
 const { collectMissingReels } = require('./fbreels');
 const { collectTagged } = require('./tagged');
+const { collectFbStories } = require('./fbstories');
 const { collectAdSpend } = require('./adspend');
 
 loadEnv();
@@ -148,6 +149,10 @@ const PAGE_METRICS = {
   page_video_views: 'video_views',
   page_video_view_time: 'video_view_time_ms',
   page_actions_post_reactions_total: 'post_reactions_by_type',
+  // Clicks on the Page's contact details and action button (Message, Sign up,
+  // Call, website). The per-button metrics are gone; this total was confirmed
+  // available by scripts/probe-coverage.js on 5 Nov 2026.
+  page_total_actions: 'total_actions',
 };
 
 // Meta's end_time is the instant the day CLOSED, always 07:00:00+0000 - midnight
@@ -647,6 +652,18 @@ async function collectPageInner(page, pageToken, out) {
     console.log(`   tagged: failed — ${e.message.slice(0, 200)}`);
   }
 
+  // Facebook Page Stories (collector/fbstories.js). Own try, as above.
+  try {
+    const st = await collectFbStories({ page, call, as, since: new Date(RUN_STARTED.getTime() - LOOKBACK_DAYS * 86400000), runStarted: RUN_STARTED });
+    if (st.error) console.log(`   fb stories: unavailable — ${String(st.error.message).slice(0, 100)}`);
+    else if (st.rows.length) {
+      await sink.upsert('meta_fb_stories', st.rows);
+      console.log(`   fb stories: ${st.rows.length}`);
+    }
+  } catch (e) {
+    console.log(`   fb stories: failed — ${e.message.slice(0, 200)}`);
+  }
+
   // Instagram. Silently skipped when no account is linked - most Pages have
   // none, and reporting that as a failure would be noise.
   try {
@@ -688,6 +705,17 @@ async function collectPageInner(page, pageToken, out) {
         console.log(`   instagram: @${ig.username} — ${ig.tags.rows.length} post(s) tagging the account`);
       } catch (e) {
         console.log(`   instagram: tags not saved — ${e.message.slice(0, 200)}`);
+      }
+    }
+    // Separate write: if the column is missing or Meta refuses, the posts
+    // above are already saved.
+    if (ig.linked && ig.collabs && ig.collabs.rows.length) {
+      try {
+        await sink.upsert('meta_ig_media', ig.collabs.rows);
+        const n = ig.collabs.rows.filter((r) => r.collaborators.length).length;
+        console.log(`   instagram: @${ig.username} — ${n} collab post(s) of ${ig.collabs.rows.length} checked`);
+      } catch (e) {
+        console.log(`   instagram: collaborators not saved — ${e.message.slice(0, 200)}`);
       }
     }
     if (ig.linked && ig.audience && ig.audience.rows.length) {

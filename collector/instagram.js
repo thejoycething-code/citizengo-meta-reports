@@ -235,6 +235,13 @@ async function collectInstagram({ page, as, call, lookbackDays, maxPosts, runSta
   } catch (e) {
     log(`   instagram: @${ig.username} — tags failed (${String(e.message).slice(0, 120)})`);
   }
+  let collabs = { rows: [] };
+  try {
+    collabs = await collectCollaborators({ media, as, call, runStarted });
+    if (collabs.error) log(`   instagram: @${ig.username} — collaborators unavailable (${String(collabs.error.message).slice(0, 120)})`);
+  } catch (e) {
+    log(`   instagram: @${ig.username} — collaborators failed (${String(e.message).slice(0, 120)})`);
+  }
   let audience = { rows: [], errorCount: 0 };
   try {
     audience = await collectAudience({ ig, page, as, call, runStarted, collectedDate });
@@ -242,7 +249,7 @@ async function collectInstagram({ page, as, call, lookbackDays, maxPosts, runSta
     log(`   instagram: @${ig.username} — audience failed (${String(e.message).slice(0, 120)})`);
   }
 
-  return { linked: true, username: ig.username, ig_user_id: ig.id, media, metrics, account, months, stories, audience, tags };
+  return { linked: true, username: ig.username, ig_user_id: ig.id, media, metrics, account, months, stories, audience, tags, collabs };
 }
 
 // Account-level daily metrics. Nothing was collected here before 7 Sept 2026:
@@ -670,7 +677,38 @@ async function collectTags({ ig, page, as, call, runStarted, since }) {
   return { rows, error: null };
 }
 
+// COLLAB POSTS (5 Nov 2026): who co-authored each recent post with us. A
+// collab shows on both profiles and its reach is shared, so without this a
+// partner-boosted post just looks like an unusually good one. One call per
+// post, so only posts from the last COLLAB_DAYS are asked: an invite is
+// settled within days. Rows carry only what the meta_ig_media upsert needs
+// plus the list, so a failure here never touches the main media write.
+const COLLAB_DAYS = 14;
+
+async function collectCollaborators({ media, as, call, runStarted }) {
+  const cutoff = new Date(runStarted.getTime() - COLLAB_DAYS * 86400000);
+  const rows = [];
+  let firstError = null; let ok = 0;
+  for (const m of media) {
+    if (m.media_product_type === 'STORY' || new Date(m.timestamp) < cutoff) continue;
+    const r = await call(`/${m.media_id}/collaborators`, {}, as);
+    if (!r.ok) {
+      firstError = firstError || r.error || { message: 'unknown' };
+      // The edge is all or nothing per token: a refusal on the first post is
+      // a refusal on every post, so stop rather than spend calls on it.
+      if (!ok) return { rows: [], error: firstError };
+      continue;
+    }
+    ok++;
+    const list = ((r.body && r.body.data) || []).map((c) => ({ username: c.username || null, id: c.id ? String(c.id) : null, status: c.invite_status || null }));
+    rows.push({ media_id: m.media_id, page_id: m.page_id, ig_user_id: m.ig_user_id, timestamp: m.timestamp,
+      collaborators: list.length ? list : [] });
+  }
+  return { rows, error: null };
+}
+
 module.exports = {
+  collectCollaborators, COLLAB_DAYS,
   collectTags,
   collectStories, collectAudience, IG_STORY_METRICS, IG_AUDIENCE, IG_AUDIENCE_BREAKDOWNS, IG_TOTAL_DAYS,
   collectInstagram, collectAccountMetrics, collectAccountMonths, monthWindows, pacificMidnight,
