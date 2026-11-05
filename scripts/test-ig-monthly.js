@@ -69,6 +69,7 @@ const iso = (s) => new Date(s * 1000).toISOString();
       check('asks for the month and the one before', months.join() === '2026-09-01,2026-10-01');
       return [
         { ig_username: 'citizengo', month: '2026-09-01', reach: 100000, complete: true, days_covered: 30 },
+        { ig_username: 'citizengocanada', month: '2026-10-01', reach: 900, views: 40, total_interactions: 4, complete: true, days_covered: 31, errors: { views: { code: 1 } } },
         { ig_username: 'citizengo', month: '2026-10-01', reach: 150000, views: 900000, total_interactions: 20000, complete: true, days_covered: 31, reach_days: 31 },
       ];
     },
@@ -84,6 +85,7 @@ const iso = (s) => new Date(s * 1000).toISOString();
         { ig_username: 'citizengo_uk', views: 300, total_interactions: 12 },
         { ig_username: 'citizengo_uk', views: 200, total_interactions: 8 },
         { ig_username: 'hazteoir', views: 1, total_interactions: 1 },
+        { ig_username: 'citizengo_italia', views: null, total_interactions: null },
       ];
     },
   };
@@ -99,6 +101,10 @@ const iso = (s) => new Date(s * 1000).toISOString();
   check('net withheld when unfollows were not measured every day', uk.net_growth === null);
   check('accounts without access listed as such', out.data.rows.some((r) => r.dashboard_row === '🇧🇷 PT BRASIL' && /not in the connector/.test(r.source)));
   check('accounts off the dashboard only on request', !out.data.rows.some((r) => r.account === 'hazteoir') && /1 other connected/.test(out.text));
+  const it = out.data.rows.find((r) => r.account === 'citizengo_italia');
+  check('posts without insights give no figure, not 0', it.views === null && it.interactions === null, `${it.views}`);
+  const ca = out.data.rows.find((r) => r.account === 'citizengocanada');
+  check('a metric whose last read failed is not shown as the month total', ca.views === null && ca.reach === 900 && /views not read/.test(ca.source));
   const all = await callTool(store, 'instagram_monthly', { month: '2026-10', all_accounts: true });
   check('all_accounts adds them', all.data.rows.some((r) => r.account === 'hazteoir'));
   check('the note says reach is unique, not summed', /never the sum of daily reach/.test(out.text));

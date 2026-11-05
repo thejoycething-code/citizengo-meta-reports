@@ -434,7 +434,9 @@ async function collectAccountMonths({ ig, page, as, call, runStarted }) {
           got = a; row[`${metric}_days`] = w.days - 1;
         } else if (!a.error) {
           const b = await monthTotal(call, ig.id, metric, cut + 1, until, as);
-          got = b.error ? b : { value: a.value === null && b.value === null ? null : (a.value || 0) + (b.value || 0) };
+          // Both halves or nothing: a missing half would write a short total
+          // over a stored one.
+          got = b.error ? b : { value: a.value === null || b.value === null ? null : a.value + b.value };
         } else got = a;
       }
       if (got.error) { errors[metric] = got.error; continue; }

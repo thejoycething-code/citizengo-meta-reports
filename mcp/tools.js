@@ -1081,8 +1081,11 @@ async function instagramMonthly(store, { month, page_id, all_accounts = false })
   const postsBy = new Map();
   for (const r of posts || []) {
     names.add(r.ig_username);
-    const t = postsBy.get(r.ig_username) || { posts: 0, views: 0, interactions: 0 };
-    t.posts++; t.views += Number(r.views) || 0; t.interactions += Number(r.total_interactions) || 0;
+    const t = postsBy.get(r.ig_username) || { posts: 0, views: null, interactions: null };
+    t.posts++;
+    // null until a post actually carries the metric, so "no insights" never reads as 0.
+    if (r.views !== null && r.views !== undefined) t.views = (t.views || 0) + Number(r.views);
+    if (r.total_interactions !== null && r.total_interactions !== undefined) t.interactions = (t.interactions || 0) + Number(r.total_interactions);
     postsBy.set(r.ig_username, t);
   }
   names.delete(null); names.delete(undefined);
@@ -1105,11 +1108,18 @@ async function instagramMonthly(store, { month, page_id, all_accounts = false })
     const lost = series.filter((x) => num(x.daily_unfollows) !== null);
     const net = gained.length && lost.length >= gained.length
       ? gained.reduce((a, b) => a + b, 0) - lost.reduce((a, x) => a + num(x.daily_unfollows), 0) : null;
-    const reach = cur ? num(cur.reach) : null;
+    // A metric whose last read failed may still hold an earlier, shorter
+    // window's figure (the row is never blanked), so it is not shown as the
+    // month's total.
+    const failed = new Set(cur && cur.errors && typeof cur.errors === 'object' ? Object.keys(cur.errors) : []);
+    const held = (k) => (cur && !failed.has(k) ? num(cur[k]) : null);
+    const reach = held('reach');
     const p = postsBy.get(user);
-    let views = cur ? num(cur.views) : null;
-    let interactions = cur ? num(cur.total_interactions) : null;
+    let views = held('views');
+    let interactions = held('total_interactions');
     let source = cur ? (cur.complete ? 'Meta month total' : `Meta total, ${cur.days_covered} days so far`) : '';
+    const unread = ['reach', 'views', 'total_interactions'].filter((k) => failed.has(k));
+    if (unread.length) source += `; ${unread.join('/')} not read on the last run`;
     if (cur && !cur.complete) partialMonth = true;
     if (cur && num(cur.reach_days) !== null && num(cur.days_covered) !== null && num(cur.reach_days) < num(cur.days_covered)) {
       shortReach = true; source += `; reach ${cur.reach_days} days`;
