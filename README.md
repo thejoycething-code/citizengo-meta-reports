@@ -443,6 +443,20 @@ against the live API — `npm run probe:x` is that check and must run first.
   made to the account holders, not a preference. Changing it means telling
   every connected spokesperson and updating the consent page
   (`api/x/authorize.js`).
+- **Unless the holder consents in writing to full collection**
+  (`x_accounts.full_collection`, 4 Nov 2026). Then every post is kept and
+  measured exactly like a country account's, and the account counts in
+  `topic_performance` and `hashtag_performance`. `kind` stays
+  `spokesperson`, so it is still labelled as a personal account and stays out
+  of organisation totals. On since 4 Nov 2026 for @rociodangelo6 and since
+  5 Nov 2026 for @lukomski_sebito (both gave written permission to Chris).
+  New consenting spokespersons: mint the invite with `--full-collection`
+  (`npm run x:invite -- "<name>" --kind spokesperson --full-collection`); the
+  consent page then says every post is kept and the callback sets the flag.
+  Switching it on adds almost no X cost: the daily pass and the history
+  backfill read every post of a spokesperson either way and only the keep rule
+  changes; the extra is the day-60/85 checkpoint re-reads of the posts now kept. Switching it on
+  AFTER the first backfill means a paid `--rescan` to get the discarded posts.
 - **Attribution stops at the click.** `x_link_posts` lists which post carried
   which link, its UTM tags and X's click count. Signatures from those clicks
   are in the Bluebook under the same UTM; our UTM scheme has no

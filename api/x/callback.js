@@ -98,6 +98,9 @@ module.exports = async (req, res) => {
       kind: invite.kind, country: invite.country || null, label: invite.label,
       is_active: true, followers_count: u.public_metrics ? u.public_metrics.followers_count ?? null : null,
       authorized_at: now, authorized_by: invite.by || null, last_seen_at: now,
+      // Written consent to full collection travels in the signed invite. Only
+      // ever switched ON here: an ordinary re-authorisation leaves it as it was.
+      ...(invite.full === true && invite.kind === 'spokesperson' ? { full_collection: true } : {}),
     }], 'resolution=merge-duplicates,return=minimal');
     // A re-authorisation supersedes the previous credential. Keep the row,
     // mark it, so "who authorised when" stays answerable.
