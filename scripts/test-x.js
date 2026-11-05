@@ -382,6 +382,20 @@ eq('altered payload -> null', xauth.verifyInvite('invite-secret-0123456789abcdef
   eq('full is never set on an organisation invite', xauth.verifyInvite('s', xauth.signInvite('s', { label: 'O', kind: 'organisation', full: true })).full, undefined);
   eq('ordinary invite has no full', xauth.verifyInvite('s', xauth.signInvite('s', { label: 'R', kind: 'spokesperson' })).full, undefined);
 }
+{
+  // X consent page (5 Nov 2026): a full-collection X invite says all posts are kept; an ordinary one says only ours.
+  const env = { X_CLIENT_ID: 'cid', X_INVITE_SECRET: 'invite-secret-0123456789abcdef', X_TOKEN_PUBLIC_KEY: 'pk', X_REDIRECT_URI: 'https://h/api/x/callback' };
+  const saved = {}; for (const k of Object.keys(env)) { saved[k] = process.env[k]; process.env[k] = env[k]; }
+  const render = (inv) => {
+    const res = { headers: {}, statusCode: 0, body: '', setHeader(k, v) { this.headers[k] = v; }, getHeader(k) { return this.headers[k]; }, end(b) { this.body = String(b || ''); } };
+    require('../api/x/authorize')({ method: 'GET', url: '/api/x/authorize?t=' + encodeURIComponent(xauth.signInvite(env.X_INVITE_SECRET, inv)), headers: {} }, res);
+    return res.body;
+  };
+  const fullPage = render({ label: 'Sebastian Lukomski', kind: 'spokesperson', full: true });
+  ok('X full-collection invite: consent page says all posts are kept', /All your posts/.test(fullPage) && /spokesperson/.test(fullPage));
+  ok('X ordinary spokesperson invite: consent page says only CitizenGO posts', /Only posts that contain a CitizenGO link/.test(render({ label: 'S', kind: 'spokesperson' })));
+  for (const k of Object.keys(env)) { if (saved[k] === undefined) delete process.env[k]; else process.env[k] = saved[k]; }
+}
 eq('unknown kind -> null', xauth.verifyInvite('s', xauth.signInvite('s', { label: 'x', kind: 'admin' })), null);
 
 // ---------------------------------------------------------------------------

@@ -5,6 +5,7 @@
 //   npm run x:invite -- "CitizenGO UK" --country GB
 //   npm run x:invite -- "Sebastian Lukomski" --kind spokesperson --days 14
 //   npm run x:invite -- "Rocio D'Angelo" --kind spokesperson --platform instagram
+//   npm run x:invite -- "Sebastian Lukomski" --kind spokesperson --full-collection   (written consent to the whole account)
 //
 // Prints a link to send to whoever holds the account. The link says which
 // label and kind the account will be enrolled under, is signed, and expires
@@ -23,7 +24,7 @@ const label = args.find((a) => !a.startsWith('--') && args[args.indexOf(a) - 1] 
 const opt = (name, dflt) => { const i = args.indexOf('--' + name); return i !== -1 && args[i + 1] ? args[i + 1] : dflt; };
 
 if (!label) {
-  console.error('Usage: node scripts/x-invite.js "<label>" [--kind organisation|spokesperson] [--country GB] [--days 7]');
+  console.error('Usage: node scripts/x-invite.js "<label>" [--kind organisation|spokesperson] [--country GB] [--days 7] [--platform x|instagram] [--full-collection]');
   process.exit(2);
 }
 const secret = process.env.X_INVITE_SECRET;
@@ -37,10 +38,10 @@ if (!['x', 'instagram'].includes(platform)) { console.error('--platform must be 
 if (!['organisation', 'spokesperson'].includes(kind)) { console.error('--kind must be organisation or spokesperson'); process.exit(2); }
 
 // --full-collection: a spokesperson who consented IN WRITING to collection of the
-// whole account. Instagram only: the X callback does not read it (X's flag is set
-// on x_accounts.full_collection directly).
+// whole account. Both platforms (X since 5 Nov 2026): the callback sets
+// full_collection on the account row; kind stays 'spokesperson'.
 const full = args.includes('--full-collection');
-if (full && (platform !== 'instagram' || kind !== 'spokesperson')) { console.error('--full-collection is for --kind spokesperson --platform instagram'); process.exit(2); }
+if (full && kind !== 'spokesperson') { console.error('--full-collection is for --kind spokesperson'); process.exit(2); }
 
 const token = xauth.signInvite(secret, {
   label, kind, country: opt('country', null), days: Number(opt('days', 7)),

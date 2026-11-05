@@ -45,7 +45,9 @@ module.exports = async (req, res) => {
   flow.setCookie(res, flow.signCookie(cfg.inviteSecret, { verifier, state, invite }));
 
   const next = xauth.authorizeUrl({ clientId: cfg.clientId, redirectUri: cfg.redirectUri, state, challenge });
-  const what = invite.kind === 'spokesperson'
+  const what = invite.kind === 'spokesperson' && invite.full === true
+    ? 'All your posts, with their impressions, engagement and link clicks, will be collected each night and kept for reporting, as you agreed in writing - not only those about CitizenGO. Your account stays labelled as a spokesperson, not a CitizenGO account.'
+    : invite.kind === 'spokesperson'
     ? 'Only posts that contain a CitizenGO link (citizengo.org, hazteoir.org or cgo.ac) or mention CitizenGO (by name, @-mention or hashtag) will be stored, with their impressions, engagement and link clicks. Nothing else you post is kept.'
     : 'Your posts from the last 30 days, and their impressions, engagement and link clicks, will be collected each night and kept for reporting.';
 

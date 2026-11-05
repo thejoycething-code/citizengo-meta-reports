@@ -60,7 +60,16 @@ eq('x: not collected is null, not zero', s.x, null);
   const out2 = await topicPerformance({ topicCorpus: async () => withX }, { query: 'utero in affitto, surrogacy' });
   eq('answer: partial measurement labelled', out2.text.includes('3,500 views (2 of 3 posts measured)'), true);
   eq('answer: unmeasured platform says so', out2.text.includes('_not measured yet_'), true);
-  eq('answer: spokesperson exclusion explained', out2.text.includes('spokesperson accounts are left out'), true);
+  eq('answer: spokesperson exclusion explained', out2.text.includes('spokesperson accounts left out: @spoke'), true);
+
+  // Full-collection consent (5 Nov 2026): a consenting spokesperson counts like our own accounts, labelled.
+  const fullX = { ...withX, x: [...withX.x, { post_id: 'x3', account_id: 'S', username: 'spoke', kind: 'spokesperson', created_at: '2026-10-11T00:00:00Z', text: 'hola', impressions: 10 }] };
+  const consentStore = { topicCorpus: async () => fullX, xAccounts: async () => [{ account_id: 'S', kind: 'spokesperson', full_collection: true }, { account_id: 'O', kind: 'organisation' }] };
+  const out3 = await topicPerformance(consentStore, { query: 'surrogacy' });
+  eq('full-collection spokesperson: not left out', out3.text.includes('left out: @spoke'), false);
+  eq('full-collection spokesperson: labelled as spokesperson', out3.text.includes('@spoke (spokesperson)'), true);
+  eq('full-collection spokesperson: inclusion explained', out3.text.includes('collected in full by consent are included'), true);
+  eq('full-collection: share counts every post of theirs', summarise({ x: fullX.x.map((r) => r.account_id === 'S' ? { ...r, full_collection: true } : r) }, ['surrogacy']).x.estatePosts, 3);
 
   // hashtag_performance
   const tagCorpus = { facebook: [
