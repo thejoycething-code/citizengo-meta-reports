@@ -67,7 +67,9 @@ const EXPECTED = {
     // FEED-only follower attribution; null on Reels and Stories by design.
     'follows', 'profile_visits', 'profile_activity',
     // REELS-only watch-through; null on FEED by design.
-    'reels_avg_watch_time_ms', 'reels_total_watch_time_ms'],
+    'reels_avg_watch_time_ms', 'reels_total_watch_time_ms',
+    // STORIES-only (5 Nov 2026).
+    'replies', 'navigation'],
   meta_post_ad_spend: ['post_id', 'page_id', 'ad_id', 'ad_account_id', 'campaign_name',
     'spend', 'currency', 'impressions', 'reach', 'date_start', 'date_stop', 'collected_at'],
   meta_page_metrics: ['page_id', 'metric_date', 'views_total', 'media_view',
@@ -85,6 +87,8 @@ const EXPECTED = {
   meta_ig_account_months: ['ig_user_id', 'page_id', 'ig_username', 'month', 'days_covered',
     'complete', 'reach', 'views', 'total_interactions', 'accounts_engaged', 'reach_days',
     'accounts_engaged_days', 'collected_at', 'errors'],
+  meta_ig_audience: ['ig_user_id', 'page_id', 'ig_username', 'collected_date', 'kind',
+    'breakdown', 'data', 'errors', 'collected_at'],
   // Per-person connector credentials. Only ever read by the service key, so the
   // preflight checks the shape rather than the contents.
   meta_access_tokens: ['name', 'token_hash', 'note', 'created_at', 'created_by',

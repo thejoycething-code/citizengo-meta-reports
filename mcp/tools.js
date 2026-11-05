@@ -1166,6 +1166,61 @@ async function instagramMonthly(store, { month, page_id, all_accounts = false })
   };
 }
 
+// Who follows and who engages, per Instagram account (meta_ig_audience).
+async function instagramAudience(store, { page_id, kind = 'followers', top = 8 }) {
+  const rows = typeof store.igAudience === 'function' ? await store.igAudience({ page_id }) : [];
+  const want = kind === 'engaged' ? 'engaged' : 'followers';
+  const mine = (rows || []).filter((r) => r.kind === want);
+  if (!mine.length) {
+    return { text: 'No Instagram audience data yet. It is collected nightly from 6 Nov 2026, so it appears after the next collection run.', data: null };
+  }
+  const k = Math.min(Math.max(Number(top) || 8, 3), 20);
+  const byAccount = new Map();
+  for (const r of mine) {
+    if (!byAccount.has(r.ig_username)) byAccount.set(r.ig_username, {});
+    byAccount.get(r.ig_username)[r.breakdown] = r;
+  }
+  const fmt = (data, limit) => {
+    if (!data) return null;
+    const entries = Object.entries(data).filter(([, v]) => typeof v === 'number');
+    const total = entries.reduce((a, [, v]) => a + v, 0);
+    if (!total) return null;
+    return entries.sort((a, b) => b[1] - a[1]).slice(0, limit)
+      .map(([key, v]) => `${key} ${Math.round((v / total) * 1000) / 10}%`).join(', ');
+  };
+  const GENDER = { F: 'women', M: 'men', U: 'unknown' };
+  const out = [];
+  let withheld = 0;
+  for (const [name, b] of [...byAccount.entries()].sort()) {
+    const g = b.gender && b.gender.data
+      ? Object.fromEntries(Object.entries(b.gender.data).map(([key, v]) => [GENDER[key] || key, v])) : null;
+    const row = {
+      account: name,
+      age: fmt(b.age && b.age.data, 7), gender: fmt(g, 3),
+      countries: fmt(b.country && b.country.data, k), cities: fmt(b.city && b.city.data, k),
+    };
+    if (!row.age && !row.gender && !row.countries && !row.cities) withheld++;
+    out.push(row);
+  }
+  const date = mine[0].collected_date;
+  return {
+    text: `**Instagram audience · ${want === 'engaged' ? 'accounts that engaged this month' : 'followers'} · as of ${prettyDay(String(date).slice(0, 10))}**\n\n`
+      + table(['Account', 'Age', 'Gender', 'Top countries', 'Top cities'],
+        out.map((r) => ['@' + r.account, r.age || '—', r.gender || '—', r.countries || '—', r.cities || '—']))
+      + `\n\n_Shares of the accounts Meta could classify, from Meta's own demographics. `
+      + (withheld ? `"—" across a row means Meta withheld it: it gives demographics only above 100 ${want === 'engaged' ? 'engaged accounts' : 'followers'}. ` : '')
+      + 'Facebook stopped offering Page demographics in 2024, so this is Instagram only._',
+    data: out,
+  };
+}
+
+// A Story's navigation breakdown, as forward / back / exit taps.
+function storyTaps(nav) {
+  if (!nav || typeof nav !== 'object') return '—';
+  const g = (k) => (typeof nav[k] === 'number' ? nav[k].toLocaleString('en-GB') : '0');
+  return `${g('tap_forward')} / ${g('tap_back')} / ${g('tap_exit')}`;
+}
+
 async function instagramPosts(store, { page_id, days: d = 30, since, until, sort = 'reach', type,
   limit: l = 15, offset: off = 0 }) {
   const days = clampDays(d, 30); const limit = clampRows(l, 15, 100);
@@ -1200,7 +1255,8 @@ async function instagramPosts(store, { page_id, days: d = 30, since, until, sort
   return {
     text: `**Instagram${typeLabel} by ${label}**${offset ? ` · from rank ${offset + 1}` : ''} · ${win.label}\n\n`
       + table(
-        ['Date', 'Account', 'Post', 'Type', 'Reach', 'Views', 'Saves', 'Saves/1k', 'Interactions', 'Rate', 'Follows', 'Avg watch'],
+        ['Date', 'Account', 'Post', 'Type', 'Reach', 'Views', 'Saves', 'Saves/1k', 'Interactions', 'Rate', 'Follows', 'Avg watch']
+          .concat(type === 'stories' ? ['Replies', 'Taps (fwd/back/exit)'] : []),
         rows.map((r) => [
           (r.timestamp || '').slice(0, 10),
           r.ig_username ? '@' + r.ig_username : (r.page_name || '—'),
@@ -1216,7 +1272,7 @@ async function instagramPosts(store, { page_id, days: d = 30, since, until, sort
           n(r.follows),
           r.reels_avg_watch_seconds !== null && r.reels_avg_watch_seconds !== undefined
             ? Number(r.reels_avg_watch_seconds).toFixed(1) + 's' : '—',
-        ])
+        ].concat(type === 'stories' ? [n(r.replies), storyTaps(r.navigation)] : []))
       )
       + '\n\n_Saves per 1,000 reached is the intent signal worth watching: saving a post is a deliberate act in a way a like is not, and Facebook has no equivalent metric. '
       + '"Follows" is followers gained from that post and exists for FEED posts only; "Avg watch" exists for Reels only — Meta refuses each metric on the other type, so "—" means not offered rather than zero. '
@@ -1400,6 +1456,20 @@ const TOOLS = [
     handler: (store, args) => pageGrowth(store, args),
   },
   {
+    name: 'instagram_audience',
+    description: 'Who follows each Instagram account, or who engaged with it this month: age, gender, top countries and top cities, as shares. Use for "who is our audience", "where are our followers", "how old are they". Instagram only - Facebook no longer offers Page demographics.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        page_id: { type: 'string', description: 'Restrict to the Instagram account linked to this Facebook page id.' },
+        kind: { type: 'string', enum: ['followers', 'engaged'], description: 'followers (default) or accounts that engaged this month.' },
+        top: { type: 'number', description: 'How many countries and cities to list (default 8, max 20).' },
+      },
+      additionalProperties: false,
+    },
+    handler: (store, args) => instagramAudience(store, args),
+  },
+  {
     name: 'instagram_monthly',
     description: 'The monthly Instagram dashboard: for each account and calendar month, Followers, net follower growth, Accounts reached (unique, Meta\'s own month total) and its change on the previous month, Views and Interactions, in the dashboard\'s row order (GLOBAL, LATAM, ES AR, EN CA, IT, EN GB, ES MX, HU). Use this to fill or check the monthly Instagram metrics sheet, rather than adding daily figures.',
     inputSchema: {
@@ -1423,7 +1493,7 @@ const TOOLS = [
         days: { type: 'number', description: 'Look back this many days (default 30). Ignored when since is given.' },
         since: { type: 'string', description: 'Only posts published from this date, YYYY-MM-DD.' },
         until: { type: 'string', description: 'Window end INCLUSIVE, YYYY-MM-DD.' },
-        type: { type: 'string', enum: ['reels', 'feed', 'carousels', 'images', 'stories'], description: 'Only this format. Use "reels" for any question about Reels or watch time, so every Reel is read rather than only those that rank among all posts.' },
+        type: { type: 'string', enum: ['reels', 'feed', 'carousels', 'images', 'stories'], description: 'Only this format. Use "reels" for any question about Reels or watch time, so every Reel is read rather than only those that rank among all posts. Stories (held from 5 Nov 2026, with replies and taps) appear ONLY with type "stories".' },
         sort: { type: 'string', enum: ['reach', 'saved', 'views', 'interactions', 'recent', 'watch'], description: 'Ranking metric (default reach). "watch" = Reels average watch time.' },
         limit: { type: 'number', description: 'How many posts (default 15, max 100).' },
         offset: { type: 'number', description: 'Skip this many ranked posts. The output names the next offset while more remain.' },

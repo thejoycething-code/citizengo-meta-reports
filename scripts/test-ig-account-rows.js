@@ -70,11 +70,22 @@ async function call(path, params) {
   const older = rows.filter((r) => r.metric_date !== '2026-09-28');
 
   check('the current day carries the follower snapshot', today && today.followers_snapshot === 202810);
-  check('the current day carries the total_value metrics', today && today.views === 1000 && today.profile_views === 1000);
+  // 5 Nov 2026: the total_value metrics are asked for whole CLOSED days, not
+  // the day still running, and stored on the day each describes.
+  check('the running day does NOT carry a part-day total', today && !('views' in today) && !('profile_views' in today));
+  check('each closed day carries the total_value metrics, dated the day described',
+    ['2026-09-24', '2026-09-25', '2026-09-26'].every((d) => byDate[d] && byDate[d].views === 1000 && byDate[d].profile_views === 1000),
+    ['2026-09-24', '2026-09-25', '2026-09-26'].map((d) => `${d}:${byDate[d] && byDate[d].views}`).join(' '));
+  const totalCalls = calls.filter((c) => c.params.metric === 'views');
+  check('one views call per closed day, each window holding exactly one closing',
+    totalCalls.length === ENDS.length && totalCalls.every((c) => ENDS.filter((e) => {
+      const t = Math.floor(Date.parse(e) / 1000);
+      return t >= c.params.since && t <= c.params.until;
+    }).length === 1), `${totalCalls.length}`);
   check('older days do NOT carry the snapshot key at all',
     older.every((r) => !('followers_snapshot' in r)), older.map((r) => r.metric_date).join(','));
-  check('older days do NOT carry total_value keys (a null would overwrite the stored value)',
-    older.every((r) => !('views' in r) && !('profile_views' in r) && !('media_count' in r)));
+  check('older days do NOT carry media_count (a null would overwrite the stored value)',
+    older.every((r) => !('media_count' in r)));
   check('older days still get the series', byDate['2026-09-26'] && byDate['2026-09-26'].follower_count === 870);
 
   // Dated the day DESCRIBED: the day closing 27 Sept 07:00Z is 26 Sept.
@@ -96,6 +107,17 @@ async function call(path, params) {
     rows.filter((r) => 'daily_follows' in r).map((r) => `${r.metric_date}:${r.daily_follows}/${r.follower_count}`).join(' '));
   check('the old no-breakdown request is gone',
     !calls.some((c) => c.params.metric === 'follows_and_unfollows' && !c.params.breakdown));
+
+  // follower_count down: the totals still run, on Pacific midnights.
+  const c2 = [];
+  const { rows: r2 } = await collectAccountMetrics({
+    ig: { id: 'IG1', username: 'hazteoir' }, page: { page_id: 'P1' }, as: null,
+    call: async (path, params) => { c2.push(params); return params.metric === 'follower_count' ? { ok: false, error: { code: 1, message: 'down' } } : call(path, params); },
+    lookbackDays: 30, runStarted: new Date('2026-09-28T20:05:00Z'), collectedDate: '2026-09-28',
+  });
+  check('with follower_count down, totals still asked for the last closed days',
+    c2.filter((c) => c.metric === 'views').length === 3 && r2.some((r) => r.metric_date === '2026-09-27' && r.views === 1000),
+    r2.filter((r) => 'views' in r).map((r) => r.metric_date).join(','));
 
   console.log(failed ? `\n${failed} failed` : '\nall passed');
   process.exit(failed ? 1 : 0);
