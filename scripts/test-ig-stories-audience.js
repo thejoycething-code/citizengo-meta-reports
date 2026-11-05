@@ -100,6 +100,11 @@ const runStarted = new Date('2026-11-06T03:30:00Z');
       { id: 'X_1', message: 'Thanks @CitizenGO', created_time: '2026-11-02T10:00:00+0000', from: { name: 'A Parish' }, permalink_url: 'https://fb/x1' },
     ] } } : { ok: false, error: { message: 'no' } }) });
   check('facebook tagged posts with author', fb.rows.length === 1 && fb.rows[0].author === 'A Parish' && fb.rows[0].platform === 'facebook');
+  const paged = await collectTagged({ page: { page_id: 'P1', name: 'CitizenGO' }, as: {}, runStarted, since: new Date('2026-10-01T00:00:00Z'),
+    call: async (path, params) => (!params.after
+      ? { ok: true, body: { data: [{ id: 'X_1', created_time: '2026-11-02T10:00:00+0000' }], paging: { cursors: { after: 'c2' } } } }
+      : { ok: true, body: { data: [{ id: 'X_2', created_time: '2026-10-20T10:00:00+0000' }, { id: 'X_3', created_time: '2026-09-20T10:00:00+0000' }], paging: { cursors: { after: 'c3' } } } }) });
+  check('tagged posts follow the cursor and stop past the window', paged.rows.map((r) => r.item_id).join() === 'X_1,X_2');
 
   console.log('instagram_best_times');
   const hours = {}; for (let h = 0; h < 24; h++) hours[h] = h === 11 ? 900 : 100;
@@ -107,6 +112,10 @@ const runStarted = new Date('2026-11-06T03:30:00Z');
     'instagram_best_times', { timezone: 'Europe/London' });
   // 11:00 Pacific is 19:00 in London (8 hours ahead in November).
   check('peak hour converted from Pacific to the chosen zone', bt.data[0].best.startsWith('19:00'), bt.data[0].best);
+  const bk = await callTool({ async igAudience() { return [{ ig_username: 'citizengo_uk', kind: 'online', breakdown: 'hour', data: hours }]; } },
+    'instagram_best_times', { timezone: 'Asia/Kolkata' });
+  // 11:00 Pacific (UTC-8 in November) is 00:30 in India (UTC+5:30).
+  check('half-hour zones keep their minutes', bk.data[0].best.startsWith('00:30') && bk.data[0].by_hour.length === 24, bk.data[0].best);
 
   console.log('video_retention');
   const vr = await callTool({ async videoRetention() { return [{ post_id: 'P1_9', video_views: 500, video_avg_seconds_watched: 6.2, video_retention: { 0: 1, 10: 0.6, 20: 0.4, 30: 0.3, 40: 0.2 }, message: 'Clip', created_time: '2026-11-01T00:00:00Z' }]; } },

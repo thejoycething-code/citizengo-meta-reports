@@ -1250,13 +1250,17 @@ async function instagramBestTimes(store, { page_id, timezone = 'Europe/London' }
   try { new Intl.DateTimeFormat('en-US', { timeZone: tz }); } catch (e) { tz = 'Europe/London'; }
   const rows = ((await store.igAudience({ page_id })) || []).filter((r) => r.kind === 'online' && r.data);
   if (!rows.length) return { text: 'No online-follower data yet. It is collected nightly from 6 Nov 2026.', data: null };
-  const shift = tzOffsetHours(tz) - tzOffsetHours('America/Los_Angeles');
+  // Minutes, not rounded hours: zones such as Asia/Kolkata sit on a half hour,
+  // so each Pacific hour bucket starts at e.g. 13:30 local.
+  const shiftMin = Math.round((tzOffsetHours(tz) - tzOffsetHours('America/Los_Angeles')) * 60);
+  const fmtM = (m) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
   const out = rows.map((r) => {
-    const local = Array(24).fill(0);
-    for (const [h, v] of Object.entries(r.data)) if (typeof v === 'number') local[((Number(h) + Math.round(shift)) % 24 + 24) % 24] += v;
-    const ranked = local.map((v, h) => ({ h, v })).sort((a, b) => b.v - a.v);
-    const fmtH = (h) => `${String(h).padStart(2, '0')}:00`;
-    return { account: r.ig_username, best: ranked.slice(0, 3).map((x) => fmtH(x.h)).join(', '), quietest: fmtH(ranked[23].h), by_hour: local };
+    const buckets = Array.from({ length: 24 }, (_, h) => ({ start: ((h * 60 + shiftMin) % 1440 + 1440) % 1440, v: 0 }));
+    for (const [h, v] of Object.entries(r.data)) if (typeof v === 'number' && buckets[Number(h)]) buckets[Number(h)].v += v;
+    const local = buckets.slice().sort((a, b) => a.start - b.start);
+    const ranked = buckets.slice().sort((a, b) => b.v - a.v);
+    return { account: r.ig_username, best: ranked.slice(0, 3).map((x) => fmtM(x.start)).join(', '), quietest: fmtM(ranked[23].start),
+      by_hour: local.map((x) => ({ time: fmtM(x.start), followers: x.v })) };
   });
   return {
     text: `**Best times to post on Instagram · ${tz}**\n\n`

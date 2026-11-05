@@ -639,10 +639,24 @@ async function collectAudience({ ig, page, as, call, runStarted, collectedDate }
 const IG_TAG_FIELDS = 'id,caption,media_type,permalink,timestamp,username,like_count,comments_count';
 
 async function collectTags({ ig, page, as, call, runStarted, since }) {
-  const r = await call(`/${ig.id}/tags`, { fields: IG_TAG_FIELDS, limit: 50 }, as);
-  if (!r.ok) return { rows: [], error: r.error || { message: 'unknown' } };
+  const items = [];
+  let after = null;
+  // Newest first: follow the cursor until a page reaches past `since`.
+  for (let guard = 0; guard < 10; guard++) {
+    const params = { fields: IG_TAG_FIELDS, limit: 50 };
+    if (after) params.after = after;
+    const r = await call(`/${ig.id}/tags`, params, as);
+    if (!r.ok) {
+      if (!items.length) return { rows: [], error: r.error || { message: 'unknown' } };
+      break;
+    }
+    const data = (r.body && r.body.data) || [];
+    items.push(...data);
+    after = r.body && r.body.paging && r.body.paging.cursors && r.body.paging.cursors.after;
+    if (!after || !data.length || (since && data.some((x) => x.timestamp && new Date(x.timestamp) < since))) break;
+  }
   const rows = [];
-  for (const x of (r.body && r.body.data) || []) {
+  for (const x of items) {
     if (x.timestamp && since && new Date(x.timestamp) < since) continue;
     rows.push({
       platform: 'instagram', account_id: ig.id, page_id: page.page_id, account_name: ig.username || null,
