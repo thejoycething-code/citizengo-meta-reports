@@ -1922,14 +1922,14 @@ function rulesBox(d){
 /* 4 Nov: a post the engine marks as a video (type Video or Reel, or a video note saying "upload manually")
    counts too, so its "Video to publish" upload shows. Choosing Post, Carousel or Text in Compose overrides it. */
 function isVideoPost(d){if(d.cpType&&d.cpType!=="reel")return false;return !!d.video||!!(d.card&&d.card.template==="reel")||!!d.publishVideo||/^(video|reel)$/i.test(String(d.type||""))}
-const VID_PART=2*1024*1024,VID_MAX=150*1024*1024;
+const VID_PART=2*1024*1024,VID_MAX=250*1024*1024;
 function videoUploadBox(d){const v=d.publishVideo,up=S.vidUp&&S.vidUp.id===d.id?S.vidUp:null;
   const mb=n=>(n/1048576).toFixed(n<10485760?1:0)+" MB";
   const pick=`<label class="btn small" for="vidFile">${v?"Replace the video…":"Upload a video…"}</label><input type="file" id="vidFile" accept="video/mp4,video/quicktime" hidden>`;
   const att=d.video&&d.video.url&&!v?`<button class="btn small" data-vid="attached">Use the attached video</button>`:"";
   const body=up?`<span class="src" id="vidProg">Uploading ${esc(up.name)}: piece ${up.done} of ${up.total}…</span>`
     :v?`<span class="src">✓ ${esc(v.name||"Video")} · ${mb(v.size)} · goes out as a Facebook video and an Instagram Reel</span>${S.db?pick:""}`
-    :`<span class="src">This is a video post. Upload the MP4 or MOV that should go out (up to 150 MB), or it stays to post by hand.</span>${S.db?att+pick:""}`;
+    :`<span class="src">This is a video post. Upload the MP4 or MOV that should go out (up to 250 MB), or it stays to post by hand.</span>${S.db?att+pick:""}`;
   return `<div class="posting"><span class="eyebrow">Video to publish</span><div class="row">${body}</div></div>`}
 async function sha256hex(buf){if(window.crypto&&crypto.subtle){const h=new Uint8Array(await crypto.subtle.digest("SHA-256",buf));return [...h].map(x=>x.toString(16).padStart(2,"0")).join("")}return sha256js(new Uint8Array(buf))}
 /* plain SHA-256 for views without crypto.subtle */
@@ -1943,7 +1943,7 @@ function sha256js(m){const K=[0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956
 async function uploadVideo(d,blob,name){
   const mime=blob.type==="video/quicktime"||/\.mov$/i.test(name)?"video/quicktime":"video/mp4";
   if(!/^video\/(mp4|quicktime)$/.test(blob.type||mime)){toast("Videos must be MP4 or MOV.");return}
-  if(blob.size>VID_MAX){toast("That video is over 150 MB. Export a smaller one.");return}
+  if(blob.size>VID_MAX){toast("That video is over 250 MB. Export a smaller one.");return}
   const upload=Array.from(crypto.getRandomValues(new Uint8Array(12)),x=>"abcdefghijklmnopqrstuvwxyz0123456789"[x%36]).join("");
   const total=Math.ceil(blob.size/VID_PART);S.vidUp={id:d.id,name,done:0,total};renderDetail();let buf;
   const send=async i=>{const piece=new Blob([buf.slice(i*VID_PART,(i+1)*VID_PART)]);let last;
@@ -6038,7 +6038,7 @@ function cpMedia(d){const ty=d.cpType||"post";const slides=cpSlides(d);const car
   const types=`<div class="row cp-types"><h3>What are you making?</h3>${CP_TYPES.map(([k,l,h])=>`<button class="pill${ty===k?" on":""}" data-cp-type="${k}" title="${esc(h)}">${l}</button>`).join("")}</div>`;
   if(ty==="text")return `<div class="cp-box">${types}<p class="src">Facebook goes out as a text post, with any link in the post itself so Facebook shows its preview. Instagram always needs a picture, so it is left out.</p></div>`;
   if(ty==="reel"){const v=d.publishVideo,up=S.vidUp&&S.vidUp.id===CP.id?S.vidUp:null;
-    return `<div class="cp-box">${types}<div class="cp-bh">▶ Video <small>MP4 or MOV, up to 150 MB · a Facebook video and an Instagram Reel</small></div>
+    return `<div class="cp-box">${types}<div class="cp-bh">▶ Video <small>MP4 or MOV, up to 250 MB · a Facebook video and an Instagram Reel</small></div>
     ${up?`<span class="src" id="vidProg">Uploading ${esc(up.name)}: piece ${up.done} of ${up.total}…</span>`:v?`<span class="src">✓ ${esc(v.name||"Video")} · ${(v.size/1048576).toFixed(1)} MB</span>`:`<span class="src">No video yet.</span>`}
     <div class="row"><label class="btn small" for="cpVid">${v?"Replace the video…":"Upload a video…"}</label><input type="file" id="cpVid" accept="video/mp4,video/quicktime" hidden></div>
     <div class="cp-bh">Reel cover <small>the graphic below becomes the Instagram cover</small></div>
