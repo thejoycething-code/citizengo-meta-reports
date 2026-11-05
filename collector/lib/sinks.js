@@ -34,6 +34,7 @@ function jsonSink({ dir }) {
     if (table === 'link_shortcodes') return row.short_code;
     if (table === 'link_posts') return `${row.platform}|${row.post_id}|${row.url}`;
     if (table === 'link_signatures') return `${row.campaign_code}|${row.source}`;
+    if (table === 'link_signature_days') return `${row.campaign_code}|${row.source}|${row.day}`;
     if (table === 'ig_accounts') return row.ig_user_id;
     if (table === 'ig_media') return row.media_id;
     if (table === 'ig_media_metrics') return `${row.media_id}|${row.collected_date}`;
@@ -103,6 +104,7 @@ function supabaseSink({ url, serviceKey }) {
     link_shortcodes: 'short_code',
     link_posts: 'platform,post_id,url',
     link_signatures: 'campaign_code,source',
+    link_signature_days: 'campaign_code,source,day',
     // Instagram accounts connected by their holders - see sql/ig-schema.sql.
     // ig_oauth_tokens is absent on purpose: written by api/ig/callback.js and
     // PATCHed by the collector, never bulk-upserted.
