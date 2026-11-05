@@ -1035,6 +1035,137 @@ async function igGrowthSection(store, { page_id, since, until }) {
 }
 
 
+// The monthly Instagram dashboard (Asana, Nov 2026): one row per account per
+// calendar month - Followers, Accounts reached and its change on the month
+// before, Views, Interactions - in the dashboard's own row order.
+//
+// Accounts reached, Views and Interactions come from meta_ig_account_months:
+// Meta's own total for the month, the number the Instagram app shows. Those
+// totals exist only from November 2026, when collection began reading them;
+// for an earlier month the views and interactions of the posts PUBLISHED that
+// month stand in, marked, and reach is left blank rather than estimated -
+// adding daily reach counts a regular follower once a day.
+const IG_DASHBOARD_ROWS = [
+  ['citizengo', '🌍 GLOBAL'], ['citizengo_latam', '🌎 LATAM'], [null, '🇧🇷 PT BRASIL'],
+  ['citizengo_argentina', '🇦🇷 ES AR'], ['citizengocanada', '🇨🇦 EN CA'], ['citizengo_italia', '🇮🇹 IT'],
+  ['citizengo_uk', '🇬🇧 EN GB'], [null, '🌍 EN AF'], ['citizengo_mexico', '🇲🇽 ES MX'],
+  [null, '🏴 EN SCOT'], ['citizengo_magyar', '🇭🇺 HU'],
+];
+
+function lastCompleteMonth() {
+  const pt = new Date(Date.now() - 8 * 3600 * 1000);
+  const d = new Date(Date.UTC(pt.getUTCFullYear(), pt.getUTCMonth() - 1, 1));
+  return d.toISOString().slice(0, 7);
+}
+
+async function instagramMonthly(store, { month, page_id, all_accounts = false }) {
+  const m = /^\d{4}-\d{2}$/.test(String(month || '')) ? String(month) : lastCompleteMonth();
+  const first = `${m}-01`;
+  const [yy, mm] = m.split('-').map(Number);
+  const prev = new Date(Date.UTC(yy, mm - 2, 1)).toISOString().slice(0, 10);
+  const next = new Date(Date.UTC(yy, mm, 1)).toISOString().slice(0, 10);
+  const last = shiftDay(next, -1);
+  const monthName = `${['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'][mm - 1]} ${yy}`;
+
+  const [monthRows, days, posts] = await Promise.all([
+    typeof store.igAccountMonths === 'function' ? store.igAccountMonths({ months: [prev, first], page_id }).catch(() => []) : [],
+    typeof store.igAccountGrowth === 'function' ? store.igAccountGrowth({ page_id, since: first, until: last }).catch(() => []) : [],
+    typeof store.igMonthPosts === 'function' ? store.igMonthPosts({ page_id, since: `${first}T00:00:00.000Z`, until: `${next}T00:00:00.000Z` }).catch(() => []) : [],
+  ]);
+
+  const names = new Set();
+  const byMonth = new Map();
+  for (const r of monthRows || []) { names.add(r.ig_username); byMonth.set(`${r.ig_username}|${String(r.month).slice(0, 10)}`, r); }
+  const daysBy = new Map();
+  for (const r of days || []) { names.add(r.ig_username); if (!daysBy.has(r.ig_username)) daysBy.set(r.ig_username, []); daysBy.get(r.ig_username).push(r); }
+  const postsBy = new Map();
+  for (const r of posts || []) {
+    names.add(r.ig_username);
+    const t = postsBy.get(r.ig_username) || { posts: 0, views: null, interactions: null };
+    t.posts++;
+    // null until a post actually carries the metric, so "no insights" never reads as 0.
+    if (r.views !== null && r.views !== undefined) t.views = (t.views || 0) + Number(r.views);
+    if (r.total_interactions !== null && r.total_interactions !== undefined) t.interactions = (t.interactions || 0) + Number(r.total_interactions);
+    postsBy.set(r.ig_username, t);
+  }
+  names.delete(null); names.delete(undefined);
+  if (!names.size) {
+    return { text: `No Instagram account data held for ${monthName}. Instagram serves account insights for about the last 30 days only, so a month before collection began cannot be filled in.`, data: null };
+  }
+
+  const num = (v) => (typeof v === 'number' ? v : (v === null || v === undefined || v === '' ? null : Number(v)));
+  const pct = (a, b) => (a === null || b === null || !b ? null : Math.round(((a - b) / b) * 1000) / 10);
+  const fmtPct = (v) => (v === null ? '—' : `${v > 0 ? '+' : ''}${v.toFixed(1)}%`);
+  let usedPosts = false; let partialMonth = false; let shortReach = false;
+
+  const rowFor = (user, label) => {
+    const cur = byMonth.get(`${user}|${first}`) || null;
+    const before = byMonth.get(`${user}|${prev}`) || null;
+    const series = (daysBy.get(user) || []).slice().sort((a, b) => (a.metric_date < b.metric_date ? -1 : 1));
+    const withF = series.filter((x) => num(x.followers_snapshot) !== null);
+    const followers = withF.length ? num(withF[withF.length - 1].followers_snapshot) : null;
+    const gained = series.map((x) => num(x.daily_follows) ?? num(x.follower_count)).filter((v) => v !== null);
+    const lost = series.filter((x) => num(x.daily_unfollows) !== null);
+    const net = gained.length && lost.length >= gained.length
+      ? gained.reduce((a, b) => a + b, 0) - lost.reduce((a, x) => a + num(x.daily_unfollows), 0) : null;
+    // A metric whose last read failed may still hold an earlier, shorter
+    // window's figure (the row is never blanked), so it is not shown as the
+    // month's total.
+    const failed = new Set(cur && cur.errors && typeof cur.errors === 'object' ? Object.keys(cur.errors) : []);
+    const held = (k) => (cur && !failed.has(k) ? num(cur[k]) : null);
+    const reach = held('reach');
+    const p = postsBy.get(user);
+    let views = held('views');
+    let interactions = held('total_interactions');
+    let source = cur ? (cur.complete ? 'Meta month total' : `Meta total, ${cur.days_covered} days so far`) : '';
+    const unread = ['reach', 'views', 'total_interactions'].filter((k) => failed.has(k));
+    if (unread.length) source += `; ${unread.join('/')} not read on the last run`;
+    if (cur && !cur.complete) partialMonth = true;
+    if (cur && num(cur.reach_days) !== null && num(cur.days_covered) !== null && num(cur.reach_days) < num(cur.days_covered)) {
+      shortReach = true; source += `; reach ${cur.reach_days} days`;
+    }
+    if ((views === null || interactions === null) && p) {
+      usedPosts = true;
+      if (views === null) views = p.views;
+      if (interactions === null) interactions = p.interactions;
+      source = `${source ? source + '; ' : ''}views/interactions from ${p.posts} post(s) published †`;
+    }
+    return {
+      dashboard_row: label, account: user, followers, net_growth: net, reach,
+      reach_vs_previous_pct: pct(reach, before ? num(before.reach) : null),
+      views, interactions, source: source || 'no data',
+    };
+  };
+
+  const rows = [];
+  const seen = new Set();
+  for (const [user, label] of IG_DASHBOARD_ROWS) {
+    if (!user) { rows.push({ dashboard_row: label, account: null, source: 'not in the connector (no access)' }); continue; }
+    seen.add(user);
+    if (page_id && !names.has(user)) continue;
+    rows.push(rowFor(user, label));
+  }
+  const others = [...names].filter((u) => !seen.has(u)).sort();
+  if (all_accounts) for (const u of others) rows.push(rowFor(u, '(not on dashboard)'));
+  const shown = page_id ? rows.filter((r) => r.account) : rows;
+
+  return {
+    text: `**Instagram monthly · ${monthName}**\n\n`
+      + table(['Dashboard row', 'Account', 'Followers', 'Net growth', 'Accounts reached', 'vs prev. month', 'Views', 'Interactions', 'Source'],
+        shown.map((r) => [r.dashboard_row, r.account ? '@' + r.account : '—', n(r.followers), n(r.net_growth), n(r.reach),
+          fmtPct(r.reach_vs_previous_pct ?? null), n(r.views), n(r.interactions), r.source]))
+      + '\n\n_Accounts reached, Views and Interactions are Meta\'s own totals for the calendar month (Pacific time, as Meta counts days) — the figures the Instagram app shows. '
+      + 'Accounts reached is unique accounts, so it is never the sum of daily reach. '
+      + '"Followers" is the latest count held in the month; "Net growth" is follows minus unfollows from Meta\'s daily metrics, shown only when unfollows were measured every day. '
+      + (usedPosts ? '† Meta\'s month total was not held for this account and month (collection of month totals began in November 2026), so Views and Interactions are those of the posts PUBLISHED that month — lower than the account total, which also counts older posts, stories and the profile; Accounts reached is left blank rather than estimated. ' : '')
+      + (partialMonth ? 'The month is not over: figures cover the days so far. ' : '')
+      + (shortReach ? 'Meta refused a 31-day range, so Accounts reached covers the days named. ' : '')
+      + (!all_accounts && others.length ? `${others.length} other connected account(s) are not on the dashboard; pass all_accounts for them. ` : '')
+      + 'Rows marked "not in the connector" are accounts the connector has no access to._',
+    data: { month: m, rows: shown },
+  };
+}
+
 async function instagramPosts(store, { page_id, days: d = 30, since, until, sort = 'reach', type,
   limit: l = 15, offset: off = 0 }) {
   const days = clampDays(d, 30); const limit = clampRows(l, 15, 100);
@@ -1267,6 +1398,20 @@ const TOOLS = [
       additionalProperties: false,
     },
     handler: (store, args) => pageGrowth(store, args),
+  },
+  {
+    name: 'instagram_monthly',
+    description: 'The monthly Instagram dashboard: for each account and calendar month, Followers, net follower growth, Accounts reached (unique, Meta\'s own month total) and its change on the previous month, Views and Interactions, in the dashboard\'s row order (GLOBAL, LATAM, ES AR, EN CA, IT, EN GB, ES MX, HU). Use this to fill or check the monthly Instagram metrics sheet, rather than adding daily figures.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        month: { type: 'string', description: 'YYYY-MM. Defaults to the last complete month.' },
+        page_id: { type: 'string', description: 'Restrict to the Instagram account linked to this Facebook page id.' },
+        all_accounts: { type: 'boolean', description: 'Also list connected accounts that are not on the dashboard.' },
+      },
+      additionalProperties: false,
+    },
+    handler: (store, args) => instagramMonthly(store, args),
   },
   {
     name: 'instagram_posts',

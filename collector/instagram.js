@@ -209,7 +209,16 @@ async function collectInstagram({ page, as, call, lookbackDays, maxPosts, runSta
     ig, page, as, call, lookbackDays, runStarted, collectedDate,
   });
 
-  return { linked: true, username: ig.username, ig_user_id: ig.id, media, metrics, account };
+  // Calendar-month totals for the monthly Instagram dashboard. Its own
+  // try/catch: a month that fails must not cost the night its daily rows.
+  let months = { rows: [], errorCount: 0 };
+  try {
+    months = await collectAccountMonths({ ig, page, as, call, runStarted });
+  } catch (e) {
+    log(`   instagram: @${ig.username} — monthly totals failed (${String(e.message).slice(0, 120)})`);
+  }
+
+  return { linked: true, username: ig.username, ig_user_id: ig.id, media, metrics, account, months };
 }
 
 // Account-level daily metrics. Nothing was collected here before 7 Sept 2026:
@@ -333,8 +342,121 @@ async function collectAccountMetrics({ ig, page, as, call, lookbackDays, runStar
   return { rows, errorCount: Object.keys(errors).length };
 }
 
+// CALENDAR-MONTH totals, for the monthly Instagram dashboard (Asana, Filip,
+// Nov 2026). It wants Accounts reached, Views and Interactions per account per
+// month, as Meta's own app shows them.
+//
+// None of these can be built from the daily rows above. Reach is UNIQUE
+// accounts, so thirty daily reaches added together count a regular follower
+// thirty times; and views and interactions are only held for the collection
+// day, as a part-day figure. Meta does serve each of them as one total_value
+// over a since/until range, which is the number the app shows - so ask for
+// exactly that, once a month per account per metric.
+//
+// Instagram serves account insights for roughly the last 30 days, so a month
+// has to be read while it is still inside that window: the month so far every
+// night, and the month just ended on the first nights of the next. A month
+// that has gone past the window cannot be filled in later - which is why this
+// runs nightly rather than once on the 1st.
+//
+// Meta's days run midnight to midnight PACIFIC (end_time 07:00Z in summer,
+// 08:00Z in winter), so the month is too.
+const IG_MONTH_METRICS = ['reach', 'views', 'total_interactions', 'accounts_engaged'];
+// Reach and accounts engaged are unique counts: two windows cannot be added.
+const IG_MONTH_UNIQUE = new Set(['reach', 'accounts_engaged']);
+// Keep reading the month just ended for this many days into the next one, so a
+// night or two lost to an outage does not lose the month.
+const IG_MONTH_GRACE_DAYS = 10;
+const IG_MAX_RANGE = 30 * 86400;
+
+// Unix seconds of midnight Pacific on y-m-d (m 1-based; overflow is fine).
+function pacificMidnight(y, m, d) {
+  const guess = Date.UTC(y, m - 1, d, 8);
+  const part = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Los_Angeles', timeZoneName: 'shortOffset' })
+    .formatToParts(new Date(guess)).find((x) => x.type === 'timeZoneName');
+  const off = Number(((part && part.value) || 'GMT-8').replace('GMT', '')) || -8;
+  return Date.UTC(y, m - 1, d, -off) / 1000;
+}
+
+// The months to read on this run: this month's finished days so far, and last
+// month while it is inside the grace days. Pacific calendar throughout.
+function monthWindows(runStarted) {
+  const now = Math.floor(runStarted.getTime() / 1000);
+  const parts = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Los_Angeles', year: 'numeric', month: 'numeric', day: 'numeric' })
+    .formatToParts(runStarted).reduce((o, x) => { o[x.type] = Number(x.value); return o; }, {});
+  const y = parts.year; const m = parts.month; const today = parts.day;
+  const label = (yy, mm) => `${yy}-${String(mm).padStart(2, '0')}-01`;
+  const out = [];
+  // This month: the days that have closed, i.e. up to midnight this morning.
+  if (today > 1) {
+    out.push({ month: label(y, m), start: pacificMidnight(y, m, 1), end: pacificMidnight(y, m, today), lastDay: pacificMidnight(y, m, today - 1), days: today - 1, complete: false });
+  }
+  const py = m === 1 ? y - 1 : y; const pm = m === 1 ? 12 : m - 1;
+  if (today <= IG_MONTH_GRACE_DAYS) {
+    const daysIn = new Date(Date.UTC(py, pm, 0)).getUTCDate();
+    out.push({ month: label(py, pm), start: pacificMidnight(py, pm, 1), end: pacificMidnight(y, m, 1), lastDay: pacificMidnight(py, pm, daysIn), days: daysIn, complete: true });
+  }
+  return out.filter((w) => w.end > w.start && now >= w.end);
+}
+
+async function monthTotal(call, igId, metric, since, until, as) {
+  const r = await call(`/${igId}/insights`, { metric, metric_type: 'total_value', period: 'day', since, until }, as);
+  if (!r.ok) return { error: { code: r.error ? r.error.code : null, message: r.error ? r.error.message : 'unknown' } };
+  const d = r.body && r.body.data && r.body.data[0];
+  const v = d && d.total_value && d.total_value.value;
+  return typeof v === 'number' ? { value: v } : { value: null };
+}
+
+async function collectAccountMonths({ ig, page, as, call, runStarted }) {
+  const rows = [];
+  let errorCount = 0;
+  for (const w of monthWindows(runStarted)) {
+    // since one second after the month opens: Meta counts every day whose
+    // CLOSING falls inside [since, until], both ends inclusive (probed for
+    // follows, 29 Sept 2026), and the previous month's last day closes at
+    // exactly w.start.
+    const since = w.start + 1; const until = w.end;
+    const row = {
+      ig_user_id: ig.id, page_id: page.page_id, ig_username: ig.username || null,
+      month: w.month, days_covered: w.days, complete: w.complete,
+      collected_at: runStarted.toISOString(),
+    };
+    const errors = {};
+    for (const metric of IG_MONTH_METRICS) {
+      let got = await monthTotal(call, ig.id, metric, since, until, as);
+      // A 31-day month is past the 30-day range Meta allows. Read all but the
+      // last day, then the last day: views and interactions add up; a unique
+      // count does not, so it keeps the first days and says how many.
+      if (got.error && until - since > IG_MAX_RANGE) {
+        const cut = w.lastDay;
+        const a = await monthTotal(call, ig.id, metric, since, cut, as);
+        if (!a.error && IG_MONTH_UNIQUE.has(metric)) {
+          got = a; row[`${metric}_days`] = w.days - 1;
+        } else if (!a.error) {
+          const b = await monthTotal(call, ig.id, metric, cut + 1, until, as);
+          // Both halves or nothing: a missing half would write a short total
+          // over a stored one.
+          got = b.error ? b : { value: a.value === null || b.value === null ? null : a.value + b.value };
+        } else got = a;
+      }
+      if (got.error) { errors[metric] = got.error; continue; }
+      // Only what was observed is written, so a bad night cannot blank a
+      // figure an earlier night stored.
+      if (got.value !== null) {
+        row[metric] = got.value;
+        if (IG_MONTH_UNIQUE.has(metric) && row[`${metric}_days`] === undefined) row[`${metric}_days`] = w.days;
+      }
+    }
+    row.errors = Object.keys(errors).length ? errors : null;
+    if (row.errors) errorCount++;
+    rows.push(row);
+  }
+  return { rows, errorCount };
+}
+
 module.exports = {
-  collectInstagram, collectAccountMetrics,
+  collectInstagram, collectAccountMetrics, collectAccountMonths, monthWindows, pacificMidnight,
+  IG_MONTH_METRICS,
   IG_METRICS, IG_FEED_METRICS, IG_REELS_METRICS,
   IG_ACCOUNT_SERIES, IG_ACCOUNT_TOTALS, IG_ACCOUNT_BREAKDOWNS, IG_FOLLOW_SPLIT,
   IG_MEDIA_FIELDS,

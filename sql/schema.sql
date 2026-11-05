@@ -368,6 +368,36 @@ create index if not exists meta_ig_account_metrics_page
 alter table public.meta_ig_account_metrics enable row level security;
 revoke all on public.meta_ig_account_metrics from anon, authenticated;
 grant select on public.meta_ig_account_metrics to meta_readonly;
+
+-- Instagram at account level, per CALENDAR MONTH (Pacific, as Meta's days are).
+-- Added 5 Nov 2026 for the monthly Instagram dashboard. Each figure is Meta's
+-- own total_value over the month, which is what the Instagram app shows:
+-- reach and accounts_engaged are UNIQUE accounts and cannot be built by adding
+-- the daily rows above. Read nightly while the month is inside Instagram's
+-- ~30-day insights window (collector/instagram.js collectAccountMonths).
+create table if not exists public.meta_ig_account_months (
+  ig_user_id             text not null,
+  page_id                text not null references public.meta_pages(page_id),
+  ig_username            text,
+  month                  date not null,
+  -- Days of the month the figures cover; complete once the month has ended.
+  days_covered           integer,
+  complete               boolean not null default false,
+  reach                  bigint,
+  views                  bigint,
+  total_interactions     bigint,
+  accounts_engaged       bigint,
+  -- Days a unique count covers: less than days_covered only when Meta refused
+  -- a 31-day range and the last day could not be added to a unique count.
+  reach_days             integer,
+  accounts_engaged_days  integer,
+  collected_at           timestamptz not null default now(),
+  errors                 jsonb,
+  primary key (ig_user_id, month)
+);
+alter table public.meta_ig_account_months enable row level security;
+revoke all on public.meta_ig_account_months from anon, authenticated;
+grant select on public.meta_ig_account_months to meta_readonly;
 -- ---------------------------------------------------------------------------
 
 -- ---------------------------------------------------------------------------

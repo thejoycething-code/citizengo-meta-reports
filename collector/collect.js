@@ -632,6 +632,17 @@ async function collectPageInner(page, pageToken, out) {
       console.log(`   instagram: @${ig.username} — ${ig.account.rows.length} account-day row(s)`
         + `${ig.account.errorCount ? `, ${ig.account.errorCount} metric(s) unavailable` : ''}`);
     }
+    // Calendar-month totals (instagram.js collectAccountMonths). Its own
+    // try: a failure here must not look like a failed Instagram collection.
+    if (ig.linked && ig.months && ig.months.rows.length) {
+      try {
+        await upsertByShape('meta_ig_account_months', ig.months.rows);
+        console.log(`   instagram: @${ig.username} — ${ig.months.rows.map((r) => r.month.slice(0, 7)).join(', ')} month total(s)`
+          + `${ig.months.errorCount ? ` (${ig.months.rows.filter((r) => r.errors).map((r) => Object.keys(r.errors).join('/')).join('; ')} unavailable)` : ''}`);
+      } catch (e) {
+        console.log(`   instagram: month totals not saved — ${e.message.slice(0, 200)}`);
+      }
+    }
   } catch (e) {
     // Never let Instagram break the Facebook collection it runs alongside.
     // 200, not 80: the useful part of an upsert failure is the PostgREST error
