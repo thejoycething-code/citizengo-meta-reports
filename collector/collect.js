@@ -21,6 +21,7 @@ const { loadEnv, makeClient } = require('../lib/graph');
 const { mapLimit } = require('../lib/pool');
 const { makeSink } = require('./lib/sinks');
 const { collectInstagram } = require('./instagram');
+const { collectMissingReels } = require('./fbreels');
 const { collectAdSpend } = require('./adspend');
 
 loadEnv();
@@ -609,6 +610,26 @@ async function collectPageInner(page, pageToken, out) {
 
   if (metrics.length) await sink.upsert('meta_post_metrics', metrics);
 
+  // Facebook Reels the posts list did not return (collector/fbreels.js). Own
+  // try: a Page without Reels access must not fail the Page.
+  try {
+    const fr = await collectMissingReels({
+      pageId: page.page_id, listed: posts, call, as,
+      since: new Date(RUN_STARTED.getTime() - LOOKBACK_DAYS * 86400000),
+      collectedDate: COLLECTED_DATE, runStarted: RUN_STARTED,
+    });
+    if (fr.error) console.log(`   reels: unavailable — ${String(fr.error.message).slice(0, 100)}`);
+    else if (fr.reels) {
+      console.log(`   reels: ${fr.reels} in the window, ${fr.reels - fr.missing} already listed as posts, ${fr.missing} added`);
+      if (fr.posts.length) {
+        await sink.upsert('meta_posts', fr.posts);
+        await upsertByShape('meta_post_metrics', fr.metrics);
+      }
+    }
+  } catch (e) {
+    console.log(`   reels: failed — ${e.message.slice(0, 200)}`);
+  }
+
   // Instagram. Silently skipped when no account is linked - most Pages have
   // none, and reporting that as a failure would be noise.
   try {
@@ -631,6 +652,27 @@ async function collectPageInner(page, pageToken, out) {
       await upsertByShape('meta_ig_account_metrics', ig.account.rows);
       console.log(`   instagram: @${ig.username} — ${ig.account.rows.length} account-day row(s)`
         + `${ig.account.errorCount ? `, ${ig.account.errorCount} metric(s) unavailable` : ''}`);
+    }
+    // Stories: media first (the metrics reference it), then the readings.
+    // upsertByShape because a Story's row carries replies and navigation,
+    // which a post's does not.
+    if (ig.linked && ig.stories && ig.stories.media.length) {
+      try {
+        await sink.upsert('meta_ig_media', ig.stories.media);
+        await upsertByShape('meta_ig_media_metrics', ig.stories.metrics);
+        console.log(`   instagram: @${ig.username} — ${ig.stories.media.length} live stor${ig.stories.media.length === 1 ? 'y' : 'ies'}`);
+      } catch (e) {
+        console.log(`   instagram: stories not saved — ${e.message.slice(0, 200)}`);
+      }
+    }
+    if (ig.linked && ig.audience && ig.audience.rows.length) {
+      try {
+        await sink.upsert('meta_ig_audience', ig.audience.rows);
+        const got = ig.audience.rows.filter((r) => r.data).length;
+        console.log(`   instagram: @${ig.username} — audience ${got}/${ig.audience.rows.length} breakdowns`);
+      } catch (e) {
+        console.log(`   instagram: audience not saved — ${e.message.slice(0, 200)}`);
+      }
     }
     // Calendar-month totals (instagram.js collectAccountMonths). Its own
     // try: a failure here must not look like a failed Instagram collection.

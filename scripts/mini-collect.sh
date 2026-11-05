@@ -13,6 +13,7 @@
 #   ig-connected  ig-connected-collect.yml  06:15
 #   links         link-registry.yml         06:40
 #   listen        listen-collect.yml        06:45
+#   stories       (Mini only)               hourly  (Instagram Stories while live)
 #   watchdog      watchdog.yml              09:00   (GitHub's watchdog keeps running too,
 #                                                    so a dead Mini is still noticed)
 #
@@ -25,7 +26,7 @@
 set -u
 export PATH=$HOME/.local/bin:$HOME/.local/node/bin:/opt/homebrew/bin:/usr/bin:/bin
 REPO="${0:A:h:h}"
-JOB="${1:?usage: mini-collect.sh <nightly|x|peers|ig-connected|links|listen|watchdog>}"
+JOB="${1:?usage: mini-collect.sh <nightly|x|peers|ig-connected|stories|links|listen|watchdog>}"
 LOGS="$HOME/runner/logs"
 LOCK="$HOME/runner/locks/meta-$JOB"
 mkdir -p "$LOGS" "$HOME/runner/locks"
@@ -72,6 +73,8 @@ run_job() {
       return $rc ;;
     ig-connected)
       node collector/ig-connected.js --days 30 ;;
+    stories)
+      node collector/ig-stories.js ;;
     links)
       node collector/links.js --days 30 ;;
     listen)

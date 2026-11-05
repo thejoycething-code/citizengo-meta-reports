@@ -51,10 +51,9 @@ const IG_REELS_METRICS = ['ig_reels_avg_watch_time', 'ig_reels_video_view_total_
 const IG_ACCOUNT_SERIES = { follower_count: 'follower_count', reach: 'reach' };
 
 // ...while these are only served as a single total_value. Passing since/until
-// returns one number for the whole range, not one per day, so a genuine daily
-// history would cost one call per metric per day. Collected for the current day
-// only; older rows carry the series metrics above and nulls here, which is
-// honest rather than convenient.
+// returns one number for the whole range, not one per day, so each closed day
+// is asked on its own (IG_TOTAL_DAYS, below). Before 5 Nov 2026 they were
+// asked for the day still running and older rows hold part-day figures.
 const IG_ACCOUNT_TOTALS = {
   views: 'views', profile_views: 'profile_views', website_clicks: 'website_clicks',
   accounts_engaged: 'accounts_engaged', total_interactions: 'total_interactions',
@@ -67,6 +66,9 @@ const IG_ACCOUNT_TOTALS = {
 // envelope every night from August to 29 Sept 2026 and the jsonb column it
 // filled holds nothing. The column is left in place; nothing writes to it.
 const IG_ACCOUNT_BREAKDOWNS = {};
+
+// How many of the latest closed days the total_value metrics are re-read for.
+const IG_TOTAL_DAYS = 3;
 
 // FOLLOWS AND UNFOLLOWS, one Meta day at a time - the only route to Instagram
 // NET follower growth, which the Scorecard needs (29 Sept 2026). follower_count
@@ -218,7 +220,22 @@ async function collectInstagram({ page, as, call, lookbackDays, maxPosts, runSta
     log(`   instagram: @${ig.username} — monthly totals failed (${String(e.message).slice(0, 120)})`);
   }
 
-  return { linked: true, username: ig.username, ig_user_id: ig.id, media, metrics, account, months };
+  // Stories and audience: each in its own try, for the same reason.
+  let stories = { media: [], metrics: [] };
+  try {
+    stories = await collectStories({ ig, page, as, call, runStarted, collectedDate });
+    if (stories.error) log(`   instagram: @${ig.username} — stories unavailable (${String(stories.error.message).slice(0, 120)})`);
+  } catch (e) {
+    log(`   instagram: @${ig.username} — stories failed (${String(e.message).slice(0, 120)})`);
+  }
+  let audience = { rows: [], errorCount: 0 };
+  try {
+    audience = await collectAudience({ ig, page, as, call, runStarted, collectedDate });
+  } catch (e) {
+    log(`   instagram: @${ig.username} — audience failed (${String(e.message).slice(0, 120)})`);
+  }
+
+  return { linked: true, username: ig.username, ig_user_id: ig.id, media, metrics, account, months, stories, audience };
 }
 
 // Account-level daily metrics. Nothing was collected here before 7 Sept 2026:
@@ -315,26 +332,36 @@ async function collectAccountMetrics({ ig, page, as, call, lookbackDays, runStar
     errors.follows_and_unfollows.days_failed = splitErrors;
   }
 
-  // The current day gets the point-in-time totals and the total_value metrics.
+  // The current day gets the point-in-time totals.
   const today = rowFor(collectedDate);
   today.followers_snapshot = typeof ig.followers_count === 'number' ? ig.followers_count : null;
   today.media_count = typeof ig.media_count === 'number' ? ig.media_count : null;
 
-  for (const [metric, column] of Object.entries({ ...IG_ACCOUNT_TOTALS, ...IG_ACCOUNT_BREAKDOWNS })) {
-    const r = await call(`/${ig.id}/insights`, { metric, metric_type: 'total_value', period: 'day' }, as);
-    if (!r.ok) {
-      errors[metric] = { code: r.error ? r.error.code : null, message: r.error ? r.error.message : 'unknown' };
-      continue;
+  // The total_value metrics, for whole CLOSED days (5 Nov 2026). Until then
+  // they were asked with no range, which answers for the day still running:
+  // at 04:30 Madrid that is a few hours of a Pacific day, so the stored views,
+  // interactions and profile visits were part-days and no daily chart or sum
+  // built on them meant anything. Now each of the last IG_TOTAL_DAYS days that
+  // follower_count reported closed is asked on its own, with a window holding
+  // exactly its closing time (the same rule as follows_and_unfollows above),
+  // and stored on the day it describes. Re-reading a few days lets a missed
+  // night heal; a day Meta answers with nothing is left unset.
+  const closings = [...new Set(dayEnds)].sort().slice(-IG_TOTAL_DAYS);
+  for (const [metric, column] of Object.entries(IG_ACCOUNT_TOTALS)) {
+    let failedDays = 0;
+    for (const end of closings) {
+      const closing = Math.floor(Date.parse(end) / 1000);
+      const r = await call(`/${ig.id}/insights`, { metric, metric_type: 'total_value', period: 'day', since: closing - 86400 + 1, until: closing }, as);
+      if (!r.ok) {
+        failedDays++;
+        errors[metric] = { code: r.error ? r.error.code : null, message: r.error ? r.error.message : 'unknown' };
+        continue;
+      }
+      const d = r.body && r.body.data && r.body.data[0];
+      const tv = d && d.total_value;
+      if (tv && typeof tv.value === 'number') rowFor(dayDescribed(end))[column] = tv.value;
     }
-    const d = r.body && r.body.data && r.body.data[0];
-    const tv = d && d.total_value;
-    if (IG_ACCOUNT_BREAKDOWNS[metric]) {
-      // Keep the breakdown intact, but do not store an empty envelope as if it
-      // were data.
-      today[column] = tv && typeof tv === 'object' && Object.keys(tv).length ? tv : null;
-    } else {
-      today[column] = tv && typeof tv.value === 'number' ? tv.value : null;
-    }
+    if (failedDays && failedDays < closings.length) errors[metric].days_failed = failedDays;
   }
 
   const rows = [...byDate.values()];
@@ -454,7 +481,113 @@ async function collectAccountMonths({ ig, page, as, call, runStarted }) {
   return { rows, errorCount };
 }
 
+// STORIES (5 Nov 2026). The /media edge never returns them, so until now not
+// one Story was held - while the app's own monthly Views count them. A Story
+// lives 24 hours and so do its insights, so each one is read while it is live:
+// nightly here, and hourly by collector/ig-stories.js where the Mini runs it.
+// Every reading overwrites the day's row, so the last one before expiry is the
+// one kept.
+const IG_STORY_METRICS = ['reach', 'views', 'replies', 'shares', 'total_interactions', 'follows', 'profile_visits'];
+
+// Media insights come back as values[0].value on some metrics and as
+// total_value.value on others, depending on version and metric.
+function mediaValue(res) {
+  if (!res || !res.ok) return null;
+  const d = res.body && res.body.data && res.body.data[0];
+  if (!d) return null;
+  if (d.total_value && typeof d.total_value.value === 'number') return d.total_value.value;
+  const v = d.values && d.values[0];
+  return v && typeof v.value === 'number' ? v.value : null;
+}
+
+async function collectStories({ ig, page, as, call, runStarted, collectedDate }) {
+  const res = await call(`/${ig.id}/stories`, { fields: IG_MEDIA_FIELDS, limit: 100 }, as);
+  if (!res.ok) return { media: [], metrics: [], error: res.error || { message: 'unknown' } };
+  const media = []; const metrics = [];
+  for (const r of (res.body && res.body.data) || []) {
+    media.push({
+      media_id: r.id, page_id: page.page_id, ig_user_id: ig.id, ig_username: ig.username || null,
+      media_type: r.media_type || null, media_product_type: r.media_product_type || 'STORY',
+      caption: r.caption || null, permalink: r.permalink || null,
+      thumbnail_url: r.thumbnail_url || (r.media_type !== 'VIDEO' && r.media_url) || null,
+      timestamp: r.timestamp,
+    });
+    const errors = {}; const values = {};
+    for (const metric of IG_STORY_METRICS) {
+      const m = await call(`/${r.id}/insights`, { metric }, as);
+      if (m.ok) values[metric] = mediaValue(m);
+      else errors[metric] = { code: m.error ? m.error.code : null, message: m.error ? m.error.message : 'unknown' };
+    }
+    // Taps forward and back, exits and swipes away: how far people watched.
+    let navigation = null;
+    const nav = await call(`/${r.id}/insights`, { metric: 'navigation', breakdown: 'story_navigation_action_type' }, as);
+    if (nav.ok) {
+      const d = nav.body && nav.body.data && nav.body.data[0];
+      const bd = d && d.total_value && d.total_value.breakdowns && d.total_value.breakdowns[0];
+      const out = {};
+      for (const x of (bd && bd.results) || []) {
+        if (x.dimension_values && typeof x.value === 'number') out[String(x.dimension_values[0]).toLowerCase()] = x.value;
+      }
+      navigation = Object.keys(out).length ? out : null;
+    } else errors.navigation = { code: nav.error ? nav.error.code : null, message: nav.error ? nav.error.message : 'unknown' };
+    metrics.push({
+      media_id: r.id, page_id: page.page_id, collected_date: collectedDate, collected_at: runStarted.toISOString(),
+      reach: values.reach ?? null, views: values.views ?? null, saved: null,
+      total_interactions: values.total_interactions ?? null,
+      likes: null, comments: null, shares: values.shares ?? null,
+      follows: values.follows ?? null, profile_visits: values.profile_visits ?? null, profile_activity: null,
+      reels_avg_watch_time_ms: null, reels_total_watch_time_ms: null,
+      replies: values.replies ?? null, navigation,
+      errors: Object.keys(errors).length ? errors : null,
+    });
+  }
+  return { media, metrics };
+}
+
+// AUDIENCE (5 Nov 2026): who follows each account and who engaged with it, by
+// age, gender, country and city. Facebook withdrew Page demographics in 2024;
+// Instagram still serves these, as lifetime total_value with one breakdown per
+// call. Meta withholds them below 100 followers - that comes back as an error
+// and is stored as one, not as an empty audience.
+const IG_AUDIENCE = [
+  { kind: 'followers', metric: 'follower_demographics' },
+  { kind: 'engaged', metric: 'engaged_audience_demographics', timeframe: 'this_month' },
+];
+const IG_AUDIENCE_BREAKDOWNS = ['age', 'gender', 'country', 'city'];
+
+async function collectAudience({ ig, page, as, call, runStarted, collectedDate }) {
+  const rows = [];
+  for (const a of IG_AUDIENCE) {
+    for (const breakdown of IG_AUDIENCE_BREAKDOWNS) {
+      const params = { metric: a.metric, period: 'lifetime', metric_type: 'total_value', breakdown };
+      let r = await call(`/${ig.id}/insights`, a.timeframe ? { ...params, timeframe: a.timeframe } : params, as);
+      // follower_demographics has taken a timeframe in some versions and
+      // refused one in others: ask the other way once before giving up.
+      if (!r.ok && !a.timeframe) r = await call(`/${ig.id}/insights`, { ...params, timeframe: 'this_month' }, as);
+      const row = {
+        ig_user_id: ig.id, page_id: page.page_id, ig_username: ig.username || null,
+        collected_date: collectedDate, kind: a.kind, breakdown, data: null, errors: null,
+        collected_at: runStarted.toISOString(),
+      };
+      if (!r.ok) {
+        row.errors = { code: r.error ? r.error.code : null, message: r.error ? r.error.message : 'unknown' };
+      } else {
+        const d = r.body && r.body.data && r.body.data[0];
+        const bd = d && d.total_value && d.total_value.breakdowns && d.total_value.breakdowns[0];
+        const out = {};
+        for (const x of (bd && bd.results) || []) {
+          if (x.dimension_values && typeof x.value === 'number') out[String(x.dimension_values[0])] = x.value;
+        }
+        row.data = Object.keys(out).length ? out : null;
+      }
+      rows.push(row);
+    }
+  }
+  return { rows, errorCount: rows.filter((r) => r.errors).length };
+}
+
 module.exports = {
+  collectStories, collectAudience, IG_STORY_METRICS, IG_AUDIENCE, IG_AUDIENCE_BREAKDOWNS, IG_TOTAL_DAYS,
   collectInstagram, collectAccountMetrics, collectAccountMonths, monthWindows, pacificMidnight,
   IG_MONTH_METRICS,
   IG_METRICS, IG_FEED_METRICS, IG_REELS_METRICS,

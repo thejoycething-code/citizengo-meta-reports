@@ -262,8 +262,14 @@ create table if not exists public.meta_ig_media_metrics (
   -- clips_replays_count, ig_reels_aggregated_all_plays_count and thruplays are
   -- all rejected. Milliseconds as reported; meta_ig_latest derives seconds.
   reels_avg_watch_time_ms   bigint,
-  reels_total_watch_time_ms bigint
+  reels_total_watch_time_ms bigint,
+  -- STORIES only (5 Nov 2026): replies, and navigation split by action
+  -- (tap_forward, tap_back, tap_exit, swipe_forward). Null on posts and Reels.
+  replies                   bigint,
+  navigation                jsonb
 );
+alter table public.meta_ig_media_metrics add column if not exists replies bigint;
+alter table public.meta_ig_media_metrics add column if not exists navigation jsonb;
 
 create unique index if not exists meta_ig_media_metrics_day_key
   on public.meta_ig_media_metrics (media_id, collected_date);
@@ -296,7 +302,9 @@ create or replace view public.meta_ig_latest with (security_invoker = true) as
          x.reels_avg_watch_time_ms,
          x.reels_total_watch_time_ms,
          -- Seconds, because nobody reasons about watch time in milliseconds.
-         round(x.reels_avg_watch_time_ms::numeric / 1000, 1) as reels_avg_watch_seconds
+         round(x.reels_avg_watch_time_ms::numeric / 1000, 1) as reels_avg_watch_seconds,
+         -- Stories (5 Nov 2026), appended for the same reason as above.
+         x.replies, x.navigation
     from public.meta_ig_media m
     join public.meta_pages g on g.page_id = m.page_id
     join public.meta_ig_media_metrics x on x.media_id = m.media_id
@@ -338,7 +346,8 @@ create table if not exists public.meta_ig_account_metrics (
   -- together. Re-dated on 9 Sept 2026, series columns only.
   follower_count        bigint,
   reach                 bigint,
-  -- total_value only: current day, null on older rows.
+  -- total_value, asked one CLOSED day at a time and dated the day described
+  -- since 5 Nov 2026; earlier rows hold the collection day's part-day figure.
   views                 bigint,
   profile_views         bigint,
   website_clicks        bigint,
@@ -398,6 +407,26 @@ create table if not exists public.meta_ig_account_months (
 alter table public.meta_ig_account_months enable row level security;
 revoke all on public.meta_ig_account_months from anon, authenticated;
 grant select on public.meta_ig_account_months to meta_readonly;
+
+-- Instagram audience (5 Nov 2026): followers and engaged accounts by age,
+-- gender, country and city - Meta's lifetime total_value with one breakdown per
+-- call. data is {value: count}; errors holds Meta's refusal (it withholds
+-- demographics below 100 followers), which is not an empty audience.
+create table if not exists public.meta_ig_audience (
+  ig_user_id      text not null,
+  page_id         text not null references public.meta_pages(page_id),
+  ig_username     text,
+  collected_date  date not null,
+  kind            text not null,   -- followers | engaged
+  breakdown       text not null,   -- age | gender | country | city
+  data            jsonb,
+  errors          jsonb,
+  collected_at    timestamptz not null default now(),
+  primary key (ig_user_id, collected_date, kind, breakdown)
+);
+alter table public.meta_ig_audience enable row level security;
+revoke all on public.meta_ig_audience from anon, authenticated;
+grant select on public.meta_ig_audience to meta_readonly;
 -- ---------------------------------------------------------------------------
 
 -- ---------------------------------------------------------------------------
