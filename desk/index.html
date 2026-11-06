@@ -2203,7 +2203,20 @@ async function renderExports(d){const items=exportList(d);const keep={slide:S.sl
    post is scheduled, so the publisher never builds anything itself. */
 function platOfKey(k){const t=(S.teams||[]).find(x=>x.id===S.team);const a=t&&(t.accounts||[]).find(x=>x.key===k);return a?a.platform:/-fb$/.test(k)?"facebook":/-ig$/.test(k)?"instagram":"x"}
 const b64=async blob=>{const b=new Uint8Array(await blob.arrayBuffer());let s="";for(let i=0;i<b.length;i+=0x8000)s+=String.fromCharCode.apply(null,b.subarray(i,i+0x8000));return btoa(s)};
+/* Before anything is published: make the cgo.ac tracked link for each platform whose words carry [ACTION LINK] and
+   has none yet, so Post now and same-day schedules don't wait for the morning run. If Copilot can't be reached, the
+   long tracked link goes out instead, as before. */
+async function ensureLinks(d){
+  if(!d.action?.url)return d;const dests=(d.posting||{}).destinations||[];
+  const need=[...new Set(dests.map(platOfKey))].filter(p=>["facebook","instagram","x"].includes(p)&&!d.links?.[p]?.short&&/\[ACTION LINK\]/.test(asPosts(textFor(d,p)).join(" ")+(p==="facebook"?String(textFor(d,"facebookComment")||""):"")));
+  if(!need.length)return d;
+  try{const r=await eng("engine_links",{action:"make",team:d._team||S.team,url:d.action.url,title:d.action.title||d.title||"",platforms:need,series:1,scope:d.action.scope||"LO"});
+    const made={};for(const l of (r&&r.links)||[])if(l&&l.short&&!l.error)made[l.platform]={short:l.short,long:l.long||null,campaign:l.campaign||null,at:l.at||new Date().toISOString(),via:"copilot"};
+    if(!Object.keys(made).length){toast("Couldn't make the cgo.ac link, so the long tracked link goes out");return d}
+    await S.db.doc("drafts/"+d.id).update({links:{...(d.links||{}),...made}});return S.drafts.find(x=>x.id===d.id)||{...d,links:{...(d.links||{}),...made}}}
+  catch(e){toast("Couldn't make the cgo.ac link, so the long tracked link goes out");return d}}
 async function snapshotFinal(d){
+  d=await ensureLinks(d);
   const dests=(d.posting||{}).destinations||[];const plats=[...new Set(dests.map(platOfKey))].filter(p=>p==="facebook"||p==="instagram");
   const fin={at:new Date().toISOString(),by:S.me,facebook:null,instagram:null};if(!plats.length)return fin;
   const video=isVideoPost(d)?(d.publishVideo||true):false;
