@@ -61,31 +61,66 @@ async function collectMissingReels({ pageId, listed, call, as, since, collectedD
       permalink_url: reel.permalink_url ? (reel.permalink_url.startsWith('http') ? reel.permalink_url : `https://www.facebook.com${reel.permalink_url}`) : null,
       status_type: 'added_reel', media_type: 'video', full_picture: null, is_published: true, link_url: null,
     });
-    const v = {}; const errors = {};
-    for (const [metric, key] of Object.entries(REEL_METRICS)) {
-      const r = await call(`/${reel.id}/video_insights`, { metric }, as);
-      if (r.ok) v[key] = insightValue(r);
-      else errors[metric] = { code: r.error ? r.error.code : null, message: r.error ? r.error.message : 'unknown' };
-    }
-    const num = (x) => (typeof x === 'number' ? x : null);
-    const reactions = v.reactions && typeof v.reactions === 'object' ? v.reactions : null;
-    const social = v.social && typeof v.social === 'object' ? v.social : null;
-    const plays = num(v.plays) ?? num(v.total_plays);
     metrics.push({
       post_id: postId, page_id: pageId, collected_date: collectedDate, collected_at: runStarted.toISOString(),
-      // A Reel's views are its plays; its reach is the unique accounts shown it.
-      views_total: plays,
-      views_unique: num(v.reach),
-      video_views: plays,
-      video_view_time_ms: num(v.view_time_ms),
-      video_avg_seconds_watched: num(v.avg_ms) === null ? null : Math.round(v.avg_ms / 100) / 10,
-      reactions_total: reactions ? Object.values(reactions).reduce((a, b) => a + (typeof b === 'number' ? b : 0), 0) : null,
-      comments_total: social && typeof social.COMMENT === 'number' ? social.COMMENT : null,
-      shares_total: social && typeof social.SHARE === 'number' ? social.SHARE : null,
-      errors: Object.keys(errors).length ? errors : null,
+      ...await reelInsights(reel.id, call, as),
     });
   }
   return { reels: reels.length, missing: missing.length, posts, metrics, error: null };
 }
 
-module.exports = { collectMissingReels, isListed, REEL_METRICS };
+// A Reel's own numbers, from its video object rather than its post.
+async function reelInsights(reelId, call, as) {
+  const v = {}; const errors = {};
+  for (const [metric, key] of Object.entries(REEL_METRICS)) {
+    const r = await call(`/${reelId}/video_insights`, { metric }, as);
+    if (r.ok) v[key] = insightValue(r);
+    else errors[metric] = { code: r.error ? r.error.code : null, message: r.error ? r.error.message : 'unknown' };
+  }
+  const num = (x) => (typeof x === 'number' ? x : null);
+  const reactions = v.reactions && typeof v.reactions === 'object' ? v.reactions : null;
+  const social = v.social && typeof v.social === 'object' ? v.social : null;
+  const plays = num(v.plays) ?? num(v.total_plays);
+  return {
+    // A Reel's views are its plays; its reach is the unique accounts shown it.
+    views_total: plays,
+    views_unique: num(v.reach),
+    video_views: plays,
+    video_view_time_ms: num(v.view_time_ms),
+    video_avg_seconds_watched: num(v.avg_ms) === null ? null : Math.round(v.avg_ms / 100) / 10,
+    reactions_total: reactions ? Object.values(reactions).reduce((a, b) => a + (typeof b === 'number' ? b : 0), 0) : null,
+    comments_total: social && typeof social.COMMENT === 'number' ? social.COMMENT : null,
+    shares_total: social && typeof social.SHARE === 'number' ? social.SHARE : null,
+    errors: Object.keys(errors).length ? errors : null,
+  };
+}
+
+// Reels that ARE listed as posts but whose post insights Meta refused (#200).
+// Found 6 Nov 2026: 5 of the last 7 posts with no metrics were Reels listed as
+// added_video (UK, Latam, France). Their post object answers #200 on every
+// metric; the Reel's video object is a different door and may still answer.
+// Fills only the fields the post pass left empty, so a partial post row keeps
+// what it had. Mutates `metrics` in place; returns how many were rescued.
+const REEL_LINK = /\/reel\/(\d{6,})/;
+async function rescueListedReels({ posts, metrics, call, as }) {
+  const byId = new Map(posts.map((p) => [p.post_id, p]));
+  let tried = 0; let rescued = 0;
+  for (const m of metrics) {
+    if (m.views_total !== null && m.views_total !== undefined) continue;
+    const p = byId.get(m.post_id);
+    const hit = p && REEL_LINK.exec(String(p.permalink_url || ''));
+    if (!hit) continue;
+    tried++;
+    const r = await reelInsights(hit[1], call, as);
+    if (r.views_total === null) continue;
+    for (const [k, v] of Object.entries(r)) {
+      if (k === 'errors') continue;
+      if ((m[k] === null || m[k] === undefined) && v !== null) m[k] = v;
+    }
+    m.errors = { ...(m.errors || {}), reel_rescue: { from: `video ${hit[1]}` } };
+    rescued++;
+  }
+  return { tried, rescued };
+}
+
+module.exports = { collectMissingReels, rescueListedReels, reelInsights, isListed, REEL_METRICS };

@@ -77,6 +77,33 @@ check('page filter still sees other Pages when spotting copies', shapeFeed(data,
   } catch (e) {
     check('data_health runs', false, e.message);
   }
+  // Reels refused as posts, asked again through the Reel's own video object.
+  const { rescueListedReels } = require('../collector/fbreels');
+  const asked = [];
+  const call = async (path, params) => {
+    asked.push(path);
+    if (path.startsWith('/111111/')) return { ok: false, error: { code: 200, message: 'Permissions error' } };
+    const values = { blue_reels_play_count: 4321, post_impressions_unique: 3000, post_video_social_actions: { COMMENT: 5, SHARE: 7 } };
+    return { ok: true, body: { data: [{ values: [{ value: values[params.metric] ?? null }] }] } };
+  };
+  const rp = [
+    { post_id: 'la_1421543806682113', permalink_url: 'https://www.facebook.com/reel/1589175418851458/' },
+    { post_id: 'la_2', permalink_url: 'https://www.facebook.com/reel/111111/' },
+    { post_id: 'la_3', permalink_url: 'https://www.facebook.com/la/posts/3' },
+    { post_id: 'la_4', permalink_url: 'https://www.facebook.com/reel/222222/' },
+  ];
+  const rm = [
+    { post_id: 'la_1421543806682113', views_total: null, comments_total: 9, errors: { post_media_view: { code: 200 } } },
+    { post_id: 'la_2', views_total: null, errors: null },
+    { post_id: 'la_3', views_total: null, errors: null },
+    { post_id: 'la_4', views_total: 10, errors: null },
+  ];
+  const rr = await rescueListedReels({ posts: rp, metrics: rm, call, as: {} });
+  check('reel refused as a post is filled from the Reel', rm[0].views_total === 4321 && rm[0].views_unique === 3000 && rm[0].shares_total === 7);
+  check('rescue keeps what the post pass already had', rm[0].comments_total === 9 && rm[0].errors.post_media_view && rm[0].errors.reel_rescue);
+  check('a Reel that also refuses stays a gap', rm[1].views_total === null && rr.tried === 2 && rr.rescued === 1);
+  check('non-Reels and posts with numbers are not asked', !asked.some((p) => p.startsWith('/222222/')) && rm[2].views_total === null);
+
   console.log(failed ? `\n${failed} FAILED` : '\nall passed');
   process.exit(failed ? 1 : 0);
 })();

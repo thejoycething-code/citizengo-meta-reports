@@ -21,7 +21,7 @@ const { loadEnv, makeClient } = require('../lib/graph');
 const { mapLimit } = require('../lib/pool');
 const { makeSink } = require('./lib/sinks');
 const { collectInstagram } = require('./instagram');
-const { collectMissingReels } = require('./fbreels');
+const { collectMissingReels, rescueListedReels } = require('./fbreels');
 const { collectTagged } = require('./tagged');
 const { collectFbStories } = require('./fbstories');
 const { collectAdSpend } = require('./adspend');
@@ -616,6 +616,15 @@ async function collectPageInner(page, pageToken, out) {
       }
     }
     console.log(`   comment counts: ${applied}/${metrics.length} · reactions: ${reactionsApplied}/${metrics.length}`);
+  }
+
+  // Reels whose post insights were refused: ask the Reel itself (fbreels.js).
+  // Own try: this can only add numbers, never cost the Page its rows.
+  try {
+    const rr = await rescueListedReels({ posts, metrics, call, as });
+    if (rr.tried) console.log(`   reels refused as posts: ${rr.rescued}/${rr.tried} filled from the Reel's own insights`);
+  } catch (e) {
+    console.log(`   reel rescue: failed — ${e.message.slice(0, 200)}`);
   }
 
   if (metrics.length) await sink.upsert('meta_post_metrics', metrics);
