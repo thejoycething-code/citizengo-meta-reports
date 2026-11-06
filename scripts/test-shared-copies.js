@@ -77,6 +77,15 @@ check('page filter still sees other Pages when spotting copies', shapeFeed(data,
   } catch (e) {
     check('data_health runs', false, e.message);
   }
+  // Known gaps from config/known-gaps.json are reported as known, not as errors.
+  const { KNOWN_GAPS } = require('../lib/shape');
+  const kid = Object.keys(KNOWN_GAPS)[0];
+  const kd = { pages: [{ page_id: kid.split('_')[0], name: 'France' }], posts: [{ post_id: kid, page_id: kid.split('_')[0], created_time: '2026-05-29T00:00:00Z' }], metrics: [] };
+  const kr = shapeFeed(kd).rows[0];
+  check('a known gap is labelled, not missing', !!kr.known_gap && shapePages(kd)[0].posts_missing_metrics === 0 && shapePages(kd)[0].posts_known_gaps === 1);
+  const kh = await callTool({ loadAll: async () => kd, igCoverage: async () => null, adSpendCoverage: async () => null }, 'data_health', {});
+  check('data_health counts it as known', kh.data.missing === 0 && kh.data.known_gaps === 1 && /checked and accepted: \*\*1\*\*/.test(kh.text));
+
   // Reels refused as posts, asked again through the Reel's own video object.
   const { rescueListedReels } = require('../collector/fbreels');
   const asked = [];

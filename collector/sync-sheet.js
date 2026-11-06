@@ -88,7 +88,7 @@ function postRow(r) {
     cell(r.engagement_total), cell(r.engagement_rate),
     cell(r.video_views_organic), cell(r.video_views_paid), breakdownCell(r.video_views_by_distribution),
     cell(r.collected_date),
-    r.has_metrics ? (r.partial ? 'partial' : 'ok') : (r.shared_copy ? `copy of ${r.original_page_name || 'another Page'}` : 'no metrics'),
+    r.has_metrics ? (r.partial ? 'partial' : 'ok') : (r.shared_copy ? `copy of ${r.original_page_name || 'another Page'}` : (r.known_gap ? 'known gap' : 'no metrics')),
   ];
 }
 

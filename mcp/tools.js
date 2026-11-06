@@ -192,8 +192,13 @@ const SOURCE_NOTE = "Each post's text is a link to the original on Facebook or I
 // quietly presenting partial data as complete.
 function gapNote(rows) {
   const copies = rows.filter((r) => r.shared_copy).length;
-  const missing = rows.filter((r) => !r.has_metrics && !r.shared_copy).length;
+  const missing = rows.filter((r) => !r.has_metrics && !r.shared_copy && !r.known_gap).length;
+  const known = rows.filter((r) => r.known_gap).length;
   let note = '';
+  if (known) {
+    note += `\n\n_${known} of ${rows.length} posts are known gaps: Meta will not give numbers for them (checked by hand). `
+      + `Shown as "—" and left out of totals; nothing to fix._`;
+  }
   if (copies) {
     note += `\n\n_${copies} of ${rows.length} posts are copies of a post published to several Pages at once. `
       + `Facebook keeps one set of numbers for it, on the original Page, so each copy is shown as "—" and left out of totals `
@@ -468,7 +473,7 @@ async function comparePages(store, { days: d = 30, since, until, page_ids }) {
   const rows = pages.map((g) => {
     const feed = inWindow(shapeFeed(data, { page_id: g.page_id, since: win.since }), win);
     const scored = feed.rows.filter((r) => r.has_metrics);
-    const missing = feed.rows.filter((r) => !r.has_metrics && !r.shared_copy).length;
+    const missing = feed.rows.filter((r) => !r.has_metrics && !r.shared_copy && !r.known_gap).length;
     if (missing) anyIncomplete = true;
     // null, not 0, when nothing is measurable — a page with no usable posts has
     // NO figure, and printing 0 would rank it as the worst performer.
@@ -603,7 +608,8 @@ async function dataHealth(store) {
   const feed = shapeFeed(data, {});
   const pages = shapePages(data);
   const copies = feed.rows.filter((r) => r.shared_copy);
-  const missing = feed.rows.filter((r) => !r.has_metrics && !r.shared_copy);
+  const missing = feed.rows.filter((r) => !r.has_metrics && !r.shared_copy && !r.known_gap);
+  const known = feed.rows.filter((r) => r.known_gap);
   const byPage = (rows) => {
     const c = new Map();
     for (const r of rows) c.set(r.page_name || r.page_id, (c.get(r.page_name || r.page_id) || 0) + 1);
@@ -621,6 +627,8 @@ async function dataHealth(store) {
       `- Posts: **${feed.total}**, covering ${dates[0] || '—'} to ${dates[dates.length - 1] || '—'}`,
       `- Posts with no metrics at all: **${missing.length}**`
         + (missing.length ? ` (${byPage(missing)}). Meta returned an error for these; numbers held from an earlier day are used where there are any` : ''),
+      `- Known gaps, checked and accepted: **${known.length}**`
+        + (known.length ? ` (${byPage(known)}). Meta will not give numbers for these by any route; they are expected and need no action` : ''),
       `- Copies of a post published to several Pages at once: **${copies.length}**`
         + (copies.length ? ` (${byPage(copies)}). Not a gap: Facebook keeps one set of numbers, on the original Page, and refuses insights on the copies (#200). Each copy is left out of its Page's totals and medians so the post is not counted twice` : ''),
       `- Posts missing only unique reach: **${partial.length}** (Meta suppresses it on low-follower pages)`,
@@ -636,7 +644,7 @@ async function dataHealth(store) {
       '- Only pages whose Business Portfolio granted read access are present. Absent pages are an access gap.',
       '- Metrics are a daily snapshot; engagement on recent posts is still accruing and will rise.',
     ].join('\n'),
-    data: { pages: pages.length, posts: feed.total, missing: missing.length, shared_copies: copies.length, partial: partial.length },
+    data: { pages: pages.length, posts: feed.total, missing: missing.length, shared_copies: copies.length, known_gaps: known.length, partial: partial.length },
   };
 }
 
