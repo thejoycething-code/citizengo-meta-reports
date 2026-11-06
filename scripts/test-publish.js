@@ -309,6 +309,20 @@ const quiet = () => {};
   let notMember = null; try { await tool(s5, { id: 'uk-1', platform: 'facebook', mime: 'image/jpeg', data: jpeg }, { who: 'greg' }); } catch (e) { notMember = e.code; }
   eq('engine_media: only for posts you can edit', notMember, 'ENGINE_NOT_FOUND');
 
+  // Picture-less Facebook posts go out as link posts, so the preview card shows.
+  eq('linkOf: the last web address, without trailing punctuation', P.linkOf('Read https://a.example/x then sign 👇\nhttps://cgo.ac/abc.'), 'https://cgo.ac/abc');
+  eq('linkOf: none in a plain text post', P.linkOf('Pray with us tonight.'), null);
+  const fl = fakeFacebook();
+  const lr = await P.publishFacebook({ pageId: '105', token: 'PAGE-TOKEN', text: 'Tell all 90 MLAs 👇\nhttps://cgo.ac/abc', comment: '', urls: [], fetchImpl: fl.fetchImpl });
+  eq('link post: one feed call carrying the message and the link', fl.calls.map((c) => [c.path, c.params.link || null, c.params.message]), [['105/feed', 'https://cgo.ac/abc', 'Tell all 90 MLAs 👇\nhttps://cgo.ac/abc']]);
+  eq('link post: the post id comes back', lr.id, '105_901');
+  const ft = fakeFacebook();
+  await P.publishFacebook({ pageId: '105', token: 'PAGE-TOKEN', text: 'Pray with us tonight.', comment: '', urls: [], fetchImpl: ft.fetchImpl });
+  eq('text post: no link sent when the text has none', 'link' in ft.calls[0].params, false);
+  const fp = fakeFacebook();
+  await P.publishFacebook({ pageId: '105', token: 'PAGE-TOKEN', text: 'Pray with us. https://cgo.ac/x', comment: '', urls: ['https://db.example/a.jpg'], fetchImpl: fp.fetchImpl });
+  eq('photo post: unchanged, no link param', [fp.calls[0].path, 'link' in fp.calls[0].params], ['105/photos', false]);
+
   console.log(`\n${passed} passed, ${failed} failed`);
   process.exit(failed ? 1 : 0);
 })().catch((e) => { console.error(e); process.exit(1); });
