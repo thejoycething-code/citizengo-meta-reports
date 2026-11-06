@@ -26,6 +26,7 @@
     "test:tool-size": "node scripts/test-tool-size.js",
     "test:search": "node scripts/test-search-posts.js",
     "test:top-posts": "node scripts/test-top-posts.js",
+    "test:shared-copies": "node scripts/test-shared-copies.js",
     "test:noise": "node scripts/test-transcript-noise.js",
     "check:tokens": "node scripts/check-token-expiry.js",
     "test:retry": "node scripts/test-retry.js",

@@ -191,10 +191,19 @@ const SOURCE_NOTE = "Each post's text is a link to the original on Facebook or I
 // Appended wherever numbers are shown, so the model reports gaps rather than
 // quietly presenting partial data as complete.
 function gapNote(rows) {
-  const missing = rows.filter((r) => !r.has_metrics).length;
-  if (!missing) return '';
-  return `\n\n_${missing} of ${rows.length} posts have no metrics: Meta returned a permissions error for them. `
-    + `They are shown as "—" and excluded from totals. This is a data gap, not zero performance._`;
+  const copies = rows.filter((r) => r.shared_copy).length;
+  const missing = rows.filter((r) => !r.has_metrics && !r.shared_copy).length;
+  let note = '';
+  if (copies) {
+    note += `\n\n_${copies} of ${rows.length} posts are copies of a post published to several Pages at once. `
+      + `Facebook keeps one set of numbers for it, on the original Page, so each copy is shown as "—" and left out of totals `
+      + `rather than counted twice._`;
+  }
+  if (missing) {
+    note += `\n\n_${missing} of ${rows.length} posts have no metrics: Meta returned an error for them. `
+      + `They are shown as "—" and excluded from totals. This is a data gap, not zero performance._`;
+  }
+  return note;
 }
 
 // The two groups are counted and named HERE, not left to the reader. One list
@@ -459,7 +468,7 @@ async function comparePages(store, { days: d = 30, since, until, page_ids }) {
   const rows = pages.map((g) => {
     const feed = inWindow(shapeFeed(data, { page_id: g.page_id, since: win.since }), win);
     const scored = feed.rows.filter((r) => r.has_metrics);
-    const missing = feed.rows.length - scored.length;
+    const missing = feed.rows.filter((r) => !r.has_metrics && !r.shared_copy).length;
     if (missing) anyIncomplete = true;
     // null, not 0, when nothing is measurable — a page with no usable posts has
     // NO figure, and printing 0 would rank it as the worst performer.
@@ -593,9 +602,15 @@ async function dataHealth(store) {
   const data = await store.loadAll();
   const feed = shapeFeed(data, {});
   const pages = shapePages(data);
-  const missing = feed.rows.filter((r) => !r.has_metrics);
+  const copies = feed.rows.filter((r) => r.shared_copy);
+  const missing = feed.rows.filter((r) => !r.has_metrics && !r.shared_copy);
+  const byPage = (rows) => {
+    const c = new Map();
+    for (const r of rows) c.set(r.page_name || r.page_id, (c.get(r.page_name || r.page_id) || 0) + 1);
+    return [...c.entries()].sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${v}`).join(', ');
+  };
   const partial = feed.rows.filter((r) => r.has_metrics && r.partial);
-  const noComments = feed.rows.filter((r) => r.comments_total === null).length;
+  const noComments = feed.rows.filter((r) => r.comments_total === null && !r.shared_copy).length;
   const dates = feed.rows.map((r) => r.created_time.slice(0, 10)).sort();
 
   return {
@@ -604,7 +619,10 @@ async function dataHealth(store) {
       '',
       `- Pages collected: **${pages.length}**`,
       `- Posts: **${feed.total}**, covering ${dates[0] || '—'} to ${dates[dates.length - 1] || '—'}`,
-      `- Posts with no metrics at all: **${missing.length}** (Meta permissions error)`,
+      `- Posts with no metrics at all: **${missing.length}**`
+        + (missing.length ? ` (${byPage(missing)}). Meta returned an error for these; numbers held from an earlier day are used where there are any` : ''),
+      `- Copies of a post published to several Pages at once: **${copies.length}**`
+        + (copies.length ? ` (${byPage(copies)}). Not a gap: Facebook keeps one set of numbers, on the original Page, and refuses insights on the copies (#200). Each copy is left out of its Page's totals and medians so the post is not counted twice` : ''),
       `- Posts missing only unique reach: **${partial.length}** (Meta suppresses it on low-follower pages)`,
       adStatus,
       noComments
@@ -618,7 +636,7 @@ async function dataHealth(store) {
       '- Only pages whose Business Portfolio granted read access are present. Absent pages are an access gap.',
       '- Metrics are a daily snapshot; engagement on recent posts is still accruing and will rise.',
     ].join('\n'),
-    data: { pages: pages.length, posts: feed.total, missing: missing.length, partial: partial.length },
+    data: { pages: pages.length, posts: feed.total, missing: missing.length, shared_copies: copies.length, partial: partial.length },
   };
 }
 
