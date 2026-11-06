@@ -1881,7 +1881,7 @@ document.addEventListener("scroll",ev=>{const fs=ev.target;if(!fs||fs.id!=="fstr
 /* Posts v2 (2 Nov): every network's post as it will look, image included, side by side in one sideways scroll. */
 function feedStrip(d){const edited=d.edited||{};
   return `<div class="fstrip" id="fstrip">${PLATFORMS.map(pf=>{const posts=asPosts(textFor(d,pf.key));const editing=S.editing===pf.key;
-    const body=editing?editBox(d):posts.map((t,i)=>postBox(t,i,posts.length,pf,d)+(i===0?(pf.key==="facebook"&&d.fbTextOnly?`<div class="src pimgnote">No picture: a text post${/https?:\/\/|\[ACTION LINK\]/.test(t)?" (Facebook shows the link's preview)":""}</div>`:`<canvas class="pimg" data-plat="${pf.key}" width="10" height="10" role="img" aria-label="${esc(pf.label)} image"></canvas>`):"")).join("")+(pf.key==="facebook"?commentBox(d,true):"");
+    const body=editing?editBox(d):posts.map((t,i)=>postBox(t,i,posts.length,pf,d)+(i===0?(pf.key==="facebook"&&d.fbTextOnly?`<div class="src pimgnote">No picture: ${/https?:\/\/|\[ACTION LINK\]/.test(t)?"a link post (Facebook shows the link's preview card)":"a text post"}</div>`:`<canvas class="pimg" data-plat="${pf.key}" width="10" height="10" role="img" aria-label="${esc(pf.label)} image"></canvas>`):"")).join("")+(pf.key==="facebook"?commentBox(d,true):"");
     const rev=edited[pf.key]!=null||(pf.key==="facebook"&&edited.facebookComment!=null);
     return `<section class="fcol${S.platform===pf.key?" on":""}" data-fcol="${pf.key}" aria-label="${esc(pf.label)}">${body}${editing?"":`<div class="editrow"><button class="btn small" data-act="copy">Copy</button>${pf.key==="facebook"&&textFor(d,"facebookComment")?`<button class="btn small" data-act="copyComment">Copy comment</button>`:""}<button class="btn small" data-act="edit" ${S.db?"":"disabled"}>Edit${posts.length>1?" all":""}</button>${rev?`<button class="btn small" data-act="revert" ${S.db?"":"disabled"}>Revert</button>`:""}</div>`}</section>`}).join("")}</div>`}
 function checksRow(d){const st=d.status||"pending";const out=[];const chip=(ok,label,jump)=>out.push(`<button class="ck ${ok?"ok":"warn"}"${jump?` data-ckjump="${jump}"`:""}>${ok?"✓":"!"} ${esc(label)}</button>`);
@@ -5914,7 +5914,7 @@ document.addEventListener("click",async ev=>{const b=ev.target.closest("[data-ow
     if(Object.keys(pl).length)patch.platforms=pl;if(Object.keys(ed).length)patch.edited=ed;
     try{await S.db.doc("drafts/"+d.id).update(patch);toast(url?act?"Petition linked: tracked links fill in on each network":"Link added":"Link removed")}catch(e){failToast(e,"Couldn't save the link")}}});
 document.addEventListener("change",async ev=>{if(!ev.target.matches?.("[data-own-textonly]"))return;const d=S.drafts.find(x=>x.id===S.openId);if(!d||!S.db)return;
-  try{await S.db.doc("drafts/"+d.id).update({fbTextOnly:ev.target.checked});toast(ev.target.checked?"Facebook goes out as a text post":"Facebook gets the picture again")}catch(e){failToast(e,"Couldn't change it")}});
+  try{await S.db.doc("drafts/"+d.id).update({fbTextOnly:ev.target.checked});toast(ev.target.checked?"Facebook goes out as a link post, no picture":"Facebook gets the picture again")}catch(e){failToast(e,"Couldn't change it")}});
 
 /* ---------- Compose v2 (3 Nov): the full-screen composer for your own ideas ----------
    Create › Compose, N, or the Compose tile opens it. The journey: start (blank, a template, a copy of a past
@@ -6036,7 +6036,7 @@ function cpSlides(d){const c=d.card||{};return c.template==="carousel"?(c.slides
 function cpMedia(d){const ty=d.cpType||"post";const slides=cpSlides(d);const car=d.card?.template==="carousel";const house=HOUSE_T.has(d.card?.template)&&d.card.template!=="free";
   const alt=i=>car?(d.altTexts||[])[i]||"":d.altText||"";
   const types=`<div class="row cp-types"><h3>What are you making?</h3>${CP_TYPES.map(([k,l,h])=>`<button class="pill${ty===k?" on":""}" data-cp-type="${k}" title="${esc(h)}">${l}</button>`).join("")}</div>`;
-  if(ty==="text")return `<div class="cp-box">${types}<p class="src">Facebook goes out as a text post, with any link in the post itself so Facebook shows its preview. Instagram always needs a picture, so it is left out.</p></div>`;
+  if(ty==="text")return `<div class="cp-box">${types}<p class="src">Facebook goes out as a link post: the link sits in the post itself and Facebook shows its preview card. With no link it is a plain text post. Instagram always needs a picture, so it is left out.</p></div>`;
   if(ty==="reel"){const v=d.publishVideo,up=S.vidUp&&S.vidUp.id===CP.id?S.vidUp:null;
     return `<div class="cp-box">${types}<div class="cp-bh">▶ Video <small>MP4 or MOV, up to 250 MB · a Facebook video and an Instagram Reel</small></div>
     ${up?`<span class="src" id="vidProg">Uploading ${esc(up.name)}: piece ${up.done} of ${up.total}…</span>`:v?`<span class="src">✓ ${esc(v.name||"Video")} · ${(v.size/1048576).toFixed(1)} MB</span>`:`<span class="src">No video yet.</span>`}
@@ -6094,9 +6094,9 @@ function cpAiBox(d){const v=CP.vers;const others=(S.teams||[]).filter(t=>t.id!==
 /* Options: what each network adds. */
 function cpOptions(d){const p=d.posting||{};const fb=cpHas(d,"facebook"),ig=cpHas(d,"instagram")&&d.cpType!=="text";if(!fb&&!ig)return"";
   return `${fb?`<div class="cp-box"><div class="cp-bh">Facebook options</div>
-   <label class="cp-f grow">First comment <small>where the link goes, unless it's a text post</small><textarea data-cp-pl="facebookComment" rows="2" placeholder="Sign here 👉 [ACTION LINK]">${esc(cpTxt(d,"facebookComment"))}</textarea></label>
+   <label class="cp-f grow">First comment <small>where the link goes, unless it's a link post</small><textarea data-cp-pl="facebookComment" rows="2" placeholder="Sign here 👉 [ACTION LINK]">${esc(cpTxt(d,"facebookComment"))}</textarea></label>
    ${d.action?`<label class="cp-c"><input type="checkbox" data-cp-post="comment_dm"${p.comment_dm!==false?" checked":""}> Comment to DM: anyone who comments “SIGN” gets the petition link by private message</label>`:""}
-   <label class="cp-c"><input type="checkbox" data-cp-textonly${d.fbTextOnly?" checked":""}> No picture: a text post</label></div>`:""}
+   <label class="cp-c"><input type="checkbox" data-cp-textonly${d.fbTextOnly?" checked":""}> No picture: a link or text post</label></div>`:""}
   ${ig?`<div class="cp-box"><div class="cp-bh">Instagram options</div>
    <label class="cp-f grow">First comment <small>optional</small><textarea data-cp-pl="instagramComment" rows="2" placeholder="e.g. Link in bio 🔗">${esc(cpTxt(d,"instagramComment"))}</textarea></label>
    <label class="cp-f grow">Collaborators <small>up to 3 Instagram handles, comma separated</small><input data-cp-collab value="${esc((p.collaborators||[]).join(", "))}" placeholder="handle1, handle2"></label>
