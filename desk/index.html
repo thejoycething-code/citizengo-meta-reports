@@ -937,6 +937,38 @@ mark.new{background:var(--ok-soft);color:var(--fg);border-radius:6px}
   .draft.v3.compose>.dfoot{position:sticky;bottom:0;z-index:6;box-shadow:0 -6px 16px rgba(0,0,0,.06)}
 }
 @container (min-width:1000px){.draft.v3.compose{grid-template-columns:minmax(0,1fr) 360px}}
+/* S1 (8 Nov): the idea view (To review) and the Editing workbench */
+.draft.v3.compose.idea{grid-template-columns:minmax(0,1fr);grid-template-areas:"head" "main" "foot";grid-template-rows:auto}
+.igrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(200px,320px);gap:20px;align-items:start}
+.itext{display:flex;flex-direction:column;gap:14px;min-width:0}.itext section p{margin:4px 0 0;line-height:1.5}.itext>.src{margin:0}
+.iopen{white-space:pre-line;font-size:15px;border-left:3px solid var(--accent);padding-left:12px}
+.inote{font-size:13px;color:var(--warn);background:var(--sunk);border-radius:8px;padding:8px 10px}
+.ipic{margin:0;min-width:0}.ipic canvas{width:100%;height:auto;border-radius:10px;border:1px solid var(--line);display:block}
+.inopic{border:1px dashed var(--line);border-radius:10px;padding:28px 12px;text-align:center;color:var(--muted);font-size:13px}
+@container (max-width:640px){.igrid{grid-template-columns:minmax(0,1fr)}.ipic{order:-1;max-width:300px}}
+.draft.v3.compose .stepper.wbtabs{grid-template-columns:repeat(4,minmax(0,1fr))}
+.wbtabs .stp{align-items:center;text-align:center;padding:8px 4px}.stp.warn{border-top-color:var(--warn)}
+.fin .fstrip{display:block;overflow:visible;padding:0}.fin .fstrip .fcol:not(.on){display:none}.fin .fstrip .fcol{flex-basis:auto}
+.fin .dprev .ptext{font-size:13.5px}
+.pdots{display:flex;gap:4px}.pdot{font:600 11px/1.6 inherit;border:1px solid var(--line);background:var(--surface);color:var(--muted);border-radius:999px;padding:1px 8px;cursor:pointer}.pdot[aria-pressed="true"]{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
+.wnet>.fcol{display:flex;flex-direction:column;gap:8px}
+.nopts{display:flex;flex-direction:column;gap:6px;margin:10px 0 0}
+.fwhere .posting{padding:10px 12px}
+.dfoot>.decide .frow{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:8px;order:2}
+.dfoot>.decide .fsmall{order:3;flex-basis:100%;justify-content:flex-end}.dfoot>.decide .fhintw{order:0;flex-basis:100%;text-align:right}
+.whenw{position:relative}
+.whenbtn{display:inline-flex;align-items:baseline;gap:8px;text-align:left}
+.whenbtn .wlab{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.whenpop{position:absolute;right:0;bottom:calc(100% + 8px);z-index:9;width:min(420px,calc(100vw - 24px));background:var(--surface);color:var(--fg);border:1px solid var(--line);border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.18);padding:12px 14px;display:flex;flex-direction:column;gap:12px;max-height:70vh;overflow:auto;text-align:left}
+.whenpop[hidden]{display:none}.wsec{display:flex;flex-direction:column;gap:6px}.wsec .row{margin:0}.whenpop .wfoot{justify-content:flex-end;margin:0}
+.mbar.two{grid-template-columns:1fr 1.4fr}
+.draft.v3.compose.fin>.dfoot{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:6px 18px}
+.draft.v3.compose.fin>.dfoot>.ready.go{max-height:150px}.draft.v3.compose.fin>.dfoot>.decide{flex:none;min-width:0}
+.fin .goi.fact span{display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden}
+@container (max-width:759px){.draft.v3.compose.fin>.dfoot{grid-template-columns:minmax(0,1fr)}}.dfoot>.decide .row .btn.primary{flex:none;padding:6px 18px}
+@media (max-width:640px){.whenpop{position:fixed;left:12px;right:12px;width:auto;bottom:calc(130px + env(safe-area-inset-bottom,0px))}}
+@container (min-width:760px){.draft.v3.compose.fin{grid-template-columns:minmax(0,1fr) 280px}.draft.v3.compose.idea{grid-template-columns:minmax(0,1fr);grid-template-areas:"head" "main" "foot"}}
+@container (min-width:1000px){.draft.v3.compose.fin{grid-template-columns:minmax(0,1fr) 300px}}
 @media (max-width:640px){.qslot{grid-template-columns:minmax(0,1fr)}.qslot .qtime{display:none}.qfree{display:none}}
 @container (max-width:640px){.stepper{grid-template-columns:repeat(3,minmax(0,1fr))}}
 .stp{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;border:1px solid var(--line);border-top:3px solid var(--line);background:var(--surface);color:var(--fg);border-radius:10px;padding:8px 8px;min-width:0;cursor:pointer;font:inherit}
@@ -1473,18 +1505,18 @@ body:has(.ibfocus) .toast{z-index:80}
 <div id="cpDlg" hidden role="dialog" aria-modal="true" aria-label="Compose"><div id="cpBox"></div></div>
 <div class="toast" id="toast" hidden role="status"></div>
 <div class="zoom" id="zoom" hidden role="dialog" aria-modal="true" aria-label="Graphic preview"></div>
-<div class="help" id="help" hidden role="dialog" aria-label="Keyboard shortcuts"><div class="helpbox"><b>Keyboard shortcuts</b><dl><dt>← →</dt><dd>Previous or next draft</dd><dt>A</dt><dd>Schedule</dd><dt>C</dt><dd>Request changes</dd><dt>R</dt><dd>Reject</dd><dt>N</dt><dd>Compose a post</dd><dt>E</dt><dd>Edit the text</dd><dt>1–9</dt><dd>Pick a graphic option</dd><dt>Z</dt><dd>Zoom the graphic</dd><dt>Esc</dt><dd>Close</dd><dt>?</dt><dd>Show or hide this list</dd><dt>/ or Ctrl K</dt><dd>Search help (Ctrl K in the Inbox)</dd></dl><button class="btn small" data-act="help">Close</button></div></div>
+<div class="help" id="help" hidden role="dialog" aria-label="Keyboard shortcuts"><div class="helpbox"><b>Keyboard shortcuts</b><dl><dt>← →</dt><dd>Previous or next draft</dd><dt>A</dt><dd>Approve the idea (To review) or Schedule (Editing)</dd><dt>R</dt><dd>Reject</dd><dt>N</dt><dd>Compose a post</dd><dt>E</dt><dd>Edit the text</dd><dt>1–9</dt><dd>Pick a graphic option</dd><dt>Z</dt><dd>Zoom the graphic</dd><dt>Esc</dt><dd>Close</dd><dt>?</dt><dd>Show or hide this list</dd><dt>/ or Ctrl K</dt><dd>Search help (Ctrl K in the Inbox)</dd></dl><button class="btn small" data-act="help">Close</button></div></div>
 <input type="file" id="gfile" accept="image/jpeg,image/png,image/webp" hidden>
 <input type="file" id="gfiles" accept="image/jpeg,image/png,image/webp" multiple hidden>
 
 <script>
 const STATUS = [
-  {key:"pending", label:"Review"},
-  {key:"changes", label:"Needs changes"},
-  {key:"hold", label:"On hold"},
+  {key:"pending", label:"To review"},
+  {key:"changes", label:"Sent back", hidden:true},
+  {key:"hold", label:"Editing"},
   {key:"scheduled", label:"Scheduled"},
   {key:"posted", label:"Posted"},
-  {key:"rejected", label:"Rejected"},
+  {key:"rejected", label:"Bin"},
 ];
 const REJECT_REASONS = ["Off-message","Factually wrong","Weak hook","Wrong timing","Too long","Off-brand visual","Tone too harsh","Duplicate"];
 const PLATFORMS = [
@@ -1537,7 +1569,8 @@ function xLen(t){return [...String(t).replace(/https?:\/\/\S+/g,"x".repeat(23))]
 /* ---------- render ---------- */
 function filtered(){
   const q=String(S.q||"").trim().toLowerCase();
-  const list=S.drafts.filter(d=>(d.status||"pending")===S.status && (!S.issue||d.issue===S.issue) && (!S.type||d.type===S.type) && (!S.by||draftBy(d)===S.by) && (!S.label||draftLabels(d).includes(S.label)) && (!q||draftText(d).includes(q)));
+  if(S.status==="changes")S.status="pending";
+  const list=S.drafts.filter(d=>tabOf(d)===S.status && (!S.issue||d.issue===S.issue) && (!S.type||d.type===S.type) && (!S.by||draftBy(d)===S.by) && (!S.label||draftLabels(d).includes(S.label)) && (!q||draftText(d).includes(q)));
   if(["posted","rejected"].includes(S.status)){const t=d=>Date.parse(d.posted?.at||d.review?.at||d.createdAt||"")||0;return list.sort((a,b)=>t(b)-t(a))}
   return list.sort((a,b)=>{const ga=GROUPS.indexOf(groupOf(a)),gb=GROUPS.indexOf(groupOf(b));if(ga!==gb)return ga-gb;const ta=whenOf(a)?.getTime()??0,tb=whenOf(b)?.getTime()??0;if(ta!==tb)return ta-tb;return (a.order??99)-(b.order??99)});
 }
@@ -1547,9 +1580,12 @@ function whenOf(d){const p=d.posting||{};const v=p.at||p.suggestedAt||d.timing?.
 function groupOf(d){const t=whenOf(d);if(!t)return"No date yet";const now=new Date();if(t<now)return"Needs a new time";const day=x=>{const y=new Date(x);y.setHours(0,0,0,0);return y.getTime()};const diff=Math.round((day(t)-day(now))/864e5);return diff===0?"Today":diff===1?"Tomorrow":diff<=7?"This week":"Later"}
 function staleSplit(d){const r=staleReasons(d);return{real:r.filter(x=>!/suggested posting time/i.test(x)),retime:r.some(x=>/suggested posting time/i.test(x))}}
 function checkFacts(d){return (d.facts||[]).map((f,i)=>({f,i})).filter(x=>x.f.status==="check")}
+/* S1: posts sent back for changes (none since the engine started) count as To review. */
+function tabOf(d){const k=d.status||"pending";return k==="changes"?"pending":k}
 function renderTabs(){
-  const counts={};S.drafts.forEach(d=>{const k=d.status||"pending";counts[k]=(counts[k]||0)+1});
-  const tabs=STATUS.map(x=>({key:x.key,label:x.label,n:counts[x.key]||0})).concat([{key:"evergreen",label:"Evergreen",n:egDue(),title:"Past winners due a fresh version"}]);
+  const counts={};S.drafts.forEach(d=>{const k=tabOf(d);counts[k]=(counts[k]||0)+1});
+  const T=k=>{const x=STATUS.find(s=>s.key===k);return{key:k,label:x.label,n:counts[k]||0,title:k==="pending"?"New ideas: approve or reject":k==="hold"?"Approved ideas to finish and schedule":k==="rejected"?"Rejected posts":""}};
+  const tabs=["pending","hold","scheduled","posted"].map(T).concat([{key:"evergreen",label:"Evergreen",n:egDue(),title:"Past winners due a fresh version"},T("rejected")]);
   $("#statusTabs").innerHTML=tabs.map(t=>`<button class="tab st-${t.key}" aria-pressed="${S.status===t.key}" data-status="${t.key}"${t.title?` title="${esc(t.title)}"`:""}>${esc(t.label)}${t.n||t.key!=="rejected"?`<span class="n">${t.n}</span>`:""}</button>`).join("");
 }
 function renderFilters(){
@@ -1652,7 +1688,7 @@ document.addEventListener("click",async ev=>{const o=ev.target.closest("[data-eg
   const b=ev.target.closest("[data-egp]");if(!b)return;const a=b.dataset.egp;const p=(EG.posts||[]).find(x=>String(x.id)===S.egOpen);if(!p)return;
   if(a==="ask"){const d=$("#egPickDate")?.value;if(!d){toast("Pick the day it should go out");return}EG.busy=true;renderDetail();
     try{const input={action:"create",team:S.team,for_date:d,title:`Fresh version: ${p.title}`,source:"evergreen",evergreen_id:p.id};const ang=[p.why,p.result?`Then: ${p.result}`:"",p.url||""].filter(Boolean).join(" · ");if(ang)input.angle=ang;
-      const r=await eng("engine_request",input);if(r&&r.ok){p.requested={id:r.request.id,for_date:r.request.for_date};toast(`Asked for: a fresh draft lands in Review for ${egDay(d)}`)}else toast((r&&r.error)||"Couldn't ask for a fresh draft")}
+      const r=await eng("engine_request",input);if(r&&r.ok){p.requested={id:r.request.id,for_date:r.request.for_date};toast(`Asked for: a fresh draft lands in To review for ${egDay(d)}`)}else toast((r&&r.error)||"Couldn't ask for a fresh draft")}
     catch(e){failToast(e,"Couldn't ask for a fresh draft")}EG.busy=false;S.egDate=null;renderQueue();renderDetail();return}
   b.disabled=true;try{const r=await eng("engine_evergreen_update",{action:a,id:p.id});if(r&&r.ok){toast(a==="snooze"?"Back in 4 weeks":a==="retire"?"Retired":"Recorded: due again in 10 weeks");S.egOpen=null;await loadEvergreen()}else{toast((r&&r.error)||"Couldn't save that");b.disabled=false}}
   catch(e){failToast(e,"Couldn't save that");b.disabled=false}});
@@ -1666,20 +1702,23 @@ function qFlags(d){const st=d.status||"pending",f=[];const p=d.posting||{};
   if(d.card?.template==="free")f.push(`<span class="qf f">Fresh design</span>`);
   if(st==="changes"&&d.revisionNote)f.push(`<span class="qf">Reworked</span>`);
   if(st==="posted"){const bx=bestX(d.results);f.push(bx==null?`<span class="qf">Results pending</span>`:`<span class="qf qx ${xTone(bx)}" title="Best network against the Page's normal">${bx}× normal</span>`)}
-  if(st==="hold"||st==="scheduled"){const at=p.at||p.suggestedAt;if(at)f.push(`<span class="qf">${esc(new Date(at).toLocaleString("en-GB",{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}))}</span>`);f.push(`<span class="qf">${st==="scheduled"?"Scheduled":p.asanaTaskGid?"In Asana":"Going to Asana"}</span>`)}
+  if(st==="hold"||st==="scheduled"){const at=p.at||p.suggestedAt;if(at)f.push(`<span class="qf">${esc(new Date(at).toLocaleString("en-GB",{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}))}</span>`);f.push(`<span class="qf">${st==="scheduled"?"Scheduled":p.asanaTaskGid?"In Asana":"To finish"}</span>`)}
   if(!f.length&&d.timing?.label)f.push(`<span class="qf">${esc(d.timing.label)}</span>`);
   return f.join("")}
 /* K2: one-tap best slots */
 function bestFor(lead,from){const now=Date.now();for(let i=0;i<9;i++){const c=new Date(from||Date.now());c.setDate(c.getDate()+i);const we=[0,6].includes(c.getDay());const [h,m]=BEST[lead][we?"we":"wd"];c.setHours(h,m,0,0);if(c.getTime()>now+30*60e3)return c}return null}
-function slotChips(dests){const ds=dests||[];const leads=[["fb","FB"],["ig","IG"],["x","X"]].filter(([k])=>ds.some(x=>x.endsWith(k)));if(!leads.length)leads.push(["fb","Facebook"]);
+function slotChips(dests,max){const ds=dests||[];const leads=[["fb","FB"],["ig","IG"],["x","X"]].filter(([k])=>ds.some(x=>x.endsWith(k)));if(!leads.length)leads.push(["fb","Facebook"]);
   const out=[];leads.forEach(([k,l])=>{const a=bestFor(k);if(a)out.push([a,l]);const b=a&&bestFor(k,new Date(a.getTime()+864e5));if(b)out.push([b,l])});
-  const seen=new Set();const uniq=out.filter(([t])=>{const key=t.getTime();if(seen.has(key))return false;seen.add(key);return true}).sort((a,b)=>a[0]-b[0]).slice(0,5);
+  const seen=new Set();const uniq=out.filter(([t])=>{const key=t.getTime();if(seen.has(key))return false;seen.add(key);return true}).sort((a,b)=>a[0]-b[0]).slice(0,max||5);
   const day=t=>{const n=new Date();n.setHours(0,0,0,0);const dd=new Date(t);dd.setHours(0,0,0,0);const diff=Math.round((dd-n)/864e5);return diff===0?"Today":diff===1?"Tomorrow":t.toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"})};
   return `<div class="slots" aria-label="Best slots for us">${uniq.map(([t,l])=>`<button class="slot" data-act="slot" data-at="${t.toISOString()}" title="Best time for ${l}">${day(t)} ${String(t.getHours()).padStart(2,"0")}:${String(t.getMinutes()).padStart(2,"0")} <span>★ ${l}</span></button>`).join("")}</div>`}
 /* K3: what kind of option each graphic is */
 function optKind(o){const id=String(o.id||"");if(id.startsWith("prev-"))return["Previous","prev"];if(id.startsWith("ai-"))return["AI","ai"];if(id.startsWith("set-"))return["Set","set"];if(o.card?.template==="free")return["Fresh","fresh"];return["Default","def"]}
 /* M: phone action bar */
-function mobileBar(d,st){if(!S.db||!["pending","changes"].includes(st)||S.mode)return"";return `<div class="mbar" role="group" aria-label="Decide">${d.own?`<button class="btn bad" data-own="discard">Discard</button><button class="btn" data-act="apNow"${ownMissing(d)?" disabled":""}>Post now</button>`:`<button class="btn bad" data-act="reject">Reject</button><button class="btn warn" data-act="changes">Changes</button>`}<button class="btn primary" data-act="approve"${hasChecks(d)&&!S.factsOk?" disabled title=\"Tick the facts to check first\"":ownMissing(d)?" disabled title=\"Write the words first\"":""}>Schedule</button></div>`}
+function mobileBar(d,st){if(!S.db||S.mode)return"";
+  if(isIdea(d))return `<div class="mbar two" role="group" aria-label="Decide"><button class="btn bad" data-act="reject">Reject</button><button class="btn primary" data-act="approveIdea">Approve idea</button></div>`;
+  if(!(st==="hold"||(d.own&&["pending","changes"].includes(st))))return"";const dis=hasChecks(d)&&!S.factsOk?" disabled title=\"Tick the facts to check first\"":ownMissing(d)?" disabled title=\"Write the words first\"":"";
+  return `<div class="mbar two" role="group" aria-label="Finish"><button class="btn" data-act="apNow"${dis}>Post now</button><button class="btn primary" data-act="approve"${dis}>Schedule</button></div>`}
 
 /* 5: facts to check, ticked one by one beside Schedule */
 function factCheck(d){const list=checkFacts(d);return `<div class="fcheck"><div class="fhead"><span class="eyebrow">Check before approving</span><span class="src" id="fcount">${S.factTicks.size} of ${list.length} ticked</span></div>${list.map(({f,i})=>`<label class="fitem"><input type="checkbox" data-fact="${i}"${S.factTicks.has(i)?" checked":""}><span>${esc(f.claim)}<small>${f.url?`<a href="${esc(f.url)}" target="_blank" rel="noopener">${esc(f.source||"source")}</a>`:esc(f.source||"")}</small></span></label>`).join("")}<a class="src" href="#facts">All facts and sources</a></div>`}
@@ -1715,10 +1754,9 @@ document.addEventListener("keydown",ev=>{if(ev.altKey||ev.ctrlKey||ev.metaKey)re
   const d=S.drafts.find(x=>x.id===S.openId);if(!d||S.editing)return;
   const click=sel=>{const b=document.querySelector(".decide "+sel)||document.querySelector(sel);if(b&&!b.disabled){ev.preventDefault();b.click()}else if(b&&b.disabled)toast(sel.includes("approve")?"Tick the facts to check first":"Not available here")};
   const k=ev.key.toLowerCase();
-  if(k==="a")return click('[data-act="approve"]');
-  if(k==="c")return click('[data-act="changes"]');
+  if(k==="a")return click(document.querySelector('#detail [data-act="approveIdea"]')?'[data-act="approveIdea"]':'[data-act="approve"]');
   if(k==="r")return click('[data-act="reject"]');
-  if(k==="e")return click('[data-act="edit"]');
+  if(k==="e"){if(document.querySelector("#detail .fin"))showStep(1);return click('[data-act="edit"]')}
   if(k==="z"){ev.preventDefault();openZoom(d);return}
   if(/^[1-9]$/.test(ev.key)){const o=(d.cardOptions||[])[+ev.key-1];if(o){ev.preventDefault();document.querySelector(`.opick[data-opt="${CSS.escape(o.id)}"]`)?.click()}}
 });
@@ -1747,14 +1785,14 @@ function readyItems(d){const it=[];const cf=checkFacts(d);
 function goItems(d){const it=[];const p=d.posting||{};
   const ds=[...document.querySelectorAll("input[data-dest]")];const dests=ds.length?ds.filter(x=>x.checked).map(x=>x.dataset.dest):(p.destinations||defaultDests(d));
   const miss=["facebook","instagram"].filter(k=>dests.some(x=>platOfKey(x)===k)&&!String(asPosts(textFor(d,k)).join("")).trim());
-  it.push(miss.length||ownMissing(d)?{ok:false,t:`Write the ${(miss.length?miss:["facebook"]).map(k=>k==="facebook"?"Facebook":"Instagram").join(" and ")} text`,jump:"fstrip"}:{ok:true,t:"Words for each network"});
-  if(!dests.length)it.push({ok:false,t:"Pick at least one account",jump:"postDay"});
+  it.push(miss.length||ownMissing(d)?{ok:false,t:`Write the ${(miss.length?miss:["facebook"]).map(k=>k==="facebook"?"Facebook":"Instagram").join(" and ")} text`,jump:"step1"}:{ok:true,t:"Words for each network"});
+  if(!dests.length)it.push({ok:false,t:"Pick at least one account",jump:"fwhere"});
   const at=pickerWhen()||(p.at||p.suggestedAt?new Date(p.at||p.suggestedAt):null);
-  it.push(!at?{ok:false,t:"Pick a time",jump:"postDay"}:at.getTime()<Date.now()?{ok:false,t:"Its time has passed: pick a new one",jump:"postDay"}:{ok:true,t:at.toLocaleString("en-GB",{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})});
+  it.push(!at?{ok:false,t:"Pick a time",jump:"when"}:at.getTime()<Date.now()?{ok:false,t:"Its time has passed: pick a new one",jump:"when"}:{ok:true,t:at.toLocaleString("en-GB",{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})});
   const all=["facebook","instagram","x","facebookComment"].map(k=>asPosts(textFor(d,k)).join(" ")).join(" ");
-  if(/\[ACTION LINK\]/.test(all)&&!d.action?.url)it.push({ok:false,t:"The text asks people to sign, but no petition is linked",jump:"step3"});
+  if(/\[ACTION LINK\]/.test(all)&&!d.action?.url)it.push({ok:false,t:"The text asks people to sign, but no petition is linked",jump:"step2"});
   else if(d.action?.url)it.push({ok:true,t:d.links?.facebook?.short?d.links.facebook.short.replace(/^https?:\/\//,""):"Petition link"});
-  if(isVideoPost(d)&&!d.publishVideo&&!(d.video&&d.video.url))it.push({ok:false,t:"Upload the video",jump:"step2"});
+  if(isVideoPost(d)&&!d.publishVideo&&!(d.video&&d.video.url))it.push({ok:false,t:"Upload the video",jump:"step0"});
   return it}
 function goNice(d){const out=[];const c=curCard(d);const n=c.template==="carousel"?(c.slides||[]).length:1;
   if(!(n>1?(d.altTexts||[]).filter(Boolean).length>=n:!!d.altText))out.push(["Alt text","altFold"]);
@@ -1770,6 +1808,7 @@ function rememberPick(){const ds=$("#postDay"),ts=$("#postTime");const per=[...d
 const pickFor=()=>S.pick&&S.pick.id===S.openId?S.pick:null;
 function refreshReady(){setTimeout(refreshLane,0);rememberPick();const d=S.drafts.find(x=>x.id===S.openId);const r=$("#ready");if(d&&r)r.outerHTML=readyBox(d);const w=$("#apWhen");const t=pickerWhen();const pt=perTimes();
   if(w&&pt&&pt.length>1)w.textContent="goes out at these times";else if(w&&t)w.textContent=t.toLocaleString("en-GB",{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"});
+  const ww=$("#whenWhy");if(ww&&t&&S.whenBase&&S.whenBase.id===S.openId)ww.textContent=pt&&pt.length>1?"each account its own time":Math.abs(t-S.whenBase.t)<60e3?S.whenBase.why:"your pick";
   const tl=$("#apTimes");if(tl)tl.innerHTML=pt&&pt.length>1?pt.map(([k,t2])=>`${esc((Object.fromEntries(teamDests()))[k]||k)} ${esc(t2.toLocaleString("en-GB",{weekday:"short",hour:"2-digit",minute:"2-digit"}))}`).join(" · "):""}
 function approveSplit(d,checks){const t=(()=>{const pk=pickFor();if(pk){const pt=pk.times&&Object.values(pk.times).sort()[0];const x=pt?new Date(pt):pk.day&&pk.time?new Date(`${pk.day}T${pk.time}:00`):null;if(x&&!isNaN(x))return x}const p=d.posting||{};const v=p.at||p.suggestedAt;const x=v?new Date(v):null;return x&&x.getTime()>Date.now()?x:bestSlot(p.destinations||defaultDests(d))})();
   const dis=(checks&&!S.factsOk)||ownMissing(d)?" disabled":"";const dests=(d.posting||{}).destinations||defaultDests(d);
@@ -1844,17 +1883,143 @@ function stepInfo(d){const st=d.status||"pending";const live=["pending","changes
     {label:"Facts",tone:(cf&&tk<cf&&live&&!S.factsOk)||lint?"warn":"ok",note:[cf?`${S.factsOk?cf:tk} of ${cf} ticked`:"All verified",lint?`${lint} note${lint===1?"":"s"}`:""].filter(Boolean).join(" · ")},
     {label:"More formats",tone:"mut",note:d.launch?"Launch pack":nfx?`${nfx} extra${nfx===1?"":"s"}`:"Optional"}]}
 document.addEventListener("click",ev=>{const b=ev.target.closest("[data-gojump]");if(!b)return;ev.preventDefault();const k=b.dataset.gojump;
+  if(k==="when"){S.whenOpen=true;const p=$("#whenPop");if(p){p.hidden=false;refreshLane();p.querySelector("input,select,button")?.focus()}$('[data-act="whenBtn"]')?.setAttribute("aria-expanded","true");return}
   if(/^step\d$/.test(k)){showStep(+k.slice(4));document.querySelector(".stepper")?.scrollIntoView({behavior:"smooth",block:"nearest"});return}
   const el=document.getElementById(k);if(el){el.scrollIntoView({behavior:"smooth",block:"center"});if(el.focus)el.focus()}});
-function showStep(i){S.step=i;document.querySelectorAll("[data-steppanel]").forEach(p=>p.hidden=+p.dataset.steppanel!==i);document.querySelectorAll(".stepper [data-step]").forEach(b=>b.setAttribute("aria-selected",String(+b.dataset.step===i)));if(i===1){const d=S.drafts.find(x=>x.id===S.openId);if(d){try{drawCard(d,null,S.gPreview?.id===d.id?S.gPreview.card:null);drawThumbs(d)}catch(e){}}}}
+function showStep(i){S.step=i;document.querySelectorAll("[data-steppanel]").forEach(p=>p.hidden=+p.dataset.steppanel!==i);document.querySelectorAll(".stepper [data-step]").forEach(b=>b.setAttribute("aria-selected",String(+b.dataset.step===i)));if(document.querySelector(`[data-steppanel="${i}"] #card`)){const d=S.drafts.find(x=>x.id===S.openId);if(d){try{drawCard(d,null,S.gPreview?.id===d.id?S.gPreview.card:null);drawThumbs(d)}catch(e){}}}}
 document.addEventListener("click",ev=>{const b=ev.target.closest("[data-step]");if(!b||!b.closest("#detail"))return;ev.preventDefault();const i=+b.dataset.step;showStep(i);if(!b.closest(".stepper"))document.querySelector(".stepper")?.scrollIntoView({behavior:"smooth",block:"nearest"})});
+function headHtml(d,st){const stLabel=STATUS.find(s=>s.key===st)?.label||"";return `<div class="dhead">
+      ${navBar(d)}
+      <div class="chips">${d.action?.title||d.issue?`<span class="chip" title="Campaign, set automatically from the petition or issue">Campaign: ${esc(String(d.action?.title||d.issue).slice(0,40))}</span>`:""}${d.type?`<span class="chip type">${esc(d.type)}</span>`:""}${d.issue?`<span class="chip">${esc(d.issue)}</span>`:""}${d.timing?.label||d.timing?.date?`<span class="chip">${[d.timing?.label?esc(d.timing.label):"",d.timing?.date?esc(new Date(d.timing.date).toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"})):""].filter(Boolean).join(" · ")}</span>`:""}<span class="chip st-${st}">${stLabel}</span></div>
+      <h2>${esc(d.title)}</h2>
+      ${d.source?.url||d.source?.label?`<div class="src">Source: ${d.source?.url?`<a href="${esc(d.source.url)}" target="_blank" rel="noopener">${esc(d.source.label||d.source.url)}</a>`:esc(d.source.label)}</div>`:""}
+    </div>`}
+/* S1 (8 Nov): To review is for ideas only: Approve idea or Reject (to the Bin). An approved idea moves to
+   Editing (the engine's 'hold'), where the post is finished in a workbench (Media, Text, Links, More) beside a
+   slim, read-only preview, with one When button that starts on the time picked for the post.
+   Posts the team wrote themselves skip the idea step and open straight in the workbench. */
+const WB=["Media","Text","Links","More"];
+function isIdea(d){return ["pending","changes"].includes(d.status||"pending")&&!d.own}
+function isFinish(d){const st=d.status||"pending";return st==="hold"||st==="scheduled"||(["pending","changes"].includes(st)&&!!d.own)}
+const fmtAt=t=>t.toLocaleString("en-GB",{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"});
+function ideaView(d,st){
+  const open=withLink(asPosts(textFor(d,"facebook"))[0]||"",d,"facebook");
+  const lines=open.split("\n").filter(l=>l.trim());let first=lines.slice(0,2).join("\n");const more=lines.length>2||first.length>280;if(first.length>280)first=first.slice(0,first.lastIndexOf(" ",270)>150?first.lastIndexOf(" ",270):270);
+  const sp=staleSplit(d);const nf=(d.facts||[]).length,cf=checkFacts(d).length;
+  const pic=d.fbTextOnly?`<div class="inopic">No picture: ${/https?:\/\/|\[ACTION LINK\]/.test(open)?"a link post (Facebook shows the link's preview card)":"a text post"}</div>`:`<canvas id="card" width="1080" height="1080" role="img" aria-label="The post's picture"></canvas>`;
+  const facts=[nf?`${nf} fact${nf===1?"":"s"} with sources`:"",cf?`${cf} to check when you finish it`:""].filter(Boolean).join(", ");
+  return `<article class="draft v3 compose idea" data-st="${esc(st)}">
+    ${headHtml(d,st)}
+    <div class="dmain"><div class="igrid">
+      <div class="itext">
+        ${sp.real.length?`<div class="inote">Might be out of date: ${esc(sp.real.join("; "))}</div>`:""}
+        <section><span class="eyebrow">Why this post</span><p>${esc(d.rationale||"No reason given.")}</p></section>
+        <section><span class="eyebrow">How it opens</span><p class="iopen">${esc(first)}${more?"…":""}</p></section>
+        <p class="src">${facts?esc(facts)+". ":""}${isVideoPost(d)?"A video post. ":""}${st==="rejected"?"":"The words for Facebook, Instagram and X are written already: approve the idea and you can change any of it in Editing."}</p>
+        ${(d.modelledOn||[]).map(m=>`<div class="model"><a href="${esc(m.url)}" target="_blank" rel="noopener">${esc(m.label)}</a><span class="m">${esc(m.metric)}</span></div>`).join("")}
+      </div>
+      <figure class="ipic">${pic}</figure>
+    </div></div>
+    <div class="dfoot" role="group" aria-label="Decide">${mobileBar(d,st)}<div class="decide">${ideaDecide(d)}</div></div>
+  </article>`}
+function reasonBar(isRej){return `<div class="row"><b style="font-size:13.5px">${isRej?"Why reject it?":"What needs to change?"}</b><span class="src">${isRej?`It goes to the Bin, and the morning run learns from the reasons.`:""}</span></div>
+    <div class="reasons">${REJECT_REASONS.map(r=>`<button class="reason" data-reason="${esc(r)}" aria-pressed="${S.picked.has(r)}">${esc(r)}</button>`).join("")}</div>
+    <div class="row"><input type="text" id="decNote" placeholder="${isRej?"Anything else? (optional)":"Describe the change"}"><button class="btn ${isRej?"bad":"warn"}" data-act="${isRej?"confirmReject":"confirmChanges"}">${isRej?"Reject":"Send back for changes"}</button><button class="btn" data-act="cancelMode">Cancel</button></div>`}
+function ideaDecide(d){if(!S.db)return `<div class="state">Read-only view.</div>`;if(d.status==="rejected")return decideBar(d,"rejected",false);
+  if(S.mode==="reject")return reasonBar(true);
+  return `<div class="row"><span class="src">Approve the idea to finish it in Editing. Reject sends it to the Bin.</span><button class="btn bad" data-act="reject">Reject</button><button class="btn primary" data-act="approveIdea">Approve idea</button></div>`}
+/* The time a post starts on: your pick, else the time picked for it (if still ahead), else our next best slot. */
+function whenDefault(d){const p=d.posting||{};const dests=p.destinations||defaultDests(d);
+  const v=p.at||p.suggestedAt;const x=v?new Date(v):null;
+  const base=x&&!isNaN(x)&&x.getTime()>Date.now()?{t:x,why:(d.status||"")==="scheduled"?"scheduled":"picked for this post",long:p.why||"The time the engine picked for this post."}
+    :{t:bestSlot(dests),why:"next best time",long:x?"The time picked for this post has passed, so this is our next best time.":"No time was picked for this post, so this is our next best time."};
+  S.whenBase={id:d.id,t:base.t.getTime(),why:base.why};const pk=pickFor();
+  if(pk){const pt=pk.times&&Object.values(pk.times).filter(Boolean).sort()[0];const y=pt?new Date(pt):pk.day&&pk.time?new Date(`${pk.day}T${pk.time}:00`):null;if(y&&!isNaN(y)&&Math.abs(y-base.t)>=60e3)return{t:y,why:"your pick",long:base.long}}
+  return base}
+function whenBox(d,st){const p=d.posting||{};const dests=p.destinations||defaultDests(d);const w=whenDefault(d);
+  return `<div class="whenw"><button class="btn whenbtn" data-act="whenBtn" aria-expanded="${!!S.whenOpen}" aria-controls="whenPop"><span class="wlab">When</span><b id="apWhen">${esc(fmtAt(w.t))}</b><span class="src" id="whenWhy">${esc(w.why)}</span><span aria-hidden="true">▾</span></button>
+    <div class="whenpop" id="whenPop" role="dialog" aria-label="When it goes out"${S.whenOpen?"":" hidden"}>
+      <div class="wsec"><span class="eyebrow">Picked for this post</span><span class="src">${esc(w.long)}</span></div>
+      <div class="wsec"><span class="eyebrow">Best times</span>${slotChips(dests,3)}</div>
+      <div class="wsec"><span class="eyebrow">Choose a time</span>${perAcctRow(d,dests,w.t.toISOString(),true)}</div>
+      <details class="pmore" id="laneFold"${S.laneOpen?" open":""}><summary>Day timeline</summary><div class="dlane" id="dayLane" aria-label="The day at a glance"></div><div class="row"><span class="src">${esc(BEST_HINT)}</span></div></details>
+      <div class="row wfoot"><span class="src" id="apTimes"></span>${st==="scheduled"?`<button class="btn small" data-act="savePosting">Save the new time</button>`:""}<button class="btn small primary" data-act="whenDone">Done</button></div>
+    </div></div>`}
+function finishDecide(d,st,checks){if(!S.db)return `<div class="state">Read-only view.</div>`;
+  if(S.mode==="posting")return decideBar(d,st,checks);
+  if(S.mode==="reject")return reasonBar(true);
+  if(st==="scheduled")return `<div class="frow">${whenBox(d,st)}</div>${decideBar(d,st,checks)}`;
+  const dis=(checks&&!S.factsOk)||ownMissing(d)?" disabled":"";const r=d.review||{};
+  return `${ownMissing(d)?`<span class="src fhintw">Write the words first (2 Text), then Post now or Schedule.</span>`:""}
+  <div class="frow">${whenBox(d,st)}<button class="btn apnow" data-act="apNow" title="Facebook and Instagram go out within 5 minutes"${dis}>Post now</button><button class="btn primary apmain" data-act="approve"${dis}>Schedule</button></div>
+  <div class="row fsmall">${d.own?`<span class="src">Saved as you go: it waits in To review until you post or schedule it.</span><button class="btn small bad" data-own="discard">Discard</button>`:`<span class="src">Idea approved${r.by?" by "+esc(nameOf(r.by)):""}${r.at?" · "+esc(fmtWhen(r.at)):""}</span><button class="btn small" data-act="undo">Back to review</button><button class="btn small" data-act="posting" title="Only if you posted it yourself">Mark as posted</button><button class="btn small bad" data-act="reject">Bin it</button>`}</div>`}
+function wbInfo(d){const s=stepInfo(d);const tone=(...xs)=>xs.includes("warn")?"warn":xs.includes("info")?"info":"ok";
+  return [{label:"Media",tone:tone(s[1].tone,s[2].tone)},{label:"Text",tone:s[0].tone},{label:"Links",tone:s[3].tone==="warn"?"warn":"ok"},{label:"More",tone:s[4].tone==="warn"?"warn":"ok"}]}
+function netEditor(d,pf){const posts=asPosts(textFor(d,pf.key));const editing=S.editing===pf.key;const edited=d.edited||{};
+  const rev=edited[pf.key]!=null||(pf.key==="facebook"&&edited.facebookComment!=null);
+  const body=editing?editBox(d):posts.map((t,i)=>postBox(t,i,posts.length,pf,d)).join("")+(pf.key==="facebook"?commentBox(d,true):"");
+  return `<section class="fcol on" aria-label="${esc(pf.label)} text">${body}${editing?"":`<div class="editrow"><button class="btn small" data-act="edit" ${S.db?"":"disabled"}>Edit${posts.length>1?" all":""}</button>${rev?`<button class="btn small" data-act="revert" ${S.db?"":"disabled"}>Revert</button>`:""}<button class="btn small" data-act="copy">Copy</button>${pf.key==="facebook"&&textFor(d,"facebookComment")?`<button class="btn small" data-act="copyComment">Copy comment</button>`:""}</div>`}</section>`}
+function netOpts(d,k,dests){if(k==="instagram"){const o=collabRow(d,dests)+bioRow(d,dests);return o?`<div class="nopts"><span class="eyebrow">Instagram options</span>${o}</div>`:""}
+  if(k==="x")return `<p class="src nopts">X isn't posted automatically: copy it and post it yourself, then mark it as posted.</p>`;return ""}
+function finishView(d,st){const p=d.posting||{};const dests=p.destinations||defaultDests(d);const checks=hasChecks(d);const edited=d.edited||{};
+  if(S.stepFor!==d.id){S.stepFor=d.id;S.step=ownMissing(d)||ownEmpty(d)?1:0}
+  const si=Math.min(Math.max(0,S.step|0),3);const tabs=wbInfo(d);
+  if(!PLATFORMS.some(x=>x.key===S.platform))S.platform="facebook";const pf=PLATFORMS.find(x=>x.key===S.platform);
+  const slides=d.card?.template==="carousel"?d.card.slides.length:1;
+  const panel=(i,body)=>`<section class="stpanel wb" data-steppanel="${i}" aria-label="${WB[i]}"${i===si?"":" hidden"}>${body}</section>`;
+  const lockNote=teamDests().some(([k])=>locked(k)&&dests.includes(k))?`<span class="src">🔒 You can't post to a ticked Page, so Schedule will be refused until you untick it or someone who manages it schedules it.</span>`:"";
+  const links=[p.asanaUrl?`<a href="${esc(p.asanaUrl)}" target="_blank" rel="noopener">Asana task</a>`:"",d.canva?.url?`<a href="${esc(d.canva.url)}" target="_blank" rel="noopener">Open in Canva</a>`:""].filter(Boolean).join(" · ");
+  const media=`${isVideoPost(d)&&dests.some(k=>["facebook","instagram"].includes(platOfKey(k)))?videoUploadBox(d):""}${ownPicBox(d)}${d.fbTextOnly?`<p class="src" style="margin:0">Facebook goes out with no picture: ${/https?:\/\/|\[ACTION LINK\]/.test(asPosts(textFor(d,"facebook")).join(" "))?"a link post (Facebook shows the link's preview card)":"a text post"}. Instagram still uses this graphic.</p>`:""}<div class="art" id="gFold">
+        <canvas id="card" width="1080" height="1080" role="img" aria-label="Post image preview"></canvas>
+        <div class="artbar">
+          ${slides>1?`<span class="pager"><button class="btn small" data-act="prev" aria-label="Previous slide">‹</button> ${S.slide+1} / ${slides} <button class="btn small" data-act="next" aria-label="Next slide">›</button></span>`:`<span>${cardSize(d)[2]}</span>`}
+          <span class="editrow" style="margin:0"><button class="btn small" data-act="zoom" title="See it full size (Z)">Zoom</button><button class="btn small" data-act="dl" ${S.downloads?"":"hidden"}>Download ${slides>1?"slide":"image"}</button>${S.downloads&&exportList(d).length>1?`<button class="btn small" data-act="dlall">Download all (${exportList(d).length})</button>`:""}${S.db?`<button class="btn small" data-act="canvaReq" ${d.canvaRequest?"disabled":""}>${d.canva?.url?"Refresh Canva copy":d.canvaRequest?"Canva copy requested":"Send to Canva"}</button>`:""}</span>
+        </div>
+        ${instantTools(d)}${graphicTools(d)}${graphicAIBox(d)}${altBox(d)}
+        ${slides>1&&d.card.slides[S.slide]?.photoFrom?`<div class="src">Photo for this slide: <a href="${esc(d.card.slides[S.slide].photoFrom)}" target="_blank" rel="noopener">from our post</a></div>`:""}
+      </div>${videoBox(d)||""}`;
+  const text=`${ownComposeBox(d)}${ownWriteBox(d)}${revisedBox(d,st)}
+      <div class="ptabs" role="tablist" aria-label="Words for each network">${PLATFORMS.map(x=>`<button class="ptab" role="tab" aria-selected="${S.platform===x.key}" data-jump="${x.key}">${x.label}${tabWarn(d,x.key)||`<span class="pcnt">${esc(pCount(d,x.key))}</span>`}${edited[x.key]!=null||(x.key==="facebook"&&edited.facebookComment!=null)?'<span class="edited">EDITED</span>':""}</button>`).join("")}${["facebook","instagram","x"].some(k=>edited[k]!=null)&&S.db?`<button class="ptab diffbtn" data-act="showDiff" aria-pressed="${!!S.showDiff}">${S.showDiff?"Hide my changes":"Show my changes"}</button>`:""}</div>
+      ${PLATFORMS.map(x=>`<div class="wnet" data-wnet="${x.key}"${S.platform===x.key?"":" hidden"}>${netEditor(d,x)}${netOpts(d,x.key,dests)}</div>`).join("")}
+      ${storyRow(d,dests)}${signRow(d)}
+      ${ownEmpty(d)?"":captionChips()+rewriteAllBox(d)}
+      <p class="src" style="margin:0">Each network has its own words. Click the text to edit it (⌘↵ saves, Esc cancels), or Edit for the whole post and Redraft. The X thread splits on a line with ---.</p>`;
+  const linksP=ownLinkBox(d)+actionBox(d)||`<p class="src" style="margin:0">This post doesn't ask people to sign anything.</p>`;
+  const more=`${checks?factCheck(d):""}<h3 id="facts">Facts and sources</h3>${(d.facts||[]).map(f=>`<div class="fact"><span class="pill ${f.status}">${f.status==="check"?"Check":"Verified"}</span><span>${esc(f.claim)}<small>${f.url?`<a href="${esc(f.url)}" target="_blank" rel="noopener">${esc(f.source)}</a>`:esc(f.source)}</small></span></div>`).join("")||'<p class="src" style="margin:0">No facts listed.</p>'}${st!=="scheduled"?lintBox(d):""}
+      ${launchBox(d)}${extrasBox(d)}<h3>Why this post</h3><p>${esc(d.rationale||"")}</p>${rulesBox(d)}${(d.modelledOn||[]).map(m=>`<div class="model"><a href="${esc(m.url)}" target="_blank" rel="noopener">${esc(m.label)}</a><span class="m">${esc(m.metric)}</span></div>`).join("")}
+      ${links?`<p class="src">${links}</p>`:p.asanaError?`<p class="src">The Asana task couldn’t be made (${esc(p.asanaError.message||"")}). The engine run adds it instead.</p>`:""}`;
+  return `<article class="draft v3 compose fin" data-st="${esc(st)}">
+    ${headHtml(d,st)}
+    <div class="dmain">
+      ${S.trim&&S.trim.id===d.id?trimView(d):""}
+      <section class="cwhere fwhere" id="fwhere" aria-label="Posting to"><div class="posting"><span class="eyebrow">Posting to</span>
+        <div class="dests">${teamDests().map(([k,l])=>{const lock=locked(k);const on=dests.includes(k);return `<label class="dest"${lock?` title="You can't post to this Page yourself. Connect Facebook if you manage it, or leave it for someone who does."`:""}><input type="checkbox" data-dest="${k}" ${on?"checked":""}${lock&&!on?" disabled":""}> ${lock?"🔒 ":""}${l}</label>`}).join("")}</div>${lockNote}</div></section>
+      <div class="stepper wbtabs" role="tablist" aria-label="Work on the post">${tabs.map((x,i)=>`<button role="tab" class="stp ${x.tone}" data-step="${i}" aria-selected="${i===si}"><b>${i+1} ${esc(x.label)}</b></button>`).join("")}</div>
+      ${panel(0,media)}${panel(1,text)}${panel(2,linksP)}${panel(3,more)}
+    </div>
+    <aside class="dprev" aria-label="Preview">
+      <div class="prevh"><b>${esc(pf.label)} preview</b><span class="pdots" role="group" aria-label="Network">${PLATFORMS.map(x=>`<button class="pdot" data-jump="${x.key}" aria-pressed="${S.platform===x.key}" title="${esc(x.label)}">${x.key==="x"?"X":x.label.slice(0,2)}</button>`).join("")}</span></div>
+      ${feedStrip(d,true)}
+      ${st==="scheduled"?publishBox(d):""}
+    </aside>
+    <div class="dfoot" role="group" aria-label="${st==="scheduled"?"Going out":"Finish"}">
+      ${st!=="scheduled"&&S.db&&!S.mode?readyBox(d):""}
+      ${mobileBar(d,st)}<div class="decide">${finishDecide(d,st,checks)}</div>
+    </div>
+  </article>`}
+document.addEventListener("click",ev=>{const b=ev.target.closest('[data-act="whenBtn"],[data-act="whenDone"],[data-act="wbText"]');
+  if(!b){if(S.whenOpen&&!ev.target.closest(".whenw")&&document.contains(ev.target)){S.whenOpen=false;const p=$("#whenPop");if(p)p.hidden=true;$('[data-act="whenBtn"]')?.setAttribute("aria-expanded","false")}return}
+  ev.preventDefault();ev.stopPropagation();const a=b.dataset.act;
+  if(a==="wbText"){markPlatform(b.dataset.p||S.platform);showStep(1);document.querySelector(".wbtabs")?.scrollIntoView({behavior:"smooth",block:"nearest"});return}
+  S.whenOpen=a==="whenBtn"?!S.whenOpen:false;const p=$("#whenPop");if(p)p.hidden=!S.whenOpen;$('[data-act="whenBtn"]')?.setAttribute("aria-expanded",String(S.whenOpen));if(S.whenOpen)refreshLane()},true);
 function renderDetail0(){
   if(S.status==="evergreen"){renderEgDetail();return}
   const d=S.drafts.find(x=>x.id===S.openId);
   const el=$("#detail");
   if(!d||!filtered().includes(d)){el.innerHTML=S.drafts.length?"":emptyState("none","Drafts open here","Pick one from the list.");return}
   const st=d.status||"pending";
-  const stLabel=STATUS.find(s=>s.key===st).label;
+  if(isIdea(d)||st==="rejected"){el.innerHTML=ideaView(d,st);if(!d.fbTextOnly)drawCard(d,null,null);savePrefs();return}
+  if(isFinish(d)){el.innerHTML=finishView(d,st);{const r=$("#ready");if(r)r.outerHTML=readyBox(d)}drawCard(d,null,S.gPreview?.id===d.id?S.gPreview.card:null);drawThumbs(d);savePrefs();markPlatform(S.platform);refreshLane();return}
   const slides=d.card?.template==="carousel"?d.card.slides.length:1;
   if(S.platform==="all")S.platform="facebook";const ALL=false;const pf=PLATFORMS.find(p=>p.key===S.platform)||PLATFORMS[0];
   const posts=asPosts(textFor(d,ALL?"facebook":S.platform));
@@ -1865,12 +2030,7 @@ function renderDetail0(){
   const panel=(i,body)=>`<section class="stpanel" data-steppanel="${i}" aria-label="Step ${i+1}: ${esc(steps[i].label)}"${i===si?"":" hidden"}><div class="sthead"><b>${i+1} · ${esc(steps[i].label)}</b><span class="src">${esc(steps[i].note)}</span></div>${body}<div class="stnav">${i>0?`<button class="btn small" data-step="${i-1}">‹ ${i} ${esc(steps[i-1].label)}</button>`:"<span></span>"}${i<steps.length-1?`<button class="btn small stnext" data-step="${i+1}">Next: ${i+2} ${esc(steps[i+1].label)} ›</button>`:`<span class="src">${live?"Then decide below":""}</span>`}</div></section>`;
   el.innerHTML=`
   <article class="draft v3 compose" data-st="${esc(st)}">
-    <div class="dhead">
-      ${navBar(d)}
-      <div class="chips">${d.action?.title||d.issue?`<span class="chip" title="Campaign, set automatically from the petition or issue">Campaign: ${esc(String(d.action?.title||d.issue).slice(0,40))}</span>`:""}${d.type?`<span class="chip type">${esc(d.type)}</span>`:""}${d.issue?`<span class="chip">${esc(d.issue)}</span>`:""}${d.timing?.label||d.timing?.date?`<span class="chip">${[d.timing?.label?esc(d.timing.label):"",d.timing?.date?esc(new Date(d.timing.date).toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"})):""].filter(Boolean).join(" · ")}</span>`:""}<span class="chip st-${st}">${stLabel}</span></div>
-      <h2>${esc(d.title)}</h2>
-      ${d.source?.url||d.source?.label?`<div class="src">Source: ${d.source?.url?`<a href="${esc(d.source.url)}" target="_blank" rel="noopener">${esc(d.source.label||d.source.url)}</a>`:esc(d.source.label)}</div>`:""}
-    </div>
+    ${headHtml(d,st)}
     <div class="dmain">
       ${st==="posted"||d.results?resultsBox(d):""}
       ${["pending","changes","hold","scheduled"].includes(st)?`<section class="cwhere" aria-label="Where and when">${postingPanel(d,st)}</section>`:""}
@@ -1910,18 +2070,19 @@ function pCount(d,k){const posts=asPosts(textFor(d,k)).map(t=>withLink(t||"",d,k
   const n=[...posts.join("\n")].length;if(k==="instagram"){const tags=(posts.join(" ").match(/#\w+/g)||[]).length;return `${n.toLocaleString("en-GB")} / 2,200 · ${tags} #`}
   return `${n.toLocaleString("en-GB")}`}
 function stripTo(p,smooth){const fs=$("#fstrip"),col=fs&&fs.querySelector(`[data-fcol="${p}"]`);if(!fs||!col)return;fs.scrollTo({left:col.offsetLeft-fs.offsetLeft,behavior:smooth?"smooth":"auto"})}
-function markPlatform(p){S.platform=p;{const h=document.querySelector(".dprev .prevh b"),pf=PLATFORMS.find(x=>x.key===p);if(h&&pf)h.textContent=pf.label+" preview"}document.querySelectorAll(".ptabs [data-jump]").forEach(b=>b.setAttribute("aria-selected",b.dataset.jump===p));document.querySelectorAll("#fstrip .fcol").forEach(c=>c.classList.toggle("on",c.dataset.fcol===p))}
+function markPlatform(p){S.platform=p;{const h=document.querySelector(".dprev .prevh b"),pf=PLATFORMS.find(x=>x.key===p);if(h&&pf)h.textContent=pf.label+" preview"}document.querySelectorAll(".ptabs [data-jump]").forEach(b=>b.setAttribute("aria-selected",b.dataset.jump===p));document.querySelectorAll("#fstrip .fcol").forEach(c=>c.classList.toggle("on",c.dataset.fcol===p));document.querySelectorAll("[data-wnet]").forEach(c=>c.hidden=c.dataset.wnet!==p);document.querySelectorAll(".pdot[data-jump]").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.jump===p)))}
 document.addEventListener("click",ev=>{const j=ev.target.closest("[data-jump]");if(j){markPlatform(j.dataset.jump);stripTo(j.dataset.jump,true);return}
   const c=ev.target.closest("[data-ckjump]");if(c){const k=c.dataset.ckjump;const el=k==="lint"?document.querySelector(".lint"):document.getElementById(k);const sp=el&&el.closest("[data-steppanel]");if(sp)showStep(+sp.dataset.steppanel);if(el){if(el.tagName==="DETAILS")el.open=true;if(k==="altFold"){const g=$("#gFold");if(g){g.open=true;S.gOpen=true}}el.scrollIntoView({behavior:"smooth",block:"center"})}return}
   const fc=ev.target.closest("#fstrip [data-fcol]");if(fc&&fc.dataset.fcol!==S.platform)markPlatform(fc.dataset.fcol)});
 document.addEventListener("toggle",ev=>{if(ev.target.id==="gFold")S.gOpen=ev.target.open;if(ev.target.id==="laneFold"){S.laneOpen=ev.target.open;if(S.laneOpen)refreshLane()}},true);
 document.addEventListener("scroll",ev=>{const fs=ev.target;if(!fs||fs.id!=="fstrip")return;clearTimeout(fs._t);fs._t=setTimeout(()=>{const cols=[...fs.querySelectorAll(".fcol")];let best=null,bd=1e9;for(const c of cols){const dd=Math.abs(c.offsetLeft-fs.offsetLeft-fs.scrollLeft);if(dd<bd){bd=dd;best=c}}if(best&&best.dataset.fcol!==S.platform)markPlatform(best.dataset.fcol)},120)},true);
 /* Posts v2 (2 Nov): every network's post as it will look, image included, side by side in one sideways scroll. */
-function feedStrip(d){const edited=d.edited||{};
-  return `<div class="fstrip" id="fstrip">${PLATFORMS.map(pf=>{const posts=asPosts(textFor(d,pf.key));const editing=S.editing===pf.key;
+function feedStrip(d,ro){S.ro=!!ro;try{return feedStrip0(d,!!ro)}finally{S.ro=false}}
+function feedStrip0(d,ro){const edited=d.edited||{};
+  return `<div class="fstrip" id="fstrip">${PLATFORMS.map(pf=>{const posts=asPosts(textFor(d,pf.key));const editing=!ro&&S.editing===pf.key;
     const body=editing?editBox(d):posts.map((t,i)=>postBox(t,i,posts.length,pf,d)+(i===0?(pf.key==="facebook"&&d.fbTextOnly?`<div class="src pimgnote">No picture: ${/https?:\/\/|\[ACTION LINK\]/.test(t)?"a link post (Facebook shows the link's preview card)":"a text post"}</div>`:`<canvas class="pimg" data-plat="${pf.key}" width="10" height="10" role="img" aria-label="${esc(pf.label)} image"></canvas>`):"")).join("")+(pf.key==="facebook"?commentBox(d,true):"");
     const rev=edited[pf.key]!=null||(pf.key==="facebook"&&edited.facebookComment!=null);
-    return `<section class="fcol${S.platform===pf.key?" on":""}" data-fcol="${pf.key}" aria-label="${esc(pf.label)}">${body}${editing?"":`<div class="editrow"><button class="btn small" data-act="copy">Copy</button>${pf.key==="facebook"&&textFor(d,"facebookComment")?`<button class="btn small" data-act="copyComment">Copy comment</button>`:""}<button class="btn small" data-act="edit" ${S.db?"":"disabled"}>Edit${posts.length>1?" all":""}</button>${rev?`<button class="btn small" data-act="revert" ${S.db?"":"disabled"}>Revert</button>`:""}</div>`}</section>`}).join("")}</div>`}
+    return `<section class="fcol${S.platform===pf.key?" on":""}" data-fcol="${pf.key}" aria-label="${esc(pf.label)}">${body}${ro?(S.db?`<div class="editrow"><button class="btn small" data-act="wbText" data-p="${pf.key}">✎ Edit</button></div>`:""):editing?"":`<div class="editrow"><button class="btn small" data-act="copy">Copy</button>${pf.key==="facebook"&&textFor(d,"facebookComment")?`<button class="btn small" data-act="copyComment">Copy comment</button>`:""}<button class="btn small" data-act="edit" ${S.db?"":"disabled"}>Edit${posts.length>1?" all":""}</button>${rev?`<button class="btn small" data-act="revert" ${S.db?"":"disabled"}>Revert</button>`:""}</div>`}</section>`}).join("")}</div>`}
 function checksRow(d){const st=d.status||"pending";const out=[];const chip=(ok,label,jump)=>out.push(`<button class="ck ${ok?"ok":"warn"}"${jump?` data-ckjump="${jump}"`:""}>${ok?"✓":"!"} ${esc(label)}</button>`);
   const warns=PLATFORMS.filter(p=>tabWarn(d,p.key));chip(!warns.length,warns.length?`${warns.map(p=>p.label).join(", ")}: length or hashtags`:"Lengths",warns.length?"fstrip":"");
   const cf=checkFacts(d).length;if(cf&&["pending","changes"].includes(st))chip(S.factsOk||S.factTicks.size>=cf,`Facts ${Math.min(S.factTicks.size,cf)} of ${cf}`,"facts");
@@ -1933,13 +2094,13 @@ function postBox(t,i,n,pf,d){
   const len=pf.key==="x"?xLen(t):[...t].length;
   const over=pf.limit&&len>pf.limit;
   const who=`<div class="who"><span class="av">CG</span><span><b>Citizen GO UK</b><span>${pf.key==="x"?"@CitizenGO_UK · draft":pf.key==="instagram"?"citizengo_uk · draft":"Draft · Public"}</span></span></div>`;
-  if(S.inline&&S.inline.p===pf.key&&S.inline.i===i)return `<div class="post ieon">${who}${(()=>{const v=S.inlineVal??raw;const rows=v.split("\n").reduce((a,l)=>a+Math.max(1,Math.ceil(l.length/62)),0)+1;return `<textarea class="ietext" id="ieText" rows="${rows}" aria-label="Edit ${esc(pf.label)} text">${esc(v)}</textarea>`})()}
+  if(!S.ro&&S.inline&&S.inline.p===pf.key&&S.inline.i===i)return `<div class="post ieon">${who}${(()=>{const v=S.inlineVal??raw;const rows=v.split("\n").reduce((a,l)=>a+Math.max(1,Math.ceil(l.length/62)),0)+1;return `<textarea class="ietext" id="ieText" rows="${rows}" aria-label="Edit ${esc(pf.label)} text">${esc(v)}</textarea>`})()}
   <div class="iefoot"><span class="cnt" id="ieCount">${ieCountText(pf.key,S.inlineVal??raw,d)}</span><span class="row"><button class="btn small" data-act="ieCancel">Cancel <kbd>Esc</kbd></button><button class="btn small primary" data-act="ieSave">Save <kbd>⌘↵</kbd></button></span></div></div>`;
   const orig=asPosts(d.platforms?.[pf.key])[i];const showDiff=S.showDiff&&d.edited?.[pf.key]!=null&&orig!=null;
   const origSet=showDiff?new Set(String(orig).split("\n").map(x=>x.trim()).filter(Boolean)):null;
   const lineHtml=l=>esc(l).replace(/\[ACTION LINK\]/g,"<mark>[ACTION LINK] no petition yet</mark>").replace(/(https?:\/\/[^\s<]+)/g,u=>`<a href="${u}" target="_blank" rel="noopener">${u.split("?")[0].replace(/^https?:\/\//,"")}</a>`);
   const html=String(t).split("\n").map(l=>showDiff&&l.trim()&&!origSet.has(String(withLink(l,d,pf.key)).trim())&&!origSet.has(l.trim())?`<mark class="new">${lineHtml(l)}</mark>`:lineHtml(l)).join("\n");
-  const canEdit=!!S.db;
+  const canEdit=!!S.db&&!S.ro;
   return `<div class="post">${who}
   <div class="ptext${canEdit?" ie":""}"${canEdit?` data-ie="${pf.key}" data-ii="${i}" tabindex="0" title="Click to edit"`:""}>${html}</div>
   <div class="pfoot"><span>${n>1?`Post ${i+1} of ${n}`:""}${canEdit?`<span class="iehint">Click the text to edit</span>`:""}</span><span class="${over?"over":""}">${len}${pf.limit?` / ${pf.limit}`:""} characters${over?" · too long":""}</span></div></div>`;
@@ -2145,11 +2306,11 @@ document.addEventListener("change",async ev=>{const t=ev.target;const d=S.drafts
 function drawThumbs(d){document.querySelectorAll("canvas[data-plat]").forEach(cv=>{try{drawCard(d,cv,S.gPreview?.id===d.id&&cv.classList.contains("pimg")?S.gPreview.card:cardFor(d,cv.dataset.plat))}catch(e){}});document.querySelectorAll("canvas[data-opt]").forEach(cv=>{const o=(d.cardOptions||[]).find(x=>x.id===cv.dataset.opt);if(o)drawCard(d,cv,o.card)});document.querySelectorAll("canvas[data-story]").forEach(cv=>{const s=(d.story||[])[+cv.dataset.story];if(s)drawCard(d,cv,s)});document.querySelectorAll("canvas[data-prev]").forEach(cv=>{const h=(d.history||[]).slice(-1)[0];const c=cv.dataset.prev==="1"?h?.card:curCard(d);if(c)try{drawCard(d,cv,c)}catch(e){}})}
 function commentBox(d,force){
   if(!force&&S.platform!=="facebook")return"";
-  const c=textFor(d,"facebookComment");const own=!!(d.own&&S.db);if(!c&&!own)return"";
+  const c=textFor(d,"facebookComment");const own=!!(d.own&&S.db&&!S.ro);if(!c&&!own)return"";
   const t=withLink(c||"",d,"facebook");
   if(own&&S.inline&&S.inline.p==="facebookComment"){const v=S.inlineVal??(c||"");return `<div class="post comment ieon"><div class="who"><span class="av small">CG</span><span><b>Citizen GO UK</b><span>First comment · posted straight after the post</span></span></div><textarea class="ietext" id="ieText" rows="3" aria-label="Edit the first comment">${esc(v)}</textarea><div class="iefoot"><span class="cnt" id="ieCount">${ieCountText("facebookComment",v,d)}</span><span class="row"><button class="btn small" data-act="ieCancel">Cancel <kbd>Esc</kbd></button><button class="btn small primary" data-act="ieSave">Save <kbd>⌘↵</kbd></button></span></div></div>`}
   const html=esc(t).replace(/\[ACTION LINK\]/g,"<mark>[ACTION LINK] no petition yet</mark>").replace(/(https?:\/\/[^\s<]+)/g,u=>`<a href="${u}" target="_blank" rel="noopener">${u.split("?")[0].replace(/^https?:\/\//,"")}</a>`);
-  return `<div class="post comment"><div class="who"><span class="av small">CG</span><span><b>Citizen GO UK</b><span>First comment · post it straight after publishing</span></span></div><div class="ptext${own?" ie":""}"${own?' data-ie="facebookComment" data-ii="0" tabindex="0" title="Click to edit"':""}>${html}</div>${S.sample&&S.db&&c?`<div class="editrow" style="margin-top:6px"><button class="btn small" data-act="rewriteComment">${sideSvg("sparkle",14)}Rewrite</button></div>`:""}</div>`;
+  return `<div class="post comment"><div class="who"><span class="av small">CG</span><span><b>Citizen GO UK</b><span>First comment · post it straight after publishing</span></span></div><div class="ptext${own?" ie":""}"${own?' data-ie="facebookComment" data-ii="0" tabindex="0" title="Click to edit"':""}>${html}</div>${S.sample&&S.db&&c&&!S.ro?`<div class="editrow" style="margin-top:6px"><button class="btn small" data-act="rewriteComment">${sideSvg("sparkle",14)}Rewrite</button></div>`:""}</div>`;
 }
 function editBox(d){
   const v=textFor(d,S.platform);
@@ -2194,7 +2355,7 @@ function decideBar(d,st,checks){
   if(st!=="pending"){
     const r=d.review||{};
     const why=[...(r.reasons||[]),r.note].filter(Boolean).join(" · ");
-    return `<div class="row"><span class="state"><b>${esc(STATUS.find(s=>s.key===st).label)}</b> by ${esc(nameOf(r.by))}${r.at?" · "+esc(fmtWhen(r.at)):""}${why?` · ${esc(why)}`:""}</span>${st==="hold"?`<button class="btn small primary" data-act="approve" title="Schedules it for the time in Where and when">Schedule</button>`:""}${st==="hold"||(st==="scheduled"&&!Object.keys(d.published||{}).length)?`<button class="btn small" data-act="apNow" title="Facebook and Instagram go out within 5 minutes">Post now</button>${st==="scheduled"?`<button data-act="approve" hidden tabindex="-1" aria-hidden="true"></button>`:""}`:""}${st==="hold"||st==="scheduled"?(()=>{const pub=d.published||{};const auto=((d.posting||{}).destinations||[]).filter(k=>["facebook","instagram"].includes(platOfKey(k)));const waitingOnHand=st==="scheduled"&&auto.every(k=>pub[k]);return `<button class="btn small${waitingOnHand?" primary":""}" data-act="posting" title="${auto.length&&!waitingOnHand?"The publisher marks it posted once Facebook and Instagram are out. Use this only if you posted it yourself.":"One click: the morning run finds the links itself"}">${waitingOnHand?"Mark X as posted":"Mark as posted"}</button>`})():""}${st==="posted"?"":`<button class="btn small" data-act="undo">Move back to review</button>`}</div>`;
+    return `<div class="row"><span class="state"><b>${esc(({hold:"Idea approved",scheduled:"Scheduled",posted:"Posted",rejected:"Rejected",changes:"Sent back"})[st]||st)}</b> by ${esc(nameOf(r.by))}${r.at?" · "+esc(fmtWhen(r.at)):""}${why?` · ${esc(why)}`:""}</span>${st==="hold"?`<button class="btn small primary" data-act="approve" title="Schedules it for the time in Where and when">Schedule</button>`:""}${st==="hold"||(st==="scheduled"&&!Object.keys(d.published||{}).length)?`<button class="btn small" data-act="apNow" title="Facebook and Instagram go out within 5 minutes">Post now</button>${st==="scheduled"?`<button data-act="approve" hidden tabindex="-1" aria-hidden="true"></button>`:""}`:""}${st==="hold"||st==="scheduled"?(()=>{const pub=d.published||{};const auto=((d.posting||{}).destinations||[]).filter(k=>["facebook","instagram"].includes(platOfKey(k)));const waitingOnHand=st==="scheduled"&&auto.every(k=>pub[k]);return `<button class="btn small${waitingOnHand?" primary":""}" data-act="posting" title="${auto.length&&!waitingOnHand?"The publisher marks it posted once Facebook and Instagram are out. Use this only if you posted it yourself.":"One click: the morning run finds the links itself"}">${waitingOnHand?"Mark X as posted":"Mark as posted"}</button>`})():""}${st==="posted"?"":`<button class="btn small" data-act="undo">Back to To review</button>`}</div>`;
   }
   if(S.mode==="reject"||S.mode==="changes"){
     const isRej=S.mode==="reject";
@@ -2331,6 +2492,7 @@ function layout(ctx,text,maxW){const ws=words(text),lines=[];let line=[],wdt=0;c
   ws.forEach(t=>{const m=ctx.measureText(t.w).width;if(line.length&&(t.br||wdt+sp+m>maxW)){lines.push(line);line=[];wdt=0}wdt+=(line.length?sp:0)+m;line.push(t)});if(line.length)lines.push(line);return lines}
 function fitBlock(ctx,text,{x,y,w,h,family="Roboto",upper=false,weight=700,max,min,lh=1.12,color,hi,hiStyle="color",align="left",valign="top"}){
   let size=max,lines;for(;size>=min;size-=2){ctx.font=`${weight} ${size}px ${family}`;lines=layout(ctx,upper?String(text??"").toUpperCase():text,w);if(lines.length*size*lh<=h)break}
+  if(!lines){size=Math.min(max,min)||min||max||40;ctx.font=`${weight} ${size}px ${family}`;lines=layout(ctx,upper?String(text??"").toUpperCase():String(text??""),w)}/* a layer whose max is under its min never ran the loop */
   ctx.font=`${weight} ${size}px ${family}`;ctx.textBaseline="alphabetic";
   const total=lines.length*size*lh;let yy=y+(valign==="bottom"?h-total:valign==="middle"?(h-total)/2:0)+size*0.9;const sp=ctx.measureText(" ").width;
   lines.forEach(line=>{const lw=line.reduce((a,t,i)=>a+ctx.measureText(t.w).width+(i?sp:0),0);let xx=align==="center"?x+(w-lw)/2:x;
@@ -3114,9 +3276,9 @@ function readPosting(){const dests=[...document.querySelectorAll("input[data-des
 /* Where and when: one time for every account, or each its own with its own ★ best slot. */
 const leadOf=k=>/-fb$/.test(k)?"fb":/-ig$/.test(k)?"ig":"x";
 const localVal=t=>{const z=n=>String(n).padStart(2,"0");return `${t.getFullYear()}-${z(t.getMonth()+1)}-${z(t.getDate())}T${z(t.getHours())}:${z(t.getMinutes())}`};
-function perAcctRow(d,dests,at){const p=d.posting||{};const per=S.perAcct!=null?S.perAcct:!!(p.times&&Object.keys(p.times).length);
+function perAcctRow(d,dests,at,noSlots){const p=d.posting||{};const per=S.perAcct!=null?S.perAcct:!!(p.times&&Object.keys(p.times).length);
   const toggle=`<label class="dest"><input type="checkbox" id="sameTime"${per?"":" checked"}> Same time everywhere</label>`;
-  if(!per)return `<div class="row">${toggle}</div><div class="row"><span class="src">Post at</span>${ukPicker(at,dests)}</div>${slotChips(dests)}`;
+  if(!per)return `<div class="row">${toggle}</div><div class="row"><span class="src">Post at</span>${ukPicker(at,dests)}</div>${noSlots?"":slotChips(dests)}`;
   const names=Object.fromEntries(teamDests());
   return `<div class="row">${toggle}</div>${dests.map(k=>{const best=bestFor(leadOf(k));const pt=pickFor()?.times;const cur=pt&&pt[k]?new Date(pt[k]):(p.times&&p.times[k])?new Date(p.times[k]):(best||(at?new Date(at):new Date()));
     return `<div class="row"><span class="src" style="min-width:130px">${esc(names[k]||k)}</span><input type="datetime-local" data-time="${k}" aria-label="${esc(names[k]||k)} time" value="${localVal(cur)}" style="font:inherit;font-size:13px;padding:4px 6px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--fg)">${best?`<button class="btn small" data-best="${k}" data-at="${best.toISOString()}">★ ${esc(best.toLocaleString("en-GB",{weekday:"short",hour:"2-digit",minute:"2-digit"}))}</button>`:""}</div>`}).join("")}`}
@@ -3229,7 +3391,7 @@ async function setStatus(d,status,extra={},msgOver=null){
     await S.db.doc("drafts/"+d.id).update({status,review});
     await logFeedback({draftId:d.id,action:status==="pending"?"reopen":status,...extra,type:d.type,issue:d.issue});
     const prev=d.status||"pending",prevReview=d.review||{};
-    const msg=msgOver?msgOver:status==="scheduled"?"Approved and scheduled":status==="hold"?"Approved and on hold":status==="rejected"?"Rejected":status==="changes"?"Sent back for changes":"Moved back to review";
+    const msg=msgOver?msgOver:status==="scheduled"?"Approved and scheduled":status==="hold"?"Moved to Editing":status==="rejected"?"Moved to the Bin":status==="changes"?"Sent back for changes":"Moved back to To review";
     toast(msg,status!=="pending"?async()=>{try{await S.db.doc("drafts/"+d.id).update({status:prev,review:prevReview});await logFeedback({draftId:d.id,action:"undo",undid:status,type:d.type,issue:d.issue});S.status=prev;S.openId=d.id;renderAll();toast("Undone")}catch(e){failToast(e,"Couldn't undo. Move it back by hand")}}:null);
     resetDraftUi();
   }catch(e){failToast(e,"Couldn't save")}
@@ -3410,6 +3572,7 @@ Return only the new post text, nothing else.`;
     if(act==="confirmChanges"&&!note&&!reasons.length){$("#decNote").focus();toast("Say what needs to change");return}
     await setStatus(d,act==="confirmReject"?"rejected":"changes",{reasons,note});return}
   if(act==="undo"){await setStatus(d,"pending");return}
+  if(act==="approveIdea"){await setStatus(d,"hold",{},"Idea approved: finish it in Editing");return}
 });
 let fQT=0;
 document.addEventListener("input",ev=>{
@@ -3773,7 +3936,7 @@ document.addEventListener("click",async ev=>{const tb=ev.target.closest("[data-t
   if(ev.target.closest("[data-mk-draft]")){const b=ev.target.closest("[data-mk-draft]");const hl=String(TL.mk.headline||"").replace(/\*/g,"").trim();const day=$("#mkDay")?.value;
     if(!hl){toast("Type the headline first");return}if(!day){toast("Pick the day");return}TL.mk.day=day;b.disabled=true;
     const lbl=(SWITCH_T.find(x=>x[0]===TL.mk.T)||[])[1]||TL.mk.T;const angle=["Made in Tools › Make: design "+lbl,TL.mk.kicker&&"small line: "+TL.mk.kicker,TL.mk.sub&&"line underneath: "+TL.mk.sub].filter(Boolean).join(" · ");
-    try{const r=await eng("engine_request",{action:"create",team:S.team,for_date:day,title:hl.slice(0,120),angle,source:"idea"});toast(r&&r.ok?"Asked for: the draft lands in Review for "+new Date(day).toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"}):(r&&r.error)||"Couldn't ask for the draft")}catch(e){failToast(e,"Couldn't ask for the draft")}b.disabled=false;return}
+    try{const r=await eng("engine_request",{action:"create",team:S.team,for_date:day,title:hl.slice(0,120),angle,source:"idea"});toast(r&&r.ok?"Asked for: the draft lands in To review for "+new Date(day).toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"}):(r&&r.error)||"Couldn't ask for the draft")}catch(e){failToast(e,"Couldn't ask for the draft")}b.disabled=false;return}
   if(ev.target.closest("[data-cl-go]")){const url=$("#clUrl").value.trim(),from=$("#clFrom").value.trim(),to=$("#clTo").value.trim();const versions=[...document.querySelectorAll("[data-cl-v]")].filter(x=>x.checked).map(x=>x.dataset.clV);
     if(!/^https:\/\//.test(url)){toast("Paste the video's https link");return}if(!/^\d{1,2}(:\d{2}){1,2}$/.test(from)||!/^\d{1,2}(:\d{2}){1,2}$/.test(to)){toast("Give From and To as minutes:seconds, e.g. 14:32");return}if(!versions.length){toast("Pick at least one version");return}
     if(!$("#clRights").checked){toast("Tick that we can use this footage first");return}if(!S.db){toast("Can't save requests here");return}
@@ -4061,7 +4224,7 @@ async function calBulk(act){const sel=CAL.sel||new Set();const ds=[...sel].map(i
     const prev=[];let ok=0,bad=0;
     for(const d of pick){const review=act==="pending"?{}:{by:S.me,at:new Date().toISOString()};const was=[d,d.status||"pending",JSON.parse(JSON.stringify(d.review||{}))];try{await S.db.doc("drafts/"+d.id).update({status:act,review});await logFeedback({draftId:d.id,action:act==="pending"?"reopen":"hold",type:d.type,issue:d.issue});ok++;prev.push(was)}catch(e){bad++}}
     sel.clear();renderCal();
-    toast(`${ok} ${act==="hold"?"paused (On hold)":"moved back to Review"}${bad?` · ${bad} couldn't be changed, try again`:""}`,ok?async()=>{for(const [d,st,rv] of prev){try{await S.db.doc("drafts/"+d.id).update({status:st,review:rv})}catch(e){}}toast("Undone")}:null)}}
+    toast(`${ok} ${act==="hold"?"moved to Editing (paused)":"moved back to To review"}${bad?` · ${bad} couldn't be changed, try again`:""}`,ok?async()=>{for(const [d,st,rv] of prev){try{await S.db.doc("drafts/"+d.id).update({status:st,review:rv})}catch(e){}}toast("Undone")}:null)}}
 function renderCal(){
   const el=$("#calView");if(!el||el.hidden)return;
   if(CAL.view==="list"&&!CAL.listFrom)CAL.listFrom=true;
@@ -4181,7 +4344,7 @@ function renderPlan(){
   const eg=(EG.posts||[]).filter(p=>["due","coming"].includes(p.state));
   const body2=PLAN.tray==="eg"?(eg.length?eg.map(p=>`<div class="item" draggable="true" data-drag-eg="${p.id}"><b>${esc(p.title)}</b><small>${p.state==="due"?"Due now":"Coming up"}${p.why?" · "+esc(p.why):""}</small><span class="row" style="display:flex;gap:6px;align-items:center"><input type="date" id="egDate${p.id}" min="${today}" value="${dayKey(new Date(Date.now()+864e5))}" aria-label="Date for ${esc(p.title)}"><button class="btn small primary" data-eg-ask="${p.id}"${PLAN.busy?" disabled":""}>Draft it</button></span></div>`).join(""):`<p>Nothing due in the bank.</p>`)
     :PLAN.tray==="year"?yearList():body.replace(/<div class="item"><b>/g,'<div class="item" draggable="true"><b>');
-  const side=`<aside class="qside tray"><h3>Ideas</h3><span class="tabs">${tab("key","Key dates",ideas.length)}${tab("eg","Evergreen",eg.length)}${tab("hold","On hold",held.length)}${tab("own","Own idea")}${tab("year","Year")}</span><p class="src" style="margin:0">Drag an idea onto a day: the engine drafts it into Review for that date.</p>${body2}</aside>`;
+  const side=`<aside class="qside tray"><h3>Ideas</h3><span class="tabs">${tab("key","Key dates",ideas.length)}${tab("eg","Evergreen",eg.length)}${tab("hold","Editing",held.length)}${tab("own","Own idea")}${tab("year","Year")}</span><p class="src" style="margin:0">Drag an idea onto a day: the engine drafts it into Review for that date.</p>${body2}</aside>`;
   el.innerHTML=`<div>${bar.replace('<span class="legend">',`<label class="lg"><input type="checkbox" data-plan-images${PLAN.images?" checked":""}> Images only</label><span class="legend">`)}${monthHtml(days,month,byDay,k=>reqOn(k).map(rqHtml).join(""))}</div>${side}`;
   if(PLAN.images)drawMonthThumbs();
 }
@@ -5858,7 +6021,7 @@ document.addEventListener("click",async ev=>{
     EG.busy=true;renderEvergreen();
     try{const input={action:"create",team:S.team,for_date:d,title:`Fresh version: ${p.title}`,source:"evergreen",evergreen_id:id};const ang=[p.why,p.result?`Then: ${p.result}`:"",p.url||""].filter(Boolean).join(" · ");if(ang)input.angle=ang;
       const r=await eng("engine_request",input);
-      if(r&&r.ok){p.requested={id:r.request.id,for_date:r.request.for_date};EG.drafting=null;toast(`Requested: a fresh draft lands in Review for ${new Date(d+"T12:00:00").toLocaleDateString("en-GB",{day:"numeric",month:"short"})}`)}else toast((r&&r.error)||"Couldn't ask for a fresh draft")}
+      if(r&&r.ok){p.requested={id:r.request.id,for_date:r.request.for_date};EG.drafting=null;toast(`Requested: a fresh draft lands in To review for ${new Date(d+"T12:00:00").toLocaleDateString("en-GB",{day:"numeric",month:"short"})}`)}else toast((r&&r.error)||"Couldn't ask for a fresh draft")}
     catch(e){failToast(e,"Couldn't ask for a fresh draft")}
     EG.busy=false;renderEvergreen();return}
   if(["snooze","retire","restore","went_out"].includes(a)){b.disabled=true;
@@ -6886,7 +7049,7 @@ function tlClaude(){return `<p class="src lede" style="margin:0;max-width:75ch">
 
 // ---------- 40D page help, 40E help search ----------
 const PAGE_HELP={
-  posts:["Review board","Drafts the engine wrote overnight and posts people started wait here.",["Approve (A) schedules a draft, Changes (C) sends it back with a note, Reject (R) drops it.","Filter by issue, type, who made it or label; search finds words in any draft.","N starts a new post in Compose."]],
+  posts:["Review board","Drafts the engine wrote overnight and posts people started wait here.",["To review is for ideas: Approve idea (A) moves it to Editing, Reject (R) sends it to the Bin.","In Editing, finish the post (Media, Text, Links), check the time on the When button, then Schedule or Post now.","Filter by issue, type, who made it or label; search finds words in any draft.","N starts a new post in Compose."]],
   evergreen:["Evergreen","Past winners that are due a fresh version.",["Each card shows how the original did and when it last ran.","Ask for a new version and it lands in Review like any draft."]],
   plan:["Plan","The month at a glance: posts, key dates and notes, in the team's own time zone.",["Drag a post to move it. Click a day to add a note.","Week, List and Instagram grid are in the sidebar under Plan."]],
   calendar:["Calendar","What goes out when, in the team's own time zone.",["Drag a post to another time to move it.","List view has tick boxes to move, pause or send back several posts."]],
