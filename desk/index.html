@@ -827,7 +827,8 @@ mark.new{background:var(--ok-soft);color:var(--fg);border-radius:6px}
 .rhead{display:flex;justify-content:space-between;align-items:baseline}
 .rbar{height:5px;border-radius:999px;background:var(--line);overflow:hidden}.rbar i{display:block;height:100%;background:var(--ok);transition:width .2s}
 .ritem{display:flex;justify-content:space-between;gap:10px;font-size:12.5px}
-.ritem span:first-child{font-weight:600}.ritem .y{color:var(--ok);text-align:right}.ritem .n{color:var(--warn);text-align:right}.ritem .o{color:var(--muted);text-align:right}
+.ritem span:first-child{font-weight:600}
+.ready.go{flex:1 1 320px;min-width:0;padding:0;background:none;gap:3px}.goi{font-size:12.5px;display:flex;gap:6px;align-items:flex-start}.goi.y{color:var(--ok)}.goi.n{color:var(--warn)}.goi.fact{cursor:pointer}.goi.fact.y{color:var(--fg)}.goi.fact input{margin-top:3px}.goi.fact span{min-width:0}.goi .linkish,.gonice .linkish{background:none;border:0;padding:0;font:inherit;color:inherit;text-decoration:underline;cursor:pointer}.gonice{font-size:12px;color:var(--muted)}.dfoot>.ready.go{flex:1 1 360px;max-height:30vh;overflow:auto;padding-right:4px}.dfoot:has(.ready.go)>.decide{flex:0 1 440px}.goi.fact span{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}@media (max-width:900px){.dfoot>.ready.go{max-height:none;flex-basis:100%}.dfoot:has(.ready.go)>.decide{flex-basis:100%}}.gohead{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}.gohead .src{font-size:12px}.ritem .y{color:var(--ok);text-align:right}.ritem .n{color:var(--warn);text-align:right}.ritem .o{color:var(--muted);text-align:right}
 .aprow{display:flex;gap:8px;align-items:stretch}.aprow .apsplit{flex:1;min-width:0}.aprow .apnow{padding:8px 12px;border-radius:10px;font-weight:600;white-space:nowrap}
 .apsplit{display:flex;border-radius:10px;overflow:hidden}
 .apsplit .btn{border-radius:0;padding:8px 12px}
@@ -1578,7 +1579,7 @@ function renderQueue(){
   const grouped=!["posted","rejected"].includes(S.status);let lastG=null;
   const qday=d=>{const g=groupOf(d);if(["Needs a new time","No date yet"].includes(g))return g;const t=whenOf(d);const dl=t.toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"});return g==="Today"||g==="Tomorrow"?`${g} · ${dl}`:dl};
   const qtime=d=>{const t=whenOf(d);return t&&groupOf(d)!=="Needs a new time"?t.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"}):"—"};
-  $("#queue").innerHTML=newBar()+trashBar()+freeSlot()+list.map(d=>{const g=grouped?qday(d):null;const head=g&&g!==lastG?`<div class="qgroup">${esc(g)}<span>${list.filter(x=>qday(x)===g).length}</span></div>`:"";lastG=g;return head+`<div class="qslot">${grouped?`<span class="qtime">${esc(qtime(d))}</span>`:""}
+  $("#queue").innerHTML=newBar()+oldBar()+trashBar()+freeSlot()+list.map(d=>{const g=grouped?qday(d):null;const head=g&&g!==lastG?`<div class="qgroup">${esc(g)}<span>${list.filter(x=>qday(x)===g).length}</span></div>`:"";lastG=g;return head+`<div class="qslot">${grouped?`<span class="qtime">${esc(qtime(d))}</span>`:""}
     <button class="qitem" data-id="${esc(d.id)}" data-status="${esc(d.status||"pending")}" data-tone="${qTone(d)}" aria-current="${d.id===S.openId}">
       <span class="stripe"></span>
       <canvas class="qthumb" data-q="${esc(d.id)}" width="10" height="10" aria-hidden="true"></canvas>
@@ -1588,6 +1589,20 @@ function renderQueue(){
     </button></div>`}).join("");
   document.querySelectorAll("canvas.qthumb").forEach(cv=>{const d=S.drafts.find(x=>x.id===cv.dataset.q);if(!d||!d.card)return;const c=d.card.template==="carousel"&&HOUSE_T.has(d.card.slides?.[0]?.template)?d.card.slides[0]:d.card;try{const k=S.slide;S.slide=0;drawCard(d,cv,c);S.slide=k}catch(e){}});
 }
+/* B2 (8 Nov): old engine drafts pile up in Review. One button moves every engine draft made over 3 days ago
+   whose suggested time has passed (or that never had one) to Rejected with the reason "Not used", with Undo.
+   Teammates' own posts and launch packs are left alone. */
+function oldDrafts(){const now=Date.now(),cut=now-3*864e5;return S.drafts.filter(d=>(d.status||"pending")==="pending"&&!d.own&&!d.launch&&Date.parse(d.createdAt||d.batch||"")<cut&&!(Date.parse((d.posting||{}).at||(d.posting||{}).suggestedAt||"")>now))}
+function oldBar(){if(S.status!=="pending"||!S.db)return"";const n=oldDrafts().length;if(!n)return"";
+  if(S.oldAsk)return `<div class="trashbar"><span>Move ${n} old draft${n===1?"":"s"} to Rejected as "Not used"? They were made over 3 days ago and their time has passed. The morning run still learns from them.</span><span class="row"><button class="btn small" data-act="oldNo">Cancel</button><button class="btn small bad" data-act="oldYes">Move ${n}</button></span></div>`;
+  return `<div class="trashbar"><button class="btn small" data-act="oldAsk">Clear ${n} old draft${n===1?"":"s"}</button><span class="src">Made over 3 days ago, time passed</span></div>`}
+document.addEventListener("click",async ev=>{const b=ev.target.closest('[data-act="oldAsk"],[data-act="oldNo"],[data-act="oldYes"]');if(!b)return;const a=b.dataset.act;
+  if(a!=="oldYes"){S.oldAsk=a==="oldAsk";renderQueue();return}
+  S.oldAsk=false;b.disabled=true;const pick=oldDrafts();const prev=[];let ok=0,bad=0;
+  for(const d of pick){const review={by:S.me,at:new Date().toISOString(),reasons:["Not used"],note:"Cleared as old from Review"};const was=[d,d.status||"pending",JSON.parse(JSON.stringify(d.review||{}))];
+    try{await S.db.doc("drafts/"+d.id).update({status:"rejected",review});await logFeedback({draftId:d.id,action:"rejected",reasons:["Not used"],type:d.type,issue:d.issue});ok++;prev.push(was)}catch(e){bad++}}
+  renderAll();
+  toast(`${ok} old draft${ok===1?"":"s"} moved to Rejected${bad?` · ${bad} couldn't be moved, try again`:""}`,ok?async()=>{for(const [d,st,rv] of prev){try{await S.db.doc("drafts/"+d.id).update({status:st,review:rv})}catch(e){}}renderAll();toast("Undone")}:null)});
 /* Queue as time slots (review style C, 3 Nov): the next ★ best slot with nothing booked sits on top;
    clicking it puts the open draft's time there. Nothing is scheduled until you press Schedule. */
 function freeSlot(){if(!["pending","changes","hold"].includes(S.status)||!S.db)return"";
@@ -1727,8 +1742,28 @@ function readyItems(d){const it=[];const cf=checkFacts(d);
   it.push(["Alt text",altOk?[true,"Written"]:[null,"Not written (optional)"]]);
   const w=lintDraft(d).filter(x=>!/^Stale/.test(x));it.push(["House style",w.length?[false,`${w.length} to look at`]:[true,"All clear"]]);
   return it}
-function readyBox(d){const it=readyItems(d);const ok=it.filter(x=>x[1][0]===true).length,req=it.filter(x=>x[1][0]!==null).length,okReq=it.filter(x=>x[1][0]===true).length;
-  return `<div class="ready" id="ready"><div class="rhead"><b>Ready to approve</b><span class="src">${okReq} of ${req} · <a href="#" data-act="previewAll">Preview every placement</a></span></div><div class="rbar"><i style="width:${Math.round(100*okReq/Math.max(1,req))}%"></i></div>${it.map(([k,[v,t]])=>`<div class="ritem"><span>${k}</span><span class="${v===true?"y":v===false?"n":"o"}">${v===true?"✓ ":v===false?"• ":""}${esc(t)}</span></div>`).join("")}</div>`}
+/* R1 (8 Nov): one "Before it goes out" list beside Schedule. Only what should stop a post going out is listed;
+   facts are ticked right here. Optional things (alt text, house style notes, tracked links) share one grey line. */
+function goItems(d){const it=[];const p=d.posting||{};
+  const ds=[...document.querySelectorAll("input[data-dest]")];const dests=ds.length?ds.filter(x=>x.checked).map(x=>x.dataset.dest):(p.destinations||defaultDests(d));
+  const miss=["facebook","instagram"].filter(k=>dests.some(x=>platOfKey(x)===k)&&!String(asPosts(textFor(d,k)).join("")).trim());
+  it.push(miss.length||ownMissing(d)?{ok:false,t:`Write the ${(miss.length?miss:["facebook"]).map(k=>k==="facebook"?"Facebook":"Instagram").join(" and ")} text`,jump:"fstrip"}:{ok:true,t:"Words for each network"});
+  if(!dests.length)it.push({ok:false,t:"Pick at least one account",jump:"postDay"});
+  const at=pickerWhen()||(p.at||p.suggestedAt?new Date(p.at||p.suggestedAt):null);
+  it.push(!at?{ok:false,t:"Pick a time",jump:"postDay"}:at.getTime()<Date.now()?{ok:false,t:"Its time has passed: pick a new one",jump:"postDay"}:{ok:true,t:at.toLocaleString("en-GB",{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})});
+  const all=["facebook","instagram","x","facebookComment"].map(k=>asPosts(textFor(d,k)).join(" ")).join(" ");
+  if(/\[ACTION LINK\]/.test(all)&&!d.action?.url)it.push({ok:false,t:"The text asks people to sign, but no petition is linked",jump:"step3"});
+  else if(d.action?.url)it.push({ok:true,t:d.links?.facebook?.short?d.links.facebook.short.replace(/^https?:\/\//,""):"Petition link"});
+  if(isVideoPost(d)&&!d.publishVideo&&!(d.video&&d.video.url))it.push({ok:false,t:"Upload the video",jump:"step2"});
+  return it}
+function goNice(d){const out=[];const c=curCard(d);const n=c.template==="carousel"?(c.slides||[]).length:1;
+  if(!(n>1?(d.altTexts||[]).filter(Boolean).length>=n:!!d.altText))out.push(["Alt text","altFold"]);
+  const w=lintDraft(d).filter(x=>!/^Stale/.test(x)).length;if(w)out.push([`${w} style note${w===1?"":"s"}`,"lint"]);
+  if(d.action?.url&&!(d.links&&d.links.facebook&&d.links.facebook.short))out.push(["Tracked link comes with the morning run",""]);
+  return out}
+function readyBox(d){const it=goItems(d);const cf=checkFacts(d);const nice=goNice(d);
+  const row=x=>`<div class="goi ${x.ok?"y":"n"}">${x.ok?"✓":"•"} ${x.jump&&!x.ok?`<button class="linkish" data-gojump="${x.jump}">${esc(x.t)}</button>`:esc(x.t)}</div>`;
+  return `<div class="ready go" id="ready"><span class="gohead"><span class="eyebrow">Before it goes out</span><a href="#" class="src" data-act="previewAll">Preview every placement</a></span>${it.map(row).join("")}${cf.map(({f,i})=>`<label class="goi fact${S.factTicks.has(i)?" y":" n"}" title="${esc(f.claim)}"><input type="checkbox" data-fact="${i}"${S.factTicks.has(i)?" checked":""}><span>${esc(f.claim)}${f.url?` · <a href="${esc(f.url)}" target="_blank" rel="noopener">${esc(f.source||"source")}</a>`:f.source?` · ${esc(f.source)}`:""}</span></label>`).join("")}${nice.length?`<div class="gonice">Nice to have: ${nice.map(([t,j])=>j?`<button class="linkish" data-ckjump="${j}">${esc(t)}</button>`:esc(t)).join(" · ")}</div>`:""}</div>`}
 /* A day/time picked but not yet approved survives the desk's background refreshes. */
 function rememberPick(){const ds=$("#postDay"),ts=$("#postTime");const per=[...document.querySelectorAll("input[data-time]")];
   if(!S.openId||(!ds&&!per.length))return;S.pick={id:S.openId,day:ds?.value||null,time:ts?.value||null,times:per.length?Object.fromEntries(per.filter(i=>i.value).map(i=>[i.dataset.time,i.value])):null}}
@@ -1740,7 +1775,7 @@ function approveSplit(d,checks){const t=(()=>{const pk=pickFor();if(pk){const pt
   const dis=(checks&&!S.factsOk)||ownMissing(d)?" disabled":"";const dests=(d.posting||{}).destinations||defaultDests(d);
   const slots=[["fb","Facebook"],["ig","Instagram"],["x","X"]].filter(([k])=>dests.some(x=>x.endsWith(k))).map(([k,l])=>[bestFor(k),l]).filter(x=>x[0]).sort((a,b)=>a[0]-b[0]);
   return `<div class="aprow"><div class="apsplit"><button class="btn primary apmain" data-act="approve"${dis}>Schedule · <span id="apWhen">${esc(t.toLocaleString("en-GB",{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}))}</span></button><button class="btn primary apmore" data-act="apMenu" aria-label="Schedule at another time" aria-expanded="${!!S.apMenu}"${dis}>▾</button></div><button class="btn apnow" data-act="apNow" title="Facebook and Instagram go out within 5 minutes"${dis}>Post now</button></div>
-  <div class="src" id="apTimes" style="margin-top:4px"></div>${S.apMenu?`<div class="apmenu" role="menu">${slots.map(([t2,l])=>`<button class="apitem" role="menuitem" data-act="apSlot" data-at="${t2.toISOString()}"><span>${esc(t2.toLocaleString("en-GB",{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}))}</span><small>★ best for ${l}</small></button>`).join("")}<button class="apitem" role="menuitem" data-act="apQueue"><span>Add to queue</span><small>The next free best slot</small></button><button class="apitem" role="menuitem" data-act="apPick"><span>Choose a time…</span></button><button class="apitem" role="menuitem" data-act="approve" data-hold="1"><span>Approve and hold</span><small>Ready, but not scheduled yet</small></button></div>`:""}`}
+  <div class="src" id="apTimes" style="margin-top:4px"></div>${S.apMenu?`<div class="apmenu" role="menu">${slots.map(([t2,l])=>`<button class="apitem" role="menuitem" data-act="apSlot" data-at="${t2.toISOString()}"><span>${esc(t2.toLocaleString("en-GB",{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}))}</span><small>★ best for ${l}</small></button>`).join("")}<button class="apitem" role="menuitem" data-act="apPick"><span>Choose a time…</span></button></div>`:""}`}
 
 function setPicker(t){const ds=$("#postDay"),ts=$("#postTime");if(!ds||!ts)return;const dk=dayKey(t),tk=`${String(t.getHours()).padStart(2,"0")}:${String(t.getMinutes()).padStart(2,"0")}`;
   if(![...ds.options].some(o=>o.value===dk))ds.add(new Option(t.toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"}),dk));ds.value=dk;ts.value=tk}
@@ -1808,6 +1843,9 @@ function stepInfo(d){const st=d.status||"pending";const live=["pending","changes
     {label:"Petition",tone:d.action?.url?"ok":ask?"warn":"mut",note:d.action?.url?(d.links?.facebook?.short?"Tracked link ready":"Linked"):ask?"No petition linked":"No ask"},
     {label:"Facts",tone:(cf&&tk<cf&&live&&!S.factsOk)||lint?"warn":"ok",note:[cf?`${S.factsOk?cf:tk} of ${cf} ticked`:"All verified",lint?`${lint} note${lint===1?"":"s"}`:""].filter(Boolean).join(" · ")},
     {label:"More formats",tone:"mut",note:d.launch?"Launch pack":nfx?`${nfx} extra${nfx===1?"":"s"}`:"Optional"}]}
+document.addEventListener("click",ev=>{const b=ev.target.closest("[data-gojump]");if(!b)return;ev.preventDefault();const k=b.dataset.gojump;
+  if(/^step\d$/.test(k)){showStep(+k.slice(4));document.querySelector(".stepper")?.scrollIntoView({behavior:"smooth",block:"nearest"});return}
+  const el=document.getElementById(k);if(el){el.scrollIntoView({behavior:"smooth",block:"center"});if(el.focus)el.focus()}});
 function showStep(i){S.step=i;document.querySelectorAll("[data-steppanel]").forEach(p=>p.hidden=+p.dataset.steppanel!==i);document.querySelectorAll(".stepper [data-step]").forEach(b=>b.setAttribute("aria-selected",String(+b.dataset.step===i)));if(i===1){const d=S.drafts.find(x=>x.id===S.openId);if(d){try{drawCard(d,null,S.gPreview?.id===d.id?S.gPreview.card:null);drawThumbs(d)}catch(e){}}}}
 document.addEventListener("click",ev=>{const b=ev.target.closest("[data-step]");if(!b||!b.closest("#detail"))return;ev.preventDefault();const i=+b.dataset.step;showStep(i);if(!b.closest(".stepper"))document.querySelector(".stepper")?.scrollIntoView({behavior:"smooth",block:"nearest"})});
 function renderDetail0(){
@@ -1838,7 +1876,7 @@ function renderDetail0(){
       ${["pending","changes","hold","scheduled"].includes(st)?`<section class="cwhere" aria-label="Where and when">${postingPanel(d,st)}</section>`:""}
       ${S.trim&&S.trim.id===d.id?trimView(d):""}
       <div class="ptabs" role="tablist" aria-label="Customise for each network">${PLATFORMS.map(p=>`<button class="ptab" role="tab" aria-selected="${S.platform===p.key}" data-jump="${p.key}">${p.label}${tabWarn(d,p.key)||`<span class="pcnt">${esc(pCount(d,p.key))}</span>`}${edited[p.key]!=null||(p.key==="facebook"&&edited.facebookComment!=null)?'<span class="edited">EDITED</span>':""}</button>`).join("")}${["facebook","instagram","x"].some(k=>edited[k]!=null)&&S.db?`<button class="ptab diffbtn" data-act="showDiff" aria-pressed="${!!S.showDiff}">${S.showDiff?"Hide my changes":"Show my changes"}</button>`:""}<span class="src fhint">Pick a network · click any text in the preview to edit it</span></div>
-      <div class="stepper" role="tablist" aria-label="Steps for this post">${steps.map((x,i)=>`<button role="tab" class="stp ${x.tone}" data-step="${i}" aria-selected="${i===si}"><b>${i+1} ${esc(x.label)}</b><span>${x.tone==="ok"?"✓ ":x.tone==="warn"?"! ":""}${esc(x.note)}</span></button>`).join("")}</div>
+      <div class="stepper" role="tablist" aria-label="Steps for this post">${steps.map((x,i)=>`<button role="tab" class="stp" data-step="${i}" aria-selected="${i===si}"><b>${esc(x.label)}</b></button>`).join("")}</div>
       ${panel(0,`${ownComposeBox(d)}${ownWriteBox(d)}${revisedBox(d,st)}${ownEmpty(d)?"":captionChips()+rewriteAllBox(d)}<p class="src" style="margin:0">Click any text in the previews to edit it (⌘↵ saves, Esc cancels), or use Edit under a network for the whole post and Redraft. The X thread splits on a line with ---.</p>`)}
       ${panel(1,`${ownPicBox(d)}<div class="art" id="gFold">
         <canvas id="card" width="1080" height="1080" role="img" aria-label="Post image preview"></canvas>
@@ -1857,10 +1895,10 @@ function renderDetail0(){
     <aside class="dprev" aria-label="Preview">
       <div class="prevh"><b>${esc(pf.label)} preview</b><span class="src">${S.db?"Click any text to edit":"Read-only"}</span></div>
       ${feedStrip(d)}
-      ${live&&S.db?readyBox(d):""}${["scheduled","posted"].includes(st)?publishBox(d):""}
+      ${["scheduled","posted"].includes(st)?publishBox(d):""}
     </aside>
     <div class="dfoot" role="group" aria-label="${live?"Decide":st==="posted"?"Published":st==="rejected"?"Decision":"Going out"}">
-      ${["posted","rejected"].includes(st)?"":checksRow(d)}${live?`<span class="src fsteps">${steps.filter(x=>x.tone!=="warn").length} of ${steps.length} steps ready</span>`:""}
+      ${live&&S.db&&!S.mode?readyBox(d):""}
       ${mobileBar(d,st)}<div class="decide">${decideBar(d,st,checks)}</div>
     </div>
   </article>`;
@@ -2164,7 +2202,7 @@ function decideBar(d,st,checks){
     <div class="reasons">${REJECT_REASONS.map(r=>`<button class="reason" data-reason="${esc(r)}" aria-pressed="${S.picked.has(r)}">${esc(r)}</button>`).join("")}</div>
     <div class="row"><input type="text" id="decNote" placeholder="${isRej?"Anything else? (optional)":"Describe the change"}"><button class="btn ${isRej?"bad":"warn"}" data-act="${isRej?"confirmReject":"confirmChanges"}">${isRej?"Reject draft":"Send back for changes"}</button><button class="btn" data-act="cancelMode">Cancel</button></div>`;
   }
-  return `${ownMissing(d)?`<span class="src">Write the words for each network first, then Post now or Schedule.</span>`:""}${checks&&!S.factsOk?`<button class="src linkish" data-step="4">Tick the ${checkFacts(d).length} fact${checkFacts(d).length===1?"":"s"} in step 5 to schedule</button>`:""}
+  return `${ownMissing(d)?`<span class="src">Write the words for each network first, then Post now or Schedule.</span>`:""}
   ${approveSplit(d,checks)}${d.own?`<div class="row"><span class="src">Saved as you go: it waits here in Review until you post or schedule it.</span><button class="btn bad" data-own="discard">Discard</button></div>`:`<div class="row"><button class="btn warn" data-act="changes">Request changes</button><button class="btn bad" data-act="reject">Reject</button></div>`}`;
 }
 /* ---------- cycle through drafts ---------- */
@@ -3383,7 +3421,7 @@ document.addEventListener("change",ev=>{
   if(ev.target.id==="fBy"){S.by=ev.target.value;S.openId=null;resetDraftUi();renderAll()}
   if(ev.target.id==="fLabel"){S.label=ev.target.value;S.openId=null;resetDraftUi();renderAll()}
   if(ev.target.id==="factsOk"){S.factsOk=ev.target.checked;document.querySelectorAll('[data-act="approve"]').forEach(a=>a.disabled=!S.factsOk)}
-  if(ev.target.dataset.fact!=null){const i=+ev.target.dataset.fact;ev.target.checked?S.factTicks.add(i):S.factTicks.delete(i);const d=S.drafts.find(x=>x.id===S.openId);const n=d?checkFacts(d).length:0;S.factsOk=S.factTicks.size>=n;document.querySelectorAll('[data-act="approve"]').forEach(a=>a.disabled=!S.factsOk);const c=$("#fcount");if(c)c.textContent=`${S.factTicks.size} of ${n} ticked`}
+  if(ev.target.dataset.fact!=null){const i=+ev.target.dataset.fact;ev.target.checked?S.factTicks.add(i):S.factTicks.delete(i);const d=S.drafts.find(x=>x.id===S.openId);const n=d?checkFacts(d).length:0;S.factsOk=S.factTicks.size>=n;document.querySelectorAll('[data-act="approve"]').forEach(a=>a.disabled=!S.factsOk);const c=$("#fcount");if(c)c.textContent=`${S.factTicks.size} of ${n} ticked`;document.querySelectorAll(`[data-fact="${i}"]`).forEach(x=>x.checked=ev.target.checked);const r=$("#ready");if(d&&r)r.outerHTML=readyBox(d)}
   if(["fIssue","fType","fBy","fLabel"].includes(ev.target.id))savePrefs()
   if(ev.target.id==="postDay"||ev.target.id==="postTime"||ev.target.dataset.dest||ev.target.dataset.fact!=null)refreshReady()
 });
