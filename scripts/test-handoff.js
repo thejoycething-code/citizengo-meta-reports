@@ -88,7 +88,7 @@ async function asanaTests() {
   };
   const calls = [];
   let completed = false;
-  const fields = (proj) => [{ custom_field: { gid: `ps-${proj}`, name: 'Post Status', resource_subtype: 'enum', enum_options: [{ gid: `ready-${proj}`, name: 'Ready to Post' }, { gid: `done-${proj}`, name: 'Scheduled // Posted' }, { gid: `cx-${proj}`, name: 'Cancelled' }] } },
+  const fields = (proj) => [{ custom_field: { gid: `ps-${proj}`, name: 'Post Status', resource_subtype: 'enum', enum_options: [{ gid: `ready-${proj}`, name: 'Ready to Post' }, { gid: `progress-${proj}`, name: 'In Progress' }, { gid: `done-${proj}`, name: 'Scheduled // Posted' }, { gid: `cx-${proj}`, name: 'Cancelled' }] } },
     { custom_field: { gid: `ct-${proj}`, name: 'Content Type', resource_subtype: 'enum', enum_options: [{ gid: `img-${proj}`, name: 'Image' }] } },
     { custom_field: { gid: `pl-${proj}`, name: 'Post link', resource_subtype: 'text' } }];
   const asanaFetch = async (url, opts = {}) => {
@@ -136,14 +136,35 @@ async function asanaTests() {
   eq('task completed: links filed by account', [p.doc.published['uk-fb'].url, p.doc.published['sc-fb'].url, p.doc.published['uk-x'].url, !!p.doc.published['uk-ig'].url], ['https://www.facebook.com/105/posts/9', 'https://www.facebook.com/105/posts/9', 'https://x.com/CitizenGO_GB/status/1', false]);
   eq('task completed: the run looks for the missing link', p.doc.posted.linksPending, true);
 
-  // Taken back for editing: the open task is cancelled.
+  // Sent back to To review: the open task is cancelled.
   completed = false;
-  db.posts.push({ id: 'uk-2', team_id: 'uk', status: 'hold', version: 1, post_at: null, doc: { title: 'B', posting: { destinations: ['uk-fb'], handoff: { at: 'x', by: 'chris' }, asanaTaskGid: 'T1', asanaUrl: 'u', asanaSig: 's' } } });
+  db.posts.push({ id: 'uk-2', team_id: 'uk', status: 'review', version: 1, post_at: null, doc: { title: 'B', posting: { destinations: ['uk-fb'], handoff: { at: 'x', by: 'chris' }, asanaTaskGid: 'T1', asanaUrl: 'u', asanaSig: 's' } } });
   calls.length = 0;
   await run(opts);
   const p2 = db.posts[1];
   eq('taken back: task set to Cancelled with a comment', [calls.some((c) => c.m === 'PUT' && c.body && c.body.custom_fields && Object.values(c.body.custom_fields).some((v) => /^cx-/.test(v))), calls.some((c) => /stories$/.test(c.path))], [true, true]);
   eq('taken back: the post forgets the task', [p2.doc.posting.asanaTaskGid, p2.doc.posting.asanaOldTask], [null, 'T1']);
+
+  // In Editing: an In Progress task early, switched to Ready to Post on hand-off.
+  const ed = { id: 'uk-3', team_id: 'uk', status: 'hold', version: 1, post_at: null, doc: { title: 'Red Wednesday',
+    final: { facebook: { text: 'FB', media: [] } }, posting: { destinations: ['uk-fb'], suggestedAt: '2026-11-18T08:00:00Z' } } };
+  db.posts.push(ed);
+  eq('editing: stage In Progress', A.stageOf(ed), 'progress');
+  eq('editing: task says not to post yet, due at the suggested time', [/don't post yet/.test(A.taskFor(ed).html_notes), A.taskFor(ed).due_at], [true, '2026-11-18T08:00:00.000Z']);
+  calls.length = 0;
+  await run(opts);
+  const e1 = db.posts.find((x) => x.id === 'uk-3');
+  eq('editing: task made, In Progress', [e1.doc.posting.asanaTaskGid, e1.doc.posting.asanaStage, calls.some((c) => c.m === 'PUT' && c.body && c.body.custom_fields && Object.values(c.body.custom_fields).includes('progress-' + A.CALENDARS['uk-fb'].project))], ['T1', 'progress', true]);
+  calls.length = 0;
+  await run(opts);
+  eq('editing: nothing to do while it stays in Editing', calls.filter((c) => c.m !== 'GET').length, 0);
+  Object.assign(e1, { status: 'scheduled', post_at: '2026-11-18T08:00:00Z' });
+  e1.doc.posting.handoff = { at: 'x', by: 'chris' }; e1.doc.posting.at = '2026-11-18T08:00:00Z';
+  db.posts[db.posts.findIndex((x) => x.id === 'uk-3')] = e1;
+  calls.length = 0;
+  await run(opts);
+  const e2 = db.posts.find((x) => x.id === 'uk-3');
+  eq('hand-off: same task, now Ready to Post', [calls.filter((c) => c.m === 'POST' && c.path.endsWith('/tasks')).length, e2.doc.posting.asanaStage, calls.some((c) => c.m === 'PUT' && c.body && c.body.custom_fields && Object.values(c.body.custom_fields).includes('ready-' + A.CALENDARS['uk-fb'].project))], [0, 'ready', true]);
 
   // No token (the cloud backup): no Asana at all.
   calls.length = 0;
