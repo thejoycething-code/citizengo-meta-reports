@@ -1734,7 +1734,7 @@ function qFlags(d){const st=d.status||"pending",f=[];const p=d.posting||{};
   if(d.card?.template==="free")f.push(`<span class="qf f">Fresh design</span>`);
   if(st==="changes"&&d.revisionNote)f.push(`<span class="qf">Reworked</span>`);
   if(st==="posted"){const bx=bestX(d.results);f.push(bx==null?`<span class="qf">Results pending</span>`:`<span class="qf qx ${xTone(bx)}" title="Best network against the Page's normal">${bx}× normal</span>`)}
-  if(st==="hold"||st==="scheduled"){const at=p.at||p.suggestedAt;if(at)f.push(`<span class="qf">${esc(new Date(at).toLocaleString("en-GB",{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}))}</span>`);f.push(st==="scheduled"&&HO()?`<span class="qf">Handed off</span>${hoTag(d)}`:`<span class="qf">${st==="scheduled"?"Scheduled":p.asanaTaskGid?"In Asana":"To finish"}</span>`)}
+  if(st==="hold"||st==="scheduled"){const at=p.at||p.suggestedAt;if(at)f.push(`<span class="qf">${esc(new Date(at).toLocaleString("en-GB",{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}))}</span>`);f.push(st==="scheduled"&&HO()?`<span class="qf">Handed off</span>${hoTag(d)}`:(st==="hold"&&p.asanaUrl?`<span class="qf">To finish</span><a class="qf" href="${esc(p.asanaUrl)}" target="_blank" rel="noopener" title="In Asana as In Progress: it turns Ready to Post when you hand it off">Asana task ↗</a>`:`<span class="qf">${st==="scheduled"?"Scheduled":p.asanaTaskGid?"In Asana":"To finish"}</span>`))}
   if(!f.length&&d.timing?.label)f.push(`<span class="qf">${esc(d.timing.label)}</span>`);
   return f.join("")}
 /* K2: one-tap best slots */

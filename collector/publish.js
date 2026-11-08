@@ -131,17 +131,18 @@ async function asanaPass({ store, live, now, log, token, fetchImpl, tally }) {
           continue;
         }
         const attached = await attachMedia({ store, api, gid: out.gid, post: claimed, done: [], log, label });
-        await patchDoc(store, post.id, () => ({ posting: { asanaPending: null, asanaError: null, asanaTaskGid: out.gid, asanaUrl: out.url, syncedAt: stamp, asanaSig: A.sigOf(claimed), asanaMedia: attached } }));
+        await patchDoc(store, post.id, () => ({ posting: { asanaPending: null, asanaError: null, asanaTaskGid: out.gid, asanaUrl: out.url, syncedAt: stamp, asanaSig: A.sigOf(claimed), asanaMedia: attached, asanaStage: task.stage } }));
         await store.engineEvent({ post_id: post.id, team_id: post.team_id, who: 'publisher', action: 'asana_task', detail: { gid: out.gid, calendars: task.calendars.map((c) => c.key) } });
         tally.handed = (tally.handed || 0) + 1;
         log(`  ✓ ${label}: ${out.url}`);
       } else if (step === 'update') {
         if (!live) { tally.would++; log(`  → ${label}: would update task ${p.asanaTaskGid}`); continue; }
         const task = A.taskFor(post);
-        await A.updateTask(api, p.asanaTaskGid, task);
+        const stageChanged = (p.asanaStage || 'ready') !== task.stage;
+        await A.updateTask(api, p.asanaTaskGid, task, { stageChanged });
         const attached = await attachMedia({ store, api, gid: p.asanaTaskGid, post, done: p.asanaMedia || [], log, label });
-        await patchDoc(store, post.id, () => ({ posting: { syncedAt: stamp, asanaSig: A.sigOf(post), asanaMedia: attached } }));
-        log(`  ✓ ${label}: task updated`);
+        await patchDoc(store, post.id, () => ({ posting: { syncedAt: stamp, asanaSig: A.sigOf(post), asanaMedia: attached, asanaStage: task.stage } }));
+        log(`  ✓ ${label}: task updated${stageChanged ? ` (now ${task.stage === 'ready' ? 'Ready to Post' : 'In Progress'})` : ''}`);
       } else if (step === 'check') {
         const t = await A.readTask(api, p.asanaTaskGid);
         if (!t.completed) continue;
@@ -158,8 +159,8 @@ async function asanaPass({ store, live, now, log, token, fetchImpl, tally }) {
       } else if (step === 'cancel') {
         if (!live) { tally.would++; log(`  → ${label}: would cancel task ${p.asanaTaskGid} (now ${post.status})`); continue; }
         const t = await A.readTask(api, p.asanaTaskGid);
-        if (!t.completed) await A.cancelTask(api, p.asanaTaskGid, A.keysOf(post.doc).map((k) => ({ key: k, ...A.CALENDARS[k] })), `Don't post this: it was ${post.status === 'rejected' ? 'moved to the Bin' : 'taken back for editing'} on the desk. If it is handed off again, a new task is made.`);
-        await patchDoc(store, post.id, () => ({ posting: { asanaCancelledAt: stamp, asanaTaskGid: null, asanaUrl: null, asanaSig: null, asanaMedia: null, handoff: null, asanaOldTask: p.asanaTaskGid } }));
+        if (!t.completed) await A.cancelTask(api, p.asanaTaskGid, A.keysOf(post.doc).map((k) => ({ key: k, ...A.CALENDARS[k] })), `Don't post this: it was ${post.status === 'rejected' ? 'moved to the Bin' : 'sent back to To review'} on the desk. If it comes back, a new task is made.`);
+        await patchDoc(store, post.id, () => ({ posting: { asanaCancelledAt: stamp, asanaTaskGid: null, asanaUrl: null, asanaSig: null, asanaMedia: null, asanaStage: null, handoff: null, asanaOldTask: p.asanaTaskGid } }));
         log(`  ✓ ${label}: task ${p.asanaTaskGid} marked Cancelled (post is ${post.status})`);
       }
     } catch (e) {
