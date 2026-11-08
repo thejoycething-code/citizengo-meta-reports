@@ -9,7 +9,10 @@
 //   node collector/publish.js --dry-run  # always a dry run
 //
 // Needs SUPABASE_URL, SUPABASE_SERVICE_KEY and ENGINE_TOKEN_PRIVATE_KEY (the
-// key that opens sealed Page tokens; only on the Mini, scripts/engine-keygen.js). A dry run reads everything and changes
+// key that opens sealed Page tokens; only on the Mini, scripts/engine-keygen.js).
+// ASANA_TOKEN (Mini only, allowed by Chris 8 Nov 2026): in hand-off mode each
+// handed-off post becomes an Asana task, kept in step, and closing the task
+// marks the post posted (lib/asana.js). A dry run reads everything and changes
 // nothing: it prints what it would publish, and why anything is held back.
 
 const { loadEnv } = require('../lib/graph');
@@ -17,6 +20,8 @@ const { supabaseStore } = require('../lib/store');
 const xauth = require('../lib/xauth');
 const E = require('../lib/engine');
 const P = require('../lib/publish');
+const A = require('../lib/asana');
+const H = require('../lib/handoff');
 
 async function patchDoc(store, id, change, extra = () => ({})) {
   for (let i = 0; i < 3; i++) {
@@ -85,10 +90,105 @@ async function videoComments({ store, privateKey, now, log, fetchImpl, runner })
   }
 }
 
+// Hand-off mode: Asana tasks for handed-off posts (lib/asana.js).
+async function asanaPass({ store, live, now, log, token, fetchImpl, tally }) {
+  const posts = await store.enginePosts({ statuses: ['scheduled', 'hold', 'changes', 'review', 'rejected'], limit: 500 });
+  const stamp = new Date(now).toISOString();
+  const api = A.client(token, fetchImpl);
+  const handoffOn = H.on();
+  for (const post of posts) {
+    const step = A.stepFor(post, { handoffOn });
+    if (!step) continue;
+    const p = post.doc.posting || {};
+    const err = p.asanaError || {};
+    const label = `${post.id} → Asana`;
+    try {
+      if (step === 'create') {
+        if ((err.tries || 0) >= A.MAX_TRIES) continue;
+        if (p.asanaPending && now - Date.parse(p.asanaPending.at) < A.CLAIM_MS) continue;
+        if (p.asanaPending) {
+          log(`  ✗ ${label}: started over 15 minutes ago with no answer; check the calendars before trying again`);
+          if (live) await patchDoc(store, post.id, () => ({ posting: { asanaPending: null, asanaError: { at: stamp, message: 'Making the Asana task got no answer. Check the posting calendars: it may already be there.', tries: A.MAX_TRIES } } }));
+          continue;
+        }
+        const task = A.taskFor(post);
+        if (!live) { tally.would++; log(`  → ${label}: would add "${task.name}" to ${task.calendars.map((c) => c.short).join(', ')}`); continue; }
+        const claimed = await patchDoc(store, post.id, (cur) => {
+          const cp = (cur.doc && cur.doc.posting) || {};
+          return cp.asanaTaskGid || (cp.asanaPending && now - Date.parse(cp.asanaPending.at) < A.CLAIM_MS) ? {} : { posting: { asanaPending: { at: stamp } } };
+        });
+        if (!claimed || !(claimed.doc.posting.asanaPending && claimed.doc.posting.asanaPending.at === stamp)) continue;
+        let out;
+        try { out = await A.createTask(api, task); }
+        catch (e) {
+          if (e.task) {
+            await patchDoc(store, post.id, () => ({ posting: { asanaPending: null, asanaTaskGid: e.task.gid, asanaUrl: e.task.url, syncedAt: stamp, asanaError: { at: stamp, message: `The task was made but not finished (${e.message}). Check its calendars and fields.`, tries: A.MAX_TRIES } } }));
+            log(`  ✗ ${label}: task ${e.task.gid} made, but ${e.message}`);
+            continue;
+          }
+          await patchDoc(store, post.id, () => ({ posting: { asanaPending: null, asanaError: { at: stamp, message: e.message, tries: (err.tries || 0) + 1 } } }));
+          log(`  ✗ ${label}: ${e.message}`);
+          continue;
+        }
+        const attached = await attachMedia({ store, api, gid: out.gid, post: claimed, done: [], log, label });
+        await patchDoc(store, post.id, () => ({ posting: { asanaPending: null, asanaError: null, asanaTaskGid: out.gid, asanaUrl: out.url, syncedAt: stamp, asanaSig: A.sigOf(claimed), asanaMedia: attached } }));
+        await store.engineEvent({ post_id: post.id, team_id: post.team_id, who: 'publisher', action: 'asana_task', detail: { gid: out.gid, calendars: task.calendars.map((c) => c.key) } });
+        tally.handed = (tally.handed || 0) + 1;
+        log(`  ✓ ${label}: ${out.url}`);
+      } else if (step === 'update') {
+        if (!live) { tally.would++; log(`  → ${label}: would update task ${p.asanaTaskGid}`); continue; }
+        const task = A.taskFor(post);
+        await A.updateTask(api, p.asanaTaskGid, task);
+        const attached = await attachMedia({ store, api, gid: p.asanaTaskGid, post, done: p.asanaMedia || [], log, label });
+        await patchDoc(store, post.id, () => ({ posting: { syncedAt: stamp, asanaSig: A.sigOf(post), asanaMedia: attached } }));
+        log(`  ✓ ${label}: task updated`);
+      } else if (step === 'check') {
+        const t = await A.readTask(api, p.asanaTaskGid);
+        if (!t.completed) continue;
+        const keys = E.destinations(post.doc);
+        const urls = A.linksByKey(keys, t.links);
+        const at = t.completed_at || stamp;
+        if (!live) { tally.would++; log(`  → ${label}: task completed, would mark posted (${Object.keys(urls).length} link${Object.keys(urls).length === 1 ? '' : 's'})`); continue; }
+        const published = {};
+        for (const k of keys) if (!(post.doc.published || {})[k]) published[k] = { at, by: 'hand', byHand: true, note: 'Posted by hand from its Asana task', ...(urls[k] ? { url: urls[k] } : {}) };
+        await patchDoc(store, post.id, () => ({ published, posted: { at, by: 'asana', linksPending: keys.some((k) => !urls[k]) }, posting: { asanaClosedAt: stamp } }), () => ({ status: 'posted' }));
+        await store.engineEvent({ post_id: post.id, team_id: post.team_id, who: 'publisher', action: 'posted', detail: { via: 'asana', task: p.asanaTaskGid } });
+        tally.closed = (tally.closed || 0) + 1;
+        log(`  ✓ ${post.id}: Asana task completed, marked Posted`);
+      } else if (step === 'cancel') {
+        if (!live) { tally.would++; log(`  → ${label}: would cancel task ${p.asanaTaskGid} (now ${post.status})`); continue; }
+        const t = await A.readTask(api, p.asanaTaskGid);
+        if (!t.completed) await A.cancelTask(api, p.asanaTaskGid, A.keysOf(post.doc).map((k) => ({ key: k, ...A.CALENDARS[k] })), `Don't post this: it was ${post.status === 'rejected' ? 'moved to the Bin' : 'taken back for editing'} on the desk. If it is handed off again, a new task is made.`);
+        await patchDoc(store, post.id, () => ({ posting: { asanaCancelledAt: stamp, asanaTaskGid: null, asanaUrl: null, asanaSig: null, asanaMedia: null, handoff: null, asanaOldTask: p.asanaTaskGid } }));
+        log(`  ✓ ${label}: task ${p.asanaTaskGid} marked Cancelled (post is ${post.status})`);
+      }
+    } catch (e) {
+      log(`  ✗ ${label}: ${e.message}`);
+      if (live && step !== 'check') await patchDoc(store, post.id, () => ({ posting: { asanaError: { at: stamp, message: e.message, tries: (err.tries || 0) + 1 } } })).catch(() => {});
+    }
+  }
+}
+
+// Attaches the post's media to its task, each file once. Returns the keys done.
+async function attachMedia({ store, api, gid, post, done, log, label }) {
+  const out = [...done];
+  for (const m of A.mediaOf(post)) {
+    if (out.includes(m.key)) continue;
+    try {
+      if (m.video && m.size > A.ATTACH_MAX) { log(`  ! ${label}: video is ${Math.round(m.size / 1048576)} MB, over Asana's 100 MB: download it from the desk`); out.push(m.key); continue; }
+      const buf = m.video ? await P.assembleVideo(store, m.video) : await store.engineMediaDownload(m.path);
+      if (!buf) { log(`  ! ${label}: ${m.name} not found in storage`); continue; }
+      await api.attach(gid, m.name, buf, m.mime);
+      out.push(m.key);
+    } catch (e) { log(`  ! ${label}: couldn't attach ${m.name} (${e.message})`); }
+  }
+  return out;
+}
+
 // runner: 'mini' (every 5 minutes) or 'cloud' (the Vercel backup, every 15).
 // minLateMs: leave anything due more recently than this to the other runner,
 // so the backup only steps in when the Mini hasn't.
-async function run({ store, privateKey, live, now = Date.now(), log = console.log, fetchImpl, wait, runner = 'mini', minLateMs = 0 }) {
+async function run({ store, privateKey, live, now = Date.now(), log = console.log, fetchImpl, wait, runner = 'mini', minLateMs = 0, asanaToken = null, asanaFetch }) {
   const [teams, posts, pauses] = await Promise.all([store.engineTeams(), store.enginePosts({ statuses: ['scheduled'], limit: 500 }), store.enginePauses()]);
   const items = P.plan(posts, teams, now, pauses);
   const tally = { published: 0, held: 0, failed: 0, would: 0 };
@@ -181,6 +281,11 @@ async function run({ store, privateKey, live, now = Date.now(), log = console.lo
     try { await videoComments({ store, privateKey, now, log, fetchImpl, runner }); }
     catch (e) { log(`  ! video comments: ${e.message}`); }
   }
+  // Hand-off mode: the Asana tasks (Mini only, where the token is).
+  if (asanaToken) {
+    try { await asanaPass({ store, live, now, log, token: asanaToken, fetchImpl: asanaFetch || fetch, tally }); }
+    catch (e) { log(`  ! Asana: ${e.message}`); }
+  }
   // Heartbeat: when each runner last checked, for the desk's warning.
   try { await store.engineCacheSet(`publisher:${runner}`, { at: stamp(), live: !!live, tally }); } catch (e) { log(`  ! heartbeat not saved (${e.message})`); }
   return tally;
@@ -193,7 +298,7 @@ if (require.main === module) {
   if (!privateKey) { console.error('ENGINE_TOKEN_PRIVATE_KEY is not set: cannot open sealed Page tokens (scripts/engine-keygen.js).'); process.exit(1); }
   const store = supabaseStore({ url: process.env.SUPABASE_URL, serviceKey: process.env.SUPABASE_SERVICE_KEY });
   console.log(`Content Engine publisher, ${live ? 'LIVE' : 'dry run'}, ${new Date().toISOString()}`);
-  run({ store, privateKey, live }).then((t) => console.log(JSON.stringify(t))).catch((e) => { console.error(e.message); process.exit(1); });
+  run({ store, privateKey, live, asanaToken: process.env.ASANA_TOKEN || null }).then((t) => console.log(JSON.stringify(t))).catch((e) => { console.error(e.message); process.exit(1); });
 }
 
 module.exports = { run };
