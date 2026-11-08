@@ -10,6 +10,7 @@
 // staleness banner would corrupt them.
 
 const E = require('../lib/engine');
+const H = require('../lib/handoff');
 const T = require('../lib/tracked');
 const copilot = require('../lib/copilot');
 
@@ -36,7 +37,7 @@ const lite = (p) => ({
   version: p.version, updated_at: p.updated_at, updated_by: p.updated_by,
   destinations: E.destinations(p.doc), type: (p.doc && p.doc.type) || null,
   thumb: E.calendarItem(p, { editable: true }).thumb, source_team: p.source_team || null,
-  track: track(p.doc || {}),
+  track: { ...track(p.doc || {}), overdue: H.on() && H.overdue(p) },
 });
 
 // What the daily engine checks on every run, so it can list the desk without
@@ -48,6 +49,9 @@ function track(d) {
     resultsCheckedAt: (d.results && d.results.checkedAt) || null, postedAt: posted.at || null, linksPending: !!posted.linksPending,
     stale: !!d.stale, pack: source.pack || null, requestAt: (source.request && source.request.at) || null,
     requestId: (source.request && source.request.id) || null, evergreenId: source.evergreen_id || null,
+    asanaUrl: posting.asanaUrl || null,
+    // Hand-off mode: approved to be posted by hand from its Asana task ({at, by}).
+    handoff: (posting.handoff && posting.handoff.at) ? { at: posting.handoff.at, by: posting.handoff.by || null } : null,
     // Post now on the desk: {at, by}. The engine run adds its UK Asana task.
     postNow: (posting.postNow && posting.postNow.at) ? { at: posting.postNow.at, by: posting.postNow.by || null } : null,
   };
@@ -63,6 +67,7 @@ async function engineMe(store, args, { who }) {
     publish_rights: rights.map((r) => r.account_key),
     connected_rights: rights.filter((r) => r.source === 'meta').map((r) => r.account_key),
     pauses: await pausesFor(store, ctx, rights),
+    handoff: H.info(),
   });
 }
 
@@ -133,7 +138,7 @@ async function engineSave(store, args, { who }) {
   }
   const doc = E.mergeDoc(post.doc, args.patch || {});
   const rights = await store.engineRights({ who, kind: 'post' });
-  const allowed = E.saveAllowed({ status: post.status, before: post.doc, after: doc, team: teamById(ctx, post.team_id), rights });
+  const allowed = E.saveAllowed({ status: post.status, before: post.doc, after: doc, team: teamById(ctx, post.team_id), rights, handoff: H.on() });
   if (!allowed.ok) return json({ ok: false, error: allowed.error });
   const saved = await store.engineUpdatePost(post.id, post.version, {
     doc, title: String(doc.title || post.title || ''), post_at: E.postAt(doc), updated_by: who,
@@ -167,12 +172,16 @@ async function engineStatus(store, args, { who }) {
     return json({ ok: false, conflict: true, error: 'Someone changed this post meanwhile. Reload it first.', post });
   }
   const rights = await store.engineRights({ who, kind: 'post' });
-  const t = E.transition({ from: post.status, action: args.action, doc: post.doc, team: teamById(ctx, post.team_id), rights, note: args.note });
+  const handoff = H.on();
+  const t = E.transition({ from: post.status, action: args.action, doc: post.doc, team: teamById(ctx, post.team_id), rights, note: args.note, handoff });
   if (!t.ok) return json({ ok: false, error: t.error });
   const review = { by: who, at: new Date().toISOString(), action: args.action };
   if (args.note) review.note = String(args.note).slice(0, 2000);
   if (Array.isArray(args.reasons)) review.reasons = args.reasons.map(String).slice(0, 10);
-  const doc = E.mergeDoc(post.doc, { review });
+  // Hand-off mode: an approval hands the post to a person through its Asana task.
+  const change = { review };
+  if (handoff && t.status === 'scheduled') change.posting = { handoff: { at: review.at, by: who } };
+  const doc = E.mergeDoc(post.doc, change);
   const saved = await store.engineUpdatePost(post.id, post.version, { status: t.status, doc, post_at: E.postAt(doc), updated_by: who });
   if (!saved) return json({ ok: false, conflict: true, error: 'Someone changed this post meanwhile. Reload it first.' });
   await store.engineEvent({ post_id: post.id, team_id: post.team_id, who, action: args.action, detail: { from: post.status, to: t.status, note: review.note || null } });
@@ -445,6 +454,9 @@ async function actOn(store, ctx, item, args, who, undoMs, rightsCache) {
     await store.engineInboxInsertAction({ ...base, detail: fields, status: 'done', run_after: now.toISOString(), done_at: now.toISOString() });
     return { ok: true, item: saved };
   }
+  // Hand-off mode: the app is in Development mode, so replies and moderation
+  // made through it on Facebook aren't seen by the public. Business Suite instead.
+  if (H.on() && item.platform === 'facebook') return { ok: false, error: 'Facebook replies and moderation are done in Meta Business Suite for now: the desk Inbox is read-only for Facebook while the Meta app is in Development mode.' };
   const kind = ['reply', 'private_reply'].includes(action) ? 'reply' : 'moderate';
   const rights = (rightsCache && rightsCache[kind]) || (await store.engineRights({ who, kind })).map((r) => r.account_key);
   if (!rights.includes(item.account_key)) return { ok: false, error: `You can't act for ${item.account_key}: connect Facebook with a Page role on it, or leave it for someone who has one.` };

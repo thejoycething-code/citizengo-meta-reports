@@ -1473,6 +1473,8 @@ body:has(.ibfocus) .toast{z-index:80}
 .ibrmi:hover,.ibrmi:focus-visible{background:var(--sunk)}.ibrmi:disabled{color:var(--muted);cursor:not-allowed}.ibrmi small{color:var(--muted);margin-left:auto}
 .ibrml{display:flex;gap:6px;padding:4px}.ibrml input,.modask input,.modask select,#modTest,#ibRuleVal,#ibRuleKind{font:inherit;font-size:13px;padding:4px 8px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg);min-width:0}
 /* ===== end consistency ===== */
+/* Hand-off mode: nothing is posted from the desk */
+body.handoff [data-act="apNow"],body.handoff [data-cp="now"]{display:none!important}
 </style>
 
 <div class="shell">
@@ -1732,7 +1734,7 @@ function qFlags(d){const st=d.status||"pending",f=[];const p=d.posting||{};
   if(d.card?.template==="free")f.push(`<span class="qf f">Fresh design</span>`);
   if(st==="changes"&&d.revisionNote)f.push(`<span class="qf">Reworked</span>`);
   if(st==="posted"){const bx=bestX(d.results);f.push(bx==null?`<span class="qf">Results pending</span>`:`<span class="qf qx ${xTone(bx)}" title="Best network against the Page's normal">${bx}× normal</span>`)}
-  if(st==="hold"||st==="scheduled"){const at=p.at||p.suggestedAt;if(at)f.push(`<span class="qf">${esc(new Date(at).toLocaleString("en-GB",{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}))}</span>`);f.push(`<span class="qf">${st==="scheduled"?"Scheduled":p.asanaTaskGid?"In Asana":"To finish"}</span>`)}
+  if(st==="hold"||st==="scheduled"){const at=p.at||p.suggestedAt;if(at)f.push(`<span class="qf">${esc(new Date(at).toLocaleString("en-GB",{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}))}</span>`);f.push(st==="scheduled"&&HO()?`<span class="qf">Handed off</span>${hoTag(d)}`:`<span class="qf">${st==="scheduled"?"Scheduled":p.asanaTaskGid?"In Asana":"To finish"}</span>`)}
   if(!f.length&&d.timing?.label)f.push(`<span class="qf">${esc(d.timing.label)}</span>`);
   return f.join("")}
 /* K2: one-tap best slots */
@@ -1748,7 +1750,7 @@ function optKind(o){const id=String(o.id||"");if(id.startsWith("prev-"))return["
 function mobileBar(d,st){if(!S.db||S.mode)return"";
   if(isIdea(d))return `<div class="mbar two" role="group" aria-label="Decide"><button class="btn bad" data-act="reject">Reject</button><button class="btn primary" data-act="approveIdea">Approve idea</button></div>`;
   if(!(st==="hold"||(d.own&&["pending","changes"].includes(st))))return"";const dis=hasChecks(d)&&!S.factsOk?" disabled title=\"Tick the facts to check first\"":ownMissing(d)?" disabled title=\"Write the words first\"":"";
-  return `<div class="mbar two" role="group" aria-label="Finish"><button class="btn" data-act="apNow"${dis}>Post now</button><button class="btn primary" data-act="approve"${dis}>Schedule</button></div>`}
+  return `<div class="mbar two" role="group" aria-label="Finish"><button class="btn" data-act="apNow"${dis}>Post now</button><button class="btn primary" data-act="approve"${dis}>${schedBtn()}</button></div>`}
 
 /* 5: facts to check, ticked one by one beside Schedule */
 function factCheck(d){const list=checkFacts(d);return `<div class="fcheck"><div class="fhead"><span class="eyebrow">Check before approving</span><span class="src" id="fcount">${S.factTicks.size} of ${list.length} ticked</span></div>${list.map(({f,i})=>`<label class="fitem"><input type="checkbox" data-fact="${i}"${S.factTicks.has(i)?" checked":""}><span>${esc(f.claim)}<small>${f.url?`<a href="${esc(f.url)}" target="_blank" rel="noopener">${esc(f.source||"source")}</a>`:esc(f.source||"")}</small></span></label>`).join("")}<a class="src" href="#facts">All facts and sources</a></div>`}
@@ -1843,7 +1845,7 @@ function refreshReady(){setTimeout(refreshLane,0);rememberPick();const d=S.draft
 function approveSplit(d,checks){const t=(()=>{const pk=pickFor();if(pk){const pt=pk.times&&Object.values(pk.times).sort()[0];const x=pt?new Date(pt):pk.day&&pk.time?new Date(`${pk.day}T${pk.time}:00`):null;if(x&&!isNaN(x))return x}const p=d.posting||{};const v=p.at||p.suggestedAt;const x=v?new Date(v):null;return x&&x.getTime()>Date.now()?x:bestSlot(p.destinations||defaultDests(d))})();
   const dis=(checks&&!S.factsOk)||ownMissing(d)?" disabled":"";const dests=(d.posting||{}).destinations||defaultDests(d);
   const slots=[["fb","Facebook"],["ig","Instagram"],["x","X"]].filter(([k])=>dests.some(x=>x.endsWith(k))).map(([k,l])=>[bestFor(k),l]).filter(x=>x[0]).sort((a,b)=>a[0]-b[0]);
-  return `<div class="aprow"><div class="apsplit"><button class="btn primary apmain" data-act="approve"${dis}>Schedule · <span id="apWhen">${esc(t.toLocaleString("en-GB",{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}))}</span></button><button class="btn primary apmore" data-act="apMenu" aria-label="Schedule at another time" aria-expanded="${!!S.apMenu}"${dis}>▾</button></div><button class="btn apnow" data-act="apNow" title="Facebook and Instagram go out within 5 minutes"${dis}>Post now</button></div>
+  return `<div class="aprow"><div class="apsplit"><button class="btn primary apmain" data-act="approve"${dis}>${schedBtn()} · <span id="apWhen">${esc(t.toLocaleString("en-GB",{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}))}</span></button><button class="btn primary apmore" data-act="apMenu" aria-label="Schedule at another time" aria-expanded="${!!S.apMenu}"${dis}>▾</button></div><button class="btn apnow" data-act="apNow" title="Facebook and Instagram go out within 5 minutes"${dis}>Post now</button></div>
   <div class="src" id="apTimes" style="margin-top:4px"></div>${S.apMenu?`<div class="apmenu" role="menu">${slots.map(([t2,l])=>`<button class="apitem" role="menuitem" data-act="apSlot" data-at="${t2.toISOString()}"><span>${esc(t2.toLocaleString("en-GB",{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}))}</span><small>★ best for ${l}</small></button>`).join("")}<button class="apitem" role="menuitem" data-act="apPick"><span>Choose a time…</span></button></div>`:""}`}
 
 function setPicker(t){const ds=$("#postDay"),ts=$("#postTime");if(!ds||!ts)return;const dk=dayKey(t),tk=`${String(t.getHours()).padStart(2,"0")}:${String(t.getMinutes()).padStart(2,"0")}`;
@@ -1981,7 +1983,7 @@ function finishDecide(d,st,checks){if(!S.db)return `<div class="state">Read-only
   if(st==="scheduled")return `<div class="frow">${whenBox(d,st)}</div>${decideBar(d,st,checks)}`;
   const dis=(checks&&!S.factsOk)||ownMissing(d)?" disabled":"";const r=d.review||{};
   return `${ownMissing(d)?`<span class="src fhintw">Write the words first (2 Text), then Post now or Schedule.</span>`:""}
-  <div class="frow">${whenBox(d,st)}<button class="btn apnow" data-act="apNow" title="Facebook and Instagram go out within 5 minutes"${dis}>Post now</button><button class="btn primary apmain" data-act="approve"${dis}>Schedule</button></div>
+  <div class="frow">${whenBox(d,st)}<button class="btn apnow" data-act="apNow" title="Facebook and Instagram go out within 5 minutes"${dis}>Post now</button><button class="btn primary apmain" data-act="approve"${dis}>${schedBtn()}</button></div>
   <div class="row fsmall">${d.own?`<span class="src">Saved as you go: it waits in To review until you post or schedule it.</span><button class="btn small bad" data-own="discard">Discard</button>`:`<span class="src">Idea approved${r.by?" by "+esc(nameOf(r.by)):""}${r.at?" · "+esc(fmtWhen(r.at)):""}</span><button class="btn small" data-act="undo">Back to review</button><button class="btn small" data-act="posting" title="Only if you posted it yourself">Mark as posted</button><button class="btn small bad" data-act="reject">Bin it</button>`}</div>`}
 function wbInfo(d){const s=stepInfo(d);const tone=(...xs)=>xs.includes("warn")?"warn":xs.includes("info")?"info":"ok";
   return [{label:"Media",tone:tone(s[1].tone,s[2].tone)},{label:"Text",tone:s[0].tone},{label:"Links",tone:s[3].tone==="warn"?"warn":"ok"},{label:"More",tone:s[4].tone==="warn"?"warn":"ok"}]}
@@ -2048,7 +2050,7 @@ function finishOpener(d,st){const p=d.posting||{};const at=p.at||p.suggestedAt;c
     <canvas id="foCard" width="10" height="10" role="img" aria-label="The post's graphic"></canvas>
     <p class="src" style="margin:0">${st==="scheduled"?"Goes out":"Suggested for"} ${esc(at?new Date(at).toLocaleString("en-GB",{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}):"no time yet")} · ${esc(ds.map(accLabel).join(", ")||"no accounts yet")}${cf&&st!=="scheduled"?` · ${cf} fact${cf===1?"":"s"} to check`:""}</p>
     <div class="row"><button class="btn primary" data-act="finishCP">${st==="scheduled"?"Open in Compose":"Finish in Compose"}</button><button class="btn" data-act="oldWb">Show it here</button></div>
-    <span class="src">Words, pictures, video, checks and when, all in one place. Use ‹ › at the top to move through ${st==="scheduled"?"Scheduled":st==="hold"?"Editing":"your drafts"} without coming back here.</span></div></article>`}
+    <span class="src">Words, pictures, video, checks and when, all in one place. Use ‹ › at the top to move through ${st==="scheduled"?schedWord():st==="hold"?"Editing":"your drafts"} without coming back here.</span></div></article>`}
 function renderDetail0(){
   if(S.status==="evergreen"){renderEgDetail();return}
   const d=S.drafts.find(x=>x.id===S.openId);
@@ -2393,7 +2395,7 @@ function decideBar(d,st,checks){
   if(st!=="pending"){
     const r=d.review||{};
     const why=[...(r.reasons||[]),r.note].filter(Boolean).join(" · ");
-    return `<div class="row"><span class="state"><b>${esc(({hold:"Idea approved",scheduled:"Scheduled",posted:"Posted",rejected:"Rejected",changes:"Sent back"})[st]||st)}</b> by ${esc(nameOf(r.by))}${r.at?" · "+esc(fmtWhen(r.at)):""}${why?` · ${esc(why)}`:""}</span>${st==="hold"?`<button class="btn small primary" data-act="approve" title="Schedules it for the time in Where and when">Schedule</button>`:""}${st==="hold"||(st==="scheduled"&&!Object.keys(d.published||{}).length)?`<button class="btn small" data-act="apNow" title="Facebook and Instagram go out within 5 minutes">Post now</button>${st==="scheduled"?`<button data-act="approve" hidden tabindex="-1" aria-hidden="true"></button>`:""}`:""}${st==="hold"||st==="scheduled"?(()=>{const pub=d.published||{};const auto=((d.posting||{}).destinations||[]).filter(k=>["facebook","instagram"].includes(platOfKey(k)));const waitingOnHand=st==="scheduled"&&auto.every(k=>pub[k]);return `<button class="btn small${waitingOnHand?" primary":""}" data-act="posting" title="${auto.length&&!waitingOnHand?"The publisher marks it posted once Facebook and Instagram are out. Use this only if you posted it yourself.":"One click: the morning run finds the links itself"}">${waitingOnHand?"Mark X as posted":"Mark as posted"}</button>`})():""}${st==="posted"?"":`<button class="btn small" data-act="undo">Back to To review</button>`}</div>`;
+    return `<div class="row"><span class="state"><b>${esc(({hold:"Idea approved",scheduled:schedWord(),posted:"Posted",rejected:"Rejected",changes:"Sent back"})[st]||st)}</b> by ${esc(nameOf(r.by))}${r.at?" · "+esc(fmtWhen(r.at)):""}${why?` · ${esc(why)}`:""}</span>${st==="hold"?`<button class="btn small primary" data-act="approve" title="Schedules it for the time in Where and when">${schedBtn()}</button>`:""}${st==="hold"||(st==="scheduled"&&!Object.keys(d.published||{}).length)?`<button class="btn small" data-act="apNow" title="Facebook and Instagram go out within 5 minutes">Post now</button>${st==="scheduled"?`<button data-act="approve" hidden tabindex="-1" aria-hidden="true"></button>`:""}`:""}${st==="hold"||st==="scheduled"?(()=>{const pub=d.published||{};const auto=((d.posting||{}).destinations||[]).filter(k=>["facebook","instagram"].includes(platOfKey(k)));const waitingOnHand=st==="scheduled"&&auto.every(k=>pub[k]);return `<button class="btn small${waitingOnHand?" primary":""}" data-act="posting" title="${auto.length&&!waitingOnHand?"The publisher marks it posted once Facebook and Instagram are out. Use this only if you posted it yourself.":"One click: the morning run finds the links itself"}">${waitingOnHand?"Mark X as posted":"Mark as posted"}</button>`})():""}${st==="posted"?"":`<button class="btn small" data-act="undo">Back to To review</button>`}</div>`;
   }
   if(S.mode==="reject"||S.mode==="changes"){
     const isRej=S.mode==="reject";
@@ -2886,12 +2888,19 @@ const DESTS=[["uk-fb","UK Facebook"],["uk-ig","UK Instagram"],["uk-x","UK X"],["
 function teamDests(){const t=(S.teams||[]).find(x=>x.id===S.team);const a=t&&t.accounts;if(!a||!a.length)return DESTS;
   const plat={facebook:"Facebook",instagram:"Instagram",x:"X"};return a.map(x=>[x.key,DESTS.find(d=>d[0]===x.key)?.[1]||`${x.name||accLabel(x.key)}${plat[x.platform]&&!String(x.name||"").includes(plat[x.platform])?" "+plat[x.platform]:""}`])}
 // Facebook and Instagram need your own publishing right; X is posted by hand.
-function locked(k){if(!S.rights)return false;const t=(S.teams||[]).find(x=>x.id===S.team);const acc=t&&(t.accounts||[]).find(a=>a.key===k);const plat=acc?acc.platform:(/-x$/.test(k)?"x":"meta");return plat!=="x"&&!S.rights.includes(k)}
+/* Hand-off mode (8 Nov 2026): the engine publishes nothing itself while the Meta app is in Development mode.
+   Approving hands the post to a person through its Asana task; they post it in Business Suite or on X. */
+function HO(){return !!(S.handoff&&S.handoff.on)}
+function schedBtn(){return HO()?"Hand off":"Schedule"}
+function schedWord(){return HO()?"Handed off":"Scheduled"}
+function hoOverdue(d){if(!HO()||d.status!=="scheduled")return false;const at=Date.parse((d.posting||{}).at||"");return Number.isFinite(at)&&Date.now()-at>((S.handoff.overdue_minutes||30)*60e3)}
+function hoTag(d){const g=d.posting||{};return `${g.asanaUrl?`<a class="qf" href="${esc(g.asanaUrl)}" target="_blank" rel="noopener" title="Post it from its Asana task, then complete the task">Asana task ↗</a>`:`<span class="qf" title="The Asana task is made by the engine run through Chris's Claude">Task coming</span>`}${hoOverdue(d)?`<span class="qf c" title="Its time passed over ${S.handoff.overdue_minutes||30} minutes ago and the task isn't closed: chase it">Overdue</span>`:""}`}
+function locked(k){if(HO())return false;if(!S.rights)return false;const t=(S.teams||[]).find(x=>x.id===S.team);const acc=t&&(t.accounts||[]).find(a=>a.key===k);const plat=acc?acc.platform:(/-x$/.test(k)?"x":"meta");return plat!=="x"&&!S.rights.includes(k)}
 /* Pause everything (A switch on the Calendar queue, B chip + red line on
    every view, C confirm with scope). Pausing never deletes or changes a
    post: the publisher waits until it's resumed. */
 function pauseOf(k){return (S.pauses||[]).find(p=>p.scope==="all"||(p.account_keys||[]).includes(k))||null}
-function isHeld(d){return d.status==="scheduled"&&((d.posting||{}).destinations||[]).some(k=>pauseOf(k))}
+function isHeld(d){return !HO()&&d.status==="scheduled"&&((d.posting||{}).destinations||[]).some(k=>pauseOf(k))}
 function myPauseKeys(teamId){const ts=(S.teams||[]).filter(t=>!teamId||t.id===teamId);
   return [...new Set(ts.flatMap(t=>(t.accounts||[]).filter(a=>a.platform==="x"||(S.rights||[]).includes(a.key)).map(a=>a.key)))]}
 function heldCount(keys){return S.drafts.filter(d=>d.status==="scheduled"&&((d.posting||{}).destinations||[]).some(k=>!keys||keys.includes(k))).length}
@@ -2915,10 +2924,12 @@ function renderPause(){const on=(S.pauses||[]).length;const chip=$("#pauseChip")
   const atOf=d=>d.post_at||(d.posting&&d.posting.at)||null;
   const sch=S.drafts.filter(d=>d.status==="scheduled"&&atOf(d)&&Date.parse(atOf(d))>Date.now()).sort((a,b)=>String(atOf(a)).localeCompare(String(atOf(b))));
   const nx=sch[0]?new Date(atOf(sch[0])):null;const nxt=nx?(nx.toDateString()===new Date().toDateString()?nx.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"}):nx.toLocaleString("en-GB",{weekday:"short",hour:"2-digit",minute:"2-digit"})):"";
-  if(chip)chip.innerHTML=!S.mcp||!S.teams?"":on?`<button class="pchip on" data-pause="where" title="${esc(S.pauses.map(p=>`${p.reason} (${p.paused_by})`).join("; "))}">‖ Paused · ${S.drafts.filter(isHeld).length} held</button>`:late.length?`<button class="pchip late" data-late="${esc(late[0].d.id)}" title="Not out 20 minutes after its time. The Mac Mini and the cloud backup may both be down, or Facebook refused it: open it to see why, or post it by hand.">${sideSvg("alert",14)}${late.length} late · not posted yet</button>`:ps&&!ps.mini&&!ps.cloud?`<button class="pchip late" data-pause="where" title="${esc(ps.tip)}">${sideSvg("alert",14)}Publishers not checking in · ${sch.length} scheduled</button>`:`<button class="pchip${ps&&!ps.mini?" warn":""}" data-pause="where" title="${esc((ps?ps.tip+" ":"")+"Pause it from the Calendar.")}">● Publishing live · ${sch.length} scheduled${nxt?` · next at ${esc(nxt)}`:""}${ps&&!ps.mini?" · Mini quiet, cloud backup covering":ps&&ps.ago?` · checked ${esc(ps.ago)}`:""}</button>`;
+  if(chip&&HO()&&S.mcp&&S.teams){const ho=S.drafts.filter(d=>d.status==="scheduled"),od=ho.filter(hoOverdue);chip.innerHTML=`<button class="pchip${od.length?" late":""}" data-pause="where" title="${esc((S.handoff.why||"")+" Approved posts become Asana tasks: post them in Business Suite or on X, then complete the task.")}">✋ Hand-off mode · ${ho.length} handed off${od.length?` · ${od.length} overdue`:""}</button>`}
+  else if(chip)chip.innerHTML=!S.mcp||!S.teams?"":on?`<button class="pchip on" data-pause="where" title="${esc(S.pauses.map(p=>`${p.reason} (${p.paused_by})`).join("; "))}">‖ Paused · ${S.drafts.filter(isHeld).length} held</button>`:late.length?`<button class="pchip late" data-late="${esc(late[0].d.id)}" title="Not out 20 minutes after its time. The Mac Mini and the cloud backup may both be down, or Facebook refused it: open it to see why, or post it by hand.">${sideSvg("alert",14)}${late.length} late · not posted yet</button>`:ps&&!ps.mini&&!ps.cloud?`<button class="pchip late" data-pause="where" title="${esc(ps.tip)}">${sideSvg("alert",14)}Publishers not checking in · ${sch.length} scheduled</button>`:`<button class="pchip${ps&&!ps.mini?" warn":""}" data-pause="where" title="${esc((ps?ps.tip+" ":"")+"Pause it from the Calendar.")}">● Publishing live · ${sch.length} scheduled${nxt?` · next at ${esc(nxt)}`:""}${ps&&!ps.mini?" · Mini quiet, cloud backup covering":ps&&ps.ago?` · checked ${esc(ps.ago)}`:""}</button>`;
   if(typeof renderSide==="function")renderSide();
-  $("#pauseLine").hidden=!on}
+  $("#pauseLine").hidden=!on||HO()}
 function pauseSwitchHtml(){const ps=S.pauses||[];
+  if(HO())return `<div class="pswitch"><b>✋ Hand-off mode</b><small>${esc(S.handoff.why||"")} The engine posts nothing itself: an approved post becomes an Asana task in the posting calendar. Post it in Business Suite or on X, paste the live link into the task and complete it.</small></div>`;
   if(!ps.length)return `<div class="pswitch"><b>Publishing on</b><small>For a national tragedy or a breaking crisis, hold every scheduled post at once. Nothing is deleted.</small><button class="btn small" data-pause="open">Pause everything…</button></div>`;
   return ps.map(p=>`<div class="pswitch on"><b>‖ Paused by ${esc(p.paused_by)} at ${esc(pauseWhen(p))}</b><span>${esc(p.reason)}</span><small>${p.scope==="all"?"Every account":esc(p.account_keys.map(accLabel).join(" · "))} · holding ${esc(pauseUntil(p))}</small>${p.can_resume?`<button class="btn small primary" data-pause="resume" data-id="${esc(String(p.id))}">Resume now</button>`:`<small>Only ${esc(p.paused_by)}, or someone who can post to all of these, can resume it.</small>`}</div>`).join("")}
 function openPause(){const t=(S.teams||[]).find(x=>x.id===S.team);const mine=myPauseKeys(),team=myPauseKeys(S.team);
@@ -3429,7 +3440,7 @@ async function setStatus(d,status,extra={},msgOver=null){
     await S.db.doc("drafts/"+d.id).update({status,review});
     await logFeedback({draftId:d.id,action:status==="pending"?"reopen":status,...extra,type:d.type,issue:d.issue});
     const prev=d.status||"pending",prevReview=d.review||{};
-    const msg=msgOver?msgOver:status==="scheduled"?"Approved and scheduled":status==="hold"?"Moved to Editing":status==="rejected"?"Moved to the Bin":status==="changes"?"Sent back for changes":"Moved back to To review";
+    const msg=msgOver?msgOver:status==="scheduled"?(HO()?"Handed off: post it from its Asana task, then complete the task":"Approved and scheduled"):status==="hold"?"Moved to Editing":status==="rejected"?"Moved to the Bin":status==="changes"?"Sent back for changes":"Moved back to To review";
     toast(msg,status!=="pending"?async()=>{try{await S.db.doc("drafts/"+d.id).update({status:prev,review:prevReview});await logFeedback({draftId:d.id,action:"undo",undid:status,type:d.type,issue:d.issue});S.status=prev;S.openId=d.id;renderAll();toast("Undone")}catch(e){failToast(e,"Couldn't undo. Move it back by hand")}}:null);
     resetDraftUi();
   }catch(e){failToast(e,"Couldn't save")}
@@ -6250,7 +6261,7 @@ function cpHistory(){const d=CP.d,o=CP.saved;if(!o)return;const w=x=>JSON.string
 /* ---------- render ---------- */
 function cpRenderKeep(){const m=cpEl(".cp-mid"),pv=cpEl(".cp-prev");const a=m?m.scrollTop:0,b=pv?pv.scrollTop:0;const f=document.activeElement&&document.activeElement.id;cpRender();const m2=cpEl(".cp-mid"),p2=cpEl(".cp-prev");if(m2)m2.scrollTop=a;if(p2)p2.scrollTop=b;if(f&&f!=="cpText"){const el=document.getElementById(f);if(el&&el.focus)el.focus()}}
 function cpHead(){const fin=!CP.start&&CP.id&&["hold","scheduled"].includes(CP.st);
-  return `<header class="cp-top"><button class="btn small" data-cp="close" aria-label="Close Compose">✕</button><h2>Compose</h2><span class="chip">${esc(teamLabel())}</span>${fin?`<span class="chip cp-stg ${esc(CP.st)}">${CP.st==="scheduled"?"Scheduled":"Editing"}</span>`:""}
+  return `<header class="cp-top"><button class="btn small" data-cp="close" aria-label="Close Compose">✕</button><h2>Compose</h2><span class="chip">${esc(teamLabel())}</span>${fin?`<span class="chip cp-stg ${esc(CP.st)}">${CP.st==="scheduled"?schedWord():"Editing"}</span>`:""}
     ${CP.start?"":`<span class="src" id="cpSaved" aria-live="polite">${esc(CP.state||(CP.id?"Saved":"Not saved yet"))}</span>${cpFilm()||'<span class="sp"></span>'}
     ${(CP.d.history||[]).length?`<button class="btn small" data-cp="hist" aria-expanded="${CP.showHist}">History (${CP.d.history.length})</button>`:""}${CP.id?(fin?`<button class="btn small" data-cp="back" title="Move it back to To review">Back to review</button><button class="btn small" data-cp="bin">Bin</button>`:`<button class="btn small" data-cp="dup">Duplicate</button><button class="btn small" data-cp="discard">Discard</button>`):""}`}</header>`}
 /* N1: the pile you opened from (Editing, Scheduled, or your own drafts) as thumbnails, with ‹ › to move through it without going back to the board. */
@@ -6515,7 +6526,7 @@ function cpBar(d){const c=cpChecks(d);const bad=c.filter(x=>x.lvl==="b");const a
   return `<footer class="cp-bar"><label class="cp-f inline cp-camp">${sideSvg("tag",14)}<input id="cpCamp" value="${esc(d.issue||"")}" placeholder="Campaign" list="cpCamps" maxlength="40"><datalist id="cpCamps">${[...new Set(S.drafts.map(x=>x.issue).filter(Boolean))].map(x=>`<option value="${esc(x)}">`).join("")}</datalist></label>
    <span class="sp"></span><span class="cp-when">${esc(when)}${cpSlots((d.posting||{}).destinations||[]).some(s=>Math.abs(s-t)<60e3)?" ★":""}</span>
    <button class="btn" data-cp="draft">Keep as draft</button>
-   ${ask?`<button class="btn primary" data-cp="ask"${bad.filter(x=>!/^(You can't publish|Tick the)/.test(x.t)).length?" disabled":""}>Send for checking</button>`:`<button class="btn" data-cp="now"${bad.filter(x=>x.t!=="The time has passed").length?" disabled":""}>Post now</button><button class="btn primary" data-cp="schedule"${bad.length?" disabled":""} title="${esc(bad.map(x=>x.t).join("; "))}">${cpNextId()?`Schedule<span class="cp-nx"> · next</span> ›`:"Schedule"}</button>`}</footer>`}
+   ${ask?`<button class="btn primary" data-cp="ask"${bad.filter(x=>!/^(You can't publish|Tick the)/.test(x.t)).length?" disabled":""}>Send for checking</button>`:`<button class="btn" data-cp="now"${bad.filter(x=>x.t!=="The time has passed").length?" disabled":""}>Post now</button><button class="btn primary" data-cp="schedule"${bad.length?" disabled":""} title="${esc(bad.map(x=>x.t).join("; "))}">${cpNextId()?`${schedBtn()}<span class="cp-nx"> · next</span> ›`:schedBtn()}</button>`}</footer>`}
 /* Typing updates the counts, preview, checks and bar without redrawing the words. */
 function cpLive(){const d=CP.d;cpFactsLive();const c=cpEl("#cpCnt");if(c)c.innerHTML=cpCounts(d);const pv=cpEl(".cp-prev");if(pv){pv.innerHTML=cpPreview(d);cpDraw()}const ck=cpEl("#cpChecks");if(ck)ck.outerHTML=cpChecksBox(d);const b=cpEl(".cp-bar");if(b)b.outerHTML=cpBar(d)}
 
@@ -6610,7 +6621,7 @@ async function cpPublish(now){const d0=CP.d;const bad=cpChecks(d0).filter(x=>x.l
     const pst={...(d.posting||{}),destinations:ds,at:at.toISOString(),times:null,postNow:now?{at:new Date().toISOString(),by:S.me}:null,approvedBy:S.me,approvedAt:new Date().toISOString()};
     await S.db.doc("drafts/"+id).update({posting:pst});toast("Preparing what will be published…");
     const d2=S.drafts.find(x=>x.id===id)||d;await S.db.doc("drafts/"+id).update({final:await snapshotFinal(d2)});
-    const msg=now?postNowMsg(ds):`Scheduled for ${at.toLocaleString("en-GB",{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})} on ${ds.length} account${ds.length===1?"":"s"}`;
+    const msg=now?postNowMsg(ds):`${HO()?"Handed off for":"Scheduled for"} ${at.toLocaleString("en-GB",{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})} on ${ds.length} account${ds.length===1?"":"s"}`;
     const left=next?(CP.pileIds||[]).filter(x=>x!==id&&cpInPile(S.drafts.find(y=>y.id===x))).length:0;
     await setStatus(S.drafts.find(x=>x.id===id)||d2,"scheduled",{},next?`${msg}. ${left} more to finish`:pileN>1&&CP.pileSt==="hold"?`${msg}. All done in Editing`:msg);
     if((S.drafts.find(x=>x.id===id)||{}).status!=="scheduled")throw new Error("The engine didn't schedule it");
@@ -6735,7 +6746,7 @@ window.addEventListener("beforeunload",ev=>{if(CP.open&&CP.state&&/Unsaved|Savin
   if(user){try{S.me=await user.id();const me=await user.me();S.meName=me?.name||"";$("#who").textContent=""}catch(e){}}
   if(!mcp){$("#offline").hidden=false;renderAll();return}
   let me;try{me=await eng("engine_me",{})}catch(e){engineDown(e,false);renderAll();return}
-  S.teams=(me&&me.teams)||[];S.rights=(me&&me.publish_rights)||[];S.connected=(me&&me.connected_rights)||[];S.pauses=(me&&me.pauses)||[];S.maintainer=!!(me&&me.maintainer);S.whoId=(me&&me.who)||"";
+  S.teams=(me&&me.teams)||[];S.rights=(me&&me.publish_rights)||[];S.connected=(me&&me.connected_rights)||[];S.pauses=(me&&me.pauses)||[];S.handoff=(me&&me.handoff)||null;document.body.classList.toggle("handoff",!!(S.handoff&&S.handoff.on));{const tb=STATUS.find(x=>x.key==="scheduled");if(tb&&S.handoff&&S.handoff.on)tb.label="Handed off"}S.maintainer=!!(me&&me.maintainer);S.whoId=(me&&me.who)||"";
   if(!S.teams.length){$("#offline").hidden=false;$("#offline").textContent="You aren't in a Content Engine team yet. Ask Chris to add you.";renderAll();return}
   const saved=teamPref();S.team=(S.teams.find(t=>t.id===saved)||S.teams.find(t=>t.id!=="global")||S.teams[0]).id;
   renderTeams();renderConnect();renderPause();

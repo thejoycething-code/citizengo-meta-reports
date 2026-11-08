@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 'use strict';
+// These tests cover the engine publishing itself; hand-off mode has its own (test-handoff.js).
+process.env.ENGINE_HANDOFF_MODE = '0';
 // Pins the Content Engine rules (lib/engine.js) and tools (mcp/engine-tools.js)
 // against an in-memory store: who sees which team's posts and calendar, that
 // approving needs publishing rights, that stale saves are refused, and that

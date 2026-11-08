@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 'use strict';
+// These tests cover the engine publishing itself; hand-off mode has its own (test-handoff.js).
+process.env.ENGINE_HANDOFF_MODE = '0';
 // The Content Engine publisher (collector/publish.js, lib/publish.js) against
 // an in-memory engine and a fake Facebook: a dry run changes nothing; a live
 // run publishes each due Facebook and Instagram destination once, with the

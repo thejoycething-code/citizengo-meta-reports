@@ -1,0 +1,6 @@
+{
+  "on": true,
+  "since": "2026-11-08",
+  "why": "The Meta app is in Development mode, so posts it publishes on Facebook are shown only to people with a role on the app. Until it can go Live, approved posts become Asana tasks and a person posts them by hand.",
+  "overdue_minutes": 30
+}
