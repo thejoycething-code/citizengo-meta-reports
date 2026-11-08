@@ -3434,11 +3434,18 @@ async function logFeedback(entry){
 /* Post now: what the toast says. UK posts get their Asana calendar task from the engine run (through Chris's own Claude). */
 function postNowMsg(dests){const auto=dests.some(k=>["facebook","instagram"].includes(platOfKey(k)));const uk=dests.some(k=>/^uk-/.test(k));
   return `${auto?"Posting now: Facebook and Instagram go out within 5 minutes":"Ready to post now"}${dests.some(k=>platOfKey(k)==="x")?". Post X by hand":""}${uk?". The engine run adds the UK Asana task":""}`}
+/* What people changed before it went out (Compose saves no per-edit feedback): the engine's own words against the
+   final ones, one entry per network, logged when it is scheduled or handed off, so the morning run learns from it. */
+async function logFinalEdits(d){const ed=d.edited||{};const pl=d.platforms||{};
+  for(const p of ["facebook","instagram","x","facebookComment","instagramComment"]){if(ed[p]==null||pl[p]==null)continue;
+    if(JSON.stringify(ed[p])===JSON.stringify(pl[p]))continue;
+    await logFeedback({draftId:d.id,action:"final-edit",platform:p,before:pl[p],after:ed[p],type:d.type,issue:d.issue})}}
 async function setStatus(d,status,extra={},msgOver=null){
   const review=status==="pending"?{}:{by:S.me,at:new Date().toISOString(),...extra};
   try{
     await S.db.doc("drafts/"+d.id).update({status,review});
     await logFeedback({draftId:d.id,action:status==="pending"?"reopen":status,...extra,type:d.type,issue:d.issue});
+    if(status==="scheduled")await logFinalEdits(d);
     const prev=d.status||"pending",prevReview=d.review||{};
     const msg=msgOver?msgOver:status==="scheduled"?(HO()?"Handed off: post it from its Asana task, then complete the task":"Approved and scheduled"):status==="hold"?"Moved to Editing":status==="rejected"?"Moved to the Bin":status==="changes"?"Sent back for changes":"Moved back to To review";
     toast(msg,status!=="pending"?async()=>{try{await S.db.doc("drafts/"+d.id).update({status:prev,review:prevReview});await logFeedback({draftId:d.id,action:"undo",undid:status,type:d.type,issue:d.issue});S.status=prev;S.openId=d.id;renderAll();toast("Undone")}catch(e){failToast(e,"Couldn't undo. Move it back by hand")}}:null);
