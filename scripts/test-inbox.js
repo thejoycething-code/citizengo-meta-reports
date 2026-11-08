@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 'use strict';
+// These tests cover the engine publishing itself; hand-off mode has its own (test-handoff.js).
+process.env.ENGINE_HANDOFF_MODE = '0';
 // The Content Engine Inbox (lib/inbox.js, collector/inbox.js,
 // collector/inbox-actions.js, the engine_inbox* tools) against an in-memory
 // engine and a fake Meta: reading keeps people's status, actions wait out
