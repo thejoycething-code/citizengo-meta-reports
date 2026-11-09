@@ -151,6 +151,9 @@ async function asanaTests() {
   db.posts.push(ed);
   eq('editing: stage In Progress', A.stageOf(ed), 'progress');
   eq('editing: task says not to post yet, due at the suggested time', [/don't post yet/.test(A.taskFor(ed).html_notes), A.taskFor(ed).due_at], [true, '2026-11-18T08:00:00.000Z']);
+  const draft = { id: 'uk-4', status: 'hold', doc: { title: 'Draft only', card: { template: 'vigil' }, platforms: { facebook: 'FB draft', facebookComment: 'Event link', instagram: 'IG draft', x: ['X one'] }, edited: { instagram: 'IG edited' }, posting: { destinations: ['uk-fb', 'uk-ig', 'uk-x'] } } };
+  const dt = A.taskFor(draft);
+  eq('editing, no final yet: copy from the draft and its edits', [/FB draft/.test(dt.html_notes), /Event link/.test(dt.html_notes), /IG edited/.test(dt.html_notes), /IG draft/.test(dt.html_notes), /X one/.test(dt.html_notes), dt.format], [true, true, true, false, true, 'image']);
   calls.length = 0;
   await run(opts);
   const e1 = db.posts.find((x) => x.id === 'uk-3');
