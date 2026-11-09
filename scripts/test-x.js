@@ -91,6 +91,20 @@ eq('backfill ends at the widened first-run window too', sched.backfillWindow(NOW
 eq('no backfill when it would not reach past the daily window', sched.backfillWindow(NOW, 8, 8), null);
 eq('first run for an account reaches the observed ceiling, so checkpoints have posts', [sched.firstRunDays(0), sched.firstRunDays(12)], [89, 8]);
 
+console.log('\nSpend caps (lib/xbudget.js)\n');
+{
+  const xb = require('../lib/xbudget');
+  eq('defaults: $100 a month, $2,000 a year', xb.budgets({}), { monthly: 100, yearly: 2000 });
+  eq('env wins; junk falls back', xb.budgets({ X_MONTHLY_BUDGET_USD: '200', X_ANNUAL_BUDGET_USD: 'lots' }), { monthly: 200, yearly: 2000 });
+  eq('window is 365 days back', xb.windowStart(NOW), new Date(NOW.getTime() - 365 * D).toISOString());
+  eq('sumCost adds string numerics', Math.round(xb.sumCost([{ est_cost_usd: '1.25' }, { est_cost_usd: 2 }, {}]) * 100), 325);
+  eq('room under both: month is tighter', xb.remaining({ monthSpent: 50, yearSpent: 800, monthly: 200, yearly: 2000 }), { remaining: 150, limitedBy: 'monthly' });
+  eq('near the year cap: year is tighter', xb.remaining({ monthSpent: 50, yearSpent: 1950, monthly: 200, yearly: 2000 }), { remaining: 50, limitedBy: 'yearly' });
+  eq('runs while under both', xb.refusal({ monthSpent: 10, yearSpent: 1999, monthly: 200, yearly: 2000 }), null);
+  ok('refuses at the yearly cap', /yearly cap is \$2000/.test(xb.refusal({ monthSpent: 10, yearSpent: 2000, monthly: 200, yearly: 2000 }) || ''));
+  ok('refuses at the monthly budget', /monthly budget is \$200/.test(xb.refusal({ monthSpent: 200, yearSpent: 300, monthly: 200, yearly: 2000 }) || ''));
+}
+
 console.log('\nEnrolment guard (lib/xflow.js)\n');
 {
   const { enrolmentConflict } = require('../lib/xflow');
