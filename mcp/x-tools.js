@@ -407,6 +407,7 @@ async function dataHealth(store) {
   lines.push(`- Posts held: **${n(fresh.posts)}** · with private metrics: **${n(fresh.withPrivate)}**`);
   if (spend) {
     lines.push(`- Estimated X spend this month: **$${Number(spend.est_cost_usd || 0).toFixed(2)}** of $${spend.budget} budget (${n(spend.post_reads)} post reads, ${n(spend.user_reads)} user reads)`);
+    if (spend.year_budget) lines.push(`- Estimated X spend over the last 365 days: **$${Number(spend.year_cost_usd || 0).toFixed(2)}** of the $${spend.year_budget} yearly cap`);
   }
   // Broken links and withheld posts: things someone should act on.
   const [broken, withheld] = await Promise.all([

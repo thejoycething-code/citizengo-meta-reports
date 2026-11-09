@@ -51,7 +51,8 @@ default PEER_IG_VIA_ID 17841422748868275
 default OPPONENTS_IG_ENABLED true
 default PEER_IG_ENABLED true
 default X_COLLECT_ENABLED true
-default X_MONTHLY_BUDGET_USD 150
+default X_MONTHLY_BUDGET_USD 200
+default X_ANNUAL_BUDGET_USD 2000
 default X_APP_OWNER_ID 1264712994
 env_value() { sed -n "s/^$1=//p" .env 2>/dev/null | tail -1 | sed "s/^[\"']//; s/[\"']\$//"; }
 enabled() { local v="${(P)1:-$(env_value $1)}"; [ "$v" = "true" ]; }

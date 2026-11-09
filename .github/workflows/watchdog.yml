@@ -95,7 +95,8 @@ jobs:
       - name: Check the X source (freshness, re-authorisation, budget)
         if: always() && github.event.inputs.test_alert != 'true'
         env:
-          X_MONTHLY_BUDGET_USD: ${{ vars.X_MONTHLY_BUDGET_USD || '100' }}
+          X_MONTHLY_BUDGET_USD: ${{ vars.X_MONTHLY_BUDGET_USD || '200' }}
+          X_ANNUAL_BUDGET_USD: ${{ vars.X_ANNUAL_BUDGET_USD || '2000' }}
           X_APP_OWNER_ID: ${{ vars.X_APP_OWNER_ID }}
         run: node scripts/check-x-health.js
 

@@ -24,7 +24,8 @@
 //      (to ~89 on 30 Sep 2026) and refuses older ones with a partial error;
 //      public metrics always arrive.
 //   6. A run row with reads and estimated cost. Refuses to START when the
-//      month's estimated spend has reached X_MONTHLY_BUDGET_USD.
+//      month's estimated spend has reached X_MONTHLY_BUDGET_USD, or the last
+//      365 days' has reached X_ANNUAL_BUDGET_USD (default $2,000, lib/xbudget.js).
 //
 // Spokesperson accounts are collected only for posts carrying a CitizenGO link
 // or mentioning CitizenGO (lib/xschedule.js isAboutUs). Everything else on a
@@ -49,6 +50,7 @@ const { makeSink } = require('./lib/sinks');
 const xapi = require('../lib/xapi');
 const xauth = require('../lib/xauth');
 const sched = require('../lib/xschedule');
+const xbudget = require('../lib/xbudget');
 
 loadEnv();
 
@@ -77,7 +79,8 @@ const BACKFILL_FROM_DAYS = flag('backfill-from-days', null) === null ? null : Nu
 // posts already read and discarded must be read again. Billed per post.
 const RESCAN = args.includes('--rescan');
 const MAX_POSTS = Number(flag('max-posts', process.env.X_MAX_POSTS || 1000));
-const BUDGET_USD = Number(flag('budget-usd', process.env.X_MONTHLY_BUDGET_USD || 100));
+const BUDGET_USD = Number(flag('budget-usd', xbudget.budgets().monthly));
+const ANNUAL_BUDGET_USD = xbudget.budgets().yearly;
 const ONLY = (() => {
   const i = args.indexOf('--accounts');
   if (i === -1) return [];
@@ -99,7 +102,7 @@ const PRIVATE_KEY = String(process.env.X_TOKEN_PRIVATE_KEY || '').replace(/\\n/g
 // month's budget leaves. The start-of-run guard alone could not stop one large
 // run - a full-history backfill of 12 accounts is ~$86 - from overshooting the
 // cap, so every backfill page is checked against these before it is requested.
-const RUN_SPEND = { spent: 0, remaining: Infinity, nightlyReserve: 0, stoppedAtBudget: false };
+const RUN_SPEND = { spent: 0, remaining: Infinity, nightlyReserve: 0, stoppedAtBudget: false, limitedBy: 'monthly' };
 
 // Days of history a new account's first run backfills. 3650 reaches X's
 // 3,200-post limit for every account we hold. 0 turns the automatic backfill off.
@@ -167,6 +170,22 @@ async function loadAccounts() {
   }
   const byAccount = new Map((tok.body || []).map((t) => [t.account_id, t]));
   return (acc.body || []).map((a) => ({ ...a, label: a.label || a.username, token_row: byAccount.get(a.account_id) || null }));
+}
+
+// Spend over the last 365 days, for the yearly cap. Paged: PostgREST returns at
+// most 1,000 rows however large the limit, and a year is ~8,000 run rows.
+async function yearSpend() {
+  if (!SUPABASE) return 0;
+  const since = encodeURIComponent(xbudget.windowStart());
+  let total = 0;
+  for (let offset = 0; offset < 200000; offset += 1000) {
+    const r = await pg('GET', `x_collection_runs?select=est_cost_usd&started_at=gte.${since}&order=id.asc&limit=1000&offset=${offset}`);
+    if (!r.ok) throw new Error(`could not read the X spend ledger (HTTP ${r.status}); refusing to run without the yearly cap`);
+    const rows = Array.isArray(r.body) ? r.body : [];
+    total += xbudget.sumCost(rows);
+    if (rows.length < 1000) break;
+  }
+  return total;
 }
 
 async function monthToDateSpend() {
@@ -507,8 +526,8 @@ async function collectAccount(account, out) {
       // Assume a full page (100 posts) so the check can only err on the safe side.
       if (RUN_SPEND.spent + 100 * perPostRate > RUN_SPEND.remaining - RUN_SPEND.nightlyReserve) {
         RUN_SPEND.stoppedAtBudget = true;
-        log(`   backfill PAUSED at the monthly budget (less the nightly reserve) after ${got} post(s). It resumes on its own next month, or re-run after raising X_MONTHLY_BUDGET_USD.`);
-        passFailures.push({ pass: 'backfill', status: null, why: 'stopped at the monthly budget; resumable' });
+        log(`   backfill PAUSED at the ${RUN_SPEND.limitedBy} cap (less the nightly reserve) after ${got} post(s). It resumes on its own when the cap leaves room.`);
+        passFailures.push({ pass: 'backfill', status: null, why: `stopped at the ${RUN_SPEND.limitedBy} cap; resumable` });
         break;
       }
       const res = await client.userPosts(u.id, { start_time: start, end_time: end, pagination_token: tok, privateWindow: true, excludeRetweets: !INCLUDE_RETWEETS });
@@ -620,14 +639,18 @@ async function main() {
 
   // Budget guard first. A collector that has already spent the month's money
   // must not spend more; and it must say so, not skip quietly.
-  const spent = await monthToDateSpend();
-  if (spent >= BUDGET_USD) {
-    console.error(`REFUSING TO RUN: estimated X spend this month is $${spent.toFixed(2)}, budget is $${BUDGET_USD}.`);
-    console.error('Raise X_MONTHLY_BUDGET_USD deliberately, or wait for the month to roll over.');
+  const [spent, yearSpent] = await Promise.all([monthToDateSpend(), yearSpend()]);
+  const caps = { monthSpent: spent, yearSpent, monthly: BUDGET_USD, yearly: ANNUAL_BUDGET_USD };
+  const refuse = xbudget.refusal(caps);
+  if (refuse) {
+    console.error(`REFUSING TO RUN: ${refuse}`);
     process.exit(1);
   }
   if (spent) console.log(`  month to date: est $${spent.toFixed(2)} of $${BUDGET_USD} budget`);
-  RUN_SPEND.remaining = BUDGET_USD - spent;
+  if (yearSpent) console.log(`  last 365 days: est $${yearSpent.toFixed(2)} of $${ANNUAL_BUDGET_USD} yearly cap`);
+  const left = xbudget.remaining(caps);
+  RUN_SPEND.remaining = left.remaining;
+  RUN_SPEND.limitedBy = left.limitedBy;
 
   let accounts = await loadAccounts();
   // The nightly reserve covers EVERY collected account, not just the ones this
@@ -666,8 +689,8 @@ async function main() {
 
   console.log('\nSummary');
   for (const s of summary) console.log(`  ${String(s.status).padEnd(8)} ${s.label} — ${s.posts} posts, ${s.metrics} metric rows, est $${(s.cost || 0).toFixed(4)}`);
-  console.log(`  estimated cost this run: $${totals.cost.toFixed(4)} · month to date after run: $${(spent + totals.cost).toFixed(2)} of $${BUDGET_USD}`);
-  if (RUN_SPEND.stoppedAtBudget) console.log('  NOTE: the backfill stopped at the monthly budget. Re-run it next month (or after raising X_MONTHLY_BUDGET_USD); it resumes where it stopped.');
+  console.log(`  estimated cost this run: $${totals.cost.toFixed(4)} · month to date after run: $${(spent + totals.cost).toFixed(2)} of $${BUDGET_USD} · last 365 days: $${(yearSpent + totals.cost).toFixed(2)} of $${ANNUAL_BUDGET_USD}`);
+  if (RUN_SPEND.stoppedAtBudget) console.log(`  NOTE: the backfill stopped at the ${RUN_SPEND.limitedBy} cap. It resumes where it stopped once the cap leaves room.`);
   if (Object.keys(written).length) {
     console.log('\nWritten to data/:');
     for (const [t, n] of Object.entries(written)) console.log(`  ${t}.ndjson — ${n} rows`);
@@ -676,7 +699,7 @@ async function main() {
     const md = ['### X collection', '',
       `- Accounts: **${summary.length}** (${totals.failed} failed)`,
       `- Posts seen: **${totals.posts}** · metric rows: **${totals.metrics}**`,
-      `- Estimated cost: **$${totals.cost.toFixed(4)}** this run · **$${(spent + totals.cost).toFixed(2)}** month to date of $${BUDGET_USD}`,
+      `- Estimated cost: **$${totals.cost.toFixed(4)}** this run · **$${(spent + totals.cost).toFixed(2)}** month to date of $${BUDGET_USD} · **$${(yearSpent + totals.cost).toFixed(2)}** last 365 days of $${ANNUAL_BUDGET_USD}`,
       '', '| Account | Status | Posts | Metrics | Est. cost |', '| --- | --- | --- | --- | --- |',
       ...summary.map((s) => `| ${s.label} | ${s.status} | ${s.posts} | ${s.metrics} | $${(s.cost || 0).toFixed(4)} |`),
     ].join('\n');

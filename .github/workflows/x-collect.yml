@@ -68,7 +68,8 @@ jobs:
       X_TOKEN_PRIVATE_KEY: ${{ secrets.X_TOKEN_PRIVATE_KEY }}
       SUPABASE_URL: ${{ secrets.SUPABASE_URL || vars.SUPABASE_URL }}
       SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
-      X_MONTHLY_BUDGET_USD: ${{ vars.X_MONTHLY_BUDGET_USD || '100' }}
+      X_MONTHLY_BUDGET_USD: ${{ vars.X_MONTHLY_BUDGET_USD || '200' }}
+      X_ANNUAL_BUDGET_USD: ${{ vars.X_ANNUAL_BUDGET_USD || '2000' }}
       X_APP_OWNER_ID: ${{ vars.X_APP_OWNER_ID }}
       LOOKBACK_DAYS: ${{ github.event.inputs.lookback_days }}
       BACKFILL_DAYS: ${{ github.event.inputs.backfill_days || '0' }}

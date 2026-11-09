@@ -91,6 +91,15 @@ async function main() {
     console.log(`\n  spend this month   $${spent.toFixed(2)} of $${spend.budget}  (${pct}%) · ${Number(spend.post_reads || 0).toLocaleString('en-GB')} post reads, ${Number(spend.user_reads || 0).toLocaleString('en-GB')} user reads`);
     if (pct >= 100) problems.push(`X budget spent: est. $${spent.toFixed(2)} of $${spend.budget}. The collector refuses to run until X_MONTHLY_BUDGET_USD is raised or the month rolls over.`);
     else if (pct >= WARN_AT) warnings.push(`X spend is at ${pct}% of the $${spend.budget} monthly budget.`);
+    // The yearly cap agreed in Asana ("Review X API spending", 9 Nov 2026):
+    // $2,000 a year, and flag it there when spend gets close.
+    if (spend.year_budget) {
+      const ySpent = Number(spend.year_cost_usd || 0);
+      const yPct = Math.round((ySpent / spend.year_budget) * 100);
+      console.log(`  spend last 365 days $${ySpent.toFixed(2)} of $${spend.year_budget} yearly cap  (${yPct}%)`);
+      if (yPct >= 100) problems.push(`X yearly cap spent: est. $${ySpent.toFixed(2)} of $${spend.year_budget} over the last 365 days. The collector refuses to run until X_ANNUAL_BUDGET_USD is raised (needs agreement in the Asana task "Review X API spending").`);
+      else if (yPct >= WARN_AT) warnings.push(`X spend is at ${yPct}% of the $${spend.year_budget} yearly cap ($${ySpent.toFixed(2)} over the last 365 days). Flag it in the Asana task "Review X API spending".`);
+    }
     // Projected from each account's REAL posting rate over the last 30 days,
     // with only the app owner at the owned rate. The earlier flat figure (5
     // posts a day, everyone at $0.001) was wrong on both counts.

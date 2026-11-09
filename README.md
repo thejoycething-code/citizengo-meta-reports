@@ -424,8 +424,12 @@ against the live API — `npm run probe:x` is that check and must run first.
   catches up at the next run (`dueForCheckpoint`). Steady state from the third
   month: 18 accounts at 5 posts/day is **$37.80/month** ($167.40 if X bills the
   ordinary rate); @CitizenGO alone is about $1.20. `x_collection_runs` is the
-  ledger; the collector refuses to start once `X_MONTHLY_BUDGET_USD` (default
-  $100) is spent, and `npm run check:x` warns at 80%.
+  ledger; the collector refuses to start once `X_MONTHLY_BUDGET_USD` (a spike
+  guard, $200 on the Mini and in Actions) is spent, or once the last 365 days
+  reach `X_ANNUAL_BUDGET_USD` ($2,000, `lib/xbudget.js`), and `npm run check:x`
+  warns at 80% of either. The $2,000/year cap and keeping all 12 reads per post
+  were agreed on 9 Nov 2026 in the Asana task "Review X API spending"
+  (~$1,560/year approved, review in month 11).
 - **The watchdog watches the slack.** If reads of posts aged 31-89 days stop
   returning private metrics, `check-x-health.js` warns that X has tightened
   and the day-60 and day-85 checkpoints are buying public metrics only.
