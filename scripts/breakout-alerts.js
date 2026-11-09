@@ -105,10 +105,17 @@ const H = { apikey: key, Authorization: 'Bearer ' + key, 'Content-Type': 'applic
 const n = (v) => Number(v || 0).toLocaleString('en-GB');
 const ago = (days) => new Date(Date.now() - days * 86400000).toISOString();
 
-async function readAll(path) {
+// ORDER IS REQUIRED, and it must be unique. Offset paging without an ORDER BY
+// lets Postgres hand back rows in a different order on every page: on 9 Nov
+// 2026 the 75-day x_posts read returned 4,323 rows of which only 3,399 were
+// distinct - 924 read twice and as many never read at all. A post read twice
+// was announced and then suppressed as a duplicate of itself; a post never read
+// cannot be announced, and a story member never read breaks the dedup.
+async function readAll(path, order) {
+  if (!order) throw new Error(`readAll ${path.split('?')[0]}: an order is required for stable paging`);
   const out = [];
   for (let offset = 0; ; offset += 1000) {
-    const res = await fetch(`${base}/rest/v1/${path}&limit=1000&offset=${offset}`, { headers: H });
+    const res = await fetch(`${base}/rest/v1/${path}&order=${order}&limit=1000&offset=${offset}`, { headers: H });
     if (!res.ok) throw new Error(`read ${path.split('?')[0]}: HTTP ${res.status}`);
     const batch = await res.json();
     if (!Array.isArray(batch) || !batch.length) break;
@@ -223,10 +230,10 @@ function renderX({ post, accountName, otherAccounts, metrics, revival }) {
 
 // X candidates and verdicts, in the same item shape as the Facebook ones.
 async function collectX(announced) {
-  const accounts = Object.fromEntries((await readAll('x_accounts?select=account_id,username,label'))
+  const accounts = Object.fromEntries((await readAll('x_accounts?select=account_id,username,label', 'account_id.asc'))
     .map((a) => [a.account_id, a]));
   // Originals only: replies are conversation, and retweets are never collected.
-  const rows = await readAll(`x_posts?created_at=gte.${ago(CLUSTER_DAYS)}&in_reply_to_user_id=is.null&select=post_id,account_id,created_at,text,media,permalink_url`);
+  const rows = await readAll(`x_posts?created_at=gte.${ago(CLUSTER_DAYS)}&in_reply_to_user_id=is.null&select=post_id,account_id,created_at,text,media,permalink_url`, 'post_id.asc');
   const posts = rows.map((p) => {
     const kind = (Array.isArray(p.media) && p.media[0] && p.media[0].type) || 'text';
     const label = { photo: 'photo', video: 'video', animated_gif: 'GIF', text: 'text post' }[kind] || kind;
@@ -237,7 +244,7 @@ async function collectX(announced) {
   });
   const since = ago(LOOKBACK_DAYS);
   const fresh = new Set(posts.filter((p) => p.created_time >= since).map((p) => p.post_id));
-  const metricRows = await readAll(`x_post_metrics?collected_date=gte.${ago(LOOKBACK_DAYS + 1).slice(0, 10)}&select=post_id,collected_at,impressions,organic_impressions,promoted_impressions,likes,reposts,quotes,replies,bookmarks,organic_likes,organic_reposts,organic_replies,url_link_clicks,video_views`);
+  const metricRows = await readAll(`x_post_metrics?collected_date=gte.${ago(LOOKBACK_DAYS + 1).slice(0, 10)}&select=post_id,collected_at,impressions,organic_impressions,promoted_impressions,likes,reposts,quotes,replies,bookmarks,organic_likes,organic_reposts,organic_replies,url_link_clicks,video_views`, 'id.asc');
   const latest = {};
   for (const m of metricRows) {
     if (!fresh.has(m.post_id)) continue;
@@ -292,9 +299,9 @@ async function collectX(announced) {
 }
 
 async function main() {
-  const pages = Object.fromEntries((await readAll('meta_pages?select=page_id,name')).map((p) => [p.page_id, p.name]));
-  const posts = await readAll(`meta_posts?created_time=gte.${ago(CLUSTER_DAYS)}&select=post_id,page_id,created_time,media_type,permalink_url,full_picture,message`);
-  const metricRows = await readAll(`meta_post_metrics?collected_date=gte.${ago(CLUSTER_DAYS)}&select=post_id,collected_date,views_total,views_from_nonfollowers,reactions_total,shares_total,comments_total`);
+  const pages = Object.fromEntries((await readAll('meta_pages?select=page_id,name', 'page_id.asc')).map((p) => [p.page_id, p.name]));
+  const posts = await readAll(`meta_posts?created_time=gte.${ago(CLUSTER_DAYS)}&select=post_id,page_id,created_time,media_type,permalink_url,full_picture,message`, 'post_id.asc');
+  const metricRows = await readAll(`meta_post_metrics?collected_date=gte.${ago(CLUSTER_DAYS)}&select=post_id,collected_date,views_total,views_from_nonfollowers,reactions_total,shares_total,comments_total`, 'id.asc');
   const latest = {};
   for (const m of metricRows) {
     const c = latest[m.post_id];
@@ -305,7 +312,7 @@ async function main() {
   const storyOf = new Map();
   for (const s of stories) for (const m of s.members) storyOf.set(m.post_id, s);
 
-  const announced = ALL ? [] : await readAll('meta_breakout_alerts?select=post_id,story_key,media_type,first_post_at');
+  const announced = ALL ? [] : await readAll('meta_breakout_alerts?select=post_id,story_key,media_type,first_post_at', 'post_id.asc');
   const announcedPosts = new Set(announced.map((a) => a.post_id));
 
   const since = ago(LOOKBACK_DAYS);
