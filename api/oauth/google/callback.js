@@ -64,7 +64,10 @@ module.exports = async function handler(req, res) {
     who = (await google.verifyIdToken(idToken, { nonce: parked.nonce })).email;
   } catch (e) {
     await guard.recordFailure(source, 'google');
-    console.warn(JSON.stringify({ at: new Date().toISOString(), event: 'google_refused', reason: e.reason || e.code || e.message }));
+    console.warn(JSON.stringify({ at: new Date().toISOString(), event: 'google_refused', reason: e.reason || e.code || e.message,
+      // Google's own error name (invalid_client, redirect_uri_mismatch...),
+      // never the secret: the message carries only body.error or the status.
+      detail: e.code === 'GOOGLE_EXCHANGE' ? e.message : undefined }));
     const domainProblem = e.code === 'GOOGLE_REFUSED' && /domain|Workspace/.test(e.reason || '');
     html(403, 'Sign-in refused', domainProblem
       ? `Only ${google.allowedDomains().join(', ')} Google accounts can use this connector. Sign in with your work account.`
