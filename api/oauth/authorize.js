@@ -96,6 +96,14 @@ async function clientDocument(params, res) {
   }
 }
 
+// Token sign-in on this page. Since 11 Nov 2026 (Chris), once Google sign-in
+// is configured the token form is gone and a token POST is refused: staff sign
+// in with their work Google account. MCP_TOKEN_CONSENT=on brings it back (the
+// suite uses it). Bearer tokens sent directly to /api/mcp, like the Page
+// Inviter extension's, are unaffected - they never pass through this page.
+const tokenConsent = () => !google.configured()
+  || String(process.env.MCP_TOKEN_CONSENT || '').toLowerCase() === 'on';
+
 function page({ params, error, client }) {
   const hidden = PASS
     .map((k) => (params[k] ? `<input type="hidden" name="${k}" value="${esc(params[k])}">` : '')).join('');
@@ -121,12 +129,12 @@ input[type=password]{width:100%;padding:.6rem .7rem;font-size:1rem;border:1px so
 ${error ? `<div class="err">${esc(error)}</div>` : ''}
 ${withGoogle ? `<a class="btn" href="${esc(googleHref(params))}">Continue with Google</a>
 <p>Use your ${esc(google.allowedDomains().join(' or '))} account. Nothing to paste, nothing to remember.</p>
-<div class="or">or</div>` : ''}
-<form method="POST">${hidden}
+${tokenConsent() ? '<div class="or">or</div>' : ''}` : ''}
+${tokenConsent() ? `<form method="POST">${hidden}
 <label for="t">${withGoogle ? 'Access token, if you were given one' : 'Individual access token'}</label>
 <input id="t" name="team_token" type="password" autocomplete="off" ${withGoogle ? '' : 'autofocus'} required>
 <button type="submit" class="btn${withGoogle ? ' alt' : ''}">Allow access</button>
-</form>
+</form>` : ''}
 <p class="note">${withGoogle ? '' : 'Ask whoever set up the connector for the token. '}Reporting is read-only. Content Engine tools (drafts, inbox, calendar) work only for people on a desk team, with the same rights they have on the desk.</p>
 </body></html>`;
 }
@@ -197,6 +205,12 @@ module.exports = async function handler(req, res) {
       params: p, client,
       error: 'Too many incorrect attempts. Wait a few minutes and try again.',
     }));
+    return;
+  }
+
+  if (!tokenConsent()) {
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.status(403).send(page({ params: p, client, error: 'Access tokens are no longer accepted here. Use Continue with Google.' }));
     return;
   }
 
