@@ -253,6 +253,22 @@ async function main() {
       body: new URLSearchParams({ grant_type: 'refresh_token', refresh_token: gtok.refresh_token }).toString() })).json();
     check('and refreshes', !!gref.access_token);
 
+    // GOOGLE_DESK_NAMES: a paired work email acts as its desk name, so
+    // Content Engine teams carry over; an unpaired one stays the email.
+    const { deskNameFor } = require('../lib/identity');
+    process.env.GOOGLE_DESK_NAMES = 'bob@citizengo.net=bob, Alice@CitizenGO.net = alice';
+    check('a paired email maps to its desk name (case-insensitive)', deskNameFor('alice@citizengo.net') === 'alice');
+    check('an unpaired email and a plain name pass through', deskNameFor('carol@citizengo.net') === 'carol@citizengo.net' && deskNameFor('chris') === 'chris');
+    const logged = [];
+    const realLog = console.log;
+    console.log = (line) => { logged.push(String(line)); };
+    try {
+      await fetch(`${ORIGIN}/api/mcp`, { method: 'POST', headers: { ...MCPH, Authorization: `Bearer ${gtok.access_token}` },
+        body: '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"no_such_tool","arguments":{}}}' });
+    } finally { console.log = realLog; }
+    check('a paired Google sign-in calls tools as its desk name', logged.some((l) => /"who":"alice"/.test(l)), logged.join(' | ').slice(0, 200));
+    delete process.env.GOOGLE_DESK_NAMES;
+
     process.env.MCP_REVOKED_EMAILS = 'Alice@CitizenGO.net';
     const revoked = await fetch(`${ORIGIN}/api/mcp`, { method: 'POST', headers: { ...MCPH, Authorization: `Bearer ${gtok.access_token}` }, body: '{"jsonrpc":"2.0","id":1,"method":"ping"}' });
     check('adding the email to MCP_REVOKED_EMAILS ends the session on the next call (case-insensitive)', revoked.status === 401, `HTTP ${revoked.status}`);

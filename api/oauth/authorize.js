@@ -117,7 +117,7 @@ input[type=password]{width:100%;padding:.6rem .7rem;font-size:1rem;border:1px so
 @media(prefers-color-scheme:dark){input[type=password],.btn.alt{border-color:#444}.err{background:#3a1d1d;color:#f3b8b8;border-color:#5a2a2a}}
 </style></head><body>
 <h1>Connect CitizenGO organic reporting</h1>
-<p><strong>${esc(client.name)}</strong> is asking to read organic Facebook performance data for CitizenGO pages. This connection is <strong>read-only</strong>.${client.host ? ` You will be returned to <strong>${esc(client.host)}</strong>.` : ''}</p>
+<p><strong>${esc(client.name)}</strong> is asking to connect to CitizenGO's organic social media reporting (Facebook, Instagram and X) and the Content Engine.${client.host ? ` You will be returned to <strong>${esc(client.host)}</strong>.` : ''}</p>
 ${error ? `<div class="err">${esc(error)}</div>` : ''}
 ${withGoogle ? `<a class="btn" href="${esc(googleHref(params))}">Continue with Google</a>
 <p>Use your ${esc(google.allowedDomains().join(' or '))} account. Nothing to paste, nothing to remember.</p>
@@ -127,7 +127,7 @@ ${withGoogle ? `<a class="btn" href="${esc(googleHref(params))}">Continue with G
 <input id="t" name="team_token" type="password" autocomplete="off" ${withGoogle ? '' : 'autofocus'} required>
 <button type="submit" class="btn${withGoogle ? ' alt' : ''}">Allow access</button>
 </form>
-<p class="note">${withGoogle ? 'Either way this grants read access to post performance figures only' : 'Ask whoever set up the connector for the token. It grants read access to post performance figures only'} — it cannot post, change or delete anything.</p>
+<p class="note">${withGoogle ? '' : 'Ask whoever set up the connector for the token. '}Reporting is read-only. Content Engine tools (drafts, inbox, calendar) work only for people on a desk team, with the same rights they have on the desk.</p>
 </body></html>`;
 }
 
