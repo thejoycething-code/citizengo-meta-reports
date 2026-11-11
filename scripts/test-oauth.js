@@ -32,6 +32,7 @@ const GPORT = 5812;
 const GORIGIN = `http://localhost:${GPORT}`;
 process.env.GOOGLE_CLIENT_ID = 'test-client';
 process.env.GOOGLE_CLIENT_SECRET = 'test-secret';
+process.env.MCP_TOKEN_CONSENT = 'on';
 process.env.GOOGLE_AUTH_URL = `${GORIGIN}/auth`;
 process.env.GOOGLE_TOKEN_URL = `${GORIGIN}/token`;
 process.env.GOOGLE_JWKS_URL = `${GORIGIN}/certs`;
@@ -268,6 +269,16 @@ async function main() {
     } finally { console.log = realLog; }
     check('a paired Google sign-in calls tools as its desk name', logged.some((l) => /"who":"alice"/.test(l)), logged.join(' | ').slice(0, 200));
     delete process.env.GOOGLE_DESK_NAMES;
+
+    // Google only (the production setting since 11 Nov 2026): no token form, token POST refused.
+    delete process.env.MCP_TOKEN_CONSENT;
+    const gOnly = await (await fetch(`${ORIGIN}/api/oauth/authorize?${authQ}`)).text();
+    check('with Google on, the consent page has no token form', /Continue with Google/.test(gOnly) && !/team_token/.test(gOnly));
+    const tokPost = await fetch(`${ORIGIN}/api/oauth/authorize?${authQ}`, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body: new URLSearchParams({ ...Object.fromEntries(authQ), team_token:'cgo_TESTFIXTURE_9Wq4Xz7Rm2LtV5nB' }).toString(), redirect:'manual' });
+    check('and a valid token POST is refused', tokPost.status === 403, `HTTP ${tokPost.status}`);
+    const direct = await (await fetch(`${ORIGIN}/api/mcp`, { method: 'POST', headers: { ...MCPH, Authorization: 'Bearer cgo_TESTFIXTURE_9Wq4Xz7Rm2LtV5nB' }, body: '{"jsonrpc":"2.0","id":1,"method":"ping"}' })).json();
+    check('while a bearer token sent straight to /api/mcp still works (Page Inviter)', !!direct.result);
+    process.env.MCP_TOKEN_CONSENT = 'on';
 
     process.env.MCP_REVOKED_EMAILS = 'Alice@CitizenGO.net';
     const revoked = await fetch(`${ORIGIN}/api/mcp`, { method: 'POST', headers: { ...MCPH, Authorization: `Bearer ${gtok.access_token}` }, body: '{"jsonrpc":"2.0","id":1,"method":"ping"}' });
