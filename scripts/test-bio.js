@@ -86,6 +86,15 @@ eq('resolve: removed is left out, and a removed campaign does not come back by i
     const card = B.cardHtml({ bio: { slug: 'uk', title: 'UK' }, item: { id: 'p19960', petition_id: '19960', title: 'Netflix: Cancel The Body', image: 'https://kept/n.jpg' }, status: { 19960: { site_total: 80223, site_goal: 100000 } }, origin: 'https://x.test' });
     eq('share card: picture, title and total in the preview, then on to sign', [card.includes('og:image" content="https://kept/n.jpg"'), card.includes('80,223 signed. Help reach 100,000.'), card.includes('url=https://x.test/links/uk/go/p19960')], [true, true, true]);
   }
+  eq('top card: chosen first, else the busiest in 14 days, else the post\'s', [B.pickHero([{ id: 'a', petition_id: '1', lead: true }, { id: 'b', petition_id: '2' }], { 1: { last14: 5 }, 2: { last14: 900 } }).id, B.pickHero([{ id: 'a', petition_id: '1' }, { id: 'b', petition_id: '2', featured: true }], { 1: { last14: 9000 } }).id, B.pickHero([{ id: 'a', petition_id: '1', lead: true }, { id: 'b', petition_id: '2' }], {}).id, B.heroWhy({ id: 'b', petition_id: '2' }, { 2: { last14: 900 } })], ['b', 'b', 'a', 'busiest']);
+  eq('round numbers for Just passed', [999, 1200, 7400, 26000, 80294, 181107].map(B.markOf), [0, 1000, 5000, 25000, 80000, 100000]);
+  {
+    const T = Date.parse('2026-11-12T20:00:00Z');
+    eq('tags: Just passed for 2 days, else New for 7 days', [B.tagOf({ passed_mark: 80000, passed_at: '2026-11-11T20:00:00Z', site_start: '2026-11-10T00:00:00Z' }, T), B.tagOf({ passed_mark: 80000, passed_at: '2026-11-09T20:00:00Z', site_start: '2026-11-10T00:00:00Z' }, T), B.tagOf({ site_start: '2026-11-01T00:00:00Z' }, T)], [{ kind: 'passed', mark: 80000 }, { kind: 'new' }, null]);
+    const st4 = { ...status, 1: { total: 80294, site_start: new Date(Date.now() - 864e5).toISOString() } };
+    const p4 = B.pageHtml({ bio: { slug: 'uk', title: 'UK' }, items: rr.shown, hero: rr.shown[1], status: st4, today: '2026-11-02' });
+    eq('tags: shown over the picture', p4.includes('<span class="tg">New</span>'), true);
+  }
   eq('short titles: the first part of a long title, else cut at a word; short ones untouched', [B.shortName('Conversations Are Not Criminal - Protect Parents, Clergy and Free Speech: Stop the Conversion Practices Bill'), B.shortName('Netflix: Cancel The Body'), B.shortName('Stop the UN From Smuggling Gender Ideology Into International Law and the courts too')], ['Conversations Are Not Criminal', 'Netflix: Cancel The Body', 'Stop the UN From Smuggling Gender Ideology Into…']);
   eq('settings: links must be https, switches default on', B.cleanSettings({ donate_url: 'http://x', emails_url: 'https://e.test', grid: false }), { donate_url: null, emails_url: 'https://e.test', whatsapp_url: null, grid: false, socials: true, totals: true, quiet: true, bio_line: null });
 }
@@ -179,7 +188,7 @@ const refreshDone = (async () => {
     const p = pages.find((x) => x.petition_id === '19389');
     eq('refresh: the site\'s all-language total and share page are kept', [p.site_total, p.site_count, p.share_url], [4500, 900, 'https://citizengo.org/en-gb/LP2-share?m=8&nid=19389&title=faith-is-not-a-crime-against-humanity&list=EN_GB&utm_source=bio&utm_medium=linkinbio']);
   }
-  eq('refresh: reads the site for Netflix (parent total counts)', R.readSite('[{"id":19960,"title":"Netflix: Cancel The Body","signature_count":3100,"padding":0,"cluster_count":80205,"goal":100000,"featured_image":"https://api.citizengo.org/media/images/n.jpg","segment":{"code":"en-gb","listcode":"EN_GB"}}]'), { title: 'Netflix: Cancel The Body', image: 'https://api.citizengo.org/media/images/n.jpg', count: 80205, own: 3100, goal: 100000, share: 'https://citizengo.org/en-gb/LP2-share?m=8&nid=19960&title=netflix-cancel-the-body&list=EN_GB&utm_source=bio&utm_medium=linkinbio' });
+  eq('refresh: reads the site for Netflix (parent total counts)', R.readSite('[{"id":19960,"title":"Netflix: Cancel The Body","signature_count":3100,"padding":0,"cluster_count":80205,"goal":100000,"featured_image":"https://api.citizengo.org/media/images/n.jpg","segment":{"code":"en-gb","listcode":"EN_GB"}}]'), { title: 'Netflix: Cancel The Body', image: 'https://api.citizengo.org/media/images/n.jpg', count: 80205, own: 3100, goal: 100000, start: null, share: 'https://citizengo.org/en-gb/LP2-share?m=8&nid=19960&title=netflix-cancel-the-body&list=EN_GB&utm_source=bio&utm_medium=linkinbio' });
   eq('refresh: the closed petition is tidied out of the saved list', [out.removed, saved[0].items.length], [1, 0]);
   // The loader then uses what the refresh kept.
   store.petitionStatus = async () => [{ petition_id: '19389', total: 10, last14: 5, page_title: 'Faith is not a crime against humanity', page_image: 'https://kept/p.jpg', page_image_src: 'page' }];
