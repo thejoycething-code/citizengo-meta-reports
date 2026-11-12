@@ -41,7 +41,7 @@ function memoryStore() {
         && (!from || (p.post_at && p.post_at >= from)) && (!to || (p.post_at && p.post_at < to))));
     },
     async enginePost(id) { const p = db.posts.find((x) => x.id === id); return p ? clone(p) : null; },
-    async engineInsertPost(row) { const p = { version: 1, updated_at: 'now', ...row }; db.posts.push(p); return clone(p); },
+    async engineInsertPost(row) { const p = { version: 1, updated_at: 'now', created_at: new Date().toISOString(), ...row }; db.posts.push(p); return clone(p); },
     async engineUpdatePost(id, version, fields) {
       const p = db.posts.find((x) => x.id === id && x.version === version);
       if (!p) return null;
@@ -448,6 +448,16 @@ const callErr = async (store, name, args, who) => { try { await tool(name)(store
     store.db.posts.push({ id: 'uk-raw', team_id: 'uk', status: 'review', version: 1, doc: { title: 'Raw', videoIdea: { beats: ['Straight in'] } } });
     const listed = (await call(store, 'engine_posts', { team: 'uk', full: true }, 'chris')).posts.find((p) => p.id === 'uk-raw');
     eq('video idea: one written straight into the table gets its prompts when read', [/"Straight in"/.test(listed.doc.videoIdea.prompts.make), /"Straight in"/.test((await call(store, 'engine_post', { id: 'uk-raw' }, 'chris')).post.doc.videoIdea.prompts.film)], [true, true]);
+    // 12 Nov: sources, existing footage and the daily limit (3, or 7 from two kinds of source).
+    const fv = VI.normalize({ route: 'clip', beats: ['A peer said this'], source: { kind: 'parliament', who: 'Lord X', url: 'https://hansard.parliament.uk/x' }, footage: [{ url: 'https://parliamentlive.tv/event/1', from: '14:32', to: '15:01' }, { url: 'http://bad' }] });
+    eq('video idea: footage and source are kept, clip prompt written', [fv.route, fv.footage.length, fv.source.kind, !!fv.prompts.clip, VI.normalize({ route: 'clip', beats: ['a'] }).route], ['clip', 1, 'parliament', true, 'make']);
+    eq('video idea: footage becomes video suggestions to cut', VI.applyToDoc({ videoIdea: fv }).videoSuggestions.map((x) => [x.url, x.start, x.rights.ok]), [['https://parliamentlive.tv/event/1', '14:32', false]]);
+    const lim = memoryStore();
+    const mk = (i, kind) => call(lim, 'engine_create', { team: 'uk', id: `lim-${i}`, doc: { title: `V${i}`, videoIdea: { beats: ['x'], source: { kind } } } }, 'chris').then((r) => r.ok, (e) => e.message);
+    const r3 = [await mk(1, 'news'), await mk(2, 'news'), await mk(3, 'news'), await mk(4, 'news')];
+    eq('video ideas: a 4th from one kind of source is refused', [r3.slice(0, 3), /two kinds of source/.test(r3[3])], [[true, true, true], true]);
+    const r7 = []; for (let i = 5; i <= 9; i++) r7.push(await mk(i, i % 2 ? 'parliament' : 'campaign'));
+    eq('video ideas: up to 7 a day from several sources, then refused', [r7.slice(0, 4), /7 video ideas/.test(r7[4])], [[true, true, true, true], true]);
     eq('video idea: lengths stay between 6 and 60 seconds', [VI.normalize({ beats: ['a'], seconds: 400 }).seconds, VI.normalize({ beats: ['a'], seconds: 1 }).seconds], [60, 6]);
   }
   console.log(`\n${passed} passed, ${failed} failed`);
