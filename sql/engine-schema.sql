@@ -473,3 +473,9 @@ alter table public.meta_ig_media add column if not exists image_copy text;
 -- 'page' (the petition page) or 'post' (the first line of our own post about
 -- it, when the page gives none; the desk asks someone to check it).
 alter table public.petition_status add column if not exists page_title_src text;
+
+-- Link in bio: the petition as citizengo.org shows it (12 Nov 2026).
+alter table public.petition_status add column if not exists site_total bigint;
+alter table public.petition_status add column if not exists site_count bigint;
+alter table public.petition_status add column if not exists share_url text;
+alter table public.petition_status add column if not exists page_image_from text;

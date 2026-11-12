@@ -62,7 +62,12 @@ eq('resolve: removed is left out, and a removed campaign does not come back by i
   eq('countdown: in N days, tomorrow, today, gone after', ['2026-11-06', '2026-11-03', '2026-11-02', '2026-11-01'].map((d) => B.countdownText({ cd_date: d, cd_label: 'Council decides' }, '2026-11-02')), ['Council decides in 4 days', 'Council decides tomorrow', 'Council decides today', null]);
   eq('socials: one per platform, plus the WhatsApp channel', B.socialsFor([...accounts, { platform: 'facebook', page_id: '2' }, { platform: 'instagram', handle: 'citizengo_uk' }], { whatsapp_url: 'https://whatsapp.com/channel/x' }).map((x) => x.url), ['https://www.facebook.com/105', 'https://x.com/CitizenGO_GB', 'https://www.instagram.com/citizengo_uk', 'https://whatsapp.com/channel/x']);
   const page = B.pageHtml({ bio: { slug: 'uk', title: 'CitizenGO UK', settings: { donate_url: 'https://citizengo.org/en-gb/donate' } }, items: rr.shown, hero: rr.shown[1], status, origin: 'https://x.test', src: 'ig', today: '2026-11-02', grid: [{ img: 'https://scontent.cdninstagram.com/a.jpg', href: 'https://x.test/links/uk/go/a' }], socials: [{ platform: 'x', url: 'https://x.com/a' }] });
-  eq('page: hero with total and goal, WhatsApp share, copy, source carried on links', [page.includes('10,812</b> signed · help reach 15,000'), page.includes('https://wa.me/?text=A%20https%3A%2F%2Fx.test%2Flinks%2Fuk%2Fgo%2Fa%3Fs%3Dwa'), page.includes('data-copy="https://x.test/links/uk/go/a?s=wa"'), page.includes('href="https://x.test/links/uk/go/w?s=ig"')], [true, true, true, true]);
+  eq('page: hero with total and goal, one share button, source carried on links', [page.includes('10,812</b> signed · help reach 15,000'), page.includes('href="https://x.test/links/uk/go/a?s=share" aria-label="Share this petition"'), page.includes('wa.me'), page.includes('data-copy="'), page.includes('href="https://x.test/links/uk/go/w?s=ig"')], [true, true, false, false, true]);
+  {
+    const st2 = { ...status, 1: { total: 10812, last14: 300, site_total: 80205, share_url: 'https://citizengo.org/en-gb/LP2-share?m=8&nid=1&title=a' } };
+    const p2 = B.pageHtml({ bio: { slug: 'uk', title: 'UK' }, items: rr.shown, hero: rr.shown[1], status: st2, today: '2026-11-02' });
+    eq('page: the all-language total from the site, and the petition\'s own share page', [p2.includes('80,205</b> signed'), p2.includes('href="https://citizengo.org/en-gb/LP2-share?m=8&amp;nid=1&amp;title=a"')], [true, true]);
+  }
   eq('page: sections in order with wins last, Donate, grid, icons, share preview', [page.indexOf('<h2>Act now') < page.indexOf('<h2>Pray with us') && page.indexOf('<h2>Pray with us') < page.indexOf('<h2>Recent wins'), page.includes('>Donate</a>'), page.includes('Latest on Instagram'), page.includes('aria-label="X"'), page.includes('og:title')], [true, true, true, true, true]);
   eq('page: the hero is not repeated in the list', (page.match(/go\/a\?s=ig/g) || []).length, 1);
   eq('page: the copy script matches the CSP hash', page.includes('<script>') && B.COPY_HASH.startsWith('sha256-'), true);
@@ -130,7 +135,7 @@ eq('page: what people typed is escaped', [html.includes('<script>x'), html.inclu
   const R = require('../lib/bio-refresh');
   eq('refresh: reads a page\'s title and picture', R.readPage('<html><head><title>x</title><meta property="og:title" content="Stop the Bill | CitizenGO"><meta property="og:image" content="/img/a.jpg"></head></html>', 'https://citizengo.org/en-gb/fr/1'), { title: 'Stop the Bill', image: 'https://citizengo.org/img/a.jpg' });
   eq('refresh: a page with no title tags gives nothing', R.readPage('<title>CitizenGO</title>', 'https://citizengo.org/x'), { title: null, image: null });
-  eq('refresh: when a petition is due another look', [R.due(null, now), R.due({ page_checked_at: '2026-11-01T12:00:00Z', page_title: 't', page_image: 'i' }, now), R.due({ page_checked_at: '2026-10-29T12:00:00Z', page_title: 't', page_image: 'i' }, now), R.due({ page_checked_at: '2026-11-01T06:00:00Z', page_title: 't' }, now)], [true, false, true, true]);
+  eq('refresh: when a petition is due another look', [R.due(null, now), R.due({ page_checked_at: '2026-11-02T11:00:00Z', page_title: 't', page_image: 'i' }, now), R.due({ page_checked_at: '2026-10-29T12:00:00Z', page_title: 't', page_image: 'i' }, now), R.due({ page_checked_at: '2026-11-01T06:00:00Z', page_title: 't' }, now)], [true, false, true, true]);
   eq('refresh: closed petitions with no recent post leave the saved list; pinned and removed stay', R.staleSaved({ items: [{ id: 'c' }, { id: 'k' }, { id: 'p', pinned: true }, { id: 'h', hidden: true }, { id: 'n' }] }, { auto: [{ id: 'k' }], all: [{ id: 'c', why: 'closed' }, { id: 'k', why: 'closed' }, { id: 'p', why: 'closed' }, { id: 'h', why: 'removed' }, { id: 'n', why: null }] }), ['c']);
 }
 
@@ -152,15 +157,21 @@ const refreshDone = (async () => {
     async igImageCopySet(id, url) { igCopies.push([id, url.split('?')[0]]); },
     async engineSaveBio(row) { saved.push(row); return row; },
   };
+  const site = JSON.stringify([{ id: 19389, title: 'Faith is not a crime against humanity', featured_image: 'https://api.citizengo.org/media/images/p.jpg', signature_count: 900, padding: 100, cluster_count: 4500, segment: { code: 'en-gb', listcode: 'EN_GB' } }]);
   const web = async (url) => {
-    const html = url.includes('19389') && !url.endsWith('.jpg');
-    return { status: 200, ok: true, headers: { get: (k) => (k === 'content-type' ? (html ? 'text/html' : 'image/jpeg') : null) }, arrayBuffer: async () => (html ? Buffer.from('<meta property="og:title" content="Faith is not a crime against humanity | CitizenGO"><meta property="og:image" content="https://citizengo.org/p.jpg">') : jpg) };
+    const api = url.includes('api.citizengo.org/api/') && url.includes('19389');
+    return { status: 200, ok: true, headers: { get: (k) => (k === 'content-type' ? (api ? 'application/json' : 'image/jpeg') : null) }, arrayBuffer: async () => (api ? Buffer.from(site) : jpg) };
   };
   const lookup = async () => [{ address: '104.16.1.1', family: 4 }];
   const team = { id: 'uk', accounts };
   const bioR = { slug: 'uk', title: 'UK', auto: true, items: [{ id: 'old', title: 'Old one', url: 'https://citizengo.org/en-gb/fr/42', petition_id: '42', closed: true }] };
   const out = await R.refreshTeam(store, { team, bio: bioR, now, fetchImpl: web, lookup });
   eq('refresh: page title kept, picture copied from the page, grid picture copied once', [pages.find((p) => p.petition_id === '19389').page_title, pages.find((p) => p.petition_id === '19389').page_image_src, copies.map((c) => c[0]), igCopies], ['Faith is not a crime against humanity', 'page', ['bio/petitions/19389.jpg', 'bio/ig/555.jpg'], [['555', 'https://kept/bio/ig/555.jpg']]]);
+  {
+    const p = pages.find((x) => x.petition_id === '19389');
+    eq('refresh: the site\'s all-language total and share page are kept', [p.site_total, p.site_count, p.share_url], [4500, 900, 'https://citizengo.org/en-gb/LP2-share?m=8&nid=19389&title=faith-is-not-a-crime-against-humanity&list=EN_GB&utm_source=bio&utm_medium=linkinbio']);
+  }
+  eq('refresh: reads the site for Netflix (parent total counts)', R.readSite('[{"id":19960,"title":"Netflix: Cancel The Body","signature_count":3100,"padding":0,"cluster_count":80205,"featured_image":"https://api.citizengo.org/media/images/n.jpg","segment":{"code":"en-gb","listcode":"EN_GB"}}]'), { title: 'Netflix: Cancel The Body', image: 'https://api.citizengo.org/media/images/n.jpg', count: 80205, own: 3100, share: 'https://citizengo.org/en-gb/LP2-share?m=8&nid=19960&title=netflix-cancel-the-body&list=EN_GB&utm_source=bio&utm_medium=linkinbio' });
   eq('refresh: the closed petition is tidied out of the saved list', [out.removed, saved[0].items.length], [1, 0]);
   // The loader then uses what the refresh kept.
   store.petitionStatus = async () => [{ petition_id: '19389', total: 10, last14: 5, page_title: 'Faith is not a crime against humanity', page_image: 'https://kept/p.jpg', page_image_src: 'page' }];
