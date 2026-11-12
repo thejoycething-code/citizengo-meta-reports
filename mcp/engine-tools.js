@@ -11,6 +11,7 @@
 
 const E = require('../lib/engine');
 const H = require('../lib/handoff');
+const VI = require('../lib/video-ideas');
 const T = require('../lib/tracked');
 const copilot = require('../lib/copilot');
 
@@ -116,18 +117,27 @@ async function publisherCheckins(store) {
   return out;
 }
 
+// A video idea written straight into a post (not through engine_create or
+// engine_save) has no prompts yet: write them on the way out.
+function withVideoPrompts(row, team) {
+  const vi = row && row.doc && row.doc.videoIdea;
+  if (!vi || (vi.prompts && vi.prompts.make && vi.prompts.film)) return row;
+  return { ...row, doc: VI.applyToDoc(row.doc, team) };
+}
+
 async function enginePosts(store, args, { who }) {
   const ctx = await context(store, who);
   const team = String(args.team || '');
   if (!E.canEditTeam(ctx, team)) throw err('You are not in that team.', 'ENGINE_NOT_MEMBER');
   const statuses = args.status ? String(args.status).split(',').map((s) => s.trim()).filter((s) => E.STATUSES.includes(s)) : null;
-  const rows = await store.enginePosts({ team_ids: [team], statuses, limit: args.limit });
+  const rows = (await store.enginePosts({ team_ids: [team], statuses, limit: args.limit })).map((r) => withVideoPrompts(r, teamById(ctx, team)));
   return json({ team, posts: args.full ? rows : rows.map(lite), pauses: await pausesFor(store, ctx), publishers: await publisherCheckins(store) });
 }
 
 async function enginePost(store, args, { who }) {
   const ctx = await context(store, who);
-  return json({ post: await editablePost(store, ctx, args.id) });
+  const post = await editablePost(store, ctx, args.id);
+  return json({ post: withVideoPrompts(post, teamById(ctx, post.team_id)) });
 }
 
 async function engineSave(store, args, { who }) {
@@ -136,7 +146,8 @@ async function engineSave(store, args, { who }) {
   if (Number(args.version) !== Number(post.version)) {
     return json({ ok: false, conflict: true, error: 'Someone saved this post meanwhile. Reload it and redo your change.', post });
   }
-  const doc = E.mergeDoc(post.doc, args.patch || {});
+  let doc = E.mergeDoc(post.doc, args.patch || {});
+  if (args.patch && 'videoIdea' in args.patch) doc = VI.applyToDoc(doc, teamById(ctx, post.team_id));
   const rights = await store.engineRights({ who, kind: 'post' });
   const allowed = E.saveAllowed({ status: post.status, before: post.doc, after: doc, team: teamById(ctx, post.team_id), rights, handoff: H.on() });
   if (!allowed.ok) return json({ ok: false, error: allowed.error });
@@ -225,7 +236,7 @@ async function engineCreate(store, args, { who }) {
   const team = String(args.team || '');
   if (!teamById(ctx, team)) throw err('No such team.', 'ENGINE_NOT_FOUND');
   if (!E.canEditTeam(ctx, team)) throw err('You can only add posts to your own teams.', 'ENGINE_NOT_MEMBER');
-  const doc = args.doc && typeof args.doc === 'object' ? args.doc : {};
+  const doc = VI.applyToDoc(args.doc && typeof args.doc === 'object' ? args.doc : {}, teamById(ctx, team));
   const id = String(args.id || newId(team)).replace(/[^a-z0-9-]/gi, '-').slice(0, 120);
   const row = await store.engineInsertPost({
     id, team_id: team, status: 'review', title: String(doc.title || ''), post_at: E.postAt(doc), doc,
@@ -2205,7 +2216,7 @@ const ENGINE_TOOLS = [
   { name: 'engine_record', description: 'Content Engine: record bookkeeping on a post in any status, posted and rejected included: results, posted (the real post links and time), stale, and posting.asanaTaskGid / asanaUrl / syncedAt / removedAt. Nothing else; the post itself is saved with engine_save. version must be the one you read.', inputSchema: obj({ id: { type: 'string' }, version: { type: 'number' }, patch: { type: 'object' } }, ['id', 'version', 'patch']), handler: engineRecord },
   { name: 'engine_trash', description: "Content Engine: the desk's bin of rejected posts for one of your teams. action count (default) says how many the morning run has already learnt from (ready) and how many are newer (waiting); action empty archives the ready ones: they leave the desk but the morning run still reads them like rejected posts.", inputSchema: obj({ team: { type: 'string' }, action: { type: 'string', enum: ['count', 'empty'] } }, ['team']), handler: engineTrash },
   { name: 'engine_status', description: 'Content Engine: approve (schedules it; needs publishing rights for every Facebook and Instagram account), hold, changes (needs a note), reject, reopen, or mark as posted (it went out) a post.', inputSchema: obj({ id: { type: 'string' }, version: { type: 'number' }, action: { type: 'string', enum: ['approve', 'hold', 'changes', 'reject', 'reopen', 'posted'] }, note: { type: 'string' }, reasons: { type: 'array', items: { type: 'string' } } }, ['id', 'version', 'action']), handler: engineStatus },
-  { name: 'engine_create', description: 'Content Engine: add a new post to Review in one of your teams (the daily engine, "Rework for…" and imports use this).', inputSchema: obj({ team: { type: 'string' }, doc: { type: 'object' }, id: { type: 'string' }, source_team: { type: 'string' }, source_post: { type: 'string' } }, ['team', 'doc']), handler: engineCreate },
+  { name: 'engine_create', description: 'Content Engine: add a new post to Review in one of your teams (the daily engine, "Rework for…" and imports use this). A video idea people make with their own Claude: doc.videoIdea = { standalone (true: its own idea in Drafts › Video ideas; false: an optional video version of this draft), route (make: animated words Claude renders as an MP4; film: Claude writes the shoot), seconds (6-60), beats [{ text (*word* = highlight), secs, look (plain|blue), shot }], ask, notes }. The engine writes the copy-ready prompts.', inputSchema: obj({ team: { type: 'string' }, doc: { type: 'object' }, id: { type: 'string' }, source_team: { type: 'string' }, source_post: { type: 'string' } }, ['team', 'doc']), handler: engineCreate },
   { name: 'engine_copy', description: 'Content Engine: copy a post you can see (yours, or another team\'s scheduled or posted one) into one of your teams as a new draft in Review.', inputSchema: obj({ id: { type: 'string' }, to_team: { type: 'string' } }, ['id', 'to_team']), handler: engineCopy },
   { name: 'engine_requests', description: 'Content Engine Plan: the "draft this for that date" requests for one of your teams (open and drafted by default), optionally between from and to (YYYY-MM-DD).', inputSchema: obj({ team: { type: 'string' }, status: { type: 'string', enum: ['open', 'drafted', 'cancelled'] }, from: { type: 'string' }, to: { type: 'string' } }, ['team']), handler: engineRequests },
   { name: 'engine_request', description: 'Content Engine Plan: ask the daily engine to draft a post for a date (action create: team, for_date YYYY-MM-DD, title, optional angle, source key_date or idea), cancel an open request (action cancel: id), or record that it was drafted (action drafted: id, post_id).', inputSchema: obj({ action: { type: 'string', enum: ['create', 'cancel', 'drafted'] }, id: { type: 'number' }, team: { type: 'string' }, for_date: { type: 'string' }, title: { type: 'string' }, angle: { type: 'string' }, source: { type: 'string', enum: ['key_date', 'idea', 'evergreen'] }, evergreen_id: { type: 'number' }, post_id: { type: 'string' } }, ['action']), handler: engineRequest },
