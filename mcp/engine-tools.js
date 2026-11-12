@@ -1252,7 +1252,10 @@ async function engineBio(store, args, { who }) {
   let bio = await store.engineBio({ team_id: team.id });
   // Refresh now [12 Nov 2026]: the same as the 3-hourly run, for this page,
   // in a short time budget (what's left waits for the next run).
-  if (args.action === 'refresh' && bio) await require('../lib/bio-refresh').refresh(store, { team: team.id, budgetMs: 8000 }).catch((e) => console.error(`bio refresh ${team.id}: ${e.message}`));
+  if (args.action === 'refresh' && bio) {
+    await require('../lib/bio-refresh').refresh(store, { team: team.id, budgetMs: 8000, force: true, log: (l) => console.warn(`bio refresh ${team.id}: ${l}`) }).catch((e) => console.error(`bio refresh ${team.id}: ${e.message}`));
+    bio = await store.engineBio({ team_id: team.id });
+  }
   if (args.action === 'save') {
     const set = B.checkSettings({ slug: args.slug || (bio && bio.slug) || team.id, title: args.title != null ? args.title : bio && bio.title, intro: args.intro != null ? args.intro : bio && bio.intro, auto: args.auto != null ? args.auto : !(bio && bio.auto === false), settings: args.settings != null ? args.settings : (bio && bio.settings) || {} });
     if (set.error) throw err(set.error, 'ENGINE_REFUSED');
@@ -1300,7 +1303,7 @@ async function engineBio(store, args, { who }) {
     hero: L.hero ? L.hero.id : null, grid: L.tiles.length, socials: L.socials,
     items: L.all.map((i) => {
       const st = i.petition_id ? L.status[i.petition_id] || null : null;
-      return { ...i, title_bad: B.badTitle(i.title) || (i.title_src === 'url' || i.title_src === 'id' ? 'guess' : null), page_title: (st && st.page_title) || null, image_src: (st && st.page_image && i.image === st.page_image && st.page_image_src) || (i.image ? 'ig' : null), saved: savedIds.has(i.id), shown: shown.has(i.id), clicks: clicks[i.id] || 0, signatures: i.petition_id ? sigs[i.petition_id] || 0 : null,
+      return { ...i, title_bad: B.badTitle(i.title) || (i.title_src === 'url' || i.title_src === 'id' ? 'guess' : i.title_src === 'text' && !i.retitled ? 'check' : null), page_title: (st && st.page_title) || null, image_src: (st && st.page_image && i.image === st.page_image && st.page_image_src) || (i.image ? 'ig' : null), saved: savedIds.has(i.id), shown: shown.has(i.id), clicks: clicks[i.id] || 0, signatures: i.petition_id ? sigs[i.petition_id] || 0 : null,
         total: st && st.total != null ? st.total : null, last14: st && st.last14 != null ? st.last14 : null, asana_closed: !!(st && st.asana_closed), asana_victory: !!(st && st.asana_victory), asana_project: (st && st.asana_project) || null,
         last_posted: (L.auto.find((a) => a.id === i.id) || {}).last_posted || null };
     }),
