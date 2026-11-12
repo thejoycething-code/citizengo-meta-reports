@@ -111,11 +111,18 @@
     {
       "path": "/api/cron/publish",
       "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/cron/bio",
+      "schedule": "7 */3 * * *"
     }
   ],
   "functions": {
     "api/cron/publish.js": {
       "maxDuration": 300
+    },
+    "api/cron/bio.js": {
+      "maxDuration": 120
     }
   },
   "redirects": [
