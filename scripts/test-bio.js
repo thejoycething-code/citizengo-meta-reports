@@ -107,6 +107,70 @@ eq('page: what people typed is escaped', [html.includes('<script>x'), html.inclu
   eq('status: project names parsed', [P.parseProject('EN_GB - A b c - 04/2026'), P.parseProject('Campaigns calendar')], [{ list: 'en_gb', title: 'A b c' }, null]);
 }
 
+// Link in bio upgrades [12 Nov 2026].
+{
+  eq('L1: titles from a page, without the site name', [B.pageTitle('Save Maria | CitizenGO'), B.pageTitle('CitizenGO'), B.pageTitle('CitizenGO - Stop the Bill'), B.pageTitle('')], ['Save Maria', null, 'Stop the Bill', null]);
+  eq('L1: titles from an Asana project name', [B.asanaTitle('EN_GB - Tell Andy Burnham: Rule Out UK Rejoining the EU  - 10/2026'), B.asanaTitle('Campaigns calendar')], ['Tell Andy Burnham: Rule Out UK Rejoining the EU', null]);
+  eq('L1: poor titles are caught', ['Petition 19960', 'NI Petition Launch Should A Mum Go To Prison', 'Tell andy burnham fully rule out rejoining the eu', 'Stop the banning of church outreach in Colchester', 'Westminster: don\'t criminalise parents'].map(B.badTitle), ['placeholder', 'internal', 'lower', null, null]);
+  eq('L1: long titles shortened at a word', B.shortTitle('She was abducted at 12. UK aid to Pakistan must protect Christian girls like Maria from harm'), 'She was abducted at 12. UK aid to Pakistan must protect Christian…');
+  const handed = [{ status: 'scheduled', post_at: '2026-11-02T10:00:00Z', doc: { posting: { handoff: { at: '2026-11-01T09:00:00Z' }, destinations: ['uk-ig'] }, action: { url: 'https://citizengo.org/en-gb/fr/19960', petitionId: '19960', title: 'Stop the BBC' } } },
+    { status: 'scheduled', post_at: '2026-11-03T10:00:00Z', doc: { posting: { handoff: { at: '2026-11-01T09:00:00Z' }, destinations: ['uk-ig'] }, action: { url: 'https://citizengo.org/en-gb/fr/19961', petitionId: '19961' } } },
+    { status: 'scheduled', post_at: '2026-11-02T11:00:00Z', doc: { posting: { destinations: ['uk-ig'] }, action: { url: 'https://citizengo.org/en-gb/fr/19962', petitionId: '19962' } } }];
+  eq('L9: a handed-off post whose time has come leads the bio; future or not handed off does not', (B.leadFromPosts(handed, { now }) || {}).petition_id, '19960');
+  const st = { 2: { last14: 50 }, 3: { last14: 900 } };
+  const r = B.resolve({ auto: true, items: [{ id: 'a', title: 'A', url: 'https://citizengo.org/en-gb/fr/7', petition_id: '7' }, { id: 'b', title: 'B again', url: 'https://citizengo.org/en-gb/fr/7', petition_id: '7' }] },
+    [{ id: 'p2', petition_id: '2', url: 'https://citizengo.org/en-gb/fr/2', title: 'Two', auto: true, last_posted: '2026-11-01' }, { id: 'p3', petition_id: '3', url: 'https://citizengo.org/en-gb/fr/3', title: 'Three', auto: true, last_posted: '2026-10-20' }, { id: 'p4', petition_id: '4', url: 'https://citizengo.org/en-gb/fr/4', title: 'Four', auto: true, lead: true, last_posted: '2026-10-01' }], { now, status: st });
+  eq('L3: one button per petition; new campaigns: the bio post first, then most signed in 14 days', r.all.map((i) => i.id), ['p4', 'p3', 'p2', 'a']);
+  const many = Array.from({ length: 8 }, (_, n) => ({ id: 'x' + n, title: 'Petition title ' + n, petition_id: String(100 + n), section: 'Act now', image: n === 0 ? 'https://h.test/i.jpg' : null }));
+  const html = B.pageHtml({ bio: { slug: 'uk', title: 'UK', settings: {} }, items: many, status: { 100: { total: 1234 } }, today: '2026-11-02' });
+  eq('L3: five under the heading, the rest under More', [(html.match(/class="b pic/g) || []).length, /<summary>More petitions \(3\)<\/summary>/.test(html)], [8, true]);
+  eq('L2a: picture rows show signatures', html.includes('<small>1,234 signed</small>'), true);
+}
+{
+  const R = require('../lib/bio-refresh');
+  eq('refresh: reads a page\'s title and picture', R.readPage('<html><head><title>x</title><meta property="og:title" content="Stop the Bill | CitizenGO"><meta property="og:image" content="/img/a.jpg"></head></html>', 'https://citizengo.org/en-gb/fr/1'), { title: 'Stop the Bill', image: 'https://citizengo.org/img/a.jpg' });
+  eq('refresh: a page with no title tags gives nothing', R.readPage('<title>CitizenGO</title>', 'https://citizengo.org/x'), { title: null, image: null });
+  eq('refresh: when a petition is due another look', [R.due(null, now), R.due({ page_checked_at: '2026-11-01T12:00:00Z', page_title: 't', page_image: 'i' }, now), R.due({ page_checked_at: '2026-10-29T12:00:00Z', page_title: 't', page_image: 'i' }, now), R.due({ page_checked_at: '2026-11-01T06:00:00Z', page_title: 't' }, now)], [true, false, true, true]);
+  eq('refresh: closed petitions with no recent post leave the saved list; pinned and removed stay', R.staleSaved({ items: [{ id: 'c' }, { id: 'k' }, { id: 'p', pinned: true }, { id: 'h', hidden: true }, { id: 'n' }] }, { auto: [{ id: 'k' }], all: [{ id: 'c', why: 'closed' }, { id: 'k', why: 'closed' }, { id: 'p', why: 'closed' }, { id: 'h', why: 'removed' }, { id: 'n', why: null }] }), ['c']);
+}
+
+// Refresh end to end, against a fake store and a fake web.
+const refreshDone = (async () => {
+  const R = require('../lib/bio-refresh');
+  const jpg = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3]);
+  const pages = [], copies = [], igCopies = [], saved = [];
+  const store = {
+    async linkPostsSince() { return [{ platform: 'instagram', account_id: '178', post_id: '555', petition_id: '19389', full_url: 'https://citizengo.org/en-gb/lf/19389', posted_at: '2026-11-01T10:00:00Z' }]; },
+    async enginePosts() { return []; },
+    async igGridMedia() { return [{ media_id: '555', thumbnail_url: 'https://scontent.cdninstagram.com/a.jpg?oe=7AFB2F4F', timestamp: '2026-11-01T10:00:00Z' }, { media_id: '556', thumbnail_url: 'https://scontent.cdninstagram.com/b.jpg?oe=7AFB2F4F', image_copy: 'https://kept/b.jpg', timestamp: '2026-10-31T10:00:00Z' }]; },
+    async igMediaByIds() { return []; },
+    async petitionStatus() { return [{ petition_id: '19389', total: 10, last14: 5, asana_project: 'EN_GB - Faith Is Not A Crime - 10/2026' }]; },
+    async fbPicturesForPetitions() { return []; },
+    async publicAssetPut(path, buf, type) { copies.push([path, type, buf.length]); return 'https://kept/' + path; },
+    async petitionPagesSet(rows) { pages.push(...rows); },
+    async igImageCopySet(id, url) { igCopies.push([id, url.split('?')[0]]); },
+    async engineSaveBio(row) { saved.push(row); return row; },
+  };
+  const web = async (url) => {
+    const html = url.includes('19389') && !url.endsWith('.jpg');
+    return { status: 200, ok: true, headers: { get: (k) => (k === 'content-type' ? (html ? 'text/html' : 'image/jpeg') : null) }, arrayBuffer: async () => (html ? Buffer.from('<meta property="og:title" content="Faith is not a crime against humanity | CitizenGO"><meta property="og:image" content="https://citizengo.org/p.jpg">') : jpg) };
+  };
+  const lookup = async () => [{ address: '104.16.1.1', family: 4 }];
+  const team = { id: 'uk', accounts };
+  const bioR = { slug: 'uk', title: 'UK', auto: true, items: [{ id: 'old', title: 'Old one', url: 'https://citizengo.org/en-gb/fr/42', petition_id: '42', closed: true }] };
+  const out = await R.refreshTeam(store, { team, bio: bioR, now, fetchImpl: web, lookup });
+  eq('refresh: page title kept, picture copied from the page, grid picture copied once', [pages.find((p) => p.petition_id === '19389').page_title, pages.find((p) => p.petition_id === '19389').page_image_src, copies.map((c) => c[0]), igCopies], ['Faith is not a crime against humanity', 'page', ['bio/petitions/19389.jpg', 'bio/ig/555.jpg'], [['555', 'https://kept/bio/ig/555.jpg']]]);
+  eq('refresh: the closed petition is tidied out of the saved list', [out.removed, saved[0].items.length], [1, 0]);
+  // The loader then uses what the refresh kept.
+  store.petitionStatus = async () => [{ petition_id: '19389', total: 10, last14: 5, page_title: 'Faith is not a crime against humanity', page_image: 'https://kept/p.jpg', page_image_src: 'page' }];
+  const L = await B.load(store, { team, bio: { slug: 'uk', auto: true, items: [{ id: 'p19389', title: 'Petition 19389', url: 'https://citizengo.org/en-gb/lf/19389', petition_id: '19389', auto: true }] }, now });
+  const it = L.all.find((i) => i.petition_id === '19389');
+  eq('load: a saved placeholder title and a missing picture are replaced by the kept ones', [it.title, it.image, it.title_src], ['Faith is not a crime against humanity', 'https://kept/p.jpg', 'page']);
+  const L2 = await B.load(store, { team, bio: { slug: 'uk', auto: true, items: [{ id: 'p19389', title: 'Our own words', url: 'https://citizengo.org/en-gb/lf/19389', petition_id: '19389', auto: true, retitled: true }] }, now });
+  eq('load: a title someone typed is never replaced', L2.all.find((i) => i.petition_id === '19389').title, 'Our own words');
+  eq('load: grid uses the kept copy, else the Instagram link', L2.tiles.map((t) => t.img), ['https://scontent.cdninstagram.com/a.jpg?oe=7AFB2F4F', 'https://kept/b.jpg']);
+})();
+
 // The public endpoint, against a fake store.
 const handler = require('../api/bio');
 function fakeStore({ copilotFails = false } = {}) {
@@ -134,6 +198,7 @@ function run(url, store, headers = { host: 'x.test', 'user-agent': 'Mozilla/5.0 
   });
 }
 (async () => {
+  await refreshDone;
   const realNow = Date.now; Date.now = () => now;
   const s = fakeStore();
   const page = await run('/api/bio?slug=uk', s);

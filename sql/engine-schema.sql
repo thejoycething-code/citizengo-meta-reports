@@ -461,3 +461,12 @@ alter table public.engine_inbox_actions drop constraint if exists engine_inbox_a
 alter table public.engine_inbox_actions add constraint engine_inbox_actions_action_check check (action in ('reply', 'private_reply', 'like', 'hide', 'unhide', 'delete', 'ban', 'unban', 'done', 'reopen', 'assign', 'label', 'tone'));
 alter table public.engine_inbox_actions drop constraint if exists engine_inbox_actions_status_check;
 alter table public.engine_inbox_actions add constraint engine_inbox_actions_status_check check (status in ('check', 'queued', 'running', 'done', 'failed', 'cancelled'));
+-- Link in bio upgrades [12 Nov 2026, L1/L4]: each petition's title and
+-- picture as its public citizengo.org page (or our own post about it) shows
+-- them, with the picture copied into desk-assets so it never expires; and a
+-- kept copy of each Instagram grid picture. Filled by api/cron/bio.js.
+alter table public.petition_status add column if not exists page_title text;
+alter table public.petition_status add column if not exists page_image text;
+alter table public.petition_status add column if not exists page_image_src text;
+alter table public.petition_status add column if not exists page_checked_at timestamptz;
+alter table public.meta_ig_media add column if not exists image_copy text;
