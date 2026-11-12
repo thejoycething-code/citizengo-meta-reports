@@ -479,3 +479,4 @@ alter table public.petition_status add column if not exists site_total bigint;
 alter table public.petition_status add column if not exists site_count bigint;
 alter table public.petition_status add column if not exists share_url text;
 alter table public.petition_status add column if not exists page_image_from text;
+alter table public.petition_status add column if not exists site_goal bigint;
