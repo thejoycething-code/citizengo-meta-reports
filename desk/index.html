@@ -1760,6 +1760,27 @@ body.nosearch header.top .fq,body.nosearch header.top .fwrap:has(>[data-fp="rb"]
 .cpd:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 .cpday{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:8px}.cpday h3{margin:0;font-size:15px}
 .cprow{display:grid;grid-template-columns:44px minmax(0,1fr);gap:8px;align-items:center}.cprow .cchip{width:100%}
+/* B8 phone review deck */
+body.swmode #detail{display:none}
+.swback{display:flex;justify-content:flex-end;margin:0 0 8px}
+.swdeck{display:flex;flex-direction:column;gap:10px;max-width:460px;margin:0 auto}
+.swtop{display:flex;align-items:center;gap:8px}.swtop .src{margin-left:auto}
+.swcard{position:relative;background:var(--card,#fff);border:1px solid var(--line,#dde1e7);border-radius:16px;padding:12px;display:flex;flex-direction:column;gap:8px;touch-action:pan-y;user-select:none;transition:transform .2s;box-shadow:0 4px 14px rgba(20,30,50,.08)}
+.swcard.drag{transition:none}
+.swcard h3{margin:0;font-size:17px;line-height:1.3}
+.swpic{width:100%;aspect-ratio:1;max-height:40vh;object-fit:contain;border-radius:10px;background:#111;display:block}
+.swvid{display:grid;place-items:center;color:#fff;font-size:34px;background:#111 linear-gradient(170deg,#111 45%,#3567c4)}.swvid span{font-size:13px;font-weight:700}
+.swmeta{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.swtext{margin:0;font-size:14px;line-height:1.45;white-space:pre-wrap;max-height:9.5em;overflow:auto}
+.swstamp{position:absolute;top:18px;z-index:2;font-weight:800;font-size:18px;padding:4px 10px;border-radius:8px;border:3px solid;opacity:0;transition:opacity .1s}
+.swstamp.ok{left:18px;color:#16794a;border-color:#16794a;background:#e3f6ea}.swstamp.no{right:18px;color:#b42318;border-color:#b42318;background:#fde7e7}
+.swcard.toOk .swstamp.ok,.swcard.toNo .swstamp.no{opacity:1}
+.swbtns{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.swdeck>.swbtns{position:sticky;bottom:calc(70px + env(safe-area-inset-bottom,0px));z-index:3;background:var(--bg,#eef0f3);padding:6px 0}.swbtns .btn{min-height:46px;font-size:15px}
+.swnav{display:flex;justify-content:space-between}
+.swno{background:var(--card,#fff);border:1px solid var(--line,#dde1e7);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:8px}
+.swno .row{display:flex;flex-wrap:wrap;gap:6px}
+body.noai [data-an-ask],body.noai .cti[data-ct="ask"]{display:none!important}
 /* ===== end Agorapulse look ===== */
 </style>
 
@@ -1938,7 +1959,44 @@ function short3(t){const w=String(t||"").replace(/\s+/g," ").trim().split(" ").f
 function draftLabels(d){const l=[];if(d.launch)l.push("Launch pack");if(d.own)l.push(d.own.translatedFrom?"Translated":"Own post");if(d.action&&d.action.title)l.push(short3(d.action.title));if(d.evergreen_id||/evergreen/i.test(d.type||""))l.push("Evergreen");return l}
 function draftText(d){const p=d.platforms||{};return [d.title,d.issue,d.type,d.rationale,p.facebook,p.instagram,p.x,p.facebookComment,(d.source||{}).label,(d.action||{}).title,...(d.notes||[]).map(n=>n&&n.text)].filter(Boolean).join(" \n").toLowerCase()}
 function hasChecks(d){return (d.facts||[]).some(f=>f.status==="check")}
-function renderQueue(){pageMode();
+/* B8 (Chris, 12 Nov): For review on a phone, one post per screen. Swipe right (or tap Approve) to approve it into Finishing, left (or No) to pick reasons and bin it. "List" goes back to the normal board. */
+function phoneW(){return matchMedia("(max-width:600px)").matches}
+function swDeckOn(){return S.status==="pending"&&!!S.db&&phoneW()&&!S.swList}
+function renderSwDeck(list){if(S.swI==null||S.swI>=list.length)S.swI=Math.max(0,Math.min(S.swI||0,list.length-1));const d=list[S.swI];
+  const vid=isVidIdea(d);const t=whenOf(d);const txt=String((textFor(d,"facebook")||textFor(d,"instagram")||textFor(d,"x")||d.summary||"")).trim();
+  const pic=vid?`<div class="swpic swvid" aria-hidden="true">▶<span>Video idea</span></div>`:`<img class="swpic" alt="" src="${cardURL(d)}">`;
+  const no=S.swNo===d.id;
+  $("#queue").innerHTML=`<div class="swdeck"><div class="swtop"><b>For review</b><span class="src">${S.swI+1} of ${list.length}</span><button class="btn small" data-sw="list">List</button></div>
+  <article class="swcard" id="swCard" data-sw-id="${esc(d.id)}"><span class="swstamp ok">Approve</span><span class="swstamp no">No</span>${pic}
+    <div class="swmeta">${vid?"":qAccts(d)}<span class="src">${t?esc(t.toLocaleString("en-GB",{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})):"No date yet"}${d.type?" · "+esc(d.type):""}</span></div>
+    <h3>${esc(d.title||"Untitled")}</h3>${txt?`<p class="swtext">${esc(txt)}</p>`:""}
+    <button class="btn small" data-sw="open">Open the full post</button></article>
+  ${no?`<div class="swno"><b>Why not?</b><span class="src">Helps the morning run</span><div class="row">${REJECT_REASONS.map(r=>`<button class="chip rr" data-sw-r="${esc(r)}" aria-pressed="${S.swR.has(r)}">${esc(r)}</button>`).join("")}</div><div class="swbtns"><button class="btn" data-sw="back">Back</button><button class="btn bad" data-sw="bin">Send to Bin</button></div></div>`
+  :`<div class="swbtns"><button class="btn bad" data-sw="no">← No</button><button class="btn primary" data-sw="ok">Approve →</button></div>
+  <div class="swnav"><button class="btn small ghost" data-sw="prev"${S.swI?"":" disabled"}>‹ Previous</button><button class="btn small ghost" data-sw="next"${S.swI<list.length-1?"":" disabled"}>Skip ›</button></div>`}</div>`;
+  swBind()}
+function swBind(){const c=$("#swCard");if(!c)return;let x0=null,dx=0;
+  c.addEventListener("pointerdown",e=>{if(e.target.closest("button"))return;x0=e.clientX;dx=0;c.setPointerCapture(e.pointerId);c.classList.add("drag")});
+  c.addEventListener("pointermove",e=>{if(x0==null)return;dx=e.clientX-x0;c.style.transform=`translateX(${dx}px) rotate(${dx/22}deg)`;c.classList.toggle("toOk",dx>60);c.classList.toggle("toNo",dx<-60)});
+  const end=()=>{if(x0==null)return;x0=null;c.classList.remove("drag");if(dx>90)swAct("ok");else if(dx<-90)swAct("no");else{c.style.transform="";c.classList.remove("toOk","toNo")}};
+  c.addEventListener("pointerup",end);c.addEventListener("pointercancel",end)}
+async function swDecide(d,to,reasons){const review={by:S.me,at:new Date().toISOString(),...(to==="rejected"?{reasons,note:"Binned on a phone"}:{})};const was=[d.status||"pending",JSON.parse(JSON.stringify(d.review||{}))];
+  try{await S.db.doc("drafts/"+d.id).update({status:to,review});await logFeedback({draftId:d.id,action:to,...(to==="rejected"?{reasons}:{}),type:d.type,issue:d.issue});
+    S.swNo=null;renderAll();toast(to==="hold"?"Approved: finish it in Finishing":"Moved to the Bin",async()=>{try{await S.db.doc("drafts/"+d.id).update({status:was[0],review:was[1]})}catch(e){}renderAll();toast("Undone")})}
+  catch(e){failToast(e,"Couldn't change it, try again");renderQueue()}}
+function swAct(a){const list=filtered();const d=list[S.swI||0];if(!d)return;
+  if(a==="ok")return swDecide(d,"hold",[]);
+  if(a==="no"){S.swNo=d.id;S.swR=new Set();renderQueue();$(".swno")?.scrollIntoView({block:"end",behavior:"smooth"});return}
+  if(a==="bin")return swDecide(d,"rejected",[...(S.swR||[])]);
+  if(a==="back"){S.swNo=null;renderQueue();return}
+  if(a==="prev"){S.swI=Math.max(0,(S.swI||0)-1);S.swNo=null;renderQueue();return}
+  if(a==="next"){S.swI=Math.min(list.length-1,(S.swI||0)+1);S.swNo=null;renderQueue();return}
+  if(a==="list"){S.swList=true;renderQueue();return}
+  if(a==="deck"){S.swList=false;renderQueue();return}
+  if(a==="open"){S.swList=true;S.openId=d.id;resetDraftUi();renderAll();setTimeout(()=>$("#detail")?.scrollIntoView({behavior:"smooth"}),50)}}
+document.addEventListener("click",ev=>{const r=ev.target.closest("[data-sw-r]");if(r){const k=r.dataset.swR;S.swR.has(k)?S.swR.delete(k):S.swR.add(k);r.setAttribute("aria-pressed",S.swR.has(k));return}
+  const b=ev.target.closest("[data-sw]");if(b)swAct(b.dataset.sw)});
+function renderQueue(){pageMode();document.body.classList.toggle("swmode",swDeckOn());
   if(S.status==="evergreen"){renderEgQueue();return}
   const list=filtered();
   if(!S.drafts.length){
@@ -1953,7 +2011,8 @@ function renderQueue(){pageMode();
   /* Drafts board B (Chris, 12 Nov): one row per draft by day, with a tick, accounts, time and one "ready?" pill; the open draft sits in the panel on the right. Ticks act on several at once. */
   const tickable=["pending","videos"].includes(S.status)&&!!S.db;if(!S.ticks)S.ticks=new Set();for(const id of [...S.ticks])if(!list.some(d=>d.id===id))S.ticks.delete(id);
   const head="";
-  $("#queue").innerHTML=newBar()+bulkBar(list,tickable)+trashBar()+`<div class="qtable${tickable?" tick":""}">`+head+list.map(d=>{const g=grouped?qday(d):null;const gh=g&&g!==lastG?`<div class="qgroup">${esc(g)}<span>${list.filter(x=>qday(x)===g).length}</span></div>`:"";lastG=g;const vid=isVidIdea(d);
+  if(swDeckOn())return renderSwDeck(list);
+  $("#queue").innerHTML=newBar()+(S.status==="pending"&&S.db&&phoneW()?`<div class="swback"><button class="btn small" data-sw="deck">One at a time</button></div>`:"")+bulkBar(list,tickable)+trashBar()+`<div class="qtable${tickable?" tick":""}">`+head+list.map(d=>{const g=grouped?qday(d):null;const gh=g&&g!==lastG?`<div class="qgroup">${esc(g)}<span>${list.filter(x=>qday(x)===g).length}</span></div>`:"";lastG=g;const vid=isVidIdea(d);
     return gh+`<div class="qslot qrow">${tickable?`<label class="qtick"><input type="checkbox" data-tick="${esc(d.id)}"${S.ticks.has(d.id)?" checked":""} aria-label="Tick ${esc(d.title)}"></label>`:""}
     <button class="qitem" data-id="${esc(d.id)}" data-status="${esc(d.status||"pending")}" data-tone="${qTone(d)}" aria-current="${d.id===S.openId}">
       <span class="stripe"></span>
@@ -7225,9 +7284,11 @@ document.addEventListener("keydown",ev=>{if(!CP.open)return;
   ev.stopPropagation()},true);
 window.addEventListener("beforeunload",ev=>{if(CP.open&&CP.state&&/Unsaved|Saving/.test(CP.state)){cpFlush();ev.preventDefault();ev.returnValue=""}});
 
+/* Chris, 12 Nov: Claude editing features off for now. Every Claude button on the desk is shown only when S.sample is set, so leaving it empty hides them all; Analytics Ask Claude is hidden by the noai class. Set AI_OFF=false to bring them back. */
+const AI_OFF=true;
 (async()=>{
   const [db,user,downloads,sample,assets,mcp]=await Promise.all(["db","user","downloads","sample","assets","mcp"].map(n=>window.claude?.use?window.claude.use(n).catch(()=>null):Promise.resolve(null)));
-  S.downloads=downloads;S.sample=sample;S.user=user;S.assets=assets;S.mcp=mcp;
+  S.downloads=downloads;S.sample=AI_OFF?null:sample;if(AI_OFF)document.body.classList.add("noai");S.user=user;S.assets=assets;S.mcp=mcp;
   if(user){try{S.me=await user.id();const me=await user.me();S.meName=me?.name||"";$("#who").textContent=""}catch(e){}}
   if(!mcp){$("#offline").hidden=false;renderAll();return}
   let me;try{me=await eng("engine_me",{})}catch(e){engineDown(e,false);renderAll();return}
