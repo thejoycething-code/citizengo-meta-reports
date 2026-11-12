@@ -1808,6 +1808,26 @@ body.vsopen{overflow:hidden}
 .vfkrec span{width:44px;height:44px;border-radius:50%;background:#e0352b;transition:all .2s}
 .vfkrec.on span{width:24px;height:24px;border-radius:5px}
 @media (max-width:600px){#vstudio{padding:0}.vsbox{border-radius:0;max-width:100%;height:100%}.vsstage canvas{height:min(52vh,460px)}}
+.vihere{display:flex;gap:12px;align-items:center;margin:10px 0 4px;padding:10px;border:1px solid var(--line,#dde2ea);border-radius:8px;background:var(--card,#fff)}
+.vihbtn{display:flex;flex-direction:column;gap:4px;min-width:0}
+.vtlive{position:relative;flex:none}
+.vtlive canvas{display:block;border-radius:8px;box-shadow:0 1px 6px rgba(0,0,0,.15);background:#fbfaf6}
+.vtlive.mini canvas{width:96px;height:auto}
+.vtlive.big canvas{width:min(100%,260px);height:auto;margin:0 auto}
+.vtlive .vn{position:absolute;top:6px;left:8px;font-size:10px;letter-spacing:.04em;text-transform:uppercase;color:rgba(27,35,51,.45)}
+.vtlive.mini .vn{display:none}
+.vtfb{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:6px 0}
+.chipbtn{border:1px solid var(--line,#dde2ea);background:transparent;border-radius:999px;padding:3px 10px;font:inherit;font-size:13px;cursor:pointer;color:inherit}
+.chipbtn.on{background:#e8f1fd;border-color:#1d7ee2;color:#1d5fb0}
+.vtnote{display:flex;gap:6px;flex:1 1 240px;min-width:0}.vtnote input{flex:1;min-width:0;padding:4px 8px;border:1px solid var(--line,#dde2ea);border-radius:6px;font:inherit;font-size:13px}
+.vsgrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:12px;align-items:start}
+.vsbox:has(.vsgrid){max-width:min(900px,100%)}
+.vted{display:flex;flex-direction:column;gap:8px}
+.vtrow{display:grid;grid-template-columns:28px minmax(0,1fr);gap:6px;align-items:start}
+.vtrow textarea{min-height:0!important;height:auto;width:100%;box-sizing:border-box;font:inherit;font-size:14px;padding:6px 8px;border:1px solid var(--line,#dde2ea);border-radius:6px;resize:vertical}
+.vtt{font-size:12px;color:#6b7385;padding-top:8px;text-align:right}
+.vtctl{grid-column:2;display:flex;gap:6px;align-items:center}.vtctl input{width:56px;padding:3px 6px;border:1px solid var(--line,#dde2ea);border-radius:6px;font:inherit;font-size:13px}
+@media (max-width:600px){.vsgrid{grid-template-columns:1fr}.vsgrid .vsstage canvas{height:42vh}}
 /* B8 phone review deck */
 body.swmode #detail{display:none}
 .swback{display:flex;justify-content:flex-end;margin:0 0 8px}
@@ -2717,7 +2737,8 @@ function vidIdeaBox(d){const v=d.videoIdea;if(!v||!v.prompts)return"";
     <ol>${(v.beats||[]).map((b,i)=>`<li><span class="t">${esc(tm[i]||"")}</span><span>${viHl(b.text)}${b.look==="blue"?' <small class="src">(blue screen)</small>':""}${b.shot?`<span class="shot">Shot: ${esc(b.shot)}</span>`:""}</span></li>`).join("")}${v.ask?`<li><span class="t">end</span><span>${esc(v.ask)}</span></li>`:""}</ol>
     ${done?`<small class="src">✓ The video is uploaded.</small>`:`<div class="vibox"><div class="vitop"><span class="viseg" role="group" aria-label="Prompt for">${v.prompts.clip?seg("clip"):""}${seg("make")}${seg("film")}</span><span class="row" style="gap:6px;margin:0"><button type="button" class="btn small primary" data-vi="copy">Copy prompt for Claude</button><button type="button" class="btn small" data-vi="open">Open in Claude</button></span></div>
       ${v.prompts.clip?`<pre data-vi-p="clip"${r2==="clip"?"":" hidden"}>${esc(v.prompts.clip)}</pre>`:""}<pre data-vi-p="make"${r2==="make"?"":" hidden"}>${esc(v.prompts.make)}</pre><pre data-vi-p="film"${r2==="film"?"":" hidden"}>${esc(v.prompts.film)}</pre></div>${viFootage(d)}
-    <div class="vihere"><span class="src">Or do it here:</span><button type="button" class="btn small" data-vi="here">▶ Make the text video here</button><button type="button" class="btn small" data-vi="filmkit">🎥 Film it with this phone</button></div>
+    <div class="vihere">${v.standalone===false||!isVidIdea(d)?vtLive(d,"mini"):""}<div class="vihbtn"><b>Premade video</b><span class="src">${v.standalone===false||!isVidIdea(d)?"Playing here":"Playing on the left"}: the lines above in house colours.</span><span class="row" style="gap:6px;margin:0"><button type="button" class="btn small primary" data-vi="use">Use this video</button><button type="button" class="btn small" data-vi="here">Edit the lines</button><button type="button" class="btn small ghost" data-vi="filmkit">🎥 Film it on a phone</button></span></div></div>
+    ${vtFeedback(d)}
     <small class="src" data-vi-how>${VI_HOW[r2]} ${v.standalone===false?"To post the video instead of the picture, pick Video as the post type in Compose and upload it there.":isFinish(d)?"Then upload the finished video here.":"Approve it, then upload the finished video in Finishing."}</small>`}
   </div>`}
 const VI_HOW={make:"Paste it into your own Claude with file creation on (Settings › Features): it gives back an MP4.",film:"Paste it into your own Claude: you get a script, a shot list, on-screen text and a captions file.",clip:"Ask for the cut above. Paste the prompt into your own Claude for the timings and captions, then add the words in CapCut."};
@@ -2756,26 +2777,64 @@ const VT={mime:()=>["video/mp4;codecs=avc1.42E01E,mp4a.40.2","video/mp4;codecs=a
 function vtCanAttach(d){return !!(S.db&&d&&d.videoIdea&&d.videoIdea.standalone!==false&&isFinish(d))}
 function vtOverlay(html){let o=$("#vstudio");if(!o){o=document.createElement("div");o.id="vstudio";o.setAttribute("role","dialog");o.setAttribute("aria-modal","true");document.body.append(o)}
   o.innerHTML=`<div class="vsbox">${html}</div>`;o.hidden=false;document.body.classList.add("vsopen");return o}
-function vtClose(){const o=$("#vstudio");if(!o)return;if(VT.stream){VT.stream.getTracks().forEach(t=>t.stop());VT.stream=null}if(VT.rec&&VT.rec.state!=="inactive")try{VT.rec.stop()}catch(e){}
+function vtClose(){const o=$("#vstudio");if(!o)return;if(VT.dirty&&!o.dataset.ok&&document.querySelector("[data-vt='savelines']")){o.dataset.ok="1";toast("Your new lines aren't saved. Save them, or close again to drop them");return}delete o.dataset.ok;VT.v=null;VT.dirty=false;if(VT.stream){VT.stream.getTracks().forEach(t=>t.stop());VT.stream=null}if(VT.rec&&VT.rec.state!=="inactive")try{VT.rec.stop()}catch(e){}
   VT.stop=true;if(VT.url){URL.revokeObjectURL(VT.url);VT.url=null}o.hidden=true;o.innerHTML="";document.body.classList.remove("vsopen")}
 function vtDoneBar(d,kind){const can=vtCanAttach(d),mp4=VT.blob&&/mp4/.test(VT.blob.type);
   return `<video class="vsvid" src="${VT.url}" controls playsinline></video><div class="vsbar">${can?`<button class="btn primary" data-vt="attach"${mp4?"":" disabled"}>Attach to the post</button>`:""}<button class="btn${can?"":" primary"}" data-vt="save">Download</button><button class="btn" data-vt="${kind==="film"?"retake":"again"}">${kind==="film"?"Film again":"Make again"}</button><button class="btn" data-vt="close">Close</button></div>
   <small class="src">${!mp4?"This browser saved a WebM. Instagram needs MP4, so use Chrome or Safari to attach it. ":""}${can?"Attaching makes it the post's video, ready for the Asana task.":d.videoIdea&&d.videoIdea.standalone===false?"To post it instead of the picture, pick Video as the post type in Compose and upload it there.":"Approve the idea first, then attach it in Finishing, or download it now."}</small>`}
-async function vtMake(d){const v=d.videoIdea;if(!v)return;VT.d=d.id;VT.ratio=VT.ratio||"9:16";
+/* Premade video (12 Nov, round 2): every video idea plays as a finished text video in the post, drawn live in the
+   browser, so there is nothing to wait for. "Use this video" records it as an MP4. Edits to the lines show at once. */
+const VTL={start:performance.now(),plans:{}};
+function vtPlanFor(id){if(VT.v&&VT.d===id)return viPlan(VT.v);const d=S.drafts.find(x=>x.id===id);if(!d||!d.videoIdea)return null;const k=JSON.stringify([d.videoIdea.beats,d.videoIdea.ask,d.videoIdea.seconds]);const c=VTL.plans[id];if(c&&c.k===k)return c.p;const p=viPlan(d.videoIdea);VTL.plans[id]={k,p};return p}
+function vtLive(d,cls){const sq=VT.ratio==="1:1";return `<div class="vtlive ${cls||""}"><canvas data-vt-live="${esc(d.id)}" width="${sq?540:360}" height="${sq?540:640}" role="img" aria-label="Premade video: ${esc((d.videoIdea.beats||[]).map(b=>String(b.text||"").replace(/\*/g,"")).join(" / "))}"></canvas><span class="vn">premade video · ${Math.round((vtPlanFor(d.id)||{total:0}).total)} s</span></div>`}
+function vtTick(){const cs=document.querySelectorAll("canvas[data-vt-live]");if(cs.length&&!document.hidden){const still=matchMedia("(prefers-reduced-motion: reduce)").matches;const now=(performance.now()-VTL.start)/1000;
+  cs.forEach(c=>{if(c.dataset.vtBusy)return;const p=vtPlanFor(c.dataset.vtLive);if(!p||!p.beats.length)return;const el=still?Math.min(p.beats[0].len*.7,p.total-.01):now%(p.total+1.2);try{vtFrame(c.getContext("2d"),c.width,c.height,p,Math.min(el,p.total-.01))}catch(e){}})}
+  requestAnimationFrame(vtTick)}
+requestAnimationFrame(vtTick);
+/* Feedback, open and instant: tap a chip or write a line; it goes to the engine's feedback (the morning run reads it)
+   and the chip shows as sent straight away. */
+const VT_FB=[["good","👍 Good"],["long","Too long"],["wordy","Too wordy"],["hook","Weak opening"],["look","Wrong colours"],["notvideo","Not a video story"]];
+function vtFeedback(d){const sent=new Set(((S.vtSent||{})[d.id])||[]);
+  return `<div class="vtfb" data-vt-fb="${esc(d.id)}"><span class="src">How is this video?</span>${VT_FB.map(([k,l])=>`<button type="button" class="chipbtn${sent.has(k)?" on":""}" data-vtf="${k}" aria-pressed="${sent.has(k)}">${l}</button>`).join("")}
+    <span class="vtnote"><input type="text" id="vtNote-${esc(d.id)}" placeholder="Tell the engine what to change next time…" maxlength="300"><button type="button" class="btn small" data-vtf="note">Send</button></span></div>`}
+async function vtSendFb(d,tag,note){S.vtSent=S.vtSent||{};const s=new Set(S.vtSent[d.id]||[]);if(tag)s.add(tag);S.vtSent[d.id]=[...s];
+  await logFeedback({draftId:d.id,action:"video-feedback",tag:tag||null,note:note||null,beats:(d.videoIdea.beats||[]).map(b=>b.text),type:d.type,issue:d.issue});
+  toast(tag==="good"?"Thanks: the engine keeps doing this":"Sent: tomorrow's run reads it")}
+document.addEventListener("click",async ev=>{const b=ev.target.closest("[data-vtf]");if(!b)return;const box=b.closest("[data-vt-fb]");if(!box)return;ev.preventDefault();ev.stopPropagation();
+  const d=S.drafts.find(x=>x.id===box.dataset.vtFb);if(!d)return;if(!S.db){toast("Feedback needs the signed-in desk");return}
+  if(b.dataset.vtf==="note"){const i=box.querySelector("input");const t=String(i.value||"").trim();if(!t){i.focus();return}i.value="";await vtSendFb(d,null,t);return}
+  b.classList.add("on");b.setAttribute("aria-pressed","true");await vtSendFb(d,b.dataset.vtf)},true);
+document.addEventListener("keydown",ev=>{if(ev.key!=="Enter")return;const i=ev.target.closest&&ev.target.closest(".vtnote input");if(!i)return;ev.preventDefault();i.parentElement.querySelector("[data-vtf='note']").click()},true);
+/* The studio: the video plays on the left and the lines sit on the right. Every keystroke shows in the video at
+   once; Save keeps the new lines on the post (and tells the engine what changed). */
+function vtEditor(){const v=VT.v;return `<div class="vted">${(v.beats||[]).map((b,i)=>`<div class="vtrow" data-i="${i}"><span class="vtt">${i+1}</span><textarea data-vte="text" rows="2" aria-label="Line ${i+1}">${esc(b.text||"")}</textarea>
+  <span class="vtctl"><button type="button" class="chipbtn${b.look==="blue"?" on":""}" data-vte="look" title="Blue screen">Blue</button><input type="number" min="1" max="15" step="0.5" data-vte="secs" value="${esc(b.secs||"")}" placeholder="s" aria-label="Seconds"><button type="button" class="chipbtn" data-vte="del" aria-label="Remove line ${i+1}">✕</button></span></div>`).join("")}
+  <div class="vtrow"><span class="vtt">end</span><textarea data-vte="ask" rows="1" aria-label="The ask at the end">${esc(v.ask||"")}</textarea></div>
+  <div class="row" style="gap:6px;margin:0">${(v.beats||[]).length<8?`<button type="button" class="btn small" data-vte="add">+ Add a line</button>`:""}<small class="src">Put *stars* round the words to colour.</small></div></div>`}
+async function vtMake(d){const v0=d.videoIdea;if(!v0)return;VT.d=d.id;VT.ratio=VT.ratio||"9:16";VT.v=JSON.parse(JSON.stringify({beats:v0.beats||[],ask:v0.ask||"",seconds:v0.seconds}));VT.dirty=false;
   const draw=()=>{const [W,H]=VT.ratio==="1:1"?[1080,1080]:[1080,1920];
-    vtOverlay(`<div class="vshead"><b>▶ Make the text video here</b><span class="src">About ${Math.round(viPlan(v).total)} s · house colours · made in this browser, nothing is sent until you attach it</span></div>
-    <div class="vsstage"><canvas id="vtC" width="${W}" height="${H}" class="${VT.ratio==="1:1"?"sq":""}"></canvas></div>
+    vtOverlay(`<div class="vshead"><b>▶ Premade video</b><span class="src">House colours · made in this browser · nothing is sent until you attach it</span></div>
+    <div class="vsgrid"><div class="vsstage"><canvas id="vtC" data-vt-live="${esc(d.id)}" width="${W}" height="${H}" class="${VT.ratio==="1:1"?"sq":""}"></canvas></div><div id="vtEd">${vtEditor()}</div></div>
     <div class="vsbar"><span class="viseg" role="group" aria-label="Shape"><button type="button" data-vt="r916" aria-pressed="${VT.ratio!=="1:1"}">9:16</button><button type="button" data-vt="r11" aria-pressed="${VT.ratio==="1:1"}">1:1</button></span>
-    <button class="btn" data-vt="play">Play preview</button><button class="btn primary" data-vt="rec">Make the video</button><button class="btn" data-vt="close">Close</button></div><small class="src" id="vtMsg"></small>`);
-    vtFrame($("#vtC").getContext("2d"),W,H,viPlan(v),Math.min(1.2,viPlan(v).total))};
+    <button class="btn primary" data-vt="rec">Use this video</button>${S.db?`<button class="btn" data-vt="savelines" ${VT.dirty?"":"hidden"}>Save the lines</button>`:""}<button class="btn" data-vt="close">Close</button></div><small class="src" id="vtMsg">${S.db?"Edits show in the video straight away. Save keeps them on the post.":""}</small>`)};
   await document.fonts.ready;draw();VT.redraw=draw}
-async function vtRun(record){const d=S.drafts.find(x=>x.id===VT.d);if(!d)return;const c=$("#vtC");if(!c)return;const ctx=c.getContext("2d"),plan=viPlan(d.videoIdea);
-  let rec,chunks=[],mime;if(record){mime=VT.mime();if(!mime){toast("This browser can't record video. Try Chrome");return}rec=new MediaRecorder(c.captureStream(30),{mimeType:mime,videoBitsPerSecond:6e6});rec.ondataavailable=e=>{if(e.data.size)chunks.push(e.data)};rec.start(250)}
-  $("#vstudio").querySelectorAll("[data-vt]").forEach(b=>b.disabled=true);const m=$("#vtMsg");VT.stop=false;const t0=performance.now();
-  while(!VT.stop){const el=(performance.now()-t0)/1000;if(el>plan.total+.4)break;vtFrame(ctx,c.width,c.height,plan,Math.min(el,plan.total-.01));if(m)m.textContent=record?`Recording… ${Math.ceil(plan.total-el)} s`:"";await new Promise(r=>setTimeout(r,1000/30))}
-  if(!record){$("#vstudio")?.querySelectorAll("[data-vt]").forEach(b=>b.disabled=false);if(m)m.textContent="";return}
-  const done=new Promise(r=>rec.onstop=r);rec.stop();await done;if(VT.stop&&!$("#vtC"))return;VT.blob=new Blob(chunks,{type:mime.split(";")[0]});VT.url=URL.createObjectURL(VT.blob);VT.kind="make";
-  vtOverlay(`<div class="vshead"><b>▶ Your video</b><span class="src">${(VT.blob.size/1048576).toFixed(1)} MB · ${VT.ratio}</span></div>${vtDoneBar(d,"make")}`);
+function vtDirty(){VT.dirty=true;VTL.start=performance.now();const s=document.querySelector("[data-vt='savelines']");if(s)s.hidden=false}
+document.addEventListener("input",ev=>{const t=ev.target.closest&&ev.target.closest("[data-vte]");if(!t||!VT.v)return;const row=t.closest(".vtrow");const i=+row.dataset.i;
+  if(t.dataset.vte==="text")VT.v.beats[i].text=t.value;else if(t.dataset.vte==="ask")VT.v.ask=t.value;else if(t.dataset.vte==="secs"){const n=parseFloat(t.value);VT.v.beats[i].secs=n>0?n:undefined}vtDirty()});
+document.addEventListener("click",ev=>{const t=ev.target.closest("[data-vte]");if(!t||!VT.v||!/^(look|del|add)$/.test(t.dataset.vte))return;ev.preventDefault();ev.stopPropagation();const i=+(t.closest(".vtrow")||{}).dataset?.i;
+  if(t.dataset.vte==="look"){const b=VT.v.beats[i];b.look=b.look==="blue"?"plain":"blue"}else if(t.dataset.vte==="del"){if(VT.v.beats.length>1)VT.v.beats.splice(i,1)}else VT.v.beats.push({text:"",look:"plain"});
+  $("#vtEd").innerHTML=vtEditor();vtDirty()},true);
+async function vtSaveLines(){const d=S.drafts.find(x=>x.id===VT.d);if(!d||!S.db)return;const before=(d.videoIdea.beats||[]).map(b=>b.text).concat(d.videoIdea.ask||"");
+  const beats=VT.v.beats.filter(b=>String(b.text||"").trim()).map(b=>{const o={...b,text:String(b.text).trim()};if(!o.secs)delete o.secs;return o});if(!beats.length){toast("Keep at least one line");return}
+  const fixed=beats.reduce((n,b)=>n+(b.secs||0),0);const vi={...d.videoIdea,beats,ask:String(VT.v.ask||"").trim()||undefined,seconds:Math.max(fixed,Math.round(viPlan({...VT.v,beats}).total-(VT.v.ask?3:0)))};delete vi.prompts;
+  try{await S.db.doc("drafts/"+d.id).update({videoIdea:vi});VT.dirty=false;const s=document.querySelector("[data-vt='savelines']");if(s)s.hidden=true;toast("Saved: the video and its prompts now use these lines");
+    logFeedback({draftId:d.id,action:"video-edit",before,after:beats.map(b=>b.text).concat(vi.ask||""),type:d.type,issue:d.issue}).catch(()=>{})}catch(e){failToast(e,"Couldn't save the lines")}}
+async function vtRun(record){const d=S.drafts.find(x=>x.id===VT.d);if(!d)return;const c=$("#vtC");if(!c)return;const ctx=c.getContext("2d"),plan=viPlan(VT.v||d.videoIdea);
+  const mime=VT.mime();if(!mime){toast("This browser can't record video. Try Chrome");return}const chunks=[];const rec=new MediaRecorder(c.captureStream(30),{mimeType:mime,videoBitsPerSecond:6e6});rec.ondataavailable=e=>{if(e.data.size)chunks.push(e.data)};rec.start(250);
+  c.dataset.vtBusy="1";$("#vstudio").querySelectorAll("[data-vt],[data-vte]").forEach(b=>b.disabled=true);const m=$("#vtMsg");VT.stop=false;const t0=performance.now();
+  while(!VT.stop){const el=(performance.now()-t0)/1000;if(el>plan.total+.4)break;vtFrame(ctx,c.width,c.height,plan,Math.min(el,plan.total-.01));if(m)m.textContent=`Making the MP4… ${Math.max(0,Math.ceil(plan.total-el))} s`;await new Promise(r=>setTimeout(r,1000/30))}
+  const done=new Promise(r=>rec.onstop=r);rec.stop();await done;if(!$("#vtC"))return;VT.blob=new Blob(chunks,{type:mime.split(";")[0]});VT.url=URL.createObjectURL(VT.blob);VT.kind="make";
+  vtOverlay(`<div class="vshead"><b>▶ Your video</b><span class="src">${(VT.blob.size/1048576).toFixed(1)} MB · ${VT.ratio}${VT.dirty?" · your new lines aren't saved on the post yet":""}</span></div>${vtDoneBar(d,"make")}`);
   logFeedback({draftId:d.id,action:"text-video",type:d.type,issue:d.issue}).catch(()=>{})}
 /* V3: film it with the camera, the words big on screen, one shot at a time */
 async function vtFilm(d){const v=d.videoIdea;if(!v)return;VT.d=d.id;VT.shot=0;VT.facing=VT.facing||"user";const plan=viPlan(v);
@@ -2799,8 +2858,8 @@ function vtFilmToggle(){const btn=document.querySelector("[data-vt='frec']");if(
 document.addEventListener("click",async ev=>{const b=ev.target.closest("[data-vt]");if(!b)return;ev.preventDefault();ev.stopPropagation();const k=b.dataset.vt;const d=S.drafts.find(x=>x.id===VT.d);
   if(k==="close")return vtClose();
   if(k==="r916"||k==="r11"){VT.ratio=k==="r11"?"1:1":"9:16";VT.redraw&&VT.redraw();return}
-  if(k==="play")return vtRun(false);if(k==="rec")return vtRun(true);
-  if(k==="again"){if(VT.url){URL.revokeObjectURL(VT.url);VT.url=null}return d&&vtMake(d)}
+  if(k==="rec")return vtRun(true);if(k==="savelines")return vtSaveLines();
+  if(k==="again"){if(VT.url){URL.revokeObjectURL(VT.url);VT.url=null}return VT.v&&VT.redraw?VT.redraw():d&&vtMake(d)}
   if(k==="retake"){if(VT.url){URL.revokeObjectURL(VT.url);VT.url=null}return d&&vtFilm(d)}
   if(k==="prev"||k==="next"){const n=viPlan(d.videoIdea).beats.length;VT.shot=Math.max(0,Math.min(n-1,(VT.shot||0)+(k==="next"?1:-1)));VT.show&&VT.show();return}
   if(k==="flip"){VT.facing=VT.facing==="user"?"environment":"user";return vtCam()}
@@ -2809,7 +2868,7 @@ document.addEventListener("click",async ev=>{const b=ev.target.closest("[data-vt
     try{if(S.downloads)await S.downloads.save({filename:name,data:VT.blob});else{const a=document.createElement("a");a.href=VT.url;a.download=name;a.click()}}catch(e){if(e?.code!=="declined")failToast(e,"Couldn't save the video")}return}
   if(k==="attach"&&d&&VT.blob){const blob=VT.blob,name=`${d.id}-${VT.kind==="make"?"text":"film"}.${/quicktime/.test(blob.type)?"mov":"mp4"}`;vtClose();await uploadVideo(d,blob,name)}},true);
 document.addEventListener("keydown",ev=>{const o=$("#vstudio");if(!o||o.hidden)return;if(ev.key==="Escape"){ev.stopPropagation();vtClose()}else if(document.querySelector(".vfk")&&(ev.key==="ArrowRight"||ev.key===" ")){ev.preventDefault();document.querySelector("[data-vt='next']")?.click()}else if(document.querySelector(".vfk")&&ev.key==="ArrowLeft")document.querySelector("[data-vt='prev']")?.click()},true);
-function viPhone(d){const v=d.videoIdea;const film=v.route==="film";
+function viPhone(d){const v=d.videoIdea;const film=v.route==="film";if(!film&&(v.beats||[]).length)return vtLive(d,"big");
   const fr=(v.beats||[]).map((b,i)=>film?`<div class="vf film${i?"":" on"}"><div>${esc(b.text.replace(/\*/g,""))}</div>${b.shot?`<em>${esc(b.shot)}</em>`:""}</div>`:`<div class="vf${b.look==="blue"?" blue":""}${i?"":" on"}"><div>${viHl(b.text)}</div><small>CitizenGO</small></div>`).join("");
   return `<div class="viphone" data-vi-phone role="img" aria-label="Storyboard: ${esc((v.beats||[]).map(b=>b.text.replace(/\*/g,"")).join(" / "))}"><span class="vn">${film?"to film":"storyboard"}</span>${fr}</div>`}
 setInterval(()=>{if(document.hidden||matchMedia("(prefers-reduced-motion: reduce)").matches)return;document.querySelectorAll("[data-vi-phone]").forEach(p=>{const f=[...p.querySelectorAll(".vf")];if(f.length<2)return;const i=f.findIndex(x=>x.classList.contains("on"));f[i]?.classList.remove("on");f[(i+1)%f.length].classList.add("on")})},2600);
@@ -2817,7 +2876,7 @@ document.addEventListener("click",ev=>{if(ev.target.closest("[data-vi-copy]"))do
 document.addEventListener("click",async ev=>{const b=ev.target.closest("[data-vi]");if(!b)return;const box=b.closest("[data-vi-box]");if(!box)return;ev.stopPropagation();
   const k=b.dataset.vi;const cur=()=>box.querySelector("pre[data-vi-p]:not([hidden])");
   if(k==="make"||k==="film"||k==="clip"){box.querySelectorAll("[data-vi='make'],[data-vi='film'],[data-vi='clip']").forEach(x=>x.setAttribute("aria-pressed",x.dataset.vi===k));box.querySelectorAll("pre[data-vi-p]").forEach(p=>p.hidden=p.dataset.viP!==k);const h=box.querySelector("[data-vi-how]");if(h)h.textContent=h.textContent.replace(VI_HOW.make,VI_HOW[k]).replace(VI_HOW.film,VI_HOW[k]).replace(VI_HOW.clip,VI_HOW[k]);return}
-  if(k==="here"||k==="filmkit"){const d=S.drafts.find(x=>x.id===box.dataset.viId)||(typeof CP!=="undefined"&&CP.draft&&CP.draft.id===box.dataset.viId?CP.draft:null);if(!d){toast("Open the post first");return}return k==="here"?vtMake(d):vtFilm(d)}
+  if(k==="here"||k==="filmkit"||k==="use"){const d=S.drafts.find(x=>x.id===box.dataset.viId)||(typeof CP!=="undefined"&&CP.draft&&CP.draft.id===box.dataset.viId?CP.draft:null);if(!d){toast("Open the post first");return}if(k==="use"){await vtMake(d);return vtRun(true)}return k==="here"?vtMake(d):vtFilm(d)}
   const p=cur();if(!p)return;const text=p.textContent;
   if(k==="copy"){try{await navigator.clipboard.writeText(text);toast("Prompt copied: paste it into your Claude")}catch(e){const r=document.createRange();r.selectNodeContents(p);const sel=getSelection();sel.removeAllRanges();sel.addRange(r);toast("Prompt selected: press Ctrl+C (⌘C on a Mac)")}return}
   if(k==="open"){const u="https://claude.ai/new?q="+encodeURIComponent(text);if(u.length<7500)window.open(u,"_blank","noopener");else{try{await navigator.clipboard.writeText(text)}catch(e){}window.open("https://claude.ai/new","_blank","noopener");toast("Prompt copied: paste it into the new chat")}}
