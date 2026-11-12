@@ -4619,6 +4619,8 @@ function tlBio(){if(TL.bio&&TL.bio.team!==S.team){TL.bio=null;TL.bioDirty=false;
   const chk=[];
   if(B.bio.saved&&week<10)chk.push(["r",`${week===0?"No visits":week===1?"1 visit":`${week} visits`} in the last 7 days. Is the link in the Instagram and X bios?`,`<button class="btn small" data-bio-copy="${esc(url)}?s=ig">Copy the Instagram link</button><button class="btn small" data-bio-copy="${esc(url)}?s=x">Copy the X link</button>`]);
   if(badT.length)chk.push(["y",`${badT.length===1?"1 title needs":`${badT.length} titles need`} a look: ${badT.map(i=>`“${esc(i.title)}”`).join(", ")}. Type a better one in its row.`,`<button class="btn small" data-bio-fix="${esc(badT[0].id)}">Fix the first one</button>`]);
+  const longT=shown.filter(i=>i.short_title);
+  if(longT.length)chk.push(["g",`${longT.length===1?"1 title is":`${longT.length} titles are`} long, so the page shortens ${longT.length===1?"it":"them"}: ${longT.map(i=>`“${esc(i.short_title)}”`).join(", ")}. Type a shorter one in its row if you prefer.`,`<button class="btn small" data-bio-fix="${esc(longT[0].id)}">Edit the first one</button>`]);
   if(noPic.length)chk.push(["y",`${noPic.length===1?"1 petition has":`${noPic.length} petitions have`} no picture yet.`,`<button class="btn small" data-bio-refresh>Look for pictures now</button>`]);
   if(set.grid!==false&&!B.grid)chk.push(["y","The Instagram grid is empty.",`<button class="btn small" data-bio-refresh>Refresh now</button>`]);
   if(!B.hero&&shown.length)chk.push(["y","There's no top card. Make one petition the top card from its ⋯ menu.",""]);
