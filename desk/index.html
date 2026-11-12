@@ -1681,8 +1681,6 @@ input[type=date],input[type=time],input[type=datetime-local],select,input[type=s
 .cp-top h2{font-size:22px}.cp-ic{width:34px;height:34px;padding:0;display:inline-grid;place-items:center}.cp-ic.bad{color:var(--bad)}
 .cp-top .cp-fs{display:none}.cp-top .cp-film{flex:none}
 .cp-ahd{display:flex;align-items:center;justify-content:space-between}.cp-ahd b{font-size:16px}
-.cp-seg{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--line);border-radius:6px;overflow:hidden}
-.cp-seg button{border:0;background:var(--surface);padding:7px;font:inherit;font-weight:700;cursor:pointer;color:var(--fg)}.cp-seg button.on{background:var(--accent-soft);color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
 .cp-av{position:relative;width:26px;height:26px;border-radius:50%;background:#4285F4;color:#fff;font-weight:800;font-size:9.5px;display:inline-grid;place-items:center;flex:none}
 .cp-av.sm{width:20px;height:20px;font-size:7.5px}
 .cp-av .nb{position:absolute;right:-4px;bottom:-3px;width:13px;height:13px;border-radius:50%;font-style:normal;font-size:8.5px;font-weight:800;display:grid;place-items:center;color:#fff;border:1.5px solid var(--surface)}
@@ -1706,6 +1704,7 @@ input[type=date],input[type=time],input[type=datetime-local],select,input[type=s
 .cp-bar .cp-when{display:inline-flex;align-items:center;gap:6px;font-weight:700}
 #cpWhenBox.flash{box-shadow:0 0 0 2px var(--accent)}
 @media (max-width:860px){.cp-bl .cp-ic{width:30px;height:30px}.cp-bar .cp-bl{flex:none!important;margin-right:0}.cp-bar .cp-bl .btn{flex:none}.cp-bl [data-cp=dup],.cp-bl [data-cp=back],.cp-ahd .cp-ic{display:none}.cp-only{opacity:1}.cp-top [data-cp=close]{order:6}.cp-bar .cp-when{flex:1 1 auto}.cp-bar .cp-when svg{display:none}}
+.cp-post.x .cp-xth{border-left:2px solid var(--line);height:14px;margin:2px 0 2px 15px}
 /* ===== end Agorapulse look ===== */
 </style>
 
@@ -6470,7 +6469,8 @@ document.addEventListener("change",ev=>{if(ev.target.id!=="fTeam")return;CAL.dat
    to write a first go from notes. Own posts carry own:{…} and type "Own idea"; the desk doesn't log
    their edits as feedback, so the engine doesn't learn from them as if they were its own drafts. */
 const NP={busy:false};
-function npAccounts(){return teamDests().filter(([k])=>platOfKey(k)!=="x")}
+/* Hand-off mode: X goes into the Asana task like the others, so it is tickable. */
+function npAccounts(){return teamDests().filter(([k])=>HO()||platOfKey(k)!=="x")}
 /* A citizengo.org petition becomes the post's tracked petition; any other link stays a plain link. */
 function npPetition(url,title){try{const u=new URL(url);if(!/(^|\.)citizengo\.org$/i.test(u.hostname))return null;const m=u.pathname.match(/\/(\d+)-[^/]*\/?$/);if(!m)return null;
   return{url:u.origin+u.pathname.replace(/\/$/,""),title:String(title||"").slice(0,120),petitionId:m[1],scope:"LO",note:"Linked on the desk"}}catch(e){return null}}
@@ -6674,10 +6674,9 @@ function cpStart(){const mine=S.drafts.filter(x=>x.own&&(x.own.by===cpMeId()||x.
   ${tab==="mine"?`<div class="cp-list">${mine.map(x=>`<button class="cp-li" data-cp-open="${esc(x.id)}"><b>${esc(x.title)}</b><small>Started ${esc(fmtWhen(x.own.at))}${x.status==="changes"?" · needs changes":""}${x.ask?.to?` · waiting for ${esc(nameOf(x.ask.to))}`:""}</small></button>`).join("")}</div>`:""}
   <p class="src">Tip: press <kbd>⌘</kbd> <kbd>Enter</kbd> in the words to schedule at the time in the bar.</p></div>`}
 function cpAccounts(d){const ds=(d.posting||{}).destinations||[];const all=teamDests();const q=CP.q.toLowerCase();const accs=all.filter(([k,l])=>!q||l.toLowerCase().includes(q));
-  const meta=accs.filter(([k])=>platOfKey(k)!=="x"),xs=accs.filter(([k])=>platOfKey(k)==="x");const ic=k=>{const p=platOfKey(k);return `<span class="cp-av" aria-hidden="true">GO<i class="nb ${p}">${p==="facebook"?"f":p==="instagram"?"◎":"𝕏"}</i></span>`};
+  const tick=([k])=>HO()||platOfKey(k)!=="x";const meta=accs.filter(tick),xs=accs.filter(a=>!tick(a));const ic=k=>{const p=platOfKey(k);return `<span class="cp-av" aria-hidden="true">GO<i class="nb ${p}">${p==="facebook"?"f":p==="instagram"?"◎":"𝕏"}</i></span>`};
   if(CP.accFold)return `<button class="btn small cp-ic cp-afold" data-cp="accfold" title="Show social profiles" aria-label="Show social profiles">→|</button>${meta.filter(([k])=>ds.includes(k)).map(([k,l])=>`<span title="${esc(l)}">${ic(k)}</span>`).join("")}`;
-  const tabs=`<div class="cp-ahd"><b>Social profiles</b><button class="btn small cp-ic" data-cp="accfold" title="Fold this column" aria-label="Fold this column">|←</button></div><div class="cp-seg"><button class="${CP.accTab!=="slots"?"on":""}" data-cp-acctab="accounts">Profiles</button><button class="${CP.accTab==="slots"?"on":""}" data-cp-acctab="slots">Best slots</button></div>`;
-  if(CP.accTab==="slots")return tabs+`<div class="cp-slots">${cpSlots(ds).map(t=>`<button class="cp-slot" data-cp-at="${t.toISOString()}"><b>★ ${esc(t.toLocaleString("en-GB",{weekday:"short",day:"numeric",month:"short"}))} ${esc(hhmm(t))}</b><small>free on the calendar, a strong hour for ${esc(cpPlats(d).filter(p=>p!=="x").map(p=>p==="facebook"?"Facebook":"Instagram").join(" and ")||"these accounts")}</small></button>`).join("")}</div><span class="src">From when your posts have done best, and what's already scheduled.</span>`;
+  const tabs=`<div class="cp-ahd"><b>Social profiles</b><button class="btn small cp-ic" data-cp="accfold" title="Fold this column" aria-label="Fold this column">|←</button></div>`;
   const allOn=meta.length&&meta.every(([k])=>ds.includes(k));
   return tabs+`<input type="search" id="cpAccQ" placeholder="Search accounts" value="${esc(CP.q)}" autocomplete="off">
   <label class="cp-a"><input type="checkbox" data-cp-all${allOn?" checked":""}> <b>Select all</b></label>
@@ -6743,12 +6742,12 @@ function cpVal(d){const tab=CP.capTab;return tab==="x"?cpXText(d):tab==="instagr
 function cpEngLine(d){if(!CP.eng)return"";const src=d.source||{};const rs=(()=>{try{return rulesBox(d)}catch(e){return""}})();
   return `<div class="cp-eng">⚙ <b>From the engine</b>${d.type?` · ${esc(d.type)}`:""}${d.issue?` · ${esc(d.issue)}`:""}${src.url?` · <a href="${esc(src.url)}" target="_blank" rel="noopener">${esc(src.label||"Source")} ↗</a>`:src.label?` · ${esc(src.label)}`:""}${d.rationale||rs||(d.modelledOn||[]).length?` <button class="btn small" data-cp="why" aria-expanded="${!!CP.why}">Why this post</button>`:""}</div>
   ${CP.why?`<div class="cp-why">${d.rationale?`<p>${esc(d.rationale)}</p>`:""}${rs}${(d.modelledOn||[]).map(m=>`<div class="model"><a href="${esc(m.url)}" target="_blank" rel="noopener">${esc(m.label)}</a><span class="m">${esc(m.metric||"")}</span></div>`).join("")}</div>`:""}`}
-function cpWords(d){const fb=cpTxt(d,"facebook"),ig=cpTxt(d,"instagram");const tab=CP.capTab;const val=cpVal(d);const diff=fb!==ig&&fb&&ig;const showX=CP.eng||!!cpXText(d).trim();
+function cpWords(d){const fb=cpTxt(d,"facebook"),ig=cpTxt(d,"instagram");const tab=CP.capTab;const val=cpVal(d);const diff=fb!==ig&&fb&&ig;const showX=CP.eng||cpHas(d,"x")||!!cpXText(d).trim();
   const tags=(CP.kit||[]).filter(x=>x.kind==="tags"),snips=(CP.kit||[]).filter(x=>x.kind==="snippet");const link=d.action?.url||d.own?.link||"";
   return `<div class="cp-box">${cpEngLine(d)}<label class="cp-f grow">Working title <small>for the Review board and calendar; not posted</small><input id="cpTitle" value="${esc(d.title||"")}" maxlength="120" placeholder="${esc(cpTitle(d)==="Untitled post"?"e.g. Thank you: 10,000 in a week":cpTitle(d))}"></label>
   <div class="row cp-captabs"><button class="pill${tab==="same"?" on":""}" data-cp-cap="same">Same text everywhere</button>${cpHas(d,"facebook")?`<button class="pill${tab==="facebook"?" on":""}" data-cp-cap="facebook">Facebook</button>`:""}${cpHas(d,"instagram")&&d.cpType!=="text"?`<button class="pill${tab==="instagram"?" on":""}" data-cp-cap="instagram">Instagram</button>`:""}${showX?`<button class="pill${tab==="x"?" on":""}" data-cp-cap="x">X</button>`:""}<span class="sp"></span>${S.sample?`<button class="ai" data-cp="ai" aria-expanded="${CP.ai}">${sideSvg("sparkle",14)}Write with Claude</button>`:""}</div>
   ${tab==="same"&&diff?`<p class="src">Facebook and Instagram have different words. Typing here sets both to the same text.</p>`:""}
-  ${tab==="x"?`<p class="src">X isn't posted from the desk: copy it and post it by hand. A line with --- starts the next post in the thread. <button class="btn small" data-cp="copyx">Copy</button></p>`:""}
+  ${tab==="x"?`<p class="src">${HO()?"Goes into the Asana task for UK X, and someone posts it by hand.":"X isn't posted from the desk: copy it and post it by hand."} A line with --- starts the next post in the thread. <button class="btn small" data-cp="copyx">Copy</button></p>`:""}
   <div class="cp-cap"><div class="cp-hlw">${cpFacts(d).length?`<div class="cp-hl" id="cpHl" aria-hidden="true">${cpHlHtml(d,val)}</div>`:""}<textarea id="cpText" rows="7" spellcheck="true" lang="en-GB" placeholder="Write something, or ✨ Write with Claude">${esc(val)}</textarea></div>${cpFactsRow(d,val)}
    <div class="row cp-tools"><span class="cp-pop"><button class="btn small" data-cp="emoji" aria-label="Emoji">😀</button>${CP.pop==="emoji"?`<span class="cp-menu">${CP_EMOJI.map(e=>`<button data-cp-ins="${e}">${e}</button>`).join("")}</span>`:""}</span>
     <span class="cp-pop"><button class="btn small" data-cp="tags"># Hashtag sets</button>${CP.pop==="tags"?`<span class="cp-menu col">${tags.map(t=>`<button data-cp-ins=" ${esc(t.text)}"><b>${esc(t.name)}</b> <small>${esc(t.text)}</small></button>`).join("")||'<span class="src">No sets yet.</span>'}<button data-cp="savetags">＋ Save this post's hashtags as a set</button></span>`:""}</span>
@@ -6759,7 +6758,7 @@ function cpWords(d){const fb=cpTxt(d,"facebook"),ig=cpTxt(d,"instagram");const t
    ${link?`<div class="cp-lp"><div class="cp-lpi"></div><div><b>${esc(d.action?.title||cpTitle(d))}</b><small>${esc((()=>{try{return new URL(link).hostname}catch(e){return link}})())}${d.action?" · petition · tracked links for each network":" · link"}</small></div></div>`:""}`:""}
   ${CP.ai?cpAiBox(d):""}</div>`}
 function cpCounts(d){const fb=withLink(cpTxt(d,"facebook"),d,"facebook"),ig=cpTxt(d,"instagram");const tags=(ig.match(/#[\p{L}\p{N}_]+/gu)||[]).length;const n=s=>[...s].length.toLocaleString("en-GB");
-  return `${cpHas(d,"facebook")?`<span>📘 ${n(fb)} / 63,206</span>`:""}${cpHas(d,"instagram")&&d.cpType!=="text"?`<span class="${[...ig].length>2200?"bad":""}">📸 ${n(ig)} / 2,200</span><span class="${tags>30?"bad":tags>5?"warn":""}"># ${tags}</span>`:""}${CP.capTab==="x"?`<span>𝕏 ${asPosts(d.platforms?.x).map(t=>xLen(withLink(String(t||""),d,"x"))).join(" · ")} / 280</span>`:""}${d.action?`<span>🔗 tracked</span>`:""}`}
+  return `${cpHas(d,"facebook")?`<span>📘 ${n(fb)} / 63,206</span>`:""}${cpHas(d,"instagram")&&d.cpType!=="text"?`<span class="${[...ig].length>2200?"bad":""}">📸 ${n(ig)} / 2,200</span><span class="${tags>30?"bad":tags>5?"warn":""}"># ${tags}</span>`:""}${CP.capTab==="x"||cpHas(d,"x")?`<span>𝕏 ${asPosts(d.platforms?.x).map(t=>xLen(withLink(String(t||""),d,"x"))).join(" · ")} / 280</span>`:""}${d.action?`<span>🔗 tracked</span>`:""}`}
 /* H1 (8 Nov): the facts to check, highlighted in the words. Tick each one to unlock Schedule. */
 function cpFacts(d){return (d.facts||[]).map((f,i)=>({f,i})).filter(x=>x.f.status==="check")}
 const CP_STOP=new Set(["The","This","That","These","Those","There","Their","They","What","When","Which","Who","And","But","For","From","With","Our","Its","Now","Today","Tomorrow","Yesterday","Sign","Please","Thank"]);
@@ -6822,6 +6821,7 @@ function cpChecks(d){const out=[];const add=(lvl,t,s)=>out.push({lvl,t,s});const
   const bare=t=>String(t).replace(/\[ACTION LINK\]|https?:\/\/\S+/g,"").trim();
   if(fb&&!bare(cpTxt(d,"facebook")))add("b","Write the Facebook words");if(ig&&d.cpType!=="text"&&!bare(cpTxt(d,"instagram")))add("b","Write the Instagram words");
   if(fb&&ig&&bare(cpTxt(d,"facebook"))&&bare(cpTxt(d,"instagram")))add("g","Words written for Facebook and Instagram");
+  if(cpHas(d,"x")){const xp=asPosts(d.platforms?.x).map(t=>String(t||""));if(!xp.some(t=>bare(t)))add("b","Write the X words","Open the X tab above the words");else if(xp.some(t=>xLen(withLink(t,d,"x"))>280))add("b","An X post is over 280 characters","A line with --- starts the next post in the thread")}
   if(ig&&d.cpType==="text")add("b","Instagram needs a picture","Untick Instagram, or pick Post or Carousel");
   if(d.cpType==="reel"&&!d.publishVideo)add("b","Upload the video","Or pick Post to send a picture instead");
   if(d.cpType==="carousel"&&cpSlides(d).length<2)add("w","A carousel needs at least 2 pictures","Add another, or it goes out as a single picture");
@@ -6849,7 +6849,7 @@ function cpWhen(d){const t=CP.at||new Date();const dk=dayKey(t);const day=CP.cal
   const pub=CP.people&&CP.people.team===S.team?CP.people.list.filter(p=>ds.some(k=>(p.accounts||[]).some(a=>a.key===k&&a.post))).map(p=>nameOf(p.who)):null;
   return `<div class="cp-box" id="cpWhenBox"><div class="cp-bh">🗓 When</div>
   <div class="row"><label class="cp-f">Day<input type="date" id="cpDay" value="${dk}" min="${dayKey(new Date())}"></label><label class="cp-f">Time<input type="time" id="cpTime" value="${String(t.getHours()).padStart(2,"0")}:${String(t.getMinutes()).padStart(2,"0")}"></label>
-   ${cpSlots(ds).slice(0,3).map(s=>`<button class="pill" data-cp-at="${s.toISOString()}">★ ${esc(s.toLocaleString("en-GB",{weekday:"short"}))} ${esc(hhmm(s))}</button>`).join("")}</div>
+   </div>${(()=>{const sl=cpSlots(ds).slice(0,4);return sl.length?`<div class="row cp-best"><span class="src">★ Best times</span>${sl.map(s=>`<button class="pill${CP.at&&Math.abs(s-CP.at)<60e3?" on":""}" data-cp-at="${s.toISOString()}" title="Free on the calendar and a strong hour for these accounts">${esc(s.toLocaleString("en-GB",{weekday:"short"}))} ${esc(hhmm(s))}</button>`).join("")}</div>`:""})()}
   <div class="cp-tl">${rows?rows.map(r=>`<div class="cp-tlr ${r.k}"><span>${esc(hhmm(r.at))}</span><span class="ev ${r.k}">${esc(r.t)}${r.st==="posted"?" · posted":""}</span></div>`).join("")||'<span class="src">Nothing else that day.</span>':day&&day.err?`<span class="src">Couldn't load that day.</span>`:`<span class="src">Loading that day…</span>`}</div>
   ${CP.eng&&(d.posting||{}).why?`<span class="src">⚙ The engine's suggested time: ${esc(d.posting.why)}</span>`:""}
   <label class="cp-c"><input type="checkbox" data-cp-repeat${CP.repeat?" checked":""}> Post it again later: add it to Evergreen, due again in about 10 weeks</label>
@@ -6870,8 +6870,8 @@ function cpHistBox(d){const h=(d.history||[]).slice().reverse();
 
 /* Preview: as Facebook and Instagram show it. */
 /* Social media preview (12 Nov, Agorapulse): every ticked network stacked, each with its reactions and a pencil to give that network its own words. */
-function cpPreview(d){const fb=cpHas(d,"facebook"),ig=cpHas(d,"instagram")&&d.cpType!=="text";CP.pvNow=fb?"facebook":"instagram";
-  if(!fb&&!ig)return `<h3 class="cp-pvh">Social media preview</h3><p class="src">Tick a profile to see the preview.</p>`;
+function cpPreview(d){const fb=cpHas(d,"facebook"),ig=cpHas(d,"instagram")&&d.cpType!=="text",xx=cpHas(d,"x");CP.pvNow=fb?"facebook":"instagram";
+  if(!fb&&!ig&&!xx)return `<h3 class="cp-pvh">Social media preview</h3><p class="src">Tick a profile to see the preview.</p>`;
   const names=Object.fromEntries(teamDests());const ds=(d.posting||{}).destinations||[];
   const when=CP.at?CP.at.toLocaleString("en-GB",{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}):"Now";const car=d.card?.template==="carousel";const n=cpSlides(d).length;
   const short=v=>String(v).replace(/(https?:\/\/[^\s?]+)\?\S+/g,"$1");
@@ -6884,7 +6884,14 @@ function cpPreview(d){const fb=cpHas(d,"facebook"),ig=cpHas(d,"instagram")&&d.cp
      ${tab==="facebook"?`<div class="cp-ptx">${esc(txt)||'<span class="src">Your words show here</span>'}</div>${img}`:`${img}<div class="cp-ptx"><b>${esc(nm)}</b> ${esc(txt)||'<span class="src">Your caption shows here</span>'}</div>`}
      ${cm?`<div class="cp-pcm">💬 ${esc(cm)}</div>`:""}<div class="cp-react" aria-hidden="true"><span>👍 Like</span><span>💬 Comment</span><span>↗ Share</span></div></div>
      <button type="button" class="btn small cp-ic cp-pen${own?" on":""}" data-cp-cap="${tab}" title="${own?"Editing the "+(tab==="facebook"?"Facebook":"Instagram")+" words":"Customise the "+(tab==="facebook"?"Facebook":"Instagram")+" words"}" aria-label="Customise ${tab==="facebook"?"Facebook":"Instagram"}">${CPI.pen}</button></div></div>`};
-  return `<h3 class="cp-pvh">Social media preview</h3>${fb?one("facebook"):""}${ig?one("instagram"):""}`}
+  const xone=()=>{const acc=ds.find(k=>platOfKey(k)==="x");const ac=tm&&(tm.accounts||[]).find(x=>x.key===acc);const h=ac&&ac.handle?String(ac.handle).replace(/^@?/,"@"):"";const fbn=tm&&((tm.accounts||[]).find(x=>x.platform==="facebook")||{}).name;const nm=(ac&&ac.name&&ac.name.replace(/^@/,"")!==h.slice(1)?ac.name:fbn)||String(names[acc]||teamLabel()).replace(/ X$/,"");
+    const ps=asPosts(d.platforms?.x).map(t=>short(withLink(String(t||""),d,"x")));const own=CP.capTab==="x";
+    const img=d.cpType==="text"?"":`<div class="cp-pimg"><canvas class="cp-pc" data-cp-slide="0" data-cp-plat="facebook" width="10" height="10"></canvas>${d.cpType==="reel"?'<span class="cp-play">▶</span>':""}</div>`;
+    return `<div class="cp-pvn"><div class="cp-pvl"><span class="cp-av sm" aria-hidden="true">GO<i class="nb x">𝕏</i></span>X</div>
+     <div class="cp-pvrow"><div class="cp-post x">${ps.map((t,i)=>`<div class="cp-who"><span class="av">GO</span><div><b>${esc(nm)}</b><small>${esc(h)}${h?" · ":""}${esc(when)}</small></div></div><div class="cp-ptx">${esc(t)||'<span class="src">Your X words show here</span>'}</div>${i===0?img:""}`).join('<div class="cp-xth" aria-hidden="true"></div>')}
+     <div class="cp-react" aria-hidden="true"><span>💬</span><span>⟲</span><span>♡</span><span>↗</span></div></div>
+     <button type="button" class="btn small cp-ic cp-pen${own?" on":""}" data-cp-cap="x" title="${own?"Editing the X words":"Customise the X words"}" aria-label="Customise X">${CPI.pen}</button></div></div>`};
+  return `<h3 class="cp-pvh">Social media preview</h3>${fb?one("facebook"):""}${ig?one("instagram"):""}${xx?xone():""}`}
 /* Every canvas in Compose draws its slide from the post being written. */
 function cpDraw(){const d=CP.d;if(!d||!CP.open)return;const slides=cpSlides(d);const plat=CP.pvNow||"instagram";
   $("#cpBox")?.querySelectorAll("canvas[data-cp-slide]").forEach(cv=>{const i=+cv.dataset.cpSlide;const plat=cv.dataset.cpPlat||CP.pvNow||"instagram";const s=d.card?.template==="carousel"?slides[i]:(d.cards&&d.cards[plat])||d.card;if(!s||!s.template)return;const k=[S.slide,S.platform];try{S.slide=i;S.platform=plat;drawCard(d,cv,s)}catch(e){}finally{S.slide=k[0];S.platform=k[1]}})}
@@ -6973,7 +6980,7 @@ function cpLink(url){const d=CP.d;if(url&&!/^https?:\/\/[^\s.]+\.\S+$/i.test(url
   d.platforms=pl;if(act)d.action=act;else delete d.action;d.own={...(d.own||{})};if(url&&!act)d.own.link=url;else delete d.own.link;if(!act){delete d.posting.comment_dm;delete d.posting.link_in_bio}
   CP.linkOpen=false;cpSaveSoon();cpRenderKeep();toast(url?act?"Petition linked: tracked links on each network":"Link added":"Link removed")}
 function cpIns(txt){const ta=cpEl("#cpText");if(!ta)return;const a=ta.selectionStart??ta.value.length,b=ta.selectionEnd??a;ta.value=ta.value.slice(0,a)+txt+ta.value.slice(b);ta.selectionStart=ta.selectionEnd=a+txt.length;ta.focus();CP.pop=null;cpTextIn(ta.value);const m=$("#cpBox .cp-menu");if(m)m.closest(".cp-pop").querySelector(".cp-menu").remove()}
-function cpTextIn(v){const d=CP.d;const pl={...(d.platforms||{})};if(CP.capTab==="x"){const parts=v.split(/\n[ \t]*-{3,}[ \t]*\n/).map(t=>t.trim());pl.x=parts.length>1?parts:v}else if(CP.capTab==="same"){if(cpHas(d,"facebook")||!cpHas(d,"instagram"))pl.facebook=v;if(cpHas(d,"instagram")&&d.cpType!=="text")pl.instagram=v}else pl[CP.capTab]=v;d.platforms=pl;cpSaveSoon();cpLive()}
+function cpTextIn(v){const d=CP.d;const pl={...(d.platforms||{})};if(CP.capTab==="x"){const parts=v.split(/\n[ \t]*-{3,}[ \t]*\n/).map(t=>t.trim());pl.x=parts.length>1?parts:v}else if(CP.capTab==="same"){const ox=cpXText(d).trim();if(cpHas(d,"x")&&(!ox||ox===String(cpVal(d)).trim()))pl.x=v;if(cpHas(d,"facebook")||!cpHas(d,"instagram"))pl.facebook=v;if(cpHas(d,"instagram")&&d.cpType!=="text")pl.instagram=v}else pl[CP.capTab]=v;d.platforms=pl;cpSaveSoon();cpLive()}
 async function cpKit(kind){const d=CP.d;let text="";if(kind==="tags"){const m=(cpTxt(d,"instagram")||cpTxt(d,"facebook")).match(/#[\p{L}\p{N}_]+/gu);if(!m){toast("Add some hashtags to the post first");return}text=[...new Set(m)].join(" ")}
   else{const ta=cpEl("#cpText");text=ta?ta.value.slice(ta.selectionStart,ta.selectionEnd).trim():"";if(!text){toast("Select the words to save first");return}}
   const name=prompt(kind==="tags"?"Name this hashtag set":"Name this snippet",kind==="tags"?(d.issue||"My set"):text.slice(0,30));if(!name)return;
@@ -7041,7 +7048,6 @@ document.addEventListener("click",async ev=>{const box=ev.target.closest("#cpBox
   if(ds.cpTpl){const tp=CP_TPL.find(x=>x.k===ds.cpTpl);if(tp)cpBegin({title:"",platforms:{facebook:tp.fb,instagram:tp.ig,x:""},card:{...switchTemplate({headline:tp.card.headline},tp.card.template),...tp.card},own:{by:cpMeId(),name:S.meName||"",at:new Date().toISOString(),template:tp.k}});CP.capTab="facebook";cpRender();return}
   if(ds.cpDup){const src=S.drafts.find(x=>x.id===ds.cpDup);if(src)cpDuplicate(src);return}
   if(ds.cpOpen){const x=S.drafts.find(y=>y.id===ds.cpOpen);if(x){cpLoad(x);cpRender()}return}
-  if(ds.cpAcctab){CP.accTab=ds.cpAcctab;cpRenderKeep();return}
   if(ds.cpOnly){ev.preventDefault();cpSetDests([ds.cpOnly]);return}
   if(ds.cpFold){CP.fold=CP.fold||{};CP.fold[ds.cpFold]=!CP.fold[ds.cpFold];cpRenderKeep();return}
   if(ds.cpFc){CP.fcOn=CP.fcOn||{};const k=ds.cpFc;const on=!!cpTxt(d,k).trim()||!!CP.fcOn[k];if(on){CP.fcOn[k]=false;if(cpTxt(d,k).trim()){d.platforms={...(d.platforms||{}),[k]:""};cpSaveSoon();toast("First comment removed")}}else CP.fcOn[k]=true;cpRenderKeep();if(!on)setTimeout(()=>cpEl(`textarea[data-cp-pl="${k}"]`)?.focus(),50);return}
