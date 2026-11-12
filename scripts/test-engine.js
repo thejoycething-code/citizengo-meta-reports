@@ -427,6 +427,29 @@ const callErr = async (store, name, args, who) => { try { await tool(name)(store
     eq('news: Mexico edition rows say so', rows.map((r) => [r.edition, r.title, r.source].join('|')), ['mx|Congreso discute la eutanasia|Milenio']);
     eq('news: two editions, the UK one unchanged', N.EDITIONS.map((e) => e.edition + ':' + e.params), ['uk:hl=en-GB&gl=GB&ceid=GB:en', 'mx:hl=es-419&gl=MX&ceid=MX:es-419']);
   }
+  // Video ideas people make with their own Claude (12 Nov).
+  {
+    const VI = require('../lib/video-ideas');
+    const store = memoryStore();
+    const idea = { route: 'make', beats: [{ text: 'Tonight, churches turn *red*.', secs: 4 }, { text: 'Pray. Speak up.', look: 'blue' }, '  '], seconds: 10, ask: 'Sign: link in the first comment' };
+    const r = await call(store, 'engine_create', { team: 'uk', id: 'uk-vi', doc: { title: 'Red Wednesday', videoIdea: idea } }, 'chris');
+    const vi = r.post.doc.videoIdea;
+    eq('video idea: tidied on create, empty beats dropped, a standalone idea becomes a Video post', [vi.standalone, vi.route, vi.beats.length, vi.brand, r.post.doc.type], [true, 'make', 2, 'CitizenGO UK', 'Video']);
+    eq('video idea: the make prompt has the timings, highlights, blue screen, end card and no-invention rule', [
+      /0-4 s: "Tonight, churches turn red\." \("red" in Brand Blue\)/.test(vi.prompts.make), /4-10 s: "Pray\. Speak up\." \(full Brand Blue background/.test(vi.prompts.make),
+      /10-13 s: end card, "CitizenGO UK".*"Sign: link in the first comment"/.test(vi.prompts.make), /Don't add facts/.test(vi.prompts.make), /\*/.test(vi.prompts.make)],
+      [true, true, true, true, false]);
+    eq('video idea: the film prompt lists the lines in order and asks for captions (.srt)', [/1\. "Tonight, churches turn red\."\n2\. "Pray\. Speak up\."/.test(vi.prompts.film), /\.srt/.test(vi.prompts.film)], [true, true]);
+    const s = await call(store, 'engine_save', { id: 'uk-vi', version: r.post.version, patch: { videoIdea: { route: 'film', standalone: false, beats: [{ text: 'Why I lit a candle', shot: 'outside the church' }] } } }, 'chris');
+    eq('video idea: saving one merges it and rewrites its prompts', [s.ok, s.post.doc.videoIdea.route, s.post.doc.videoIdea.standalone, /shot: outside the church/.test(s.post.doc.videoIdea.prompts.film), s.post.doc.videoIdea.seconds], [true, 'film', false, true, 10]);
+    const n = await call(store, 'engine_save', { id: 'uk-vi', version: s.post.version, patch: { videoIdea: null } }, 'chris');
+    eq('video idea: null removes it', 'videoIdea' in n.post.doc, false);
+    eq('video idea: nothing usable is dropped, other docs untouched', [VI.normalize({ beats: [] }), VI.applyToDoc({ title: 'x' }).title, 'videoIdea' in VI.applyToDoc({ videoIdea: { beats: [''] } })], [null, 'x', false]);
+    store.db.posts.push({ id: 'uk-raw', team_id: 'uk', status: 'review', version: 1, doc: { title: 'Raw', videoIdea: { beats: ['Straight in'] } } });
+    const listed = (await call(store, 'engine_posts', { team: 'uk', full: true }, 'chris')).posts.find((p) => p.id === 'uk-raw');
+    eq('video idea: one written straight into the table gets its prompts when read', [/"Straight in"/.test(listed.doc.videoIdea.prompts.make), /"Straight in"/.test((await call(store, 'engine_post', { id: 'uk-raw' }, 'chris')).post.doc.videoIdea.prompts.film)], [true, true]);
+    eq('video idea: lengths stay between 6 and 60 seconds', [VI.normalize({ beats: ['a'], seconds: 400 }).seconds, VI.normalize({ beats: ['a'], seconds: 1 }).seconds], [60, 6]);
+  }
   console.log(`\n${passed} passed, ${failed} failed`);
   process.exit(failed ? 1 : 0);
 })().catch((e) => { console.error(e); process.exit(1); });

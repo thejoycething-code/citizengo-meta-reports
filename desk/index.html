@@ -1475,6 +1475,33 @@ body:has(.ibfocus) .toast{z-index:80}
 /* ===== end consistency ===== */
 /* Hand-off mode: nothing is posted from the desk */
 body.handoff [data-act="apNow"],body.handoff [data-cp="now"]{display:none!important}
+/* Video ideas (12 Nov): ideas people make with their own Claude, with the prompt to copy */
+.videa{display:flex;flex-direction:column;gap:8px;border:1px solid var(--line);border-left:4px solid var(--brand-blue);border-radius:10px;padding:10px 12px;background:var(--surface);font-size:14px;min-width:0}
+.videa .vihead{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:4px 10px}
+.videa ol{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.videa ol li{display:grid;grid-template-columns:64px minmax(0,1fr);gap:10px;padding:6px 10px;border-top:1px solid var(--line);font-size:13.5px}
+.videa ol li:first-child{border-top:0}
+.videa ol .t{font-family:var(--mono);font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.videa ol .shot{display:block;color:var(--muted);font-size:12.5px}
+.videa .hl{color:var(--brand-blue);font-weight:700}
+.vibox{border:1px solid var(--line);border-radius:8px;background:var(--sunk);display:flex;flex-direction:column;min-width:0}
+.vibox .vitop{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px;padding:7px 9px;border-bottom:1px solid var(--line)}
+.vibox pre{margin:0;padding:9px 11px;font-family:var(--mono);font-size:12px;line-height:1.5;white-space:pre-wrap;word-break:break-word;max-height:220px;overflow:auto}
+.viseg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.viseg button{font:600 12.5px var(--body);padding:5px 10px;border:0;background:var(--surface);color:var(--fg);cursor:pointer}
+.viseg button[aria-pressed="true"]{background:var(--accent-soft);color:var(--accent)}
+.viphone{position:relative;aspect-ratio:9/16;width:100%;max-width:230px;max-height:420px;margin:0 auto;border-radius:18px;border:5px solid var(--brand-ink);background:#fff;overflow:hidden;font-family:Roboto,system-ui,sans-serif}
+.viphone .vf{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;padding:16px 14px 30%;font-weight:900;font-size:22px;line-height:1.08;color:#3c4043;opacity:0;transition:opacity .4s}
+.viphone .vf.on{opacity:1}
+.viphone .vf.blue{background:#4285F4;color:#fff}
+.viphone .vf .hl{color:#4285F4}.viphone .vf.blue .hl{color:#fff;text-decoration:underline}
+.viphone .vf small{position:absolute;left:14px;bottom:11%;font-size:12px;font-weight:900;color:#4285F4}
+.viphone .vf.blue small{color:#fff}
+.viphone .vf.film{background:#202124;color:#fff;font-size:17px;font-weight:700}
+.viphone .vf.film em{font-style:normal;font-size:12px;font-weight:500;opacity:.8;margin-top:6px}
+.viphone .vn{position:absolute;right:10px;top:8px;font:500 11px var(--mono);color:#5f6368;z-index:1}
+@media (prefers-reduced-motion:reduce){.viphone .vf{transition:none}}
+@media (max-width:600px){.viphone{max-width:170px}}
 </style>
 
 <div class="shell">
@@ -1544,6 +1571,7 @@ body.handoff [data-act="apNow"],body.handoff [data-cp="now"]{display:none!import
 <script>
 const STATUS = [
   {key:"pending", label:"To review"},
+  {key:"videos", label:"Video ideas"},
   {key:"changes", label:"Sent back", hidden:true},
   {key:"hold", label:"Editing"},
   {key:"scheduled", label:"Scheduled"},
@@ -1613,11 +1641,13 @@ function groupOf(d){const t=whenOf(d);if(!t)return"No date yet";const now=new Da
 function staleSplit(d){const r=staleReasons(d);return{real:r.filter(x=>!/suggested posting time/i.test(x)),retime:r.some(x=>/suggested posting time/i.test(x))}}
 function checkFacts(d){return (d.facts||[]).map((f,i)=>({f,i})).filter(x=>x.f.status==="check")}
 /* S1: posts sent back for changes (none since the engine started) count as To review. */
-function tabOf(d){const k=d.status||"pending";return k==="changes"?"pending":k}
+function tabOf(d){const k=d.status||"pending";if(k==="pending"&&isVidIdea(d))return"videos";return k==="changes"?"pending":k}
+/* Video ideas (12 Nov): a standalone idea waits in its own tab until it's approved; then it's a Video post in Editing. */
+function isVidIdea(d){const v=d.videoIdea;return !!(v&&v.prompts&&v.standalone!==false)}
 function renderTabs(){
   const counts={};S.drafts.forEach(d=>{const k=tabOf(d);counts[k]=(counts[k]||0)+1});
-  const T=k=>{const x=STATUS.find(s=>s.key===k);return{key:k,label:x.label,n:counts[k]||0,title:k==="pending"?"New ideas: approve or reject":k==="hold"?"Approved ideas to finish and schedule":k==="rejected"?"Rejected posts":""}};
-  const tabs=["pending","hold","scheduled","posted"].map(T).concat([{key:"evergreen",label:"Evergreen",n:egDue(),title:"Past winners due a fresh version"},T("rejected")]);
+  const T=k=>{const x=STATUS.find(s=>s.key===k);return{key:k,label:x.label,n:counts[k]||0,title:k==="pending"?"New ideas: approve or reject":k==="videos"?"Videos to make with your own Claude: approve one to make it":k==="hold"?"Approved ideas to finish and schedule":k==="rejected"?"Rejected posts":""}};
+  const tabs=["pending"].concat(counts.videos||S.status==="videos"?["videos"]:[],["hold","scheduled","posted"]).map(T).concat([{key:"evergreen",label:"Evergreen",n:egDue(),title:"Past winners due a fresh version"},T("rejected")]);
   $("#statusTabs").innerHTML=tabs.map(t=>`<button class="tab st-${t.key}" aria-pressed="${S.status===t.key}" data-status="${t.key}"${t.title?` title="${esc(t.title)}"`:""}>${esc(t.label)}${t.n||t.key!=="rejected"?`<span class="n">${t.n}</span>`:""}</button>`).join("");
 }
 function renderFilters(){
@@ -1938,7 +1968,7 @@ function ideaView(d,st){
   const open=withLink(asPosts(textFor(d,"facebook"))[0]||"",d,"facebook");
   const lines=open.split("\n").filter(l=>l.trim());let first=lines.slice(0,2).join("\n");const more=lines.length>2||first.length>280;if(first.length>280)first=first.slice(0,first.lastIndexOf(" ",270)>150?first.lastIndexOf(" ",270):270);
   const sp=staleSplit(d);const nf=(d.facts||[]).length,cf=checkFacts(d).length;
-  const pic=d.fbTextOnly?`<div class="inopic">No picture: ${/https?:\/\/|\[ACTION LINK\]/.test(open)?"a link post (Facebook shows the link's preview card)":"a text post"}</div>`:`<canvas id="card" width="1080" height="1080" role="img" aria-label="The post's picture"></canvas>`;
+  const pic=isVidIdea(d)?viPhone(d):d.fbTextOnly?`<div class="inopic">No picture: ${/https?:\/\/|\[ACTION LINK\]/.test(open)?"a link post (Facebook shows the link's preview card)":"a text post"}</div>`:`<canvas id="card" width="1080" height="1080" role="img" aria-label="The post's picture"></canvas>`;
   const facts=[nf?`${nf} fact${nf===1?"":"s"} with sources`:"",cf?`${cf} to check when you finish it`:""].filter(Boolean).join(", ");
   return `<article class="draft v3 compose idea" data-st="${esc(st)}">
     ${headHtml(d,st)}
@@ -1946,8 +1976,10 @@ function ideaView(d,st){
       <div class="itext">
         ${sp.real.length?`<div class="inote">Might be out of date: ${esc(sp.real.join("; "))}</div>`:""}
         <section><span class="eyebrow">Why this post</span><p>${esc(d.rationale||"No reason given.")}</p></section>
-        <section><span class="eyebrow">How it opens</span><p class="iopen">${esc(first)}${more?"…":""}</p></section>
+        ${isVidIdea(d)?vidIdeaBox(d):""}
+        <section><span class="eyebrow">${isVidIdea(d)?"The post's words open":"How it opens"}</span><p class="iopen">${esc(first)}${more?"…":""}</p></section>
         <p class="src">${facts?esc(facts)+". ":""}${isVideoPost(d)?"A video post. ":""}${st==="rejected"?"":"The words for Facebook, Instagram and X are written already: approve the idea and you can change any of it in Editing."}</p>
+        ${d.videoIdea&&!isVidIdea(d)?vidIdeaBox(d):""}
         ${(d.modelledOn||[]).map(m=>`<div class="model"><a href="${esc(m.url)}" target="_blank" rel="noopener">${esc(m.label)}</a><span class="m">${esc(m.metric)}</span></div>`).join("")}
       </div>
       <figure class="ipic">${pic}</figure>
@@ -1959,7 +1991,7 @@ function reasonBar(isRej){return `<div class="row"><b style="font-size:13.5px">$
     <div class="row"><input type="text" id="decNote" placeholder="${isRej?"Anything else? (optional)":"Describe the change"}"><button class="btn ${isRej?"bad":"warn"}" data-act="${isRej?"confirmReject":"confirmChanges"}">${isRej?"Reject":"Send back for changes"}</button><button class="btn" data-act="cancelMode">Cancel</button></div>`}
 function ideaDecide(d){if(!S.db)return `<div class="state">Read-only view.</div>`;if(d.status==="rejected")return decideBar(d,"rejected",false);
   if(S.mode==="reject")return reasonBar(true);
-  return `<div class="row"><span class="src">Approve the idea to finish it in Editing. Reject sends it to the Bin.</span><button class="btn bad" data-act="reject">Reject</button><button class="btn primary" data-act="approveIdea">Approve idea</button></div>`}
+  return `<div class="row"><span class="src">${isVidIdea(d)?"Approve it to make it: it moves to Editing, where you upload the video your Claude made. Reject sends it to the Bin.":"Approve the idea to finish it in Editing. Reject sends it to the Bin."}</span><button class="btn bad" data-act="reject">Reject</button><button class="btn primary" data-act="approveIdea">Approve idea</button></div>`}
 /* The time a post starts on: your pick, else the time picked for it (if still ahead), else our next best slot. */
 function whenDefault(d){const p=d.posting||{};const dests=p.destinations||defaultDests(d);
   const v=p.at||p.suggestedAt;const x=v?new Date(v):null;
@@ -2213,8 +2245,39 @@ function videoSuggestions(d){
   const out=(d.videoOptions||[]).map(o=>({id:o.id,title:o.label||o.speaker,who:o.speaker,quote:o.quote,pack:o.pack,source:"Parliament",rights:{ok:false,note:"Parliament's footage: check the Recording Unit's terms first"}}));
   const c=d.clipSuggestion;if(c&&(c.footage||c.speaker))out.push({id:"clip",title:c.speaker?`${c.speaker}'s speech`:"Clip from the debate",who:c.speaker,url:c.footage,start:c.at,source:"Parliament",note:c.note,hansard:c.hansard,rights:{ok:false,note:"Parliament's footage: check the Recording Unit's terms first"}});
   return out}
+/* Video ideas (12 Nov): the idea's beats, and the prompts the engine wrote (lib/video-ideas.js) to paste
+   into your own Claude. "Make the video" gets an MP4 of animated words back; "Film it instead" gets a script,
+   shots, on-screen text and captions. Switching and copying happen in place (no re-render), so it also
+   works inside Compose. */
+const viHl=t=>esc(t).replace(/\*([^*]+)\*/g,'<span class="hl">$1</span>');
+function viTimes(v){const fixed=(v.beats||[]).reduce((n,b)=>n+(b.secs||0),0),open=(v.beats||[]).filter(b=>!b.secs).length;
+  const each=open?Math.max(2,Math.round((v.seconds-fixed)/open*2)/2):0;let t=0;
+  return (v.beats||[]).map(b=>{const len=b.secs||each,f=t;t+=len;return `${f}–${t} s`})}
+function vidIdeaBox(d){const v=d.videoIdea;if(!v||!v.prompts)return"";
+  const r=v.route==="film"?"film":"make",tm=viTimes(v),done=!!(d.publishVideo||(d.video&&d.video.url));
+  const seg=k=>`<button type="button" data-vi="${k}" aria-pressed="${k===r}">${k==="make"?"Make the video":"Film it instead"}</button>`;
+  return `<div class="videa" data-vi-box>
+    <div class="vihead"><span class="eyebrow">▶ ${v.standalone!==false?"Video idea":"Make it a video too"}</span><span class="src">${r==="make"?"Your Claude makes it":"Someone films it"} · about ${esc(v.seconds)} s</span></div>
+    ${v.standalone===false?`<p class="src" style="margin:0">This post could also go out as a short video. It's optional: the post works without it.</p>`:""}
+    <ol>${(v.beats||[]).map((b,i)=>`<li><span class="t">${esc(tm[i]||"")}</span><span>${viHl(b.text)}${b.look==="blue"?' <small class="src">(blue screen)</small>':""}${b.shot?`<span class="shot">Shot: ${esc(b.shot)}</span>`:""}</span></li>`).join("")}${v.ask?`<li><span class="t">end</span><span>${esc(v.ask)}</span></li>`:""}</ol>
+    ${done?`<small class="src">✓ The video is uploaded.</small>`:`<div class="vibox"><div class="vitop"><span class="viseg" role="group" aria-label="Prompt for">${seg("make")}${seg("film")}</span><span class="row" style="gap:6px;margin:0"><button type="button" class="btn small primary" data-vi="copy">Copy prompt for Claude</button><button type="button" class="btn small" data-vi="open">Open in Claude</button></span></div>
+      <pre data-vi-p="make"${r==="make"?"":" hidden"}>${esc(v.prompts.make)}</pre><pre data-vi-p="film"${r==="film"?"":" hidden"}>${esc(v.prompts.film)}</pre></div>
+    <small class="src" data-vi-how>${r==="make"?VI_HOW.make:VI_HOW.film} ${v.standalone===false?"To post the video instead of the picture, pick Video as the post type in Compose and upload it there.":isFinish(d)?"Then upload the finished video here.":"Approve it, then upload the finished video in Editing."}</small>`}
+  </div>`}
+const VI_HOW={make:"Paste it into your own Claude with file creation on (Settings › Features): it gives back an MP4.",film:"Paste it into your own Claude: you get a script, a shot list, on-screen text and a captions file."};
+function viPhone(d){const v=d.videoIdea;const film=v.route==="film";
+  const fr=(v.beats||[]).map((b,i)=>film?`<div class="vf film${i?"":" on"}"><div>${esc(b.text.replace(/\*/g,""))}</div>${b.shot?`<em>${esc(b.shot)}</em>`:""}</div>`:`<div class="vf${b.look==="blue"?" blue":""}${i?"":" on"}"><div>${viHl(b.text)}</div><small>CitizenGO</small></div>`).join("");
+  return `<div class="viphone" data-vi-phone role="img" aria-label="Storyboard: ${esc((v.beats||[]).map(b=>b.text.replace(/\*/g,"")).join(" / "))}"><span class="vn">${film?"to film":"storyboard"}</span>${fr}</div>`}
+setInterval(()=>{if(document.hidden||matchMedia("(prefers-reduced-motion: reduce)").matches)return;document.querySelectorAll("[data-vi-phone]").forEach(p=>{const f=[...p.querySelectorAll(".vf")];if(f.length<2)return;const i=f.findIndex(x=>x.classList.contains("on"));f[i]?.classList.remove("on");f[(i+1)%f.length].classList.add("on")})},2600);
+document.addEventListener("click",async ev=>{const b=ev.target.closest("[data-vi]");if(!b)return;const box=b.closest("[data-vi-box]");if(!box)return;ev.stopPropagation();
+  const k=b.dataset.vi;const cur=()=>box.querySelector("pre[data-vi-p]:not([hidden])");
+  if(k==="make"||k==="film"){box.querySelectorAll("[data-vi='make'],[data-vi='film']").forEach(x=>x.setAttribute("aria-pressed",x.dataset.vi===k));box.querySelectorAll("pre[data-vi-p]").forEach(p=>p.hidden=p.dataset.viP!==k);const h=box.querySelector("[data-vi-how]");if(h)h.textContent=h.textContent.replace(VI_HOW.make,VI_HOW[k]).replace(VI_HOW.film,VI_HOW[k]);return}
+  const p=cur();if(!p)return;const text=p.textContent;
+  if(k==="copy"){try{await navigator.clipboard.writeText(text);toast("Prompt copied: paste it into your Claude")}catch(e){const r=document.createRange();r.selectNodeContents(p);const sel=getSelection();sel.removeAllRanges();sel.addRange(r);toast("Prompt selected: press Ctrl+C (⌘C on a Mac)")}return}
+  if(k==="open"){const u="https://claude.ai/new?q="+encodeURIComponent(text);if(u.length<7500)window.open(u,"_blank","noopener");else{try{await navigator.clipboard.writeText(text)}catch(e){}window.open("https://claude.ai/new","_blank","noopener");toast("Prompt copied: paste it into the new chat")}}
+},true);
 function videoBox(d){
-  const v=d.video;let h="";
+  const v=d.video;let h=vidIdeaBox(d);
   if(v&&!v.url&&!v.label&&!v.file&&v.note)h+=`<div class="action"><span class="eyebrow">Video · to add</span><small>${esc(v.note)}</small></div>`;
   else if(v)h+=`<div class="action"><span class="eyebrow">Video${v.status==="ready"||!v.status?" · ready":""}</span><b>${esc(v.label)}</b><small>${esc(v.cut||"")}</small><small style="font-family:var(--mono)">${esc(v.file||"")}</small>${(v.words||[]).length&&S.db?`<button class="btn small" data-act="trimOpen" data-kind="v">Trim it</button>`:""}</div>`;
   const list=videoSuggestions(d);if(!list.length||d.videoDismissed)return h+(list.length&&d.videoDismissed&&S.db?`<div class="src">No video for this post · <a href="#" data-act="vsUndo">show the clips it found (${list.length})</a></div>`:"");
@@ -6808,9 +6871,9 @@ async function ibElsewhere(key){if(!IB.elsewhere||IB.elsewhere.key!==key)return;
         if(inAcct&&inTime){if(i.status==="done")out.done++;else out.open++}else if(!inAcct&&inTime)out.accts[i.account_key]=(out.accts[i.account_key]||0)+1;else if(inAcct&&!inTime)out.older++})}catch(e){}
   if(IB.elsewhere&&IB.elsewhere.key===key){IB.elsewhere=out;renderInbox()}}
 function draftsEmpty(){const label=esc(STATUS.find(x=>x.key===S.status).label);const on=!!(String(S.q||"").trim()||S.issue||S.type||S.by||S.label);
-  if(!on)return `<div class="empty2"><span class="ei" aria-hidden="true">${sideSvg("list",22)}</span><b>Nothing in “${label}”</b><p>${S.status==="pending"?"The morning run adds the day's drafts here, or start your own with Compose.":"Posts move here as they go through Review."}</p></div>`;
+  if(!on)return `<div class="empty2"><span class="ei" aria-hidden="true">${sideSvg("list",22)}</span><b>Nothing in “${label}”</b><p>${S.status==="videos"?"The morning run suggests up to three videos a day here, each with a prompt for your own Claude.":S.status==="pending"?"The morning run adds the day's drafts here, or start your own with Compose.":"Posts move here as they go through Review."}</p></div>`;
   const q=String(S.q||"").trim().toLowerCase();const m=d=>(!S.issue||d.issue===S.issue)&&(!S.type||d.type===S.type)&&(!S.by||draftBy(d)===S.by)&&(!S.label||draftLabels(d).includes(S.label))&&(!q||draftText(d).includes(q));
-  const els=STATUS.filter(x=>x.key!==S.status&&x.key!=="evergreen").map(x=>[x,S.drafts.filter(d=>(d.status||"pending")===x.key&&m(d)).length]).filter(x=>x[1]);
+  const els=STATUS.filter(x=>x.key!==S.status&&x.key!=="evergreen").map(x=>[x,S.drafts.filter(d=>tabOf(d)===x.key&&m(d)).length]).filter(x=>x[1]);
   return `<div class="empty2"><span class="ei" aria-hidden="true">${sideSvg("search",22)}</span><b>Nothing in “${label}” matches</b><p>Your search or filters may be too narrow.${els.length?" But there are matches in other tabs:":""}</p>${els.length?`<div class="ibacts">${els.map(([x,n])=>`<button class="btn small" data-dr-goto="${esc(x.key)}">${n} in ${esc(x.label)}</button>`).join("")}</div>`:""}<div class="ibacts"><button class="btn small primary" data-dr-clear>Clear search and filters</button></div></div>`}
 document.addEventListener("click",async ev=>{
   const dg=ev.target.closest("[data-dr-goto]");if(dg){S.status=dg.dataset.drGoto;renderAll();return}
@@ -7215,7 +7278,7 @@ function tlClaude(){return `<p class="src lede" style="margin:0;max-width:75ch">
 
 // ---------- 40D page help, 40E help search ----------
 const PAGE_HELP={
-  posts:["Review board","Drafts the engine wrote overnight and posts people started wait here.",["To review is for ideas: Approve idea (A) moves it to Editing, Reject (R) sends it to the Bin.","In Editing, finish the post (Media, Text, Links), check the time on the When button, then Schedule or Post now.","Filter by issue, type, who made it or label; search finds words in any draft.","N starts a new post in Compose."]],
+  posts:["Review board","Drafts the engine wrote overnight and posts people started wait here.",["To review is for ideas: Approve idea (A) moves it to Editing, Reject (R) sends it to the Bin.","Video ideas are videos to make with your own Claude: copy the prompt (Make the video gives an MP4, Film it instead gives a script and captions), approve it, then upload the video in Editing.","In Editing, finish the post (Media, Text, Links), check the time on the When button, then Schedule or Post now.","Filter by issue, type, who made it or label; search finds words in any draft.","N starts a new post in Compose."]],
   evergreen:["Evergreen","Past winners that are due a fresh version.",["Each card shows how the original did and when it last ran.","Ask for a new version and it lands in Review like any draft."]],
   plan:["Plan","The month at a glance: posts, key dates and notes, in the team's own time zone.",["Drag a post to move it. Click a day to add a note.","Week, List and Instagram grid are in the sidebar under Plan."]],
   calendar:["Calendar","What goes out when, in the team's own time zone.",["Drag a post to another time to move it.","List view has tick boxes to move, pause or send back several posts."]],
