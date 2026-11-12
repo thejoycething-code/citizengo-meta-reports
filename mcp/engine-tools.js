@@ -1300,7 +1300,7 @@ async function engineBio(store, args, { who }) {
     .replace('</head>', '<style>a{pointer-events:none}</style></head>').replace(/<script>[\s\S]*?<\/script>/, '');
   return json({ team: team.id, preview, bio: { slug: bio.slug, title: bio.title, intro: bio.intro || '', auto: bio.auto !== false, settings: B.cleanSettings(bio.settings || {}), saved: !bio.unsaved, updated_at: bio.updated_at || null, updated_by: bio.updated_by || null },
     path: `/links/${bio.slug}`, qr: `/links/${bio.slug}/qr.svg`, sources: B.SOURCES, sections: B.SECTIONS,
-    hero: L.hero ? L.hero.id : null, grid: L.tiles.length, socials: L.socials,
+    hero: L.hero ? L.hero.id : null, hero_why: L.heroWhy || null, grid: L.tiles.length, socials: L.socials,
     items: L.all.map((i) => {
       const st = i.petition_id ? L.status[i.petition_id] || null : null;
       return { ...i, title_bad: B.badTitle(i.title) || (i.title_src === 'url' || i.title_src === 'id' ? 'guess' : i.title_src === 'text' && !i.retitled ? 'check' : null), page_title: (st && st.page_title) || null, image_src: (st && st.page_image && i.image === st.page_image && st.page_image_src) || (i.image ? 'ig' : null), saved: savedIds.has(i.id), shown: shown.has(i.id), clicks: clicks[i.id] || 0, signatures: i.petition_id ? sigs[i.petition_id] || 0 : null,
