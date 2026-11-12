@@ -1579,6 +1579,53 @@ header.top{background:var(--surface);border-bottom:1px solid var(--line)}
 .calbar h2{font-size:20px}
 input[type=date],input[type=time],input[type=datetime-local],select,input[type=search],input[type=text],textarea{border-radius:6px}
 @media (min-width:901px){.shell:not(.folded) .qnew{display:none}}
+/* Drafts board B (Chris, 12 Nov): rows by day in a white table, the open draft in a panel on the right, ticks for several at once */
+@media (min-width:901px){.shell:not(.folded) #statusTabs{display:none}}
+.qtable{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;display:flex;flex-direction:column}
+.qhead,.qrow{display:grid;grid-template-columns:minmax(0,1fr);gap:0;align-items:center}
+.qtable.tick .qhead,.qtable.tick .qrow{grid-template-columns:34px minmax(0,1fr)}
+.qhead{font-size:11.5px;font-weight:700;color:var(--muted);border-bottom:1px solid var(--line);padding:8px 0;background:var(--sunk)}
+.qhead{grid-template-columns:62px minmax(0,1fr) 110px 52px 136px;column-gap:10px}
+.qtable.tick .qhead{grid-template-columns:34px 52px minmax(0,1fr) 110px 52px 136px;column-gap:10px}
+.qtable .qgroup{padding:10px 12px 4px;background:var(--surface);border-bottom:1px solid var(--line);font-family:inherit;font-size:12px;letter-spacing:0;text-transform:none;font-weight:700;color:var(--fg)}
+.qtable .qgroup span{color:var(--muted);font-weight:600}
+.qtable .qitem{grid-template-columns:4px 40px minmax(0,1fr) 110px 52px 136px;border:0;border-bottom:1px solid var(--line);border-radius:0;padding:8px 10px 8px 0;box-shadow:none;width:100%;min-width:0}
+.qtable .qrow:last-child .qitem{border-bottom:0}
+.qtable .qitem:hover{background:var(--sunk)}
+.qtable .qitem[aria-current="true"]{background:var(--accent-soft);box-shadow:none;border-color:var(--line)}
+.qtable .qitem .stripe{align-self:stretch}
+.qtable .qthumb{width:40px;height:50px}
+.qtable .qvid{display:grid;place-items:center;font-size:18px;color:var(--accent);background:var(--accent-soft)}
+.qtick{display:grid;place-items:center;align-self:stretch;border-bottom:1px solid var(--line);cursor:pointer}
+.qtable .qrow:last-child .qtick{border-bottom:0}
+.qtick input{width:16px;height:16px;accent-color:var(--accent);cursor:pointer}
+.qacc{display:flex;flex-wrap:wrap;gap:3px}.qacc i{font-style:normal;font-size:11px;font-weight:700;border:1px solid var(--line);border-radius:4px;padding:0 4px;color:var(--muted);background:var(--surface)}
+.qtm{font:700 12.5px inherit;font-variant-numeric:tabular-nums}
+.qready{display:flex;justify-content:flex-start}
+.rp{font-size:11.5px;font-weight:700;border-radius:999px;padding:2px 8px;background:var(--sunk);color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.rp.ok{background:#e3f4ea;color:#1a7f45}.rp.warn{background:#fdf1dc;color:#9a5b00}.rp.bad{background:#fde6e6;color:#b42318}.rp.as{background:var(--accent-soft);color:var(--accent)}
+.bulkbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:6px 10px;margin-bottom:8px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);font-size:13px}
+.bulkbar.quiet{background:transparent;border-color:transparent;padding:2px 0}
+.bulkbar .qtick{border:0;width:24px}
+.bulkbar.no{flex-direction:column;align-items:flex-start}.bulkbar .rr{cursor:pointer;border:1px solid var(--line)}.bulkbar .rr[aria-pressed="true"]{background:var(--accent);color:#fff;border-color:var(--accent)}
+@media (min-width:961px){
+  .desk{grid-template-columns:minmax(0,1fr) minmax(380px,40%)}
+  .queue{position:static;max-height:none;overflow:visible;padding-right:0}
+  #detail{position:sticky;top:calc(env(safe-area-inset-top,0px) + 64px);max-height:calc(100vh - 80px);overflow:auto;border-radius:14px}
+  #detail .draft>.dfoot{position:sticky;bottom:0;z-index:6;background:var(--surface);box-shadow:0 -6px 16px rgba(0,0,0,.06)}
+  #detail .dnav{display:none}
+}
+@media (min-width:1500px){.desk{grid-template-columns:minmax(0,1fr) 560px}}
+@media (max-width:1180px) and (min-width:961px){.desk{grid-template-columns:minmax(0,1fr) 360px}.qtable .qitem{grid-template-columns:4px 40px minmax(0,1fr) auto}.qtable .qacc,.qtable .qtm{display:none}.qhead,.qtable.tick .qhead{display:none}}
+#detail .fopen{padding:14px 20px 18px}.fopen a.btn{text-decoration:none}
+@media (max-width:640px){
+  .queue{flex-direction:column;overflow:visible}
+  .qtable .qitem{min-width:0;grid-template-columns:4px 40px minmax(0,1fr) auto;grid-template-areas:"s t b r";padding-right:8px}
+  .qtable .qitem .qacc,.qtable .qitem .qtm{display:none}
+  .qhead,.qtable.tick .qhead{display:none}
+  .qtable .qgroup{display:flex}
+  .rp{font-size:11px;padding:2px 6px;max-width:110px}
+}
 /* ===== end Agorapulse look ===== */
 </style>
 
@@ -1665,10 +1712,10 @@ input[type=date],input[type=time],input[type=datetime-local],select,input[type=s
 
 <script>
 const STATUS = [
-  {key:"pending", label:"To review"},
+  {key:"pending", label:"Your OK"},
   {key:"videos", label:"Video ideas"},
   {key:"changes", label:"Sent back", hidden:true},
-  {key:"hold", label:"Editing"},
+  {key:"hold", label:"Finishing"},
   {key:"scheduled", label:"Scheduled"},
   {key:"posted", label:"Posted"},
   {key:"rejected", label:"Bin"},
@@ -1724,7 +1771,7 @@ function xLen(t){return [...String(t).replace(/https?:\/\/\S+/g,"x".repeat(23))]
 /* ---------- render ---------- */
 function filtered(){
   const q=String(S.q||"").trim().toLowerCase();
-  if(S.status==="changes")S.status="pending";
+  if(S.status==="changes"||S.status==="videos")S.status="pending";
   const list=S.drafts.filter(d=>tabOf(d)===S.status && (!S.issue||d.issue===S.issue) && (!S.type||d.type===S.type) && (!S.by||draftBy(d)===S.by) && (!S.label||draftLabels(d).includes(S.label)) && (!q||draftText(d).includes(q)));
   if(["posted","rejected"].includes(S.status)){const t=d=>Date.parse(d.posted?.at||d.review?.at||d.createdAt||"")||0;return list.sort((a,b)=>t(b)-t(a))}
   return list.sort((a,b)=>{const ga=GROUPS.indexOf(groupOf(a)),gb=GROUPS.indexOf(groupOf(b));if(ga!==gb)return ga-gb;const ta=whenOf(a)?.getTime()??0,tb=whenOf(b)?.getTime()??0;if(ta!==tb)return ta-tb;return (a.order??99)-(b.order??99)});
@@ -1736,7 +1783,8 @@ function groupOf(d){const t=whenOf(d);if(!t)return"No date yet";const now=new Da
 function staleSplit(d){const r=staleReasons(d);return{real:r.filter(x=>!/suggested posting time/i.test(x)),retime:r.some(x=>/suggested posting time/i.test(x))}}
 function checkFacts(d){return (d.facts||[]).map((f,i)=>({f,i})).filter(x=>x.f.status==="check")}
 /* S1: posts sent back for changes (none since the engine started) count as To review. */
-function tabOf(d){const k=d.status||"pending";if(k==="pending"&&isVidIdea(d))return"videos";return k==="changes"?"pending":k}
+/* Drafts board B (12 Nov): video ideas fold into Your OK as ▶ rows. */
+function tabOf(d){const k=d.status||"pending";return k==="changes"?"pending":k}
 /* Video ideas (12 Nov): a standalone idea waits in its own tab until it's approved; then it's a Video post in Editing. */
 function isVidIdea(d){const v=d.videoIdea;return !!(v&&v.prompts&&v.standalone!==false)}
 function renderTabs(){
@@ -1772,14 +1820,20 @@ function renderQueue(){
   const grouped=!["posted","rejected"].includes(S.status);let lastG=null;
   const qday=d=>{const g=groupOf(d);if(["Needs a new time","No date yet"].includes(g))return g;const t=whenOf(d);const dl=t.toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"});return g==="Today"||g==="Tomorrow"?`${g} · ${dl}`:dl};
   const qtime=d=>{const t=whenOf(d);return t&&groupOf(d)!=="Needs a new time"?t.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"}):"—"};
-  $("#queue").innerHTML=newBar()+oldBar()+trashBar()+freeSlot()+list.map(d=>{const g=grouped?qday(d):null;const head=g&&g!==lastG?`<div class="qgroup">${esc(g)}<span>${list.filter(x=>qday(x)===g).length}</span></div>`:"";lastG=g;return head+`<div class="qslot">${grouped?`<span class="qtime">${esc(qtime(d))}</span>`:""}
+  /* Drafts board B (Chris, 12 Nov): one row per draft by day, with a tick, accounts, time and one "ready?" pill; the open draft sits in the panel on the right. Ticks act on several at once. */
+  const tickable=["pending","videos"].includes(S.status)&&!!S.db;if(!S.ticks)S.ticks=new Set();for(const id of [...S.ticks])if(!list.some(d=>d.id===id))S.ticks.delete(id);
+  const head=`<div class="qhead" aria-hidden="true">${tickable?"<span></span>":""}<span></span><span>Draft</span><span>Accounts</span><span>Time</span><span>Ready?</span></div>`;
+  $("#queue").innerHTML=newBar()+bulkBar(list,tickable)+trashBar()+`<div class="qtable${tickable?" tick":""}">`+head+list.map(d=>{const g=grouped?qday(d):null;const gh=g&&g!==lastG?`<div class="qgroup">${esc(g)}<span>${list.filter(x=>qday(x)===g).length}</span></div>`:"";lastG=g;const vid=isVidIdea(d);
+    return gh+`<div class="qslot qrow">${tickable?`<label class="qtick"><input type="checkbox" data-tick="${esc(d.id)}"${S.ticks.has(d.id)?" checked":""} aria-label="Tick ${esc(d.title)}"></label>`:""}
     <button class="qitem" data-id="${esc(d.id)}" data-status="${esc(d.status||"pending")}" data-tone="${qTone(d)}" aria-current="${d.id===S.openId}">
       <span class="stripe"></span>
-      <canvas class="qthumb" data-q="${esc(d.id)}" width="10" height="10" aria-hidden="true"></canvas>
+      ${vid?`<span class="qthumb qvid" aria-hidden="true">▶</span>`:`<canvas class="qthumb" data-q="${esc(d.id)}" width="10" height="10" aria-hidden="true"></canvas>`}
       <span class="qbody"><span class="qt">${esc(d.title)}</span>
-      <span class="qm"><span>${esc(d.type||"")}</span>${d.issue?`<span>${esc(d.issue)}</span>`:""}</span>
-      <span class="qflags">${qFlags(d)}</span></span>
-    </button></div>`}).join("");
+      <span class="qm"><span>${esc(vid?"Video idea":d.type||"")}</span>${d.issue?`<span>${esc(d.issue)}</span>`:""}${d.launch?`<span>Launch pack</span>`:""}</span></span>
+      <span class="qacc">${vid?"":qAccts(d)}</span>
+      <span class="qtm">${grouped?esc(qtime(d)):""}</span>
+      <span class="qready">${qPill(d)}</span>
+    </button></div>`}).join("")+`</div>`;
   document.querySelectorAll("canvas.qthumb").forEach(cv=>{const d=S.drafts.find(x=>x.id===cv.dataset.q);if(!d||!d.card)return;const c=d.card.template==="carousel"&&HOUSE_T.has(d.card.slides?.[0]?.template)?d.card.slides[0]:d.card;try{const k=S.slide;S.slide=0;drawCard(d,cv,c);S.slide=k}catch(e){}});
 }
 /* B2 (8 Nov): old engine drafts pile up in Review. One button moves every engine draft made over 3 days ago
@@ -1845,7 +1899,7 @@ document.addEventListener("click",async ev=>{const o=ev.target.closest("[data-eg
   const b=ev.target.closest("[data-egp]");if(!b)return;const a=b.dataset.egp;const p=(EG.posts||[]).find(x=>String(x.id)===S.egOpen);if(!p)return;
   if(a==="ask"){const d=$("#egPickDate")?.value;if(!d){toast("Pick the day it should go out");return}EG.busy=true;renderDetail();
     try{const input={action:"create",team:S.team,for_date:d,title:`Fresh version: ${p.title}`,source:"evergreen",evergreen_id:p.id};const ang=[p.why,p.result?`Then: ${p.result}`:"",p.url||""].filter(Boolean).join(" · ");if(ang)input.angle=ang;
-      const r=await eng("engine_request",input);if(r&&r.ok){p.requested={id:r.request.id,for_date:r.request.for_date};toast(`Asked for: a fresh draft lands in To review for ${egDay(d)}`)}else toast((r&&r.error)||"Couldn't ask for a fresh draft")}
+      const r=await eng("engine_request",input);if(r&&r.ok){p.requested={id:r.request.id,for_date:r.request.for_date};toast(`Asked for: a fresh draft lands in Your OK for ${egDay(d)}`)}else toast((r&&r.error)||"Couldn't ask for a fresh draft")}
     catch(e){failToast(e,"Couldn't ask for a fresh draft")}EG.busy=false;S.egDate=null;renderQueue();renderDetail();return}
   b.disabled=true;try{const r=await eng("engine_evergreen_update",{action:a,id:p.id});if(r&&r.ok){toast(a==="snooze"?"Back in 4 weeks":a==="retire"?"Retired":"Recorded: due again in 10 weeks");S.egOpen=null;await loadEvergreen()}else{toast((r&&r.error)||"Couldn't save that");b.disabled=false}}
   catch(e){failToast(e,"Couldn't save that");b.disabled=false}});
@@ -1862,6 +1916,37 @@ function qFlags(d){const st=d.status||"pending",f=[];const p=d.posting||{};
   if(st==="hold"||st==="scheduled"){const at=p.at||p.suggestedAt;if(at)f.push(`<span class="qf">${esc(new Date(at).toLocaleString("en-GB",{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}))}</span>`);f.push(st==="scheduled"&&HO()?`<span class="qf">Handed off</span>${hoTag(d)}`:(st==="hold"&&p.asanaUrl?`<span class="qf">To finish</span><a class="qf" href="${esc(p.asanaUrl)}" target="_blank" rel="noopener" title="In Asana as In Progress: it turns Ready to Post when you hand it off">Asana task ↗</a>`:`<span class="qf">${st==="scheduled"?"Scheduled":p.asanaTaskGid?"In Asana":"To finish"}</span>`))}
   if(!f.length&&d.timing?.label)f.push(`<span class="qf">${esc(d.timing.label)}</span>`);
   return f.join("")}
+/* Drafts board B: accounts as short tags, one "ready?" pill per row, and the tick bar */
+const ACC_SHORT={"uk-fb":"FB","uk-ig":"IG","uk-x":"X","sc-fb":"Scot FB","sc-ig":"Scot IG"};
+function qAccts(d){const ds=((d.posting||{}).destinations)||defaultDests(d);return ds.map(k=>`<i>${esc(ACC_SHORT[k]||k)}</i>`).join("")}
+function qPill(d){const st=tabOf(d),g=d.posting||{};const P=(t,c,ti)=>`<span class="rp ${c}"${ti?` title="${esc(ti)}"`:""}>${esc(t)}</span>`;
+  if(st==="pending"&&isVidIdea(d))return P("Video prompt ready","ok","Copy the prompt into your own Claude to make the video. Nothing is made until someone does");
+  if(st==="pending"){const sp=staleSplit(d);if(sp.real.length)return P("Stale","bad",sp.real.join("; "));if(sp.retime)return P("New time needed","warn");if(d.ask?.to)return P(`Waiting for ${d.ask.to==="*"?"the team":nameOf(d.ask.to)}`,"warn");if(hasChecks(d)){const n=checkFacts(d).length;return P(`${n} fact${n===1?"":"s"} to check`,"warn")}return P("Ready for your OK","ok")}
+  if(st==="hold")return g.asanaError?P("Asana task failed","bad",g.asanaError.message||""):P("To finish","warn","Finish the words and picture, then hand it to Asana");
+  if(st==="scheduled")return hoOverdue(d)?P("Overdue","bad","Past its time and the Asana task isn't complete"):P(HO()?"In Asana":"Scheduled","as");
+  if(st==="posted"){const bx=bestX(d.results);return bx==null?P("Results pending",""):P(`${bx}× normal`,"ok","Best network against the Page's normal")}
+  if(st==="rejected"){const r=(d.review||{}).reasons||[];return P(r[0]||"No reason","")}
+  return ""}
+function bulkBar(list,on){if(!on)return"";const n=S.ticks.size;const all=list.length&&list.every(d=>S.ticks.has(d.id));
+  const tickAll=`<label class="qtick all"><input type="checkbox" data-tick-all${all?" checked":""} aria-label="Tick all"></label>`;
+  if(!n)return `<div class="bulkbar quiet">${tickAll}<span class="src">Tick drafts to approve or bin several at once</span>${oldDrafts().length&&S.status==="pending"?`<button class="btn small ghost" data-bulk="old">Tick ${oldDrafts().length} old</button>`:""}</div>`;
+  if(S.bulkNo)return `<div class="bulkbar no"><span><b>No to ${n}:</b> why? (helps the morning run)</span><span class="row">${REJECT_REASONS.concat(["Not used"]).map(r=>`<button class="chip rr" data-bulk-r="${esc(r)}" aria-pressed="${!!(S.bulkR&&S.bulkR.has(r))}">${esc(r)}</button>`).join("")}</span><span class="row"><button class="btn small" data-bulk="cancel">Cancel</button><button class="btn small bad" data-bulk="noGo">Move ${n} to the Bin</button></span></div>`;
+  return `<div class="bulkbar">${tickAll}<b>${n} ticked</b><button class="btn small primary" data-bulk="ok">Approve ${n}</button><button class="btn small" data-bulk="no">No to ${n}</button><button class="btn small ghost" data-bulk="clear">Clear</button></div>`}
+document.addEventListener("change",ev=>{const t=ev.target;if(!t.matches)return;
+  if(t.matches("[data-tick]")){if(!S.ticks)S.ticks=new Set();t.checked?S.ticks.add(t.dataset.tick):S.ticks.delete(t.dataset.tick);S.bulkNo=false;renderQueue();return}
+  if(t.matches("[data-tick-all]")){const l=filtered();S.ticks=new Set(t.checked?l.map(d=>d.id):[]);S.bulkNo=false;renderQueue()}});
+document.addEventListener("click",async ev=>{const r=ev.target.closest("[data-bulk-r]");if(r){if(!S.bulkR)S.bulkR=new Set();const k=r.dataset.bulkR;S.bulkR.has(k)?S.bulkR.delete(k):S.bulkR.add(k);r.setAttribute("aria-pressed",S.bulkR.has(k));return}
+  const b=ev.target.closest("[data-bulk]");if(!b)return;const a=b.dataset.bulk;
+  if(a==="old"){S.ticks=new Set(oldDrafts().filter(d=>tabOf(d)===S.status).map(d=>d.id));renderQueue();return}
+  if(a==="clear"){S.ticks=new Set();S.bulkNo=false;renderQueue();return}
+  if(a==="no"){S.bulkNo=true;S.bulkR=new Set();renderQueue();return}
+  if(a==="cancel"){S.bulkNo=false;renderQueue();return}
+  if(a!=="ok"&&a!=="noGo")return;b.disabled=true;
+  const pick=S.drafts.filter(d=>S.ticks.has(d.id));const to=a==="ok"?"hold":"rejected";const reasons=a==="noGo"?[...(S.bulkR||[])]:[];const prev=[];let ok=0,bad=0;
+  for(const d of pick){const review={by:S.me,at:new Date().toISOString(),...(to==="rejected"?{reasons,note:"Binned from the board"}:{})};const was=[d,d.status||"pending",JSON.parse(JSON.stringify(d.review||{}))];
+    try{await S.db.doc("drafts/"+d.id).update({status:to,review});await logFeedback({draftId:d.id,action:to,...(to==="rejected"?{reasons}:{}),type:d.type,issue:d.issue});ok++;prev.push(was)}catch(e){bad++}}
+  S.ticks=new Set();S.bulkNo=false;S.bulkR=null;S.openId=null;resetDraftUi();renderAll();
+  toast(`${ok} ${to==="hold"?"approved: finish them in Finishing":"moved to the Bin"}${bad?` · ${bad} couldn't be changed, try again`:""}`,ok?async()=>{for(const [d,st,rv] of prev){try{await S.db.doc("drafts/"+d.id).update({status:st,review:rv})}catch(e){}}renderAll();toast("Undone")}:null)});
 /* K2: one-tap best slots */
 function bestFor(lead,from){const now=Date.now();for(let i=0;i<9;i++){const c=new Date(from||Date.now());c.setDate(c.getDate()+i);const we=[0,6].includes(c.getDay());const [h,m]=BEST[lead][we?"we":"wd"];c.setHours(h,m,0,0);if(c.getTime()>now+30*60e3)return c}return null}
 function slotChips(dests,max){const ds=dests||[];const leads=[["fb","FB"],["ig","IG"],["x","X"]].filter(([k])=>ds.some(x=>x.endsWith(k)));if(!leads.length)leads.push(["fb","Facebook"]);
@@ -2047,7 +2132,7 @@ function showStep(i){S.step=i;document.querySelectorAll("[data-steppanel]").forE
 document.addEventListener("click",ev=>{const b=ev.target.closest("[data-step]");if(!b||!b.closest("#detail"))return;ev.preventDefault();const i=+b.dataset.step;showStep(i);if(!b.closest(".stepper"))document.querySelector(".stepper")?.scrollIntoView({behavior:"smooth",block:"nearest"})});
 function headHtml(d,st){const stLabel=STATUS.find(s=>s.key===st)?.label||"";return `<div class="dhead">
       ${navBar(d)}
-      <div class="chips">${d.action?.title||d.issue?`<span class="chip" title="Campaign, set automatically from the petition or issue">Campaign: ${esc(String(d.action?.title||d.issue).slice(0,40))}</span>`:""}${d.type?`<span class="chip type">${esc(d.type)}</span>`:""}${d.issue?`<span class="chip">${esc(d.issue)}</span>`:""}${d.timing?.label||d.timing?.date?`<span class="chip">${[d.timing?.label?esc(d.timing.label):"",d.timing?.date?esc(new Date(d.timing.date).toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"})):""].filter(Boolean).join(" · ")}</span>`:""}<span class="chip st-${st}">${stLabel}</span></div>
+      <!-- 12 Nov: pills removed (Chris) -->
       <h2>${esc(d.title)}</h2>
       ${d.source?.url||d.source?.label?`<div class="src">Source: ${d.source?.url?`<a href="${esc(d.source.url)}" target="_blank" rel="noopener">${esc(d.source.label||d.source.url)}</a>`:esc(d.source.label)}</div>`:""}
     </div>`}
@@ -2073,7 +2158,7 @@ function ideaView(d,st){
         <section><span class="eyebrow">Why this post</span><p>${esc(d.rationale||"No reason given.")}</p></section>
         ${isVidIdea(d)?vidIdeaBox(d):""}
         <section><span class="eyebrow">${isVidIdea(d)?"The post's words open":"How it opens"}</span><p class="iopen">${esc(first)}${more?"…":""}</p></section>
-        <p class="src">${facts?esc(facts)+". ":""}${isVideoPost(d)?"A video post. ":""}${st==="rejected"?"":"The words for Facebook, Instagram and X are written already: approve the idea and you can change any of it in Editing."}</p>
+        <p class="src">${facts?esc(facts)+". ":""}${isVideoPost(d)?"A video post. ":""}${st==="rejected"?"":"The words for Facebook, Instagram and X are written already: approve the idea and you can change any of it in Finishing."}</p>
         ${d.videoIdea&&!isVidIdea(d)?vidIdeaBox(d):""}
         ${(d.modelledOn||[]).map(m=>`<div class="model"><a href="${esc(m.url)}" target="_blank" rel="noopener">${esc(m.label)}</a><span class="m">${esc(m.metric)}</span></div>`).join("")}
       </div>
@@ -2086,7 +2171,7 @@ function reasonBar(isRej){return `<div class="row"><b style="font-size:13.5px">$
     <div class="row"><input type="text" id="decNote" placeholder="${isRej?"Anything else? (optional)":"Describe the change"}"><button class="btn ${isRej?"bad":"warn"}" data-act="${isRej?"confirmReject":"confirmChanges"}">${isRej?"Reject":"Send back for changes"}</button><button class="btn" data-act="cancelMode">Cancel</button></div>`}
 function ideaDecide(d){if(!S.db)return `<div class="state">Read-only view.</div>`;if(d.status==="rejected")return decideBar(d,"rejected",false);
   if(S.mode==="reject")return reasonBar(true);
-  return `<div class="row"><span class="src">${isVidIdea(d)?"Approve it to make it: it moves to Editing, where you upload the video your Claude made. Reject sends it to the Bin.":"Approve the idea to finish it in Editing. Reject sends it to the Bin."}</span><button class="btn bad" data-act="reject">Reject</button><button class="btn primary" data-act="approveIdea">Approve idea</button></div>`}
+  return `<div class="row"><span class="src">${isVidIdea(d)?"Approve it to make it: it moves to Finishing, where you upload the video your Claude made. Reject sends it to the Bin.":"Approve the idea to finish it in Finishing. Reject sends it to the Bin."}</span>${isVidIdea(d)?`<button class="btn" data-vi-copy>Copy video prompt</button>`:""}<button class="btn bad" data-act="reject">Reject</button><button class="btn primary" data-act="approveIdea">Approve idea</button></div>`}
 /* The time a post starts on: your pick, else the time picked for it (if still ahead), else our next best slot. */
 function whenDefault(d){const p=d.posting||{};const dests=p.destinations||defaultDests(d);
   const v=p.at||p.suggestedAt;const x=v?new Date(v):null;
@@ -2111,7 +2196,7 @@ function finishDecide(d,st,checks){if(!S.db)return `<div class="state">Read-only
   const dis=(checks&&!S.factsOk)||ownMissing(d)?" disabled":"";const r=d.review||{};
   return `${ownMissing(d)?`<span class="src fhintw">Write the words first (2 Text), then Post now or Schedule.</span>`:""}
   <div class="frow">${whenBox(d,st)}<button class="btn apnow" data-act="apNow" title="Facebook and Instagram go out within 5 minutes"${dis}>Post now</button><button class="btn primary apmain" data-act="approve"${dis}>${schedBtn()}</button></div>
-  <div class="row fsmall">${d.own?`<span class="src">Saved as you go: it waits in To review until you post or schedule it.</span><button class="btn small bad" data-own="discard">Discard</button>`:`<span class="src">Idea approved${r.by?" by "+esc(nameOf(r.by)):""}${r.at?" · "+esc(fmtWhen(r.at)):""}</span><button class="btn small" data-act="undo">Back to review</button><button class="btn small" data-act="posting" title="Only if you posted it yourself">Mark as posted</button><button class="btn small bad" data-act="reject">Bin it</button>`}</div>`}
+  <div class="row fsmall">${d.own?`<span class="src">Saved as you go: it waits in Your OK until you post or schedule it.</span><button class="btn small bad" data-own="discard">Discard</button>`:`<span class="src">Idea approved${r.by?" by "+esc(nameOf(r.by)):""}${r.at?" · "+esc(fmtWhen(r.at)):""}</span><button class="btn small" data-act="undo">Back to review</button><button class="btn small" data-act="posting" title="Only if you posted it yourself">Mark as posted</button><button class="btn small bad" data-act="reject">Bin it</button>`}</div>`}
 function wbInfo(d){const s=stepInfo(d);const tone=(...xs)=>xs.includes("warn")?"warn":xs.includes("info")?"info":"ok";
   return [{label:"Media",tone:tone(s[1].tone,s[2].tone)},{label:"Text",tone:s[0].tone},{label:"Links",tone:s[3].tone==="warn"?"warn":"ok"},{label:"More",tone:s[4].tone==="warn"?"warn":"ok"}]}
 function netEditor(d,pf){const posts=asPosts(textFor(d,pf.key));const editing=S.editing===pf.key;const edited=d.edited||{};
@@ -2176,8 +2261,8 @@ function finishOpener(d,st){const p=d.posting||{};const at=p.at||p.suggestedAt;c
   return `<article class="draft v3" data-st="${esc(st)}">${headHtml(d,st)}<div class="fopen">
     <canvas id="foCard" width="10" height="10" role="img" aria-label="The post's graphic"></canvas>
     <p class="src" style="margin:0">${st==="scheduled"?"Goes out":"Suggested for"} ${esc(at?new Date(at).toLocaleString("en-GB",{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}):"no time yet")} · ${esc(ds.map(accLabel).join(", ")||"no accounts yet")}${cf&&st!=="scheduled"?` · ${cf} fact${cf===1?"":"s"} to check`:""}</p>
-    <div class="row"><button class="btn primary" data-act="finishCP">${st==="scheduled"?"Open in Compose":"Finish in Compose"}</button><button class="btn" data-act="oldWb">Show it here</button></div>
-    <span class="src">Words, pictures, video, checks and when, all in one place. Use ‹ › at the top to move through ${st==="scheduled"?schedWord():st==="hold"?"Editing":"your drafts"} without coming back here.</span></div></article>`}
+    <div class="row"><button class="btn primary" data-act="finishCP">${st==="scheduled"?"Open in Compose":"Finish in Compose"}</button><button class="btn" data-act="oldWb">Show it here</button>${p.asanaUrl?`<a class="btn" href="${esc(p.asanaUrl)}" target="_blank" rel="noopener">Asana task ↗</a>`:""}</div>
+    <span class="src">Words, pictures, video, checks and when, all in one place. Use ‹ › at the top to move through ${st==="scheduled"?(HO()?"In Asana":"Scheduled"):st==="hold"?"Finishing":"your drafts"} without coming back here.</span></div></article>`}
 function renderDetail0(){
   if(S.status==="evergreen"){renderEgDetail();return}
   const d=S.drafts.find(x=>x.id===S.openId);
@@ -2364,6 +2449,7 @@ function viPhone(d){const v=d.videoIdea;const film=v.route==="film";
   const fr=(v.beats||[]).map((b,i)=>film?`<div class="vf film${i?"":" on"}"><div>${esc(b.text.replace(/\*/g,""))}</div>${b.shot?`<em>${esc(b.shot)}</em>`:""}</div>`:`<div class="vf${b.look==="blue"?" blue":""}${i?"":" on"}"><div>${viHl(b.text)}</div><small>CitizenGO</small></div>`).join("");
   return `<div class="viphone" data-vi-phone role="img" aria-label="Storyboard: ${esc((v.beats||[]).map(b=>b.text.replace(/\*/g,"")).join(" / "))}"><span class="vn">${film?"to film":"storyboard"}</span>${fr}</div>`}
 setInterval(()=>{if(document.hidden||matchMedia("(prefers-reduced-motion: reduce)").matches)return;document.querySelectorAll("[data-vi-phone]").forEach(p=>{const f=[...p.querySelectorAll(".vf")];if(f.length<2)return;const i=f.findIndex(x=>x.classList.contains("on"));f[i]?.classList.remove("on");f[(i+1)%f.length].classList.add("on")})},2600);
+document.addEventListener("click",ev=>{if(ev.target.closest("[data-vi-copy]"))document.querySelector('#detail [data-vi-box] [data-vi="copy"]')?.click()});
 document.addEventListener("click",async ev=>{const b=ev.target.closest("[data-vi]");if(!b)return;const box=b.closest("[data-vi-box]");if(!box)return;ev.stopPropagation();
   const k=b.dataset.vi;const cur=()=>box.querySelector("pre[data-vi-p]:not([hidden])");
   if(k==="make"||k==="film"){box.querySelectorAll("[data-vi='make'],[data-vi='film']").forEach(x=>x.setAttribute("aria-pressed",x.dataset.vi===k));box.querySelectorAll("pre[data-vi-p]").forEach(p=>p.hidden=p.dataset.viP!==k);const h=box.querySelector("[data-vi-how]");if(h)h.textContent=h.textContent.replace(VI_HOW.make,VI_HOW[k]).replace(VI_HOW.film,VI_HOW[k]);return}
@@ -3604,7 +3690,7 @@ async function setStatus(d,status,extra={},msgOver=null){
     await logFeedback({draftId:d.id,action:status==="pending"?"reopen":status,...extra,type:d.type,issue:d.issue});
     if(status==="scheduled")await logFinalEdits(d);
     const prev=d.status||"pending",prevReview=d.review||{};
-    const msg=msgOver?msgOver:status==="scheduled"?(HO()?"Handed off: post it from its Asana task, then complete the task":"Approved and scheduled"):status==="hold"?"Moved to Editing":status==="rejected"?"Moved to the Bin":status==="changes"?"Sent back for changes":"Moved back to To review";
+    const msg=msgOver?msgOver:status==="scheduled"?(HO()?"Handed off: post it from its Asana task, then complete the task":"Approved and scheduled"):status==="hold"?"Moved to Finishing":status==="rejected"?"Moved to the Bin":status==="changes"?"Sent back for changes":"Moved back to Your OK";
     toast(msg,status!=="pending"?async()=>{try{await S.db.doc("drafts/"+d.id).update({status:prev,review:prevReview});await logFeedback({draftId:d.id,action:"undo",undid:status,type:d.type,issue:d.issue});S.status=prev;S.openId=d.id;renderAll();toast("Undone")}catch(e){failToast(e,"Couldn't undo. Move it back by hand")}}:null);
     resetDraftUi();
   }catch(e){failToast(e,"Couldn't save")}
@@ -3787,7 +3873,7 @@ Return only the new post text, nothing else.`;
     if(act==="confirmChanges"&&!note&&!reasons.length){$("#decNote").focus();toast("Say what needs to change");return}
     await setStatus(d,act==="confirmReject"?"rejected":"changes",{reasons,note});return}
   if(act==="undo"){await setStatus(d,"pending");return}
-  if(act==="approveIdea"){await setStatus(d,"hold",{},"Idea approved: finish it in Editing");return}
+  if(act==="approveIdea"){await setStatus(d,"hold",{},"Idea approved: finish it in Finishing");return}
 });
 let fQT=0;
 document.addEventListener("input",ev=>{
@@ -3877,13 +3963,14 @@ function teamPref(v){try{if(v===undefined)return localStorage.getItem("desk.team
    (Analytics never badges). Each link opens a view, and a part of it. */
 const VIEW_TITLES={posts:"Posts",evergreen:"Evergreen",calendar:"Calendar",plan:"Plan",inbox:"Inbox",listening:"Listening",analytics:"Analytics",tools:"Tools",settings:"Settings"};
 function sideCounts(){const c=IB.counts||{};return{
-  posts:S.drafts.filter(d=>(d.status||"pending")==="pending").length,
+  "posts:pending":S.drafts.filter(d=>tabOf(d)==="pending").length,"posts:hold":S.drafts.filter(d=>tabOf(d)==="hold").length,
   evergreen:(EG.posts||[]).filter(p=>p.state==="due").length,
   "inbox:inbox":Math.max(0,(c.open||0)-(c.mentions||0)),"inbox:mine":c.mine||0,
   "inbox:history":(IB.alerts||[]).length,"listening:mentions":c.mentions||0,
   "listening:watches":LS.wby?wsMine().reduce((n,w)=>n+wsNew(w,LS.wby[w.id]),0):0}}
 function sideActive(){const v=S.view||"posts";
   if(v==="posts"&&S.status==="evergreen")return "evergreen";
+  if(v==="posts")return "posts:"+(S.status==="changes"?"pending":S.status||"pending");
   if(v==="calendar")return CAL.view==="month"?"plan":"calendar:"+CAL.view;
   if(v==="inbox")return IB.tab==="inbox"?(IB.filter==="mine"?"inbox:mine":"inbox:inbox"):"inbox:"+IB.tab;
   if(v==="tools")return "tools:"+TL.tab;
@@ -3894,7 +3981,7 @@ function sideActive(){const v=S.view||"posts";
 const SIDE_IC={plan:'<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/>',make:'<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13 7l4 4"/>',talk:'<path d="M4 13l3-8h10l3 8v6H4zM4 13h5l1 2h4l1-2h5"/>',listen:'<circle cx="12" cy="12" r="2"/><path d="M16.2 7.8a6 6 0 010 8.4M7.8 16.2a6 6 0 010-8.4M19.1 4.9a10 10 0 010 14.2M4.9 19.1a10 10 0 010-14.2"/>',learn:'<path d="M5 20V10M12 20V4M19 20v-7"/>',gear:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',fish:'<path d="M3 12c3-5 9-6 14-2l4-3v10l-4-3c-5 4-11 3-14-2z"/><path d="M14 11h.01"/>',link:'<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>',palette:'<path d="M12 4a8 8 0 1 0 0 16c1.2 0 1.6-1 1-2-.7-1.2 0-2.5 1.5-2.5H17a3 3 0 0 0 3-3C20 7.5 16.4 4 12 4z"/><path d="M8 11h.01M10 7.5h.01M14.5 7.5h.01"/>',scissors:'<circle cx="6" cy="7" r="2.5"/><circle cx="6" cy="17" r="2.5"/><path d="M8 8.5L20 18M8 15.5L20 6"/>',plug:'<path d="M9 3v5M15 3v5M7 8h10v3a5 5 0 0 1-10 0z"/><path d="M12 16v5"/>',pulse:'<path d="M3 12h4l2-5 4 10 2-5h6"/>',phone:'<rect x="7" y="3" width="10" height="18" rx="2"/><path d="M11 17h2"/>',filter:'<path d="M4 5h16l-6 7v6l-4 2v-8z"/>',download:'<path d="M12 4v11M7 10l5 5 5-5M5 20h14"/>',more:'<circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/>',thumb:'<path d="M7 11v9H4v-9zM7 11l4-7a2 2 0 0 1 3 2l-1 4h6a2 2 0 0 1 2 2.3l-1.3 6A2 2 0 0 1 17.7 20H7"/>',broom:'<path d="M14 4l6 6M17 7l-6 6M11 13l-6 7h5l3-3M11 13l3 3"/>',sparkle:'<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8zM19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z"/>',search:'<circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/>',help:'<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .8-1 1.5V14M12 17h.01"/>',keys:'<rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 10h.01M11 10h.01M15 10h.01M8 14h8"/>',bug:'<rect x="8" y="7" width="8" height="12" rx="4"/><path d="M12 7V4M4 13h4M16 13h4M5 8l3 2M19 8l-3 2M5 19l3-2M19 19l-3-2"/>',list:'<path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01"/>',printer:'<path d="M7 9V4h10v5M7 17H5a1 1 0 0 1-1-1v-6a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-2"/><rect x="7" y="14" width="10" height="6"/>',image:'<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="1.5"/><path d="M21 16l-5-5-8 8"/>',copy:'<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/>',save:'<path d="M6 4h10l4 4v12H4V4zM8 4v5h7M8 20v-6h8v6"/>',plus:'<path d="M12 5v14M5 12h14"/>',refresh:'<path d="M20 11a8 8 0 0 0-14.6-4.5L4 8M4 4v4h4M4 13a8 8 0 0 0 14.6 4.5L20 16M20 20v-4h-4"/>',menu:'<path d="M4 7h16M4 12h16M4 17h16"/>',alert:'<path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17h.01"/>',globe:'<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>',ban:'<circle cx="12" cy="12" r="9"/><path d="M6 6l12 12"/>',tag:'<path d="M3 12V4h8l10 10-8 8z"/><path d="M7.5 7.5h.01"/>',folder:'<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',upload:'<path d="M12 16V5M7 10l5-5 5 5M5 20h14"/>',bell:'<path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20a2 2 0 0 0 4 0"/>',tools:'<path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.4-.6-.6-2.4z"/>',
   light:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M5 19l1.5-1.5M17.5 6.5L19 5"/>',dark:'<path d="M20 14.5A8 8 0 019.5 4a8 8 0 1010.5 10.5z"/>',auto:'<rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4"/>'};
 const sideSvg=(k,n=18)=>`<svg width="${n}" height="${n}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${SIDE_IC[k]}</svg>`;
-const SIDE_NAV=[["make","Create",[["compose","Compose"],["posts","Review board"],["evergreen","Evergreen"]]],["plan","Plan",[["plan","Month"],["calendar:week","Week"],["calendar:list","List"],["calendar:grid","Instagram grid"]]],
+const SIDE_NAV=[["make","Create",[["compose","Compose"],["posts:pending","Your OK"],["posts:hold","Finishing"],["posts:scheduled","In Asana"],["posts:posted","Posted"],["evergreen","Evergreen"],["posts:rejected","Bin"]]],["plan","Plan",[["plan","Month"],["calendar:week","Week"],["calendar:list","List"],["calendar:grid","Instagram grid"]]],
   ["talk","Talk",[["inbox:inbox","Conversations"],["inbox:mine","Assigned to me"],["inbox:posts","By post"],["inbox:autos","Automations"],["inbox:history","Moderation"],["inbox:team","Team"]]],
   ["listen","Listen",[["listening:rising","Rising now"],["listening:mentions","Mentions"],["listening:allies","Allies and opponents"],["listening:topics","Topics"],["listening:parliament","Parliament"],["listening:watches","Watches"]]],
   ["learn","Analytics",[["analytics:overview","Overview"],["analytics:audience","Audience"],["analytics:posts","Posts"],["analytics:talk","Conversations"],["analytics:campaigns","Campaigns"],["analytics:allies","Allies"],["analytics:leaderboard","Leaderboard"],["analytics:countries","Countries"]]],["tools","Tools",[["tools:home","All tools"],["tools:inviter","Page Inviter"],["tools:links","Tracked links"],["tools:bio","Link in bio"],["tools:make","Make"],["tools:claude","Claude connectors"],["tools:health","Health check"]]]];
@@ -3948,6 +4035,8 @@ function setTitle(act){{const hu=$("#hdUpd");if(hu&&!/^(listening|inbox)/.test(S
 function navGo(key){if(key==="compose"){$("#side").classList.remove("open");$("#sideShade").hidden=true;if((S.view||"posts")!=="posts"||S.status==="evergreen"){if(S.status==="evergreen"){S.status="pending";S.openId=null;resetDraftUi()}setView("posts")}renderSide();openCP();return}
   const [v,sub]=key.split(":");
   if(v==="posts"&&S.status==="evergreen"){S.status="pending";S.openId=null;resetDraftUi()}
+  /* Drafts board B (12 Nov): the statuses live in the Create side menu */
+  if(v==="posts"&&sub&&S.status!==sub){S.status=sub;S.openId=null;S.ticks=new Set();resetDraftUi();if(sub==="rejected"){S.trash=null;loadTrash()}}
   if(v==="inbox"){IB.open=null;IB.topics=null;if(sub==="mine"){IB.tab="inbox";IB.filter="mine"}else if(sub==="inbox"){IB.tab="inbox";if(IB.filter==="mine")IB.filter="all"}else IB.tab=sub}
   if(v==="listening"){LS.tab=sub==="digest"?"rising":sub;LS.data=null}
   if(v==="tools")TL.tab=sub||"home";
@@ -4400,7 +4489,7 @@ function calHeader(label,count){const v=CAL.view;const f=CAL.filter||{};const ne
     <label>Status<select data-cal-status aria-label="Status"><option value="">All statuses</option>${[["scheduled","Scheduled"],["review","In review"],["posted","Posted"]].map(([x,l])=>`<option value="${x}"${f.status===x?" selected":""}>${l}</option>`).join("")}</select></label>
     <label class="lg"><input type="checkbox" data-cal-best data-fdef="true"${CAL.best!==false?" checked":""}> Best slots</label>${fpEnd("cal")}${calExportBtn()}</span></div>
     ${!CAL.country||CAL.country===S.team?`<div class="calpins"><span class="src">Also show:</span>${((CAL.data&&CAL.data.teams)||[]).filter(t=>t.id!==S.team).map(t=>`<button class="tab small" data-cal-pin="${esc(t.id)}" aria-pressed="${calPins().includes(t.id)}">${esc(`${t.flag||""} ${t.name}`.trim())}</button>`).join("")}<span class="src">Pinned countries show faintly in your calendar; the rest as globe badges.</span></div>`:""}
-    <div class="calnote">${CAL.loading?"Loading the calendar…":CAL.err?esc("Couldn't load key dates and other teams: "+whyFailed(CAL.err)):esc(count)}${lsGet("desk.calTzSeen","")===teamTz()+"|"+myTz()?tzBanner():""}</div>${lsGet("desk.calTzSeen","")===teamTz()+"|"+myTz()?"":tzBanner()}`}
+    <div class="calnote">${CAL.loading?"Loading the calendar…":CAL.err?esc("Couldn't load key dates and other teams: "+whyFailed(CAL.err)):""}${lsGet("desk.calTzSeen","")===teamTz()+"|"+myTz()?tzBanner():""}</div>${lsGet("desk.calTzSeen","")===teamTz()+"|"+myTz()?"":tzBanner()}`}
 /* ---- month ---- */
 function calMonth(days,month,byDay){const today=calToday();const reqOn=k=>(PLAN.reqs||[]).filter(r=>r.for_date===k);
   return `<div class="month cmonth">${dowNames().map(x=>`<div class="dow">${x}</div>`).join("")}${days.map(d=>{const k=dayKey(d);const list=byDay[k]||[];const rq=reqOn(k);
@@ -4458,7 +4547,7 @@ async function calBulk(act){const sel=CAL.sel||new Set();const ds=[...sel].map(i
     const prev=[];let ok=0,bad=0;
     for(const d of pick){const review=act==="pending"?{}:{by:S.me,at:new Date().toISOString()};const was=[d,d.status||"pending",JSON.parse(JSON.stringify(d.review||{}))];try{await S.db.doc("drafts/"+d.id).update({status:act,review});await logFeedback({draftId:d.id,action:act==="pending"?"reopen":"hold",type:d.type,issue:d.issue});ok++;prev.push(was)}catch(e){bad++}}
     sel.clear();renderCal();
-    toast(`${ok} ${act==="hold"?"moved to Editing (paused)":"moved back to To review"}${bad?` · ${bad} couldn't be changed, try again`:""}`,ok?async()=>{for(const [d,st,rv] of prev){try{await S.db.doc("drafts/"+d.id).update({status:st,review:rv})}catch(e){}}toast("Undone")}:null)}}
+    toast(`${ok} ${act==="hold"?"moved to Finishing (paused)":"moved back to Your OK"}${bad?` · ${bad} couldn't be changed, try again`:""}`,ok?async()=>{for(const [d,st,rv] of prev){try{await S.db.doc("drafts/"+d.id).update({status:st,review:rv})}catch(e){}}toast("Undone")}:null)}}
 function renderCal(){
   const el=$("#calView");if(!el||el.hidden)return;
   if(CAL.view==="list"&&!CAL.listFrom)CAL.listFrom=true;
@@ -4476,7 +4565,7 @@ function renderCal(){
   const label=CAL.view==="week"?`${s.toLocaleDateString("en-GB",{day:"numeric",month:"short"})} – ${new Date(e-864e5).toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"})}`:new Date(CAL.anchor).toLocaleDateString("en-GB",{month:"long",year:"numeric"});
   const ctry=CAL.country||"";const foreign=ctry&&ctry!=="all"&&ctry!==S.team;
   const camps=[...new Set(inRange.flatMap(d=>(byDay[dayKey(d)]||[]).filter(i=>i.mine).map(i=>campOf(S.drafts.find(x=>x.id===i.id))).filter(Boolean)))];
-  const campRow=camps.length?`<div class="camprow">${camps.map(c=>{const n=inRange.reduce((a,d)=>a+(byDay[dayKey(d)]||[]).filter(i=>i.mine&&campOf(S.drafts.find(x=>x.id===i.id))===c).length,0);return `<span class="camp" style="--cc:${campColor(c)}" title="${esc(c)}">${esc(short3(c))} · ${n} post${n===1?"":"s"}</span>`}).join("")}</div>`:"";
+  const campRow=""&&camps.length?`<div class="camprow">${camps.map(c=>{const n=inRange.reduce((a,d)=>a+(byDay[dayKey(d)]||[]).filter(i=>i.mine&&campOf(S.drafts.find(x=>x.id===i.id))===c).length,0);return `<span class="camp" style="--cc:${campColor(c)}" title="${esc(c)}">${esc(short3(c))} · ${n} post${n===1?"":"s"}</span>`}).join("")}</div>`:"";
   const head=calHeader(label,`${count} post${count===1?"":"s"} to go out · ${quietN} quiet day${quietN===1?"":"s"} ahead`)+(foreign?`<div class="callock">🔒 ${esc(calTeamName(ctry))}'s calendar is read-only for you. Use “→ copy as an idea” on a post to add it to ${esc(calTeamName(S.team))}'s calendar. <button class="btn small" data-cal-country-back>Back to my team</button></div>`:"");
   const grid=CAL.view==="week"?calWeek(days,byDay):CAL.view==="list"?calList(inRange,byDay):calMonth(days,month,byDay);
   el.innerHTML=`<div>${head}${campRow}${grid}<div class="kdlegend">${Object.entries(KD_CATS).map(([k,l])=>`<span class="kc-${k}">${l}</span>`).join("")}</div>${calPeekHtml()}</div>${calSide(CAL.view==="week"?days:inRange,items)}`;
@@ -6255,7 +6344,7 @@ document.addEventListener("click",async ev=>{
     EG.busy=true;renderEvergreen();
     try{const input={action:"create",team:S.team,for_date:d,title:`Fresh version: ${p.title}`,source:"evergreen",evergreen_id:id};const ang=[p.why,p.result?`Then: ${p.result}`:"",p.url||""].filter(Boolean).join(" · ");if(ang)input.angle=ang;
       const r=await eng("engine_request",input);
-      if(r&&r.ok){p.requested={id:r.request.id,for_date:r.request.for_date};EG.drafting=null;toast(`Requested: a fresh draft lands in To review for ${new Date(d+"T12:00:00").toLocaleDateString("en-GB",{day:"numeric",month:"short"})}`)}else toast((r&&r.error)||"Couldn't ask for a fresh draft")}
+      if(r&&r.ok){p.requested={id:r.request.id,for_date:r.request.for_date};EG.drafting=null;toast(`Requested: a fresh draft lands in Your OK for ${new Date(d+"T12:00:00").toLocaleDateString("en-GB",{day:"numeric",month:"short"})}`)}else toast((r&&r.error)||"Couldn't ask for a fresh draft")}
     catch(e){failToast(e,"Couldn't ask for a fresh draft")}
     EG.busy=false;renderEvergreen();return}
   if(["snooze","retire","restore","went_out"].includes(a)){b.disabled=true;
@@ -6806,7 +6895,7 @@ async function cpPublish(now){const d0=CP.d;const bad=cpChecks(d0).filter(x=>x.l
     const d2=S.drafts.find(x=>x.id===id)||d;await S.db.doc("drafts/"+id).update({final:await snapshotFinal(d2)});
     const msg=now?postNowMsg(ds):`${HO()?"Handed off for":"Scheduled for"} ${at.toLocaleString("en-GB",{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})} on ${ds.length} account${ds.length===1?"":"s"}`;
     const left=next?(CP.pileIds||[]).filter(x=>x!==id&&cpInPile(S.drafts.find(y=>y.id===x))).length:0;
-    await setStatus(S.drafts.find(x=>x.id===id)||d2,"scheduled",{},next?`${msg}. ${left} more to finish`:pileN>1&&CP.pileSt==="hold"?`${msg}. All done in Editing`:msg);
+    await setStatus(S.drafts.find(x=>x.id===id)||d2,"scheduled",{},next?`${msg}. ${left} more to finish`:pileN>1&&CP.pileSt==="hold"?`${msg}. All done in Finishing`:msg);
     if((S.drafts.find(x=>x.id===id)||{}).status!=="scheduled")throw new Error("The engine didn't schedule it");
     if(CP.repeat)eng("engine_evergreen_update",{action:"add",team:S.team,title:d2.title,last_out:dayKey(new Date()),format:d0.cpType==="reel"?"video":d0.cpType==="carousel"?"carousel":"single image",account_key:ds[0],why:"Own idea, to post again in about 10 weeks",source_post:id}).then(r=>{if(r&&r.ok===false)toast(r.error||"Couldn't add it to Evergreen")}).catch(()=>{});
     if(next&&CP.open){CP.repeat=0;await cpGo(next);renderAll();renderSide();return}
@@ -6929,7 +7018,7 @@ window.addEventListener("beforeunload",ev=>{if(CP.open&&CP.state&&/Unsaved|Savin
   if(user){try{S.me=await user.id();const me=await user.me();S.meName=me?.name||"";$("#who").textContent=""}catch(e){}}
   if(!mcp){$("#offline").hidden=false;renderAll();return}
   let me;try{me=await eng("engine_me",{})}catch(e){engineDown(e,false);renderAll();return}
-  S.teams=(me&&me.teams)||[];S.rights=(me&&me.publish_rights)||[];S.connected=(me&&me.connected_rights)||[];S.pauses=(me&&me.pauses)||[];S.handoff=(me&&me.handoff)||null;document.body.classList.toggle("handoff",!!(S.handoff&&S.handoff.on));{const tb=STATUS.find(x=>x.key==="scheduled");if(tb&&S.handoff&&S.handoff.on)tb.label="Handed off"}S.maintainer=!!(me&&me.maintainer);S.whoId=(me&&me.who)||"";
+  S.teams=(me&&me.teams)||[];S.rights=(me&&me.publish_rights)||[];S.connected=(me&&me.connected_rights)||[];S.pauses=(me&&me.pauses)||[];S.handoff=(me&&me.handoff)||null;document.body.classList.toggle("handoff",!!(S.handoff&&S.handoff.on));{const tb=STATUS.find(x=>x.key==="scheduled");if(tb&&S.handoff&&S.handoff.on)tb.label="In Asana"}S.maintainer=!!(me&&me.maintainer);S.whoId=(me&&me.who)||"";
   if(!S.teams.length){$("#offline").hidden=false;$("#offline").textContent="You aren't in a Content Engine team yet. Ask Chris to add you.";renderAll();return}
   const saved=teamPref();S.team=(S.teams.find(t=>t.id===saved)||S.teams.find(t=>t.id!=="global")||S.teams[0]).id;
   renderTeams();renderConnect();renderPause();
@@ -7391,7 +7480,7 @@ function tlClaude(){return `<p class="src lede" style="margin:0;max-width:75ch">
 
 // ---------- 40D page help, 40E help search ----------
 const PAGE_HELP={
-  posts:["Review board","Drafts the engine wrote overnight and posts people started wait here.",["To review is for ideas: Approve idea (A) moves it to Editing, Reject (R) sends it to the Bin.","Video ideas are videos to make with your own Claude: copy the prompt (Make the video gives an MP4, Film it instead gives a script and captions), approve it, then upload the video in Editing.","In Editing, finish the post (Media, Text, Links), check the time on the When button, then Schedule or Post now.","Filter by issue, type, who made it or label; search finds words in any draft.","N starts a new post in Compose."]],
+  posts:["Drafts board","Drafts the engine wrote overnight and posts people started wait here.",["Your OK is for ideas: Approve idea (A) moves it to Editing, Reject (R) sends it to the Bin.","Video ideas (▶ rows in Your OK) are videos to make with your own Claude: copy the prompt (Make the video gives an MP4, Film it instead gives a script and captions), approve it, then upload the video in Finishing.","In Finishing, finish the post (Media, Text, Links), check the time on the When button, then Hand off to Asana.","Filter by issue, type, who made it or label; search finds words in any draft.","N starts a new post in Compose."]],
   evergreen:["Evergreen","Past winners that are due a fresh version.",["Each card shows how the original did and when it last ran.","Ask for a new version and it lands in Review like any draft."]],
   plan:["Plan","The month at a glance: posts, key dates and notes, in the team's own time zone.",["Drag a post to move it. Click a day to add a note.","Week, List and Instagram grid are in the sidebar under Plan."]],
   calendar:["Calendar","What goes out when, in the team's own time zone.",["Drag a post to another time to move it.","List view has tick boxes to move, pause or send back several posts."]],
