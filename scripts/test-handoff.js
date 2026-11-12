@@ -110,6 +110,16 @@ async function asanaTests() {
   eq('task: due at the post time', t.due_at, '2026-11-09T12:00:00.000Z');
   eq('task: four calendars', t.calendars.map((c) => c.key), ['uk-fb', 'sc-fb', 'uk-ig', 'uk-x']);
   eq('task: says UK + Scotland is one post with a collaborator', /Citizen GO Scotland as collaborator/.test(t.html_notes), true);
+  {
+    const srt = '1\n00:00:00,000 --> 00:00:04,000\nEvery year\n';
+    const vp = { id: 'v1', status: 'scheduled', doc: { type: 'Video', title: 'V', captions: { srt }, posting: { destinations: ['uk-fb'] }, final: { facebook: { video: { sha256: 'abc', size: 10, mime: 'video/mp4' } } } } };
+    const md = A.mediaOf(vp);
+    eq('E8: captions.srt goes with the video, as text', md.map((m) => [m.name, m.mime, m.text]), [['video.mp4', 'video/mp4', undefined], ['captions.srt', 'application/x-subrip', srt]]);
+    eq('E8: the task says the captions are attached', /captions\.srt is attached/.test(A.taskFor(vp).html_notes), true);
+    const nv = { ...vp, doc: { ...vp.doc, final: {} } };
+    eq('E8: no video, no captions file', A.mediaOf(nv).length, 0);
+    eq('E8: junk captions are ignored', A.captionsOf({ captions: { srt: 'hello' } }), null);
+  }
   eq('task: copy, first comment, X thread, alt text and desk link', ['FB copy https://cgo.ac/abc', 'Find an event', 'Post 2: X two', 'Candle on black', 'desk/#uk-1'].map((x) => t.html_notes.includes(x)), [true, true, true, true, true]);
 
   await run(opts);

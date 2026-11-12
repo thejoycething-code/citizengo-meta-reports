@@ -177,7 +177,7 @@ async function attachMedia({ store, api, gid, post, done, log, label }) {
     if (out.includes(m.key)) continue;
     try {
       if (m.video && m.size > A.ATTACH_MAX) { log(`  ! ${label}: video is ${Math.round(m.size / 1048576)} MB, over Asana's 100 MB: download it from the desk`); out.push(m.key); continue; }
-      const buf = m.video ? await P.assembleVideo(store, m.video) : await store.engineMediaDownload(m.path);
+      const buf = m.text != null ? Buffer.from(m.text, 'utf8') : m.video ? await P.assembleVideo(store, m.video) : await store.engineMediaDownload(m.path);
       if (!buf) { log(`  ! ${label}: ${m.name} not found in storage`); continue; }
       await api.attach(gid, m.name, buf, m.mime);
       out.push(m.key);
