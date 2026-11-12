@@ -14,6 +14,7 @@ const H = require('../lib/handoff');
 const VI = require('../lib/video-ideas');
 const T = require('../lib/tracked');
 const copilot = require('../lib/copilot');
+const PS = require('../lib/post-signups');
 
 const json = (obj) => ({ raw: true, text: JSON.stringify(obj) });
 const err = (message, code = 'ENGINE_REFUSED') => { const e = new Error(message); e.code = code; return e; };
@@ -928,6 +929,59 @@ async function cached(store, key, args, compute) {
   // JSON: keep every string well formed before caching it.
   if (value && value.ok !== false && store.engineCacheSet) await store.engineCacheSet(key, wellFormed(value)).catch(() => {});
   return json({ ...value, cached_at: new Date().toISOString() });
+}
+// B1 Sign-ups per post (Chris, 12 Nov 2026): petition sign-ups traced to each
+// post on the team's own accounts (lib/post-signups.js: each day's signers from
+// a platform go to the post of that link live that day), plus which engine post
+// each one was, so the desk can badge its own posts.
+function teamAccountMatcher(team) {
+  const ids = new Set(); const names = new Set();
+  const norm = (v) => String(v || '').replace(/^@/, '').trim().toLowerCase();
+  for (const a of (team && team.accounts) || []) {
+    for (const k of ['page_id', 'ig_id', 'x_id', 'user_id', 'id']) if (a[k]) ids.add(String(a[k]));
+    for (const k of ['handle', 'name', 'label']) if (a[k]) names.add(norm(a[k]));
+  }
+  return (p) => ids.has(String(p.account_id)) || names.has(norm(p.account_label));
+}
+async function engineSignups(store, args, ctx0, now = Date.now()) {
+  const ctx = await context(store, ctx0.who);
+  const teamId = String(args.team || '');
+  if (!E.canEditTeam(ctx, teamId)) throw err('You are not in that team.', 'ENGINE_NOT_MEMBER');
+  const team = teamById(ctx, teamId);
+  const days = [7, 30, 90].includes(Number(args.days)) ? Number(args.days) : 30;
+  const key = `signups:v1:${teamId}:${days}`;
+  return cached(store, key, args, async () => {
+    const since = new Date(now - days * 864e5).toISOString();
+    const mine = teamAccountMatcher(team);
+    const inWindow = (await store.linkPosts({ since })).filter(mine);
+    const traced = inWindow.filter((p) => p.campaign_code && PS.PLATFORM_SOURCE[p.platform]);
+    const untraced = new Set(inWindow.filter((p) => !p.campaign_code).map((p) => `${p.platform}|${p.post_id}`)).size;
+    // Which engine post carried each code (the links minted at hand-off).
+    const eposts = await store.enginePosts({ team_ids: [teamId], statuses: ['posted', 'scheduled'], limit: 500 });
+    const byCode = {};
+    for (const ep of eposts) for (const [plat, l] of Object.entries((ep.doc && ep.doc.links) || {})) if (l && l.campaign) byCode[String(l.campaign).toLowerCase()] = { id: ep.id, title: ep.title || '', plat };
+    if (!traced.length) return json({ ok: true, ready: true, days, posts: [], totals: { signatures: 0, new_members: 0, posts: 0 }, untraced, by_post: {} });
+    const codes = [...new Set(traced.map((p) => p.campaign_code))];
+    const [allPosts, sigDays] = await Promise.all([store.linkPostsByCodes(codes), store.linkSignatureDays({ codes })]);
+    if (sigDays === null) return json({ ok: true, ready: false, days, posts: [], untraced, by_post: {} });
+    const { posts } = PS.attribute(allPosts.length ? allPosts : traced, sigDays);
+    const keep = new Set(traced.map((p) => `${p.platform}|${p.post_id}`));
+    const rows = posts.filter((p) => keep.has(`${p.platform}|${p.post_id}`));
+    const want = { xPostIds: rows.filter((r) => r.platform === 'x').map((r) => r.post_id), fbPostIds: rows.filter((r) => r.platform === 'facebook').map((r) => r.post_id), igMediaIds: rows.filter((r) => r.platform === 'instagram').map((r) => r.post_id) };
+    const reach = new Map((store.linkPostReach ? await store.linkPostReach(want) : []).map((r) => [String(r.post_id), r]));
+    const by_post = {};
+    const out = rows.map((r) => {
+      const x = reach.get(String(r.post_id));
+      const audience = x && x.impressions != null ? Number(x.impressions) : null;
+      const ep = byCode[String(r.campaign_code).toLowerCase()] || null;
+      if (ep) { const b = by_post[ep.id] = by_post[ep.id] || { signatures: 0, new_members: 0 }; b.signatures += r.signatures || 0; b.new_members += r.new_members || 0; }
+      return { platform: r.platform, account: r.account_label || r.account_id, posted_at: r.posted_at, url: r.permalink_url || null, petition_id: r.petition_id || null,
+        signatures: r.signatures || 0, new_members: r.new_members || 0, first_days: r.first_days || 0, audience, per_1k: audience ? Math.round((r.signatures / audience) * 10000) / 10 : null,
+        shared_with: r.shared_with || 0, post: ep ? { id: ep.id, title: ep.title } : null };
+    }).sort((a, b) => b.signatures - a.signatures || String(b.posted_at).localeCompare(String(a.posted_at)));
+    const tot = (k) => out.reduce((n, r) => n + (r[k] || 0), 0);
+    return json({ ok: true, ready: true, days, posts: out.slice(0, 200), totals: { signatures: tot('signatures'), new_members: tot('new_members'), first_days: tot('first_days'), posts: out.length }, untraced, by_post });
+  });
 }
 async function engineAnalytics(store, args, ctx0) {
   const ctx = await context(store, ctx0.who);
@@ -2175,6 +2229,7 @@ const obj = (properties, required = []) => ({ type: 'object', properties, requir
 
 const ENGINE_TOOLS = [
   { name: 'engine_report', description: 'Content Engine desk: report a problem with the desk (action send: text, page, team), list reports (Chris sees all, everyone else their own), or for Chris mark one fixed or open again (action fix / reopen: id, optional reply). Text only, no screenshots; deleted 30 days after it is fixed. Reports show in the desk bell, never by email or Slack.', inputSchema: obj({ action: { type: 'string', enum: ['send', 'list', 'fix', 'reopen'] }, text: { type: 'string' }, page: { type: 'string' }, team: { type: 'string' }, id: { type: 'string' }, reply: { type: 'string' } }), handler: engineReport },
+  { name: 'engine_signups', description: 'Content Engine Reports › Sign-ups: petition sign-ups traced to each post on one team\'s own accounts over the last 7, 30 or 90 days (each day\'s signers from a platform go to the post of that link live that day), with sign-ups per 1,000 reached and which desk post each one was (by_post).', inputSchema: obj({ team: { type: 'string' }, days: { type: 'number' }, fresh: { type: 'boolean' } }, ['team']), handler: engineSignups },
   { name: 'engine_me', description: 'Content Engine: who you are, your country teams and the accounts you can publish to. Used by the posts desk.', inputSchema: obj({}), handler: engineMe },
   { name: 'engine_posts', description: 'Content Engine: the posts in one of your teams (the desk), optionally by status (one, or several comma-separated: review, changes, hold, scheduled, posted, rejected, archived: rejected posts cleared from the desk bin). Each post comes with track (its Asana task, results check, posted time, stale flag and source); full: true returns each whole post instead.', inputSchema: obj({ team: { type: 'string' }, status: { type: 'string' }, full: { type: 'boolean' }, limit: { type: 'number' } }, ['team']), handler: enginePosts },
   { name: 'engine_post', description: 'Content Engine: one whole post from your teams.', inputSchema: obj({ id: { type: 'string' } }, ['id']), handler: enginePost },

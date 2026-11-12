@@ -1760,6 +1760,10 @@ body.nosearch header.top .fq,body.nosearch header.top .fwrap:has(>[data-fp="rb"]
 .cpd:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 .cpday{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:8px}.cpday h3{margin:0;font-size:15px}
 .cprow{display:grid;grid-template-columns:44px minmax(0,1fr);gap:8px;align-items:center}.cprow .cchip{width:100%}
+.sgpost{display:flex;gap:8px;align-items:flex-start;min-width:0}.sgpost>span:last-child{display:flex;flex-direction:column;min-width:0}
+.sgpost .ni{width:20px;height:20px;border-radius:50%;display:inline-grid;place-items:center;color:#fff;font-size:10px;font-weight:800;flex:none}.ni.f{background:#1877f2}.ni.i{background:#d62976}.ni.x{background:#111}
+.sgk .akpi>*{display:block}.sgk .akpi b{font-size:22px}
+.sgbar{min-width:90px;position:relative}.sgbar i{display:block;height:6px;border-radius:3px;background:var(--accent,#1d7ee2);margin-top:4px}
 /* B8 phone review deck */
 body.swmode #detail{display:none}
 .swback{display:flex;justify-content:flex-end;margin:0 0 8px}
@@ -2115,6 +2119,7 @@ function qPill(d){const st=tabOf(d),g=d.posting||{};const P=(t,c,ti)=>`<span cla
   if(st==="pending"){const sp=staleSplit(d);if(sp.real.length)return P("Stale","bad",sp.real.join("; "));if(sp.retime)return P("New time needed","warn");if(d.ask?.to)return P(`Waiting for ${d.ask.to==="*"?"the team":nameOf(d.ask.to)}`,"warn");if(hasChecks(d)){const n=checkFacts(d).length;return P(`${n} fact${n===1?"":"s"} to check`,"warn")}return P("Ready to review","ok")}
   if(st==="hold")return g.asanaError?P("Asana task failed","bad",g.asanaError.message||""):P("To finish","warn","Finish the words and picture, then hand it to Asana");
   if(st==="scheduled"){if(!HO())return P("Scheduled","as");const sg=asanaStage(d);return P(sg[0],sg[1]==="bad"?"bad":"ok",sg[1]==="bad"?"Past its time and the Asana task isn't complete":"The Asana task is Ready to Post")}
+  if(st==="posted"&&sigOf(d))return P(`✍ ${anN(sigOf(d).signatures)} sign-up${sigOf(d).signatures===1?"":"s"}`,"ok","Petition sign-ups traced to this post, last 90 days (Looker)");
   if(st==="posted"){const bx=bestX(d.results);return bx==null?P("Results pending",""):P(`${bx}× normal`,"ok","Best network against the Page's normal")}
   if(st==="rejected"){const r=(d.review||{}).reasons||[];return P(r[0]||"No reason","")}
   return ""}
@@ -4218,7 +4223,7 @@ const sideSvg=(k,n=18)=>`<svg width="${n}" height="${n}" viewBox="0 0 24 24" fil
 const SIDE_NAV=[["make","Create",[["compose","New post"],["posts:pending","For review"],["posts:hold","Finishing"],["posts:scheduled","In Asana"],["posts:posted","Posted"],["evergreen","Evergreen"],["posts:rejected","Bin"]]],["plan","Plan",[["plan","Month"],["calendar:week","Week"],["calendar:list","List"],["calendar:grid","Instagram grid"]]],
   ["talk","Inbox",[["inbox:inbox","Conversations"],["inbox:mine","Assigned to me"],["inbox:posts","By post"],["inbox:autos","Automations"],["inbox:history","Moderation"],["inbox:team","Team"]]],
   ["listen","Listen",[["listening:rising","Rising now"],["listening:mentions","Mentions"],["listening:allies","Allies and opponents"],["listening:topics","Topics"],["listening:parliament","Parliament"],["listening:watches","Watches"]]],
-  ["learn","Reports",[["analytics:overview","Overview"],["analytics:audience","Audience"],["analytics:posts","Posts"],["analytics:talk","Conversations"],["analytics:campaigns","Campaigns"],["analytics:allies","Allies"],["analytics:leaderboard","Leaderboard"],["analytics:countries","Countries"]]],["tools","Tools",[["tools:home","All tools"],["tools:inviter","Page Inviter"],["tools:links","Tracked links"],["tools:bio","Link in bio"],["tools:make","Make"],["tools:claude","Claude connectors"],["tools:health","Health check"]]]];
+  ["learn","Reports",[["analytics:overview","Overview"],["analytics:signups","Sign-ups"],["analytics:audience","Audience"],["analytics:posts","Posts"],["analytics:talk","Conversations"],["analytics:campaigns","Campaigns"],["analytics:allies","Allies"],["analytics:leaderboard","Leaderboard"],["analytics:countries","Countries"]]],["tools","Tools",[["tools:home","All tools"],["tools:inviter","Page Inviter"],["tools:links","Tracked links"],["tools:bio","Link in bio"],["tools:make","Make"],["tools:claude","Claude connectors"],["tools:health","Health check"]]]];
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}};const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 const SIDE={open:lsGet("desk.sideOpen",{make:true}),fold:lsGet("desk.sideFold",false)};
 function applyTheme(t){const r=document.documentElement;r.setAttribute("data-theme","light");t="light";return;/* light only since 12 Nov */
@@ -6295,7 +6300,7 @@ function anCountries(D){const T=D.teams||[];if(!T.length)return `<p class="src">
    Countries; any date range with a comparison window; Ask your Claude on
    every section (the person's own Claude); CSV and print export; saved views
    for the team. Every figure comes from the nightly Meta collection. */
-const AN_TABS=[["overview","Overview"],["audience","Audience"],["posts","Posts"],["talk","Conversations"],["campaigns","Campaigns"],["allies","Allies"],["leaderboard","Leaderboard"],["countries","Countries"]];
+const AN_TABS=[["overview","Overview"],["signups","Sign-ups"],["audience","Audience"],["posts","Posts"],["talk","Conversations"],["campaigns","Campaigns"],["allies","Allies"],["leaderboard","Leaderboard"],["countries","Countries"]];
 const AN_MET=[["reach","Reach","reach"],["views","Views","views"],["engagements","Engagements","engagements"],["rate","Engagement rate","rate_per_view"],["net","Net follows","net_follows"],["video","Video views","video_views"]];
 const anUseR=()=>AN.custom||AN.cmp!=="previous";
 const anSrc=()=>anUseR()?AN.rdata:AN.data;
@@ -6465,12 +6470,31 @@ async function loadAnRange(fresh){if(!AN.custom&&AN.cmp==="previous"){AN.rdata=n
   AN.rloading=true;renderAnalytics();
   try{const a={scope:AN.scope,from,to,...(AN.scope==="team"?{team:S.team}:{}),...(AN.cmp==="none"?{compare:"none"}:AN.cmp==="custom"&&AN.cfrom?{compare_from:AN.cfrom}:{}),...(fresh?{fresh:true}:{})};const r=await eng("engine_analytics",a);if(r&&r.ok===false)throw new Error(r.error);AN.rdata=r;AN.rerr=null}catch(e){AN.rerr=e;AN.rdata=null}finally{AN.rloading=false;renderAnalytics()}}
 
+/* B1 Sign-ups per post (Chris, 12 Nov): Reports › Sign-ups ranks the team's posts by the petition sign-ups traced to each one (engine_signups), and posted desk posts carry a sign-up badge. */
+const SG={};
+function sgLoad(days,fresh){const key=`${S.team}:${days}`;if(SG[key]&&(SG[key].busy||!fresh))return SG[key];SG[key]={busy:true};
+  eng("engine_signups",{team:S.team,days,...(fresh?{fresh:true}:{})}).then(r=>{SG[key]=r||{}}).catch(e=>{SG[key]={err:e}}).finally(()=>{if(AN.tab==="signups"&&!$("#anView")?.hidden)renderAnalytics();if(days===90)renderQueue()});return SG[key]}
+function sigOf(d){if(!S.team)return null;const g=SG[`${S.team}:90`];if(!g){sgLoad(90);return null}const b=g.by_post&&g.by_post[d.id];return b&&b.signatures>0?b:null}
+function anSignups(){const days=[7,30,90].includes(AN.sgDays)?AN.sgDays:30;const g=sgLoad(days);const t=(S.teams||[]).find(x=>x.id===S.team);
+  const bar=`<div class="anbar"><span class="tabs">${[7,30,90].map(d=>`<button class="tab" data-sg-days="${d}" aria-pressed="${d===days}">${d} days</button>`).join("")}</span><span class="tabs">${[["signatures","Most sign-ups"],["per_1k","Per 1,000 reached"],["new_members","New members"]].map(([k,l])=>`<button class="tab" data-sg-sort="${k}" aria-pressed="${(AN.sgSort||"signatures")===k}">${l}</button>`).join("")}</span></div>`;
+  const lede=`<p class="src">Petition sign-ups traced to each post on ${esc(t?t.name:"your team")}'s accounts. Each day's signers who arrived from Facebook, Instagram or X go to the post of that link that was live that day (Looker, pulled each night). Posts without a tracked link can't be traced.</p>`;
+  if(g.busy)return bar+lede+`<p class="src">Loading sign-ups…</p>`;
+  if(g.err)return bar+lede+`<p class="offline">Couldn't load sign-ups (${esc(whyFailed(g.err))}).</p>`;
+  if(g.ready===false)return bar+lede+`<p class="src">Daily sign-ups aren't loaded yet. They fill after the next nightly pull.</p>`;
+  const sk=AN.sgSort||"signatures";const rows=[...(g.posts||[])].sort((a,b)=>(b[sk]??-1)-(a[sk]??-1));const T=g.totals||{};
+  const best=[...(g.posts||[])].filter(r=>r.per_1k!=null&&r.signatures>=5).sort((a,b)=>b.per_1k-a.per_1k)[0];
+  const tiles=`<div class="akpis sgk">${[[anN(T.signatures||0),"Sign-ups from posts",`${anN(T.new_members||0)} new members`],[anN(T.posts||0),"Posts with a tracked link",g.untraced?`${anN(g.untraced)} more had no tracked link`:"All posts traced"],[anN(T.first_days||0),"In each post's first 7 days",""],[best?anN(best.per_1k):"—","Best per 1,000 reached",best?(best.post?.title||best.account):""]].map(([v,l,s])=>`<div class="akpi"><b>${esc(v)}</b><span>${esc(l)}</span>${s?`<small class="src">${esc(s)}</small>`:""}</div>`).join("")}</div>`;
+  if(!rows.length)return bar+lede+tiles+emptyState("quiet","No traced sign-ups in these days","Posts need a tracked cgo.ac link. The desk adds one to every post it hands off.");
+  const mx=Math.max(1,...rows.map(r=>r[sk]||0));const pl={facebook:"f",instagram:"i",x:"X"};
+  return bar+lede+tiles+`<section class="rsbox"><div class="awrap"><table class="atbl sgtbl"><thead><tr><th>Post</th><th>Posted</th><th class="n">Reached</th><th class="n">Sign-ups</th><th class="n">New members</th><th class="n">Per 1k</th><th></th></tr></thead><tbody>${rows.map(r=>`<tr><td><span class="sgpost"><span class="ni ${({facebook:"f",instagram:"i",x:"x"})[r.platform]}">${pl[r.platform]}</span><span><b>${esc(r.post?.title||r.account)}</b><small class="src">${esc([r.post?r.account:"",r.petition_id?`petition ${r.petition_id}`:"",r.shared_with?`link also in ${r.shared_with} other post${r.shared_with===1?"":"s"}`:""].filter(Boolean).join(" · "))}</small></span></span></td><td>${esc(new Date(r.posted_at).toLocaleDateString("en-GB",{day:"numeric",month:"short"}))}</td><td class="n">${anN(r.audience)}</td><td class="n"><b>${anN(r.signatures)}</b></td><td class="n">${anN(r.new_members)}</td><td class="n">${r.per_1k==null?"—":anN(r.per_1k)}</td><td class="sgbar">${r.url?`<a class="src" href="${esc(r.url)}" target="_blank" rel="noopener">Open ↗</a>`:""}<i style="width:${Math.round(100*(r[sk]||0)/mx)}%"></i></td></tr>`).join("")}</tbody></table></div></section>`}
+document.addEventListener("click",ev=>{const a=ev.target.closest("[data-sg-days]");if(a){AN.sgDays=Number(a.dataset.sgDays);renderAnalytics();return}const b=ev.target.closest("[data-sg-sort]");if(b){AN.sgSort=b.dataset.sgSort;renderAnalytics()}});
 function renderAnalytics(){const el=$("#anView");if(!el||el.hidden)return;const D=AN.data,t=(S.teams||[]).find(x=>x.id===S.team);
   const tabs=`<div class="tabs antabs" role="tablist" aria-label="Analytics sections">${AN_TABS.map(([k,l])=>`<button class="tab" role="tab" data-an-tab="${k}" aria-selected="${AN.tab===k}" aria-pressed="${AN.tab===k}">${l}</button>`).join("")}</div>`;
   const lede=AN.tab==="countries"?"Every country team side by side.":AN.scope==="hazteoir"?"HazteOir, shown apart and never mixed into CitizenGO totals.":AN.scope==="team"?"Your team's own accounts.":"Every CitizenGO Page and account.";
   const head=`<div class="anhead"><div><p class="lede">${lede} Organic figures from Meta and X, collected every night.</p></div></div>${AN.tab==="countries"?`<div class="anbar"><span class="tabs">${[7,30,90].map(d=>`<button class="tab" data-an-days="${d}" aria-pressed="${AN.days===d}">${d} days</button>`).join("")}</span><span class="anbarr">${pageActs("anc","",[["data-an-csv","list","CSV of the countries"],["data-an-print","printer","Print or PDF"]],[])}</span></div>`:["allies","leaderboard"].includes(AN.tab)?"":anBar(t)}`;
   if(AN.tab==="allies"){el.innerHTML=head+anAllies();return}
   if(AN.tab==="leaderboard"){el.innerHTML=head+anLeaderboard();return}
+  if(AN.tab==="signups"){el.innerHTML=head+anSignups();return}
   if(AN.err){el.innerHTML=head+`<p class="offline">Couldn't load Analytics (${esc(whyFailed(AN.err))}).</p>`;return}
   if(!D){el.innerHTML=head+`<p class="src">${AN.loading?"Loading the figures…":"No figures yet."}</p>`;return}
   if(AN.tab==="countries"){el.innerHTML=head+(D.scope==="countries"?anCountries(D):`<p class="src">Loading…</p>`);return}
