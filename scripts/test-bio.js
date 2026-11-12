@@ -134,6 +134,7 @@ eq('page: what people typed is escaped', [html.includes('<script>x'), html.inclu
   eq('refresh: closed petitions with no recent post leave the saved list; pinned and removed stay', R.staleSaved({ items: [{ id: 'c' }, { id: 'k' }, { id: 'p', pinned: true }, { id: 'h', hidden: true }, { id: 'n' }] }, { auto: [{ id: 'k' }], all: [{ id: 'c', why: 'closed' }, { id: 'k', why: 'closed' }, { id: 'p', why: 'closed' }, { id: 'h', why: 'removed' }, { id: 'n', why: null }] }), ['c']);
 }
 
+eq('titles: first line of our post, without emoji', [B.titleFromText('📺 Sex. Satanic rituals. Mockery of Christ. All funded by you.\n\nMore'), B.titleFromText('👇\nhttps://x.y'), B.titleFromText('Faith is NOT a crime against humanity.\n\nGovernments at the UN')], ['Sex. Satanic rituals. Mockery of Christ. All funded by you.', null, 'Faith is NOT a crime against humanity.']);
 // Refresh end to end, against a fake store and a fake web.
 const refreshDone = (async () => {
   const R = require('../lib/bio-refresh');

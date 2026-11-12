@@ -4589,12 +4589,12 @@ function tlBio(){if(TL.bio&&TL.bio.team!==S.team){TL.bio=null;TL.bioDirty=false;
   const url=location.origin+B.path;const st=B.stats||{};const set=B.bio.settings||{};
   const ago=t=>{if(!t)return"";const m=Math.round((Date.now()-Date.parse(t))/6e4);return m<2?"just now":m<60?`${m} minutes ago`:m<1440?`${Math.round(m/60)} hours ago`:Math.round(m/1440)===1?"yesterday":`${Math.round(m/1440)} days ago`};
   const secs=(B.sections||["Act now","Pray with us","Get involved","More"]);
-  const TSRC={page:"title from its petition page",asana:"title from its Asana project",post:"title from our post",url:"title guessed from the address",id:"no title found yet"};
+  const TSRC={page:"title from its petition page",text:"title from the first line of our post",asana:"title from its Asana project",post:"title from our post",url:"title guessed from the address",id:"no title found yet"};
   const ISRC={page:"picture from its petition page",fb:"picture from our Facebook post",ig:"picture from our Instagram post"};
   // L7: one row per button: picture, title, where it came from, numbers, and a ⋯ menu.
   const row=(i,k)=>{const off=!i.shown;const why=i.why?BIO_WHY[i.why]||i.why:"";const pet=!!i.petition_id;
     const hint=i.asana_victory&&!i.won?`<span class="biohint">Asana says the petition's status changed. <button class="btn small" data-bio-flag="won" data-k="${k}">Mark as won</button></span>`:"";
-    const bad=i.title_bad&&!i.retitled?`<span class="biobad">${i.title_bad==="guess"||i.title_bad==="placeholder"?"Needs a real title":i.title_bad==="internal"?"Looks like a working name":"Check the capitals"}</span>`:"";
+    const bad=i.title_bad&&!i.retitled?`<span class="biobad">${i.title_bad==="guess"||i.title_bad==="placeholder"?"Needs a real title":i.title_bad==="internal"?"Looks like a working name":i.title_bad==="check"?"Taken from our post: check it":"Check the capitals"}</span>`:"";
     const tag=[B.hero===i.id?"<b>Top card</b>":"",i.won?"Recent wins":"",i.pinned?"Pinned":"",i.lead?"From the post that asked for the bio":i.auto?`Recent campaign${i.last_posted?`, posted ${esc(ago(i.last_posted))}`:""}`:"Added by hand",i.total!=null?`${anN(i.total)} signed${i.last14!=null?`, ${anN(i.last14)} in 14 days`:""}`:"",i.cd_date?`${esc(i.cd_label||"Ends")} ${esc(i.cd_date)}`:"",why?`<b>Not showing: ${esc(why)}</b>`:""].filter(Boolean).join(" · ");
     const src=pet?[i.retitled?"title set by hand":TSRC[i.title_src]||"",i.image?ISRC[i.image_src]||"":"no picture yet"].filter(Boolean).join(" · "):"";
     return `<div class="biorow${off?" off":""}${B.hero===i.id?" hero":""}" draggable="true" data-bio-k="${k}"><span class="biograb" aria-hidden="true" title="Drag to move">⋮⋮</span>
