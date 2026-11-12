@@ -1304,7 +1304,7 @@ async function engineBio(store, args, { who }) {
     items: L.all.map((i) => {
       const st = i.petition_id ? L.status[i.petition_id] || null : null;
       return { ...i, title_bad: B.badTitle(i.title) || (i.title_src === 'url' || i.title_src === 'id' ? 'guess' : i.title_src === 'text' && !i.retitled ? 'check' : null), page_title: (st && st.page_title) || null, image_src: (st && st.page_image && i.image === st.page_image && st.page_image_src) || (i.image ? 'ig' : null), saved: savedIds.has(i.id), shown: shown.has(i.id), clicks: clicks[i.id] || 0, signatures: i.petition_id ? sigs[i.petition_id] || 0 : null,
-        total: st && st.total != null ? st.total : null, last14: st && st.last14 != null ? st.last14 : null, asana_closed: !!(st && st.asana_closed), asana_victory: !!(st && st.asana_victory), asana_project: (st && st.asana_project) || null,
+        total: st && (st.site_total || st.total) != null ? Math.max(Number(st.site_total) || 0, Number(st.total) || 0) : null, share_url: (st && st.share_url) || null, last14: st && st.last14 != null ? st.last14 : null, asana_closed: !!(st && st.asana_closed), asana_victory: !!(st && st.asana_victory), asana_project: (st && st.asana_project) || null,
         last_posted: (L.auto.find((a) => a.id === i.id) || {}).last_posted || null };
     }),
     stats: { days, views: totalViews, views_by_source: views, clicks: totalClicks, rate: totalViews ? Math.round((100 * totalClicks) / totalViews) : null, signatures: Object.values(sigs).reduce((a, b) => a + b, 0), daily: series },
