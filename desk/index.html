@@ -1832,6 +1832,12 @@ body.vsopen{overflow:hidden}
 .cp-pm .vtlive.big canvas{width:100%;max-width:180px}
 #vstudio{z-index:1000}
 @media (max-width:600px){.cp-pm .cp-pmg{grid-template-columns:1fr}.cp-pm .vtlive.big canvas{max-width:160px}}
+/* O2 docked editor */
+#cpDlg.dock{inset:auto;position:fixed;border:1px solid var(--line);border-radius:12px;overflow:hidden;z-index:30;box-shadow:0 1px 3px rgba(16,24,40,.06)}
+#cpDlg.dock.full{inset:0;border-radius:0;z-index:60}
+#cpDlg.dock:not(.full) .cp-cols{grid-template-columns:58px minmax(0,1fr) minmax(260px,32%)}
+#cpDlg.dock:not(.full) .cp-top h2{font-size:18px}
+.cpdockph{min-height:calc(100vh - 140px)}
 /* B8 phone review deck */
 body.swmode #detail{display:none}
 .swback{display:flex;justify-content:flex-end;margin:0 0 8px}
@@ -2366,7 +2372,7 @@ document.addEventListener("focusout",()=>{setTimeout(()=>{if(S.renderWaiting&&!b
 function fmtWhen(ts){if(!ts)return"";const d=new Date(ts);return d.toLocaleString("en-GB",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})}
 function nameOf(id){if(id&&S.names[id])return S.names[id];if(id&&!/^u_/.test(id)){const n=String(id).split("@")[0];return n.charAt(0).toUpperCase()+n.slice(1)}return "Someone"}
 
-function renderDetail(){renderDetail0();try{fromBanner()}catch(e){/* Listening state not set up yet on first paint */}}
+function renderDetail(){renderDetail0();try{cpDockSync()}catch(e){console.error(e)}try{fromBanner()}catch(e){/* Listening state not set up yet on first paint */}}
 /* A draft the daily run made from a Listening rework: "From <Page>", the
    original's numbers and a link, from the drafted Plan request. */
 async function loadDraftedReqs(){if(!S.mcp||LS.reqsTeam===S.team)return;LS.reqsTeam=S.team;try{const r=await eng("engine_requests",{team:S.team,status:"drafted"});LS.reqs=r.requests||[];fromBanner()}catch(e){LS.reqs=[]}}
@@ -2560,7 +2566,7 @@ function finishOpener(d,st){const sp=staleSplit(d);const g=d.posting||{};
   const pic=d.fbTextOnly?`<div class="inopic">No picture: a text or link post</div>`:`<canvas id="card" width="1080" height="1080" role="img" aria-label="The post's picture"></canvas>`;
   return `<article class="draft v3 compose idea fin" data-st="${esc(st)}">${headHtml(d,st)}
     <div class="dmain">${rvPreview(d,pic,sp,asanaCard(d,st))}</div>
-    <div class="dfoot" role="group" aria-label="Finish"><div class="decide"><div class="row"><span class="src">${st==="scheduled"?"Change words, picture or time in Edit post; the Asana task updates within 5 minutes.":"Finish the words, picture and time in Edit post, then hand it off to Asana."}</span><button class="btn" data-act="oldWb">Show it here</button><button class="btn primary" data-act="finishCP">${st==="scheduled"?"Open in Edit post":"Finish in Edit post"}</button></div></div></div></article>`}
+    <div class="dfoot" role="group" aria-label="Finish"><div class="decide"><div class="row"><span class="src">${st==="scheduled"?"Change words, picture or time in Edit post; the Asana task updates within 5 minutes.":"Finish the words, picture and time in Edit post, then hand it off to Asana."}</span><button class="btn primary" data-act="finishCP">${st==="scheduled"?"Open in Edit post":"Finish in Edit post"}</button></div></div></div></article>`}
 function renderDetail0(){
   if(S.status==="evergreen"){renderEgDetail();return}
   const d=S.drafts.find(x=>x.id===S.openId);
@@ -2568,7 +2574,8 @@ function renderDetail0(){
   if(!d||!filtered().includes(d)){el.innerHTML=S.drafts.length?"":emptyState("none","Drafts open here","Pick one from the list.");return}
   const st=d.status||"pending";
   if(isIdea(d)||st==="rejected"){el.innerHTML=ideaView(d,st);if(!d.fbTextOnly)drawCard(d,null,null);savePrefs();return}
-  if(isFinish(d)&&S.db&&!S.oldWb){el.innerHTML=finishOpener(d,st);if(!d.fbTextOnly)drawCard(d,null,null);savePrefs();return}
+  if(isFinish(d)&&S.db&&cpDockable()){el.innerHTML=`<div class="cpdockph" aria-hidden="true"></div>`;savePrefs();cpDockOpen(d);return}
+  if(isFinish(d)&&S.db){el.innerHTML=finishOpener(d,st);if(!d.fbTextOnly)drawCard(d,null,null);savePrefs();return}
   if(isFinish(d)){el.innerHTML=finishView(d,st);{const r=$("#ready");if(r)r.outerHTML=readyBox(d)}drawCard(d,null,S.gPreview?.id===d.id?S.gPreview.card:null);drawThumbs(d);savePrefs();markPlatform(S.platform);refreshLane();return}
   const slides=d.card?.template==="carousel"?d.card.slides.length:1;
   if(S.platform==="all")S.platform="facebook";const ALL=false;const pf=PLATFORMS.find(p=>p.key===S.platform)||PLATFORMS[0];
@@ -4165,7 +4172,6 @@ document.addEventListener("click",async ev=>{
   const fc=b.closest("[data-fcol]");if(fc&&S.platform!==fc.dataset.fcol){S.platform=fc.dataset.fcol}
   const act=b.dataset.act;
   if(act==="finishCP"){openCP(d.id);return}
-  if(act==="oldWb"){S.oldWb=true;renderDetail();return}
   if(act==="prev"||act==="next"){const n=d.card.slides.length;S.slide=(S.slide+(act==="next"?1:n-1))%n;renderDetail();return}
   if(act==="copy"){const t=asPosts(textFor(d,S.platform)).map(x=>withLink(x,d,S.platform)).join("\n\n");try{await navigator.clipboard.writeText(t);toast("Copied")}catch(e){const sel=window.getSelection(),r=document.createRange();const el=$(".ptext");if(el){r.selectNodeContents(el);sel.removeAllRanges();sel.addRange(r)}toast("Text selected. Press Cmd+C to copy")}return}
   if(act==="draftprev"||act==="draftnext"){stepDraft(act==="draftnext"?1:-1);return}
@@ -7036,7 +7042,7 @@ function cpHasContent(d){return !!(String(d.title||"").trim()||["facebook","inst
 function cpTitle(d){const t=String(d.title||"").trim();if(t)return t;const f=(cpTxt(d,"facebook")||cpTxt(d,"instagram")).replace(/\[[^\]]*\]|https?:\/\/\S+/g,"").split("\n").map(x=>x.trim()).find(Boolean)||"";return f?f.slice(0,70):"Untitled post"}
 
 /* ---------- open, close, save ---------- */
-async function openCP(id){if(!S.db){toast("Sign in to the desk to write a post");return}
+async function openCP(id){if(!S.db){toast("Sign in to the desk to write a post");return}if(CP.open&&CP.dock){try{await cpFlush()}catch(e){}cpUndock()}
   if(matchMedia("(max-width:900px)").matches){$("#side")?.classList.remove("open");const sh=$("#sideShade");if(sh)sh.hidden=true}
   Object.assign(CP,{open:true,ai:false,vers:null,tags:null,cal:{},grid:null,slide:0,pane:"write",capTab:"same",accTab:"accounts",q:"",showHist:false,dupQ:"",startTab:""});
   CP.pileSt=null;CP.pileIds=[];
@@ -7050,7 +7056,7 @@ function cpLoad(d){CP.start=false;CP.id=d.id;CP.d=cpCopy(Object.fromEntries(Obje
   CP.eng=!d.own;CP.st=d.status||"pending";CP.orig=cpCopy(d.platforms||{});CP.ticks=CP.tickMap[d.id]||(CP.tickMap[d.id]=new Set());CP.fpop=null;CP.why=false;CP.state="";
   if(CP.eng||isFinish(d))S.openId=d.id}
 function cpBegin(seed){CP.start=false;CP.id=null;CP.saved=null;CP.edited=null;CP.eng=false;CP.st=null;CP.orig=null;CP.ticks=new Set();CP.fpop=null;CP.pileSt=null;CP.pileIds=[];CP.d=cpBlank(seed);CP.at=nextFreeSlot(CP.d.posting.destinations);CP.check="";cpRender();setTimeout(()=>cpEl("#cpText")?.focus(),0)}
-async function closeCP(){if(!CP.open)return;try{await cpFlush()}catch(e){}CP.open=false;$("#cpDlg").hidden=true;document.body.classList.remove("cpopen");renderAll();renderSide()}
+async function closeCP(){if(!CP.open)return;const wasDock=CP.dock;try{await cpFlush()}catch(e){}cpUndock();CP.open=false;$("#cpDlg").hidden=true;document.body.classList.remove("cpopen");if(wasDock){renderSide();return}renderAll();renderSide()}
 /* The patch for engine_save: changed keys only; an object key that went away is sent as null (mergeDoc deletes it). */
 function cpPatch(){const d=CP.d,o=CP.saved||{};const p={};
   for(const k of CP_KEYS){const a=d[k],b=o[k];if(JSON.stringify(a)===JSON.stringify(b))continue;
@@ -7082,8 +7088,27 @@ function cpHistory(){const d=CP.d,o=CP.saved;if(!o)return;const w=x=>JSON.string
 function cpRenderKeep(){const m=cpEl(".cp-mid"),pv=cpEl(".cp-prev");const a=m?m.scrollTop:0,b=pv?pv.scrollTop:0;const f=document.activeElement&&document.activeElement.id;cpRender();const m2=cpEl(".cp-mid"),p2=cpEl(".cp-prev");if(m2)m2.scrollTop=a;if(p2)p2.scrollTop=b;if(f&&f!=="cpText"){const el=document.getElementById(f);if(el&&el.focus)el.focus()}}
 const CPI={"clock": "<svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M3 12a9 9 0 1 0 3-6.7L3 8\"/><path d=\"M3 3v5h5M12 7v5l3 2\"/></svg>", "trash": "<svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3\"/></svg>", "copy": "<svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect x=\"8\" y=\"8\" width=\"12\" height=\"12\" rx=\"2\"/><path d=\"M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3\"/></svg>", "back": "<svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M9 14L4 9l5-5\"/><path d=\"M4 9h11a5 5 0 0 1 0 10h-3\"/></svg>", "cal": "<svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect x=\"4\" y=\"5\" width=\"16\" height=\"15\" rx=\"2\"/><path d=\"M4 10h16M9 3v4M15 3v4\"/></svg>", "pen": "<svg width=\"15\" height=\"15\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M4 20h4L19 9l-4-4L4 16z\"/></svg>"};
 /* Edit post (Chris, 12 Nov, Agorapulse): title and history on the left, ‹ n of m › and close on the right; delete, duplicate and back sit in the bottom bar. */
+/* O2 (12 Nov, Chris): one editor. On a laptop a post in Finishing or In Asana opens straight in Edit post, docked in the
+   right-hand panel so the list stays in view; ⤢ makes it full screen. Phones keep the full-screen editor. */
+function cpDockable(){return matchMedia("(min-width:901px)").matches&&(S.view||"posts")==="posts"&&S.status!=="evergreen"}
+async function cpDockOpen(d){if(CP.open&&CP.dock&&CP.id===d.id){cpDockPos();return}
+  if(CP.open&&CP.dock&&CP.id!==d.id){try{await cpFlush()}catch(e){failToast(e,"Couldn't save the last post");}const x=S.drafts.find(y=>y.id===d.id);if(!x)return;
+    Object.assign(CP,{ai:false,vers:null,tags:null,slide:0,showHist:false,pop:null,addm:false,lib:false,link:null,linkOpen:false,grid:null});cpLoad(x);resetDraftUi();cpRender();const m=cpEl(".cp-mid");if(m)m.scrollTop=0;cpDockPos();return}
+  if(CP.open&&!CP.dock)return;/* a full-screen editor is already open */
+  await openCP(d.id);if(!CP.open||CP.id!==d.id)return;CP.dock=true;CP.full=false;CP.accFoldWas=CP.accFold;CP.accFold=true;
+  $("#cpDlg").classList.add("dock");document.body.classList.remove("cpopen");document.body.classList.add("cpdocked");cpRender();cpDockPos()}
+function cpDockPos(){const g=$("#cpDlg");if(!g||!CP.dock)return;if(CP.full){["top","left","width","height"].forEach(k=>g.style[k]="");return}
+  const r=$("#detail")?.getBoundingClientRect();if(!r||!r.width){return}const top=Math.max(r.top,8),bottom=Math.min(window.innerHeight-8,Math.max(r.bottom,window.innerHeight-8));
+  Object.assign(g.style,{top:top+"px",left:r.left+"px",width:r.width+"px",height:(bottom-top)+"px"})}
+function cpUndock(){const g=$("#cpDlg");CP.dock=false;CP.full=false;if(CP.accFoldWas!==undefined){CP.accFold=CP.accFoldWas;CP.accFoldWas=undefined}if(g){g.classList.remove("dock","full");["top","left","width","height"].forEach(k=>g.style[k]="")}document.body.classList.remove("cpdocked")}
+function cpDockSync(){if(!CP.open||!CP.dock)return;const d=S.drafts.find(x=>x.id===S.openId);
+  if(!cpDockable()||!d||d.id!==CP.id||!isFinish(d)||!filtered().includes(d)){cpUndock();closeCP();return}cpDockPos()}
+function cpFullToggle(){CP.full=!CP.full;const g=$("#cpDlg");g.classList.toggle("full",CP.full);document.body.classList.toggle("cpopen",CP.full);cpDockPos();cpRender()}
+window.addEventListener("resize",()=>{if(CP.open&&CP.dock){if(!cpDockable()){cpUndock();cpRender();document.body.classList.add("cpopen")}else cpDockPos()}});
+document.addEventListener("scroll",()=>{if(CP.open&&CP.dock)cpDockPos()},{passive:true,capture:true});
+setInterval(()=>{if(CP.open&&CP.dock){const r=$("#detail")?.getBoundingClientRect();if(!r||!r.width){cpUndock();closeCP()}else cpDockPos()}},500);
 function cpHead(){const fin=!CP.start&&CP.id&&["hold","scheduled"].includes(CP.st);const stw=CP.st==="scheduled"?(HO()?"In Asana":"Scheduled"):"Finishing";
-  return `<header class="cp-top"><h2>${CP.start||!CP.id?"Create post":"Edit post"}</h2>${CP.start?"":`${(CP.d.history||[]).length?`<button class="btn small cp-ic" data-cp="hist" aria-expanded="${CP.showHist}" title="History (${CP.d.history.length} changes)" aria-label="History">${CPI.clock}</button>`:""}${fin?`<span class="chip cp-stg ${esc(CP.st)}">${stw}</span>`:""}<span class="src" id="cpSaved" aria-live="polite">${esc(CP.state||(CP.id?"Saved":"Not saved yet"))}</span>`}<span class="sp"></span>${CP.start?"":cpFilm()}<button class="btn small cp-ic" data-cp="close" aria-label="Close" title="Close">✕</button></header>`}
+  return `<header class="cp-top"><h2>${CP.start||!CP.id?"Create post":"Edit post"}</h2>${CP.start?"":`${(CP.d.history||[]).length?`<button class="btn small cp-ic" data-cp="hist" aria-expanded="${CP.showHist}" title="History (${CP.d.history.length} changes)" aria-label="History">${CPI.clock}</button>`:""}${fin?`<span class="chip cp-stg ${esc(CP.st)}">${stw}</span>`:""}<span class="src" id="cpSaved" aria-live="polite">${esc(CP.state||(CP.id?"Saved":"Not saved yet"))}</span>`}<span class="sp"></span>${CP.start||CP.dock?"":cpFilm()}${CP.dock?`<button class="btn small" data-cp="full" title="${CP.full?"Back to the panel":"Full screen"}">${CP.full?"⤡ Back to the panel":"⤢ Full screen"}</button>`:""}${CP.dock&&!CP.full?"":`<button class="btn small cp-ic" data-cp="close" aria-label="Close" title="Close">✕</button>`}</header>`}
 /* N1: the pile you opened from (Editing, Scheduled, or your own drafts) as thumbnails, with ‹ › to move through it without going back to the board. */
 function cpPileFrom(d){const st=tabOf(d);const keep=S.status;let L=[];try{S.status=st;L=filtered().filter(isFinish)}catch(e){L=[]}finally{S.status=keep}
   if(!L.some(x=>x.id===d.id))L=[d,...L];CP.pileSt=st;CP.pileIds=L.map(x=>x.id)}
@@ -7097,7 +7122,7 @@ async function cpGo(id){if(!id||id===CP.id)return;try{await cpFlush()}catch(e){f
 function cpStep(dir){const p=(CP.pileIds||[]).filter(id=>S.drafts.some(x=>x.id===id));const i=p.indexOf(CP.id);if(p.length<2)return;cpGo(p[(i+dir+p.length)%p.length])}
 async function cpMove(status){const id=CP.id;try{await cpFlush()}catch(e){}const x=S.drafts.find(y=>y.id===id);if(!x)return;const next=cpNextId();
   await setStatus(x,status,status==="rejected"?{note:"Binned in Compose",reasons:[]}:{});const now=S.drafts.find(y=>y.id===id);if(!now||tabOf(now)!==status)return;
-  if(next){cpGo(next)}else{CP.open=false;$("#cpDlg").hidden=true;document.body.classList.remove("cpopen");S.status=CP.pileSt||S.status;S.openId=null;renderAll();renderSide()}}
+  if(next){cpGo(next)}else{cpUndock();CP.open=false;$("#cpDlg").hidden=true;document.body.classList.remove("cpopen");S.status=CP.pileSt||S.status;S.openId=null;renderAll();renderSide()}}
 /* The board can change a post while it's open here (a clip cut, the morning run): take what changed that you haven't touched. */
 function cpSync(){if(!CP.open||CP.start||!CP.id||!CP.saved)return;const x=S.drafts.find(y=>y.id===CP.id);if(!x)return;let ch=false;const d=CP.d,o=CP.saved;
   const J=JSON.stringify;const srv={...x,platforms:{facebook:cpTxt(x,"facebook"),instagram:cpTxt(x,"instagram"),x:textFor(x,"x")||"",...(textFor(x,"facebookComment")!=null?{facebookComment:cpTxt(x,"facebookComment")}:{}),...(textFor(x,"instagramComment")!=null?{instagramComment:cpTxt(x,"instagramComment")}:{})}};
@@ -7521,7 +7546,8 @@ document.addEventListener("click",async ev=>{const box=ev.target.closest("#cpBox
   if(ds.cpUse!=null){cpUse(+ds.cpUse);return}
   if(ds.cpRestore!=null){const h=(d.history||[])[+ds.cpRestore];if(!h)return;if(!confirm("Put these earlier words back? The current words go into the history."))return;cpHistory();d.platforms={...d.platforms,facebook:h.facebook||"",instagram:h.instagram||"",...(h.facebookComment!=null?{facebookComment:h.facebookComment}:{}),...(h.instagramComment!=null?{instagramComment:h.instagramComment}:{})};CP.showHist=false;cpSaveSoon();cpRenderKeep();toast("Restored");return}
   const a=ds.cp;if(!a)return;
-  if(a==="close"){closeCP();return}
+  if(a==="full"){cpFullToggle();return}
+  if(a==="close"){if(CP.dock&&CP.full){cpFullToggle();return}closeCP();return}
   if(a==="blank"){cpBegin();return}
   if(a==="hist"){CP.showHist=!CP.showHist;cpRenderKeep();return}
   if(a==="accfold"){CP.accFold=!CP.accFold;cpRenderKeep();return}
@@ -7576,7 +7602,7 @@ window.addEventListener("resize",()=>{if(CP.open)cpHlSync()});
 if(window.ResizeObserver)new ResizeObserver(()=>{if(CP.open)cpHlSync()}).observe(document.documentElement);
 document.addEventListener("mousemove",ev=>{if(CP.open&&ev.buttons&&ev.target.id==="cpText")cpHlSync()});
 document.addEventListener("keydown",ev=>{if(!CP.open)return;
-  if(ev.key==="Escape"){if(CP.pop){CP.pop=null;cpRenderKeep()}else closeCP();ev.preventDefault();ev.stopPropagation();return}
+  if(ev.key==="Escape"){if(CP.pop){CP.pop=null;cpRenderKeep()}else if(CP.dock){if(CP.full)cpFullToggle();else return}else closeCP();ev.preventDefault();ev.stopPropagation();return}
   if(ev.key==="Enter"&&(ev.metaKey||ev.ctrlKey)&&!CP.start){ev.preventDefault();ev.stopPropagation();if(CP.check)cpAsk();else cpPublish(false);return}
   if(ev.target.id==="cpNote"&&ev.key==="Enter"){ev.preventDefault();cpNote();return}
   if(ev.target.id==="cpLink"&&ev.key==="Enter"){ev.preventDefault();cpLink(ev.target.value.trim());return}
