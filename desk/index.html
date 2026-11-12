@@ -1628,17 +1628,66 @@ input[type=date],input[type=time],input[type=datetime-local],select,input[type=s
 }
 /* 12 Nov (Chris: "cut all the suggestions"): page ? button, calendar country pins and Filters, Talk Focus and Clean up, Listening Pictures/List switch, Tools tile status lines */
 #pageHelpBtn,.calpins,.fwrap:has(>[data-fp="cal"]),[data-ibf-start],[data-ib-clean="on"],.rsview,.tlcard .tlst{display:none!important}
+/* P1 (12 Nov): slim list on the left, the post preview takes the rest */
+.qtable .qitem{grid-template-columns:4px 40px minmax(0,1fr)!important;padding:8px 10px 8px 0}
+.qtable .qacc,.qtable .qtm{display:flex!important}
+.qtable .qm{gap:6px;align-items:center;margin-top:3px}.qtable .qtm{font-size:12px;color:var(--fg)}
+.qtable .qready{margin-top:4px}.qtable .qt{font-size:13.5px}
+@media (min-width:961px){.desk{grid-template-columns:330px minmax(0,1fr)!important}}
+@media (min-width:1500px){.desk{grid-template-columns:380px minmax(0,1fr)!important}}
+.rvtabs{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:10px 20px 0}.rvtabs .src{margin-left:auto;font-size:12.5px}
+.rvgrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(220px,280px);gap:18px;padding:12px 20px 18px;align-items:start}
+.rvstage{background:var(--sunk);border-radius:10px;padding:18px;display:flex;justify-content:center;min-width:0}
+.rvpost{width:100%;max-width:460px;box-shadow:0 1px 4px rgba(20,30,50,.08)}
+.rvpost.x{border-radius:16px}.rvpost.x .rvpic{padding:0 12px 8px}.rvpost.x .rvpic canvas{border-radius:14px}
+.rvpic canvas,.rvpic .inopic{width:100%;height:auto;display:block}.rvpic .inopic{padding:14px;color:var(--muted);font-size:13px;background:var(--surface);border-top:1px solid var(--line)}
+.rvreact{display:flex;justify-content:space-around;border-top:1px solid var(--line);padding:7px;color:var(--muted);font-weight:700;font-size:12.5px}
+.rvvid{width:100%;max-width:320px}
+.rvside{display:flex;flex-direction:column;gap:12px;min-width:0}
+.rvbox{border:1px solid var(--line);border-radius:10px;padding:12px;background:var(--surface)}.rvbox h3{margin:0 0 6px;font-size:14px}
+.rvck{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;font-size:13px}
+.rvck li{display:flex;gap:7px;align-items:flex-start}.rvck i{font-style:normal;font-weight:800;width:14px;flex:none}
+.rvck li.ok i{color:var(--ok)}.rvck li.warn i{color:#b26b00}.rvck li.bad i{color:var(--bad)}
+.rvgrid.vid{grid-template-columns:minmax(0,320px) minmax(0,1fr)}
+@container (max-width:720px){.rvgrid,.rvgrid.vid{grid-template-columns:minmax(0,1fr)}.rvstage{padding:10px}}
+/* S3 (Chris, 12 Nov): a labelled rail and no side menu on a laptop; each section's pages are tabs across the top */
+.sectabs{display:none}
+@media (min-width:901px){
+  .shell,.shell.folded{grid-template-columns:76px minmax(0,1fr)}
+  .shell .side{display:none!important}
+  .rfold{display:none!important}
+  .ri{width:66px;height:auto;min-height:44px;padding:6px 2px 5px;flex-direction:column;gap:3px}
+  .ri .rl{display:block;font-size:10.5px;font-weight:700;line-height:1.15;text-align:center;white-space:nowrap}
+  #railHelpSlot .hmbtn{width:66px;height:auto;min-height:44px;padding:6px 2px 5px;display:flex;flex-direction:column;align-items:center;gap:3px}
+  #railHelpSlot .hml{display:block;font-size:0}#railHelpSlot .hml::after{content:"Help";font-size:10.5px;font-weight:700}
+  .ravatar i{width:22px;height:22px;font-size:10px}
+  .rdot{right:8px}
+  .bellpop{left:84px!important}
+  #viewTitle{display:none}
+  .sectabs{display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-width:0}
+  .sectabs .stl{font-size:20px;font-weight:800;margin-right:6px}
+  .sectabs .stabs{display:flex;gap:2px;flex-wrap:wrap}
+  .sectabs .tab{border:0;background:none;padding:6px 10px;border-radius:6px;font:inherit;font-weight:700;font-size:13.5px;color:var(--muted);cursor:pointer;display:flex;align-items:center;gap:6px}
+  .sectabs .tab:hover{background:var(--sunk);color:var(--fg)}
+  .sectabs .tab[aria-current="page"]{background:var(--accent-soft);color:var(--accent)}
+  .sectabs .tab .n{font-size:11px;background:var(--accent);color:#fff;border-radius:999px;padding:0 6px;font-weight:700}
+  .sectabs .snew2{margin-left:4px}
+  #statusTabs{display:none!important}
+  .calvt{display:none!important}
+}
+#detail .draft.v3:has(>.fopen){display:flex!important;flex-direction:column}#detail .fopen canvas{width:300px;height:375px}
+
 /* ===== end Agorapulse look ===== */
 </style>
 
 <div class="shell">
 <nav class="rail" id="rail" aria-label="Sections"><div class="rtop" id="railSecs"></div><div class="rdock" id="railDock">
-  <button type="button" class="ri rcompose" data-nav="compose" title="New post" aria-label="New post"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 3L10 14M21 3l-7 18-4-7-7-4z"/></svg></button>
+  <button type="button" class="ri rcompose" data-nav="compose" title="New post" aria-label="New post"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 3L10 14M21 3l-7 18-4-7-7-4z"/></svg><span class="rl">New post</span></button>
   <span class="rsep" aria-hidden="true"></span>
-  <button type="button" class="ri" id="railBell" title="For you" aria-label="For you" aria-haspopup="dialog"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg><span class="rdot bad" id="railBellN" hidden></span></button>
-  <button type="button" class="ri" id="railAdd" title="Add" aria-label="Add" aria-haspopup="menu"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
+  <button type="button" class="ri" id="railBell" title="For you" aria-label="For you" aria-haspopup="dialog"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg><span class="rl">For you</span><span class="rdot bad" id="railBellN" hidden></span></button>
+  <button type="button" class="ri" id="railAdd" title="Add" aria-label="Add" aria-haspopup="menu"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span class="rl">Add</span></button>
   <span id="railHelpSlot"></span>
-  <button type="button" class="ri ravatar" id="railMe" title="You, your country and settings" aria-label="You, your country and settings" aria-haspopup="dialog" aria-expanded="false"><i id="railMeIni">?</i></button>
+  <button type="button" class="ri ravatar" id="railMe" title="You, your country and settings" aria-label="You, your country and settings" aria-haspopup="dialog" aria-expanded="false"><i id="railMeIni">?</i><span class="rl">You</span></button>
 </div></nav>
 <div class="profpop" id="profPop" role="dialog" aria-label="You and your country" hidden>
   <div class="pp-sec"><div class="pp-row"><i class="pp-av pp-team" id="ppTeamIni">GO</i><b id="ppTeamName">Country</b></div><div id="ppTeamSlot"></div></div>
@@ -1660,7 +1709,7 @@ input[type=date],input[type=time],input[type=datetime-local],select,input[type=s
 <nav class="botnav" id="botNav" aria-label="Main sections"></nav>
 <div class="wrap">
   <header class="top">
-    <div class="brandline"><button class="btn small menuBtn" data-side="open" aria-label="Menu">☰</button><h1 id="viewTitle">Posts</h1><span class="eyebrow" id="teamLine">CitizenGO · Content Engine</span></div>
+    <div class="brandline"><button class="btn small menuBtn" data-side="open" aria-label="Menu">☰</button><h1 id="viewTitle">Posts</h1><nav class="sectabs" id="secTabs" aria-label="Pages in this section"></nav><span class="eyebrow" id="teamLine">CitizenGO · Content Engine</span></div>
     <div class="tabs" role="group" aria-label="View" id="viewTabs" hidden><button class="tab" data-view="posts" aria-pressed="true">Posts</button><button class="tab" data-view="evergreen" aria-pressed="false" title="Evergreen bank: past winners due a fresh version"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19c0-8 6-14 15-14 0 9-6 15-14 15M5 19l7-7"/></svg>Evergreen</button><button class="tab" data-view="calendar" aria-pressed="false">Calendar</button><button class="tab" data-view="plan" aria-pressed="false">Plan</button><button class="tab" data-view="inbox" aria-pressed="false">Inbox<span id="ibCount"></span></button><button class="tab" data-view="listening" aria-pressed="false">Listening</button><button class="tab" data-view="analytics" aria-pressed="false">Analytics</button></div>
     <div class="tabs" role="group" aria-label="Filter by status" id="statusTabs"></div>
     <div class="filters">
@@ -1824,17 +1873,15 @@ function renderQueue(){
   const qtime=d=>{const t=whenOf(d);return t&&groupOf(d)!=="Needs a new time"?t.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"}):"—"};
   /* Drafts board B (Chris, 12 Nov): one row per draft by day, with a tick, accounts, time and one "ready?" pill; the open draft sits in the panel on the right. Ticks act on several at once. */
   const tickable=["pending","videos"].includes(S.status)&&!!S.db;if(!S.ticks)S.ticks=new Set();for(const id of [...S.ticks])if(!list.some(d=>d.id===id))S.ticks.delete(id);
-  const head=`<div class="qhead" aria-hidden="true">${tickable?"<span></span>":""}<span></span><span>Draft</span><span>Accounts</span><span>Time</span><span>Ready?</span></div>`;
+  const head="";
   $("#queue").innerHTML=newBar()+bulkBar(list,tickable)+trashBar()+`<div class="qtable${tickable?" tick":""}">`+head+list.map(d=>{const g=grouped?qday(d):null;const gh=g&&g!==lastG?`<div class="qgroup">${esc(g)}<span>${list.filter(x=>qday(x)===g).length}</span></div>`:"";lastG=g;const vid=isVidIdea(d);
     return gh+`<div class="qslot qrow">${tickable?`<label class="qtick"><input type="checkbox" data-tick="${esc(d.id)}"${S.ticks.has(d.id)?" checked":""} aria-label="Tick ${esc(d.title)}"></label>`:""}
     <button class="qitem" data-id="${esc(d.id)}" data-status="${esc(d.status||"pending")}" data-tone="${qTone(d)}" aria-current="${d.id===S.openId}">
       <span class="stripe"></span>
       ${vid?`<span class="qthumb qvid" aria-hidden="true">▶</span>`:`<canvas class="qthumb" data-q="${esc(d.id)}" width="10" height="10" aria-hidden="true"></canvas>`}
-      <span class="qbody"><span class="qt">${esc(d.title)}</span>
-      <span class="qm"><span>${esc(vid?"Video idea":d.type||"")}</span>${d.issue?`<span>${esc(d.issue)}</span>`:""}${d.launch?`<span>Launch pack</span>`:""}</span></span>
-      <span class="qacc">${vid?"":qAccts(d)}</span>
-      <span class="qtm">${grouped?esc(qtime(d)):""}</span>
-      <span class="qready">${qPill(d)}</span>
+      <span class="qbody"><span class="qt" title="${esc([vid?"Video idea":d.type,d.issue,d.launch?"Launch pack":""].filter(Boolean).join(" · "))}">${esc(d.title)}</span>
+      <span class="qm">${grouped?`<b class="qtm">${esc(qtime(d))}</b>`:""}<span class="qacc">${vid?"Video idea":qAccts(d)}</span></span>
+      <span class="qready">${qPill(d)}</span></span>
     </button></div>`}).join("")+`</div>`;
   document.querySelectorAll("canvas.qthumb").forEach(cv=>{const d=S.drafts.find(x=>x.id===cv.dataset.q);if(!d||!d.card)return;const c=d.card.template==="carousel"&&HOUSE_T.has(d.card.slides?.[0]?.template)?d.card.slides[0]:d.card;try{const k=S.slide;S.slide=0;drawCard(d,cv,c);S.slide=k}catch(e){}});
 }
@@ -2154,18 +2201,34 @@ function ideaView(d,st){
   const facts=[nf?`${nf} fact${nf===1?"":"s"} with sources`:"",cf?`${cf} to check when you finish it`:""].filter(Boolean).join(", ");
   return `<article class="draft v3 compose idea" data-st="${esc(st)}">
     ${headHtml(d,st)}
-    <div class="dmain"><div class="igrid">
-      <div class="itext">
-        ${sp.real.length?`<div class="inote">Might be out of date: ${esc(sp.real.join("; "))}</div>`:""}
-        ${isVidIdea(d)?vidIdeaBox(d):""}
-        ${isVidIdea(d)?"":`<p class="iopen">${esc(first)}${more?"…":""}</p>`}
-        ${d.videoIdea&&!isVidIdea(d)?vidIdeaBox(d):""}
-        ${(d.modelledOn||[]).map(m=>`<div class="model"><a href="${esc(m.url)}" target="_blank" rel="noopener">${esc(m.label)}</a><span class="m">${esc(m.metric)}</span></div>`).join("")}
-      </div>
-      <figure class="ipic">${pic}</figure>
-    </div></div>
+    <div class="dmain">${rvPreview(d,pic,sp)}</div>
     <div class="dfoot" role="group" aria-label="Decide">${mobileBar(d,st)}<div class="decide">${ideaDecide(d)}</div></div>
   </article>`}
+/* P1 (Chris, 12 Nov): For review shows the post the way it will look on Facebook, Instagram or X, with a slim list beside it and the checks in a column. */
+function rvPlats(d){const ds=((d.posting||{}).destinations)||defaultDests(d);const ps=["facebook","instagram","x"].filter(p=>ds.some(k=>platOfKey(k)===p));return ps.length?ps:["facebook"]}
+function rvPreview(d,pic,sp){const vid=isVidIdea(d);const ps=rvPlats(d);const tab=ps.includes(S.platform)?S.platform:ps[0];
+  const ds=((d.posting||{}).destinations)||defaultDests(d);const acc=ds.find(k=>platOfKey(k)===tab);const tm=(S.teams||[]).find(x=>x.id===S.team);const ac=tm&&(tm.accounts||[]).find(x=>x.key===acc);const nm=(ac&&(tab==="facebook"?ac.name:(ac.handle||ac.name)))||"CitizenGO";
+  const w=whenOf(d);const when=w?w.toLocaleString("en-GB",{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}):"No time yet";
+  const short=v=>String(v).replace(/(https?:\/\/[^\s?]+)\?\S+/g,"$1");
+  const txt=short(asPosts(textFor(d,tab)).map(x=>withLink(x,d,tab)).filter(Boolean).join("\n\n— next post in the thread —\n\n"));
+  const cmK=tab==="facebook"?"facebookComment":tab==="instagram"?"instagramComment":null;const cm=cmK&&textFor(d,cmK)?short(withLink(asPosts(textFor(d,cmK)).join("\n"),d,tab)):"";
+  const xl=tab==="x"?asPosts(textFor(d,"x")).map(x=>xLen(withLink(x,d,"x"))):[];
+  const tabs=vid?"":`<div class="rvtabs" role="group" aria-label="Network">${ps.map(p=>`<button class="tab" data-platform="${p}" aria-pressed="${p===tab}">${{facebook:"Facebook",instagram:"Instagram",x:"X"}[p]}</button>`).join("")}<span class="src">${esc(when)}</span></div>`;
+  const post=vid?`<div class="rvvid">${pic}</div>`:`<div class="cp-post rvpost ${tab}"><div class="cp-who"><span class="av">GO</span><div><b>${esc(tab==="x"?"@"+String(nm).replace(/^@/,""):nm)}</b><small>${esc(when)}${tab==="x"&&xl.length?` · ${xl.map(n=>n+"/280").join(", ")}`:""}</small></div></div>
+     ${tab==="instagram"?`<div class="rvpic">${pic}</div><div class="cp-ptx">${esc(txt)||'<span class="src">No words for Instagram yet</span>'}</div>`:`<div class="cp-ptx">${esc(txt)||`<span class="src">No words for ${tab==="x"?"X":"Facebook"} yet</span>`}</div><div class="rvpic">${pic}</div>`}
+     ${cm?`<div class="cp-pcm">💬 First comment: ${esc(cm)}</div>`:""}
+     <div class="rvreact"><span>${tab==="x"?"Reply":"Like"}</span><span>${tab==="x"?"Repost":"Comment"}</span><span>Share</span></div></div>`;
+  const cf=checkFacts(d);const words=["facebook","instagram","x"].filter(p=>ps.includes(p));
+  const ck=(ok,t,warn)=>`<li class="${ok?"ok":warn?"warn":"bad"}"><i aria-hidden="true">${ok?"✓":"!"}</i><span>${t}</span></li>`;
+  const checks=vid?"":`<section class="rvbox"><h3>Before it goes</h3><ul class="rvck">
+     ${words.map(p=>{const t=asPosts(textFor(d,p)).join("");return ck(!!t.trim(),`Words for ${{facebook:"Facebook",instagram:"Instagram",x:"X"}[p]}${p==="x"&&xl.some(n=>n>280)?": too long":""}`,true)}).join("")}
+     ${ck(!!(d.card||d.fbTextOnly),d.fbTextOnly?"No picture (text or link post)":"Picture",true)}
+     ${d.action?.url?ck(true,"Petition link (tracked)"):""}
+     ${(d.facts||[]).length?ck(!cf.length,cf.length?`${cf.length} fact${cf.length===1?"":"s"} to check: ${cf.map(x=>`“${esc(x.f.claim||"")}”`).join(", ")}`:`${d.facts.length} fact${d.facts.length===1?"":"s"} with sources`,true):""}
+     ${sp.real.length?ck(false,"Might be out of date: "+esc(sp.real.join("; ")),true):sp.retime?ck(false,"Its time has passed: pick a new one in Finishing",true):ck(!!w,w?"Time: "+esc(when):"No time yet",true)}
+   </ul></section>`;
+  const extra=`${vid||d.videoIdea?vidIdeaBox(d):""}${(d.modelledOn||[]).map(m=>`<div class="model"><a href="${esc(m.url)}" target="_blank" rel="noopener">${esc(m.label)}</a><span class="m">${esc(m.metric)}</span></div>`).join("")}`;
+  return `${tabs}<div class="rvgrid${vid?" vid":""}"><div class="rvstage">${post}</div><aside class="rvside">${checks}${extra}</aside></div>`}
 function reasonBar(isRej){return `<div class="row"><b style="font-size:13.5px">${isRej?"Why reject it?":"What needs to change?"}</b><span class="src">${isRej?`It goes to the Bin, and the morning run learns from the reasons.`:""}</span></div>
     <div class="reasons">${REJECT_REASONS.map(r=>`<button class="reason" data-reason="${esc(r)}" aria-pressed="${S.picked.has(r)}">${esc(r)}</button>`).join("")}</div>
     <div class="row"><input type="text" id="decNote" placeholder="${isRej?"Anything else? (optional)":"Describe the change"}"><button class="btn ${isRej?"bad":"warn"}" data-act="${isRej?"confirmReject":"confirmChanges"}">${isRej?"Reject":"Send back for changes"}</button><button class="btn" data-act="cancelMode">Cancel</button></div>`}
@@ -2442,7 +2505,7 @@ function vidIdeaBox(d){const v=d.videoIdea;if(!v||!v.prompts)return"";
     <ol>${(v.beats||[]).map((b,i)=>`<li><span class="t">${esc(tm[i]||"")}</span><span>${viHl(b.text)}${b.look==="blue"?' <small class="src">(blue screen)</small>':""}${b.shot?`<span class="shot">Shot: ${esc(b.shot)}</span>`:""}</span></li>`).join("")}${v.ask?`<li><span class="t">end</span><span>${esc(v.ask)}</span></li>`:""}</ol>
     ${done?`<small class="src">✓ The video is uploaded.</small>`:`<div class="vibox"><div class="vitop"><span class="viseg" role="group" aria-label="Prompt for">${seg("make")}${seg("film")}</span><span class="row" style="gap:6px;margin:0"><button type="button" class="btn small primary" data-vi="copy">Copy prompt for Claude</button><button type="button" class="btn small" data-vi="open">Open in Claude</button></span></div>
       <pre data-vi-p="make"${r==="make"?"":" hidden"}>${esc(v.prompts.make)}</pre><pre data-vi-p="film"${r==="film"?"":" hidden"}>${esc(v.prompts.film)}</pre></div>
-    <small class="src" data-vi-how>${r==="make"?VI_HOW.make:VI_HOW.film} ${v.standalone===false?"To post the video instead of the picture, pick Video as the post type in Compose and upload it there.":isFinish(d)?"Then upload the finished video here.":"Approve it, then upload the finished video in Editing."}</small>`}
+    <small class="src" data-vi-how>${r==="make"?VI_HOW.make:VI_HOW.film} ${v.standalone===false?"To post the video instead of the picture, pick Video as the post type in Compose and upload it there.":isFinish(d)?"Then upload the finished video here.":"Approve it, then upload the finished video in Finishing."}</small>`}
   </div>`}
 const VI_HOW={make:"Paste it into your own Claude with file creation on (Settings › Features): it gives back an MP4.",film:"Paste it into your own Claude: you get a script, a shot list, on-screen text and a captions file."};
 function viPhone(d){const v=d.videoIdea;const film=v.route==="film";
@@ -3982,9 +4045,9 @@ const SIDE_IC={plan:'<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M
   light:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M5 19l1.5-1.5M17.5 6.5L19 5"/>',dark:'<path d="M20 14.5A8 8 0 019.5 4a8 8 0 1010.5 10.5z"/>',auto:'<rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4"/>'};
 const sideSvg=(k,n=18)=>`<svg width="${n}" height="${n}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${SIDE_IC[k]}</svg>`;
 const SIDE_NAV=[["make","Create",[["compose","Compose"],["posts:pending","For review"],["posts:hold","Finishing"],["posts:scheduled","In Asana"],["posts:posted","Posted"],["evergreen","Evergreen"],["posts:rejected","Bin"]]],["plan","Plan",[["plan","Month"],["calendar:week","Week"],["calendar:list","List"],["calendar:grid","Instagram grid"]]],
-  ["talk","Talk",[["inbox:inbox","Conversations"],["inbox:mine","Assigned to me"],["inbox:posts","By post"],["inbox:autos","Automations"],["inbox:history","Moderation"],["inbox:team","Team"]]],
+  ["talk","Inbox",[["inbox:inbox","Conversations"],["inbox:mine","Assigned to me"],["inbox:posts","By post"],["inbox:autos","Automations"],["inbox:history","Moderation"],["inbox:team","Team"]]],
   ["listen","Listen",[["listening:rising","Rising now"],["listening:mentions","Mentions"],["listening:allies","Allies and opponents"],["listening:topics","Topics"],["listening:parliament","Parliament"],["listening:watches","Watches"]]],
-  ["learn","Analytics",[["analytics:overview","Overview"],["analytics:audience","Audience"],["analytics:posts","Posts"],["analytics:talk","Conversations"],["analytics:campaigns","Campaigns"],["analytics:allies","Allies"],["analytics:leaderboard","Leaderboard"],["analytics:countries","Countries"]]],["tools","Tools",[["tools:home","All tools"],["tools:inviter","Page Inviter"],["tools:links","Tracked links"],["tools:bio","Link in bio"],["tools:make","Make"],["tools:claude","Claude connectors"],["tools:health","Health check"]]]];
+  ["learn","Reports",[["analytics:overview","Overview"],["analytics:audience","Audience"],["analytics:posts","Posts"],["analytics:talk","Conversations"],["analytics:campaigns","Campaigns"],["analytics:allies","Allies"],["analytics:leaderboard","Leaderboard"],["analytics:countries","Countries"]]],["tools","Tools",[["tools:home","All tools"],["tools:inviter","Page Inviter"],["tools:links","Tracked links"],["tools:bio","Link in bio"],["tools:make","Make"],["tools:claude","Claude connectors"],["tools:health","Health check"]]]];
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}};const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 const SIDE={open:lsGet("desk.sideOpen",{make:true}),fold:lsGet("desk.sideFold",false)};
 function applyTheme(t){const r=document.documentElement;r.setAttribute("data-theme","light");t="light";return;/* light only since 12 Nov */
@@ -4028,10 +4091,12 @@ function renderRail(act,n){const r=$("#railSecs");if(!r)return;let logo="";try{l
 /* C2A + small fix (4 Nov): the page title uses the sidebar's own names, section › page. */
 function setTitle(act){{const hu=$("#hdUpd");if(hu&&!/^(listening|inbox)/.test(String(act||"")))hu.innerHTML=""}const t=$("#viewTitle");if(!t)return;let sec=null,pg=null;for(const [,g,items] of SIDE_NAV){const it=items.find(([ik])=>ik===act);if(it){sec=g;pg=it[1];break}}
   if(act==="settings"){sec="Settings";pg=null}if(!sec){sec=VIEW_TITLES[S.view||"posts"]||"Create"}
+  {const st=$("#secTabs");if(st){const grp=SIDE_NAV.find(([,g])=>g===sec);const n=sideCounts();
+    st.innerHTML=grp?`<b class="stl">${esc(sec)}</b><span class="stabs">${grp[2].map(([ik,l])=>`<button type="button" class="tab" data-nav="${ik}"${act===ik?' aria-current="page"':""}>${esc(l)}${n[ik]?`<span class="n">${n[ik]}</span>`:""}</button>`).join("")}</span>${grp[0]==="make"||grp[0]==="plan"?`<button type="button" class="btn small primary snew2" data-nav="compose">+ New post</button>`:""}`:act==="settings"?`<b class="stl">Settings</b>`:""}}
   t.innerHTML=pg&&pg!==sec?`<span class="crumb">${esc(sec)} ›</span> ${esc(pg)}`:esc(sec);try{document.title=`${pg||sec} · Content Engine`}catch(e){}
   /* C12A phone: bottom bar with the four busiest sections, More opens the full menu */
-  const bn=$("#botNav");if(bn){const B=[["posts","make","Create"],["plan","plan","Plan"],["inbox:inbox","talk","Talk"],["listening:rising","listen","Listen"]];let ibn=0;try{ibn=(IB.counts&&IB.counts.open)||0}catch(e){}
-    bn.innerHTML=B.map(([k,ic,l])=>`<button type="button" data-nav="${k}"${sec===l?' aria-current="page"':""}>${sideSvg(ic,20)}<span>${l}</span>${l==="Talk"&&ibn?`<i class="bnn">${ibn>99?"99+":ibn}</i>`:""}</button>`).join("")+`<button type="button" data-side="open"${["Create","Plan","Talk","Listen"].includes(sec)?"":' aria-current="page"'}>${sideSvg("menu",20)}<span>More</span></button>`}}
+  const bn=$("#botNav");if(bn){const B=[["posts","make","Create"],["plan","plan","Plan"],["inbox:inbox","talk","Inbox"],["listening:rising","listen","Listen"]];let ibn=0;try{ibn=(IB.counts&&IB.counts.open)||0}catch(e){}
+    bn.innerHTML=B.map(([k,ic,l])=>`<button type="button" data-nav="${k}"${sec===l?' aria-current="page"':""}>${sideSvg(ic,20)}<span>${l}</span>${l==="Inbox"&&ibn?`<i class="bnn">${ibn>99?"99+":ibn}</i>`:""}</button>`).join("")+`<button type="button" data-side="open"${["Create","Plan","Inbox","Listen"].includes(sec)?"":' aria-current="page"'}>${sideSvg("menu",20)}<span>More</span></button>`}}
 function navGo(key){if(key==="compose"){$("#side").classList.remove("open");$("#sideShade").hidden=true;if((S.view||"posts")!=="posts"||S.status==="evergreen"){if(S.status==="evergreen"){S.status="pending";S.openId=null;resetDraftUi()}setView("posts")}renderSide();openCP();return}
   const [v,sub]=key.split(":");
   if(v==="posts"&&S.status==="evergreen"){S.status="pending";S.openId=null;resetDraftUi()}
@@ -4483,7 +4548,7 @@ function calChip(i,mode){const d=i.mine?S.drafts.find(x=>x.id===i.id):null;const
 function calHeader(label,count){const v=CAL.view;const f=CAL.filter||{};const nets=["fb","ig","x"];
   return `<div class="calbar"><h2>${esc(label)}</h2>
     <button class="btn small" data-cal="prev" aria-label="Previous">‹</button><button class="btn small" data-cal="today">Today</button><button class="btn small" data-cal="next" aria-label="Next">›</button>
-    <span class="tabs">${[["month","Month"],["week","Week"],["list","List"],["grid","Instagram grid"]].map(([k,l])=>`<button class="tab" data-cal="${k}" aria-pressed="${v===k}">${l}</button>`).join("")}</span>
+    <span class="tabs calvt">${[["month","Month"],["week","Week"],["list","List"],["grid","Instagram grid"]].map(([k,l])=>`<button class="tab" data-cal="${k}" aria-pressed="${v===k}">${l}</button>`).join("")}</span>
     <select class="calctry" data-cal-country aria-label="Whose calendar">${[["","My team"],["all","All countries"]].concat(((CAL.data&&CAL.data.teams)||[]).filter(t=>t.id!==S.team).map(t=>[t.id,`${t.flag||""} ${t.name}`.trim()])).map(([x,l])=>`<option value="${esc(x)}"${(CAL.country||"")===x?" selected":""}>${esc(l)}</option>`).join("")}</select>
     <span class="calf fbar"><input type="search" data-cal-q placeholder="Search posts" value="${esc(f.q||"")}" aria-label="Search posts">${calFilterMenus("acct")}${fpBtn("cal")}${calFilterMenus()}
     <label>Status<select data-cal-status aria-label="Status"><option value="">All statuses</option>${[["scheduled","Scheduled"],["review","In review"],["posted","Posted"]].map(([x,l])=>`<option value="${x}"${f.status===x?" selected":""}>${l}</option>`).join("")}</select></label>
@@ -4576,7 +4641,7 @@ function renderCal(){
    Instagram account, newest first, laid on top of what is live there now, so
    the profile can be seen before it happens. Live posts come from the
    nightly collection; a dashed tile is still in Review. */
-function calGrid(){const G=CAL.ig;const head=`<div class="calbar"><h2>Instagram grid</h2><span class="tabs">${[["month","Month"],["week","Week"],["list","List"],["grid","Instagram grid"]].map(([k,l])=>`<button class="tab" data-cal="${k}" aria-pressed="${CAL.view===k}">${l}</button>`).join("")}</span>`;
+function calGrid(){const G=CAL.ig;const head=`<div class="calbar"><h2>Instagram grid</h2><span class="tabs calvt">${[["month","Month"],["week","Week"],["list","List"],["grid","Instagram grid"]].map(([k,l])=>`<button class="tab" data-cal="${k}" aria-pressed="${CAL.view===k}">${l}</button>`).join("")}</span>`;
   if(!G)return head+'</div><p class="src">Loading…</p>';
   const accs=G.accounts||[];if(!accs.length)return head+`</div><p class="src">${G.err?esc("Couldn't load it: "+whyFailed(G.err)):"This team has no Instagram account set up."}</p>`;
   const acc=accs.find(a=>a.key===CAL.igKey)||accs.find(a=>a.media.length)||accs[0];
@@ -7480,7 +7545,7 @@ function tlClaude(){return `<p class="src lede" style="margin:0;max-width:75ch">
 
 // ---------- 40D page help, 40E help search ----------
 const PAGE_HELP={
-  posts:["Drafts board","Drafts the engine wrote overnight and posts people started wait here.",["For review is for ideas: Approve idea (A) moves it to Editing, Reject (R) sends it to the Bin.","Video ideas (▶ rows in For review) are videos to make with your own Claude: copy the prompt (Make the video gives an MP4, Film it instead gives a script and captions), approve it, then upload the video in Finishing.","In Finishing, finish the post (Media, Text, Links), check the time on the When button, then Hand off to Asana.","Filter by issue, type, who made it or label; search finds words in any draft.","N starts a new post in Compose."]],
+  posts:["Drafts board","Drafts the engine wrote overnight and posts people started wait here.",["For review is for ideas: Approve idea (A) moves it to Finishing, Reject (R) sends it to the Bin.","Video ideas (▶ rows in For review) are videos to make with your own Claude: copy the prompt (Make the video gives an MP4, Film it instead gives a script and captions), approve it, then upload the video in Finishing.","In Finishing, finish the post (Media, Text, Links), check the time on the When button, then Hand off to Asana.","Filter by issue, type, who made it or label; search finds words in any draft.","N starts a new post in Compose."]],
   evergreen:["Evergreen","Past winners that are due a fresh version.",["Each card shows how the original did and when it last ran.","Ask for a new version and it lands in Review like any draft."]],
   plan:["Plan","The month at a glance: posts, key dates and notes, in the team's own time zone.",["Drag a post to move it. Click a day to add a note.","Week, List and Instagram grid are in the sidebar under Plan."]],
   calendar:["Calendar","What goes out when, in the team's own time zone.",["Drag a post to another time to move it.","List view has tick boxes to move, pause or send back several posts."]],
