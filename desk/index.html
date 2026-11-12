@@ -469,7 +469,7 @@ header.top .filters{padding-block:0;margin-left:auto}
 .calnote{font-size:12.5px;color:var(--muted);padding:4px 0}
 .lg .r{border:1.5px dashed var(--ok)}
 /* evergreen bank (A): due list with tabs, suggest only */
-.egv{margin-top:14px;display:flex;flex-direction:column;gap:12px;max-width:1180px;min-width:0}.egv>*{min-width:0}
+.egv{margin-top:14px;display:flex;flex-direction:column;gap:12px;max-width:none;min-width:0}.egv>*{min-width:0}
 .egv h2{font-family:var(--display);font-weight:700;font-size:30px;margin:0;line-height:1}
 .egv .lede{margin:4px 0 0;color:var(--muted);font-size:14px;max-width:70ch}
 .egv .egbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}.egv .egbar .btn{margin-left:auto}
@@ -1705,6 +1705,9 @@ input[type=date],input[type=time],input[type=datetime-local],select,input[type=s
 #cpWhenBox.flash{box-shadow:0 0 0 2px var(--accent)}
 @media (max-width:860px){.cp-bl .cp-ic{width:30px;height:30px}.cp-bar .cp-bl{flex:none!important;margin-right:0}.cp-bar .cp-bl .btn{flex:none}.cp-bl [data-cp=dup],.cp-bl [data-cp=back],.cp-ahd .cp-ic{display:none}.cp-only{opacity:1}.cp-top [data-cp=close]{order:6}.cp-bar .cp-when{flex:1 1 auto}.cp-bar .cp-when svg{display:none}}
 .cp-post.x .cp-xth{border-left:2px solid var(--line);height:14px;margin:2px 0 2px 15px}
+.rfb{width:32px;height:32px;padding:0!important;display:inline-flex;align-items:center;justify-content:center}.rfb.spin svg{animation:rfspin 1s linear infinite}@keyframes rfspin{to{transform:rotate(360deg)}}
+/* Settings sections are header tabs on a laptop */
+@media (min-width:901px){#stNav{display:none!important}.stwrap{grid-template-columns:minmax(0,1fr)!important}}
 /* ===== end Agorapulse look ===== */
 </style>
 
@@ -3373,7 +3376,6 @@ function mineHtml(){const st=S.settings||SET0;const team=calTeamName(S.team);con
     <h4>Calendar</h4>
     <div class="stkv"><span>Week starts</span>${seg("weekStart",[["mon","Monday"],["sun","Sunday"]])}
     <span>Weekends in Week</span><span>${(()=>{const on=String((S.settings||SET0).weekends)!=="false";return `<button type="button" class="swb" role="switch" aria-checked="${on}" aria-label="Show weekends in Week" data-set="weekends" data-v="${!on}"><span class="swk"></span></button>`})()}</span></div>
-    <h4>Look</h4>
     <p class="src" id="stSaved" aria-live="polite">Saves as you change it. Follows you to any computer.</p></div>
     <figure class="stprev" aria-label="Preview">${minePreview()}<figcaption class="src">How a week of posts will look</figcaption></figure></div></div>`}
 function minePreview(){const st=S.settings||SET0;const mine=(st.tz||(lsGet("desk.calTzMine",false)?"mine":"team"))==="mine";
@@ -4117,7 +4119,7 @@ function renderRail(act,n){const r=$("#railSecs");if(!r)return;let logo="";try{l
 function setTitle(act){{const hu=$("#hdUpd");if(hu&&!/^(listening|inbox)/.test(String(act||"")))hu.innerHTML=""}const t=$("#viewTitle");if(!t)return;let sec=null,pg=null;for(const [,g,items] of SIDE_NAV){const it=items.find(([ik])=>ik===act);if(it){sec=g;pg=it[1];break}}
   if(act==="settings"){sec="Settings";pg=null}if(!sec){sec=VIEW_TITLES[S.view||"posts"]||"Create"}
   {const st=$("#secTabs");if(st){const grp=SIDE_NAV.find(([,g])=>g===sec);const n=sideCounts();
-    st.innerHTML=grp?`<b class="stl">${esc(sec)}</b><span class="stabs">${grp[2].map(([ik,l])=>`<button type="button" class="tab" data-nav="${ik}"${act===ik?' aria-current="page"':""}>${esc(l)}${n[ik]?`<span class="n">${n[ik]}</span>`:""}</button>`).join("")}</span>`:act==="settings"?`<b class="stl">Settings</b>`:""}}
+    st.innerHTML=grp?`<b class="stl">${esc(sec)}</b><span class="stabs">${grp[2].map(([ik,l])=>`<button type="button" class="tab" data-nav="${ik}"${act===ik?' aria-current="page"':""}>${esc(l)}${n[ik]?`<span class="n">${n[ik]}</span>`:""}</button>`).join("")}</span>`:act==="settings"?`<b class="stl">Settings</b><span class="stabs">${ST_SECS.map(([k,l])=>`<button type="button" class="tab" data-st-go="${k}"${ST.at===k?' aria-current="page"':""}>${esc(l)}</button>`).join("")}</span>`:""}}
   t.innerHTML=pg&&pg!==sec?`<span class="crumb">${esc(sec)} ›</span> ${esc(pg)}`:esc(sec);try{document.title=`${pg||sec} · Content Engine`}catch(e){}
   /* C12A phone: bottom bar with the four busiest sections, More opens the full menu */
   const bn=$("#botNav");if(bn){const B=[["posts","make","Create"],["plan","plan","Plan"],["inbox:inbox","talk","Inbox"],["listening:rising","listen","Listen"]];let ibn=0;try{ibn=(IB.counts&&IB.counts.open)||0}catch(e){}
@@ -4382,10 +4384,10 @@ function stExtras(){const nav=$("#stNav");if(nav)nav.innerHTML=ST_SECS.map(([k,l
   stPub();hrRender();stFilter()}
 function stFilter(){const q=ST.q.trim().toLowerCase();let any=false;
   document.querySelectorAll("#stMain .stsec").forEach(sec=>{const hit=!q||(sec.dataset.kw+" "+sec.textContent).toLowerCase().includes(q);sec.hidden=!hit;if(hit)any=true});
-  document.querySelectorAll("#stNav [data-st-go]").forEach(b=>{const sec=$("#st-"+b.dataset.stGo);b.hidden=!!(sec&&sec.hidden)});
+  document.querySelectorAll("#stNav [data-st-go],#secTabs [data-st-go]").forEach(b=>{const sec=$("#st-"+b.dataset.stGo);b.hidden=!!(sec&&sec.hidden)});
   const n=$("#stNone");if(n)n.hidden=any}
 document.addEventListener("input",ev=>{if(ev.target.id==="stQ"){ST.q=ev.target.value;stFilter()}});
-document.addEventListener("click",ev=>{const g=ev.target.closest("[data-st-go]");if(!g)return;ST.at=g.dataset.stGo;document.querySelectorAll("#stNav [data-st-go]").forEach(b=>b.toggleAttribute("aria-current",b===g));const sec=$("#st-"+ST.at);if(sec)sec.scrollIntoView({behavior:"smooth",block:"start"})});
+document.addEventListener("click",ev=>{const g=ev.target.closest("[data-st-go]");if(!g)return;ST.at=g.dataset.stGo;document.querySelectorAll("#stNav [data-st-go],#secTabs [data-st-go]").forEach(b=>b.dataset.stGo===ST.at?b.setAttribute("aria-current","page"):b.removeAttribute("aria-current"));const sec=$("#st-"+ST.at);if(sec)sec.scrollIntoView({behavior:"smooth",block:"start"})});
 
 /* 30A (3 Nov): labels are made for you, never managed. From the post (campaign, cut to three words; launch pack; own post; translated; evergreen) and from the Inbox (Question, Supporter, auto-hidden and the like). */
 function lblColor(n){let h=0;for(const c of String(n))h=(h*31+c.charCodeAt(0))>>>0;return CAMP_COLORS[h%CAMP_COLORS.length]}
@@ -7216,7 +7218,8 @@ function postKind(d){if(!d)return"";if(d.card&&d.card.template==="story")return"
 var EMPTY_IC={none:"list",match:"search",wait:"refresh"};
 function emptyState(kind,title,text,acts){let ic="";try{ic=sideSvg(EMPTY_IC[kind]||"list",22)}catch(e){}return `<div class="empty2 ek-${kind}"><span class="ei" aria-hidden="true">${ic}</span><b>${title}</b>${text?`<p>${text}</p>`:""}${acts?`<div class="ibacts">${acts}</div>`:""}</div>`}
 /* Small fix (Chris, 4 Nov): "updated … · Refresh" sits in the same place on every page: the right end of the page's first bar. */
-function updRefresh(at,attr,loading){let l="";try{l=at?updatedLine(at):""}catch(e){}return `<span class="upd">${loading?`<span class="src">refreshing…</span>`:l?`<span class="src">${esc(l)}</span>`:""}<button class="btn small" ${attr}${loading?" disabled":""}>${sideSvg("refresh",14)}Refresh</button></span>`}
+/* One top-right layout (12 Nov): a square refresh icon; when it last updated is its tooltip. */
+function updRefresh(at,attr,loading){let l="";try{l=at?updatedLine(at):""}catch(e){}const tt=loading?"Refreshing…":l?`${l}. Refresh`:"Refresh";return `<span class="upd"><button class="btn small rfb${loading?" spin":""}" ${attr}${loading?" disabled":""} title="${esc(tt)}" aria-label="${esc(tt)}">${sideSvg("refresh",15)}</button></span>`}
 /* C9A page actions: the main action, then Export ▾, then … for the rest (Chris, 4 Nov). Items keep their own data- attributes, so their handlers don't change. */
 var PA_OPEN="";
 function paMenu(id,kind,label,items){if(!items||!items.length)return "";const k=id+":"+kind;const open=PA_OPEN===k;
