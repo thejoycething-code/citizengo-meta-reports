@@ -34,6 +34,10 @@
       "destination": "/api/bio?slug=:slug&qr=1"
     },
     {
+      "source": "/links/:slug/p/:p",
+      "destination": "/api/bio?slug=:slug&p=:p"
+    },
+    {
       "source": "/links/:slug/go/:go",
       "destination": "/api/bio?slug=:slug&go=:go"
     },

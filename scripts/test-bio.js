@@ -79,8 +79,15 @@ eq('resolve: removed is left out, and a removed campaign does not come back by i
   ], { now }), { url: 'https://citizengo.org/en-gb/fr/19734-x', petition_id: '19734', title: 'Councillor', at: '2026-11-01T10:00:00Z' });
   eq('autoItems: the post\'s petition leads, even before the collection sees it', B.autoItems(rows, { accounts, now, lead: { url: 'https://citizengo.org/en-gb/fr/19734-x', petition_id: '19734', title: 'Councillor', at: '2026-11-01T10:00:00Z' } }).map((a) => [a.id, !!a.lead]), [['p19734', true], ['p19691', false], ['p19389', false]]);
   eq('routeCountry: a country\'s page, else the global page, else the picker', [B.routeCountry('GB', [{ team_id: 'uk', slug: 'uk' }, { team_id: 'global', slug: 'cg' }]), B.routeCountry('FR', [{ team_id: 'uk', slug: 'uk' }, { team_id: 'global', slug: 'cg' }]), B.routeCountry('FR', [{ team_id: 'uk', slug: 'uk' }])], ['uk', 'cg', null]);
+  {
+    const st3 = { ...status, 1: { total: 10812, site_total: 80223, site_goal: 100000 } };
+    const p3 = B.pageHtml({ bio: { slug: 'uk', title: 'UK' }, items: rr.shown, hero: rr.shown[1], status: st3, today: '2026-11-02', origin: 'https://x.test', grid: [{ img: 'https://kept/a.jpg', href: 'https://www.instagram.com/p/abc/' }] });
+    eq('page: the site goal, a bar on every petition row, picture preview, grid opens Instagram', [p3.includes('80,223</b> signed · help reach 100,000'), (p3.match(/class="rbar"/g) || []).length > 0, p3.includes('og:description" content="Sign A'), p3.includes('href="https://www.instagram.com/p/abc/"'), p3.includes('see it on Instagram')], [true, true, true, true, true]);
+    const card = B.cardHtml({ bio: { slug: 'uk', title: 'UK' }, item: { id: 'p19960', petition_id: '19960', title: 'Netflix: Cancel The Body', image: 'https://kept/n.jpg' }, status: { 19960: { site_total: 80223, site_goal: 100000 } }, origin: 'https://x.test' });
+    eq('share card: picture, title and total in the preview, then on to sign', [card.includes('og:image" content="https://kept/n.jpg"'), card.includes('80,223 signed. Help reach 100,000.'), card.includes('url=https://x.test/links/uk/go/p19960')], [true, true, true]);
+  }
   eq('short titles: the first part of a long title, else cut at a word; short ones untouched', [B.shortName('Conversations Are Not Criminal - Protect Parents, Clergy and Free Speech: Stop the Conversion Practices Bill'), B.shortName('Netflix: Cancel The Body'), B.shortName('Stop the UN From Smuggling Gender Ideology Into International Law and the courts too')], ['Conversations Are Not Criminal', 'Netflix: Cancel The Body', 'Stop the UN From Smuggling Gender Ideology Into…']);
-  eq('settings: links must be https, switches default on', B.cleanSettings({ donate_url: 'http://x', emails_url: 'https://e.test', grid: false }), { donate_url: null, emails_url: 'https://e.test', whatsapp_url: null, grid: false, socials: true, totals: true, quiet: true });
+  eq('settings: links must be https, switches default on', B.cleanSettings({ donate_url: 'http://x', emails_url: 'https://e.test', grid: false }), { donate_url: null, emails_url: 'https://e.test', whatsapp_url: null, grid: false, socials: true, totals: true, quiet: true, bio_line: null });
 }
 // QR codes: Reed-Solomon against the standard's worked example ("HELLO WORLD", 1-M).
 {
@@ -172,7 +179,7 @@ const refreshDone = (async () => {
     const p = pages.find((x) => x.petition_id === '19389');
     eq('refresh: the site\'s all-language total and share page are kept', [p.site_total, p.site_count, p.share_url], [4500, 900, 'https://citizengo.org/en-gb/LP2-share?m=8&nid=19389&title=faith-is-not-a-crime-against-humanity&list=EN_GB&utm_source=bio&utm_medium=linkinbio']);
   }
-  eq('refresh: reads the site for Netflix (parent total counts)', R.readSite('[{"id":19960,"title":"Netflix: Cancel The Body","signature_count":3100,"padding":0,"cluster_count":80205,"featured_image":"https://api.citizengo.org/media/images/n.jpg","segment":{"code":"en-gb","listcode":"EN_GB"}}]'), { title: 'Netflix: Cancel The Body', image: 'https://api.citizengo.org/media/images/n.jpg', count: 80205, own: 3100, share: 'https://citizengo.org/en-gb/LP2-share?m=8&nid=19960&title=netflix-cancel-the-body&list=EN_GB&utm_source=bio&utm_medium=linkinbio' });
+  eq('refresh: reads the site for Netflix (parent total counts)', R.readSite('[{"id":19960,"title":"Netflix: Cancel The Body","signature_count":3100,"padding":0,"cluster_count":80205,"goal":100000,"featured_image":"https://api.citizengo.org/media/images/n.jpg","segment":{"code":"en-gb","listcode":"EN_GB"}}]'), { title: 'Netflix: Cancel The Body', image: 'https://api.citizengo.org/media/images/n.jpg', count: 80205, own: 3100, goal: 100000, share: 'https://citizengo.org/en-gb/LP2-share?m=8&nid=19960&title=netflix-cancel-the-body&list=EN_GB&utm_source=bio&utm_medium=linkinbio' });
   eq('refresh: the closed petition is tidied out of the saved list', [out.removed, saved[0].items.length], [1, 0]);
   // The loader then uses what the refresh kept.
   store.petitionStatus = async () => [{ petition_id: '19389', total: 10, last14: 5, page_title: 'Faith is not a crime against humanity', page_image: 'https://kept/p.jpg', page_image_src: 'page' }];
@@ -222,6 +229,10 @@ function run(url, store, headers = { host: 'x.test', 'user-agent': 'Mozilla/5.0 
   await run('/api/bio?slug=uk&s=ig', s, { host: 'x.test', 'user-agent': 'facebookexternalhit/1.1' });
   eq('endpoint: views by source, unknown sources as other, previewers not counted', s.clicks.splice(0), [['uk', '_v:ig'], ['uk', '_v']]);
   eq('endpoint: the hero shows the Bluebook total', page.body.includes('4,480</b> signed'), true);
+  const cb = await run('/api/bio?slug=uk&p=19389', s, { host: 'x.test', 'user-agent': 'WhatsApp/2.23' });
+  const cp = await run('/api/bio?slug=uk&p=19389', s);
+  const cx = await run('/api/bio?slug=uk&p=999', s);
+  eq('endpoint: share card for previews, people go on to sign, unknown back to the page', [cb.status, cb.body.includes('og:title'), cp.status, cp.headers.location, cx.headers.location], [200, true, 302, '/links/uk/go/p19389', '/links/uk']);
   const qr = await run('/api/bio?slug=uk&qr=1', s);
   eq('endpoint: QR code as SVG for the page with ?s=qr', [qr.status, qr.headers['content-type'], qr.body.startsWith('<svg')], [200, 'image/svg+xml', true]);
   const g1 = await run('/api/bio', s, { host: 'x.test', 'x-vercel-ip-country': 'GB' });

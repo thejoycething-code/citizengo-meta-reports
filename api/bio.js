@@ -9,6 +9,7 @@
 //                                   where the visitor came from (counted, no
 //                                   cookies)
 //   GET /links/<slug>/go/<button>   counts a click, then sends the visitor on
+//   GET /links/<slug>/p/<petition> one petition's share card (link preview)
 //   GET /links/<slug>/qr.svg        the page's QR code (address with ?s=qr)
 //
 // On go.citizengo.org (once CitizenGO IT points it here), / and /<slug> do
@@ -68,6 +69,15 @@ module.exports = async function handler(req, res) {
     const team = ((await s.engineTeams()) || []).find((t) => t.id === bio.team_id);
     if (!team) return notFound(res);
     const L = await B.load(s, { team, bio });
+    // A petition's share card [5a]: previews get its picture and total,
+    // people go straight on to sign (counted as a click).
+    const card = q.get('p');
+    if (card != null) {
+      const item = /^\d{1,9}$/.test(card) ? L.shown.find((i) => String(i.petition_id) === card) : null;
+      if (!item) return send(res, 302, '', { Location: `/links/${slug}`, 'Cache-Control': 'no-store' });
+      if (human) return send(res, 302, '', { Location: `/links/${slug}/go/${encodeURIComponent(item.id)}`, 'Cache-Control': 'no-store' });
+      return send(res, 200, req.method === 'HEAD' ? '' : B.cardHtml({ bio, item, status: L.status, origin }), { ...HTML, 'Cache-Control': 'public, max-age=600', 'Content-Security-Policy': CSP });
+    }
     const go = q.get('go');
     if (go != null) {
       const item = L.shown.find((i) => i.id === go);
@@ -83,7 +93,8 @@ module.exports = async function handler(req, res) {
     // Awaited: a serverless function may stop once the page is sent.
     if (human) await s.engineBioClick(slug, src ? `_v:${src}` : '_v').catch(() => null);
     const qs = src ? `?s=${src}` : '';
-    const grid = L.tiles.map((t) => ({ img: t.img, label: t.label, href: t.item_id ? `${origin}/links/${slug}/go/${encodeURIComponent(t.item_id)}${qs}` : t.permalink })).filter((t) => t.href);
+    // Every grid picture opens its post on Instagram [12 Nov 2026, Chris].
+    const grid = L.tiles.map((t) => ({ img: t.img, label: t.label, href: t.permalink || (t.item_id ? `${origin}/links/${slug}/go/${encodeURIComponent(t.item_id)}${qs}` : null) })).filter((t) => t.href);
     const html = B.pageHtml({ bio, items: L.shown, hero: L.hero, grid, socials: L.socials, status: L.status, origin, src, today: L.today });
     return send(res, 200, req.method === 'HEAD' ? '' : html, {
       ...HTML,
