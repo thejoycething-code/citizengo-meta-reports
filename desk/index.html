@@ -1764,6 +1764,24 @@ body.nosearch header.top .fq,body.nosearch header.top .fwrap:has(>[data-fp="rb"]
 .sgpost .ni{width:20px;height:20px;border-radius:50%;display:inline-grid;place-items:center;color:#fff;font-size:10px;font-weight:800;flex:none}.ni.f{background:#1877f2}.ni.i{background:#d62976}.ni.x{background:#111}
 .sgk .akpi>*{display:block}.sgk .akpi b{font-size:22px}
 .sgbar{min-width:90px;position:relative}.sgbar i{display:block;height:6px;border-radius:3px;background:var(--accent,#1d7ee2);margin-top:4px}
+.srcq{border-left:3px solid #5b3cc4;background:var(--sunk,#f6f7f9);border-radius:0 8px 8px 0;padding:8px 10px;display:flex;flex-direction:column;gap:4px;margin:6px 0}
+.srcq.camp{border-color:#16794a}.srcq.news{border-color:#b42318}.srcq.own{border-color:var(--accent,#1d7ee2)}
+.srctag{font-size:12px;font-weight:800;color:#5b3cc4}.srcq.camp .srctag{color:#16794a}.srcq.news .srctag{color:#b42318}.srcq.own .srctag{color:var(--accent,#1d7ee2)}
+.srcq q{font-size:13.5px;line-height:1.45;quotes:"\201C" "\201D"}
+.vifoot{display:flex;flex-direction:column;gap:6px;margin-top:8px}.vifrow{display:flex;gap:8px;align-items:center;justify-content:space-between;border:1px solid var(--line,#dde1e7);border-radius:8px;padding:8px;background:var(--card,#fff)}
+.vifrow .btn{flex:none;white-space:nowrap}
+.vifrow>span{display:flex;flex-direction:column;gap:2px;min-width:0}
+.kitsplit{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+@media (max-width:900px){.kitsplit{grid-template-columns:minmax(0,1fr)}}
+.kitang{display:flex!important;flex-direction:row!important;flex-wrap:wrap;gap:6px}.kitform .kitang label.chip{width:auto!important;flex:none;padding:3px 10px;border-radius:999px}
+#kitNotes{min-height:0!important;height:64px}.kitang label.chip{display:inline-flex;align-items:center;gap:4px;cursor:pointer}.kitang label.chip input{margin:0}
+.kitplan{display:flex;flex-direction:column;gap:8px}
+.kitday{display:grid;grid-template-columns:110px minmax(0,1fr);gap:8px;padding:6px 0;border-top:1px solid var(--line,#dde1e7)}.kitday>b{font-size:13px}
+@media (max-width:600px){.kitday{grid-template-columns:minmax(0,1fr)}.kititem .kk{width:auto}}.kitday>div{display:flex;flex-direction:column;gap:4px}
+.kititem{display:flex;gap:8px;align-items:center;border:1px solid var(--line,#dde1e7);border-radius:8px;padding:6px 8px;background:var(--card,#fff);min-width:0}
+.kititem.video{background:#eef5fd;border-color:#cfe2f8}.kititem .kk{font-size:11px;font-weight:800;color:var(--muted,#677285);width:54px;flex:none}.kititem.video .kk{color:var(--accent,#1d7ee2)}
+.kititem .kl{flex:1;min-width:0;font-weight:600;font-size:13px}.kititem .ka{display:inline-flex;gap:2px;flex:none}
+.kitrow{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:8px 0;border-top:1px solid var(--line,#dde1e7)}.kitrow>span:first-child{display:flex;flex-direction:column;flex:1;min-width:0}
 /* B8 phone review deck */
 body.swmode #detail{display:none}
 .swback{display:flex;justify-content:flex-end;margin:0 0 8px}
@@ -1927,7 +1945,7 @@ function xLen(t){return [...String(t).replace(/https?:\/\/\S+/g,"x".repeat(23))]
 function filtered(){
   const q=String(S.q||"").trim().toLowerCase();
   if(S.status==="changes"||S.status==="videos")S.status="pending";
-  const list=S.drafts.filter(d=>tabOf(d)===S.status && (!S.issue||d.issue===S.issue) && (!S.type||d.type===S.type) && (!S.by||draftBy(d)===S.by) && (!S.label||draftLabels(d).includes(S.label)) && (!q||draftText(d).includes(q)));
+  const list=S.drafts.filter(d=>tabOf(d)===S.status && (!S.issue||d.issue===S.issue) && (!S.type||d.type===S.type) && (!S.by||draftBy(d)===S.by) && (!S.label||draftLabels(d).includes(S.label)) && (!q||draftText(d).includes(q)) && (!S.kitFilter||(d.kit&&d.kit.id===S.kitFilter)));
   if(["posted","rejected"].includes(S.status)){const t=d=>Date.parse(d.posted?.at||d.review?.at||d.createdAt||"")||0;return list.sort((a,b)=>t(b)-t(a))}
   return list.sort((a,b)=>{const ga=GROUPS.indexOf(groupOf(a)),gb=GROUPS.indexOf(groupOf(b));if(ga!==gb)return ga-gb;const ta=whenOf(a)?.getTime()??0,tb=whenOf(b)?.getTime()??0;if(ta!==tb)return ta-tb;return (a.order??99)-(b.order??99)});
 }
@@ -1973,7 +1991,7 @@ function renderSwDeck(list){if(S.swI==null||S.swI>=list.length)S.swI=Math.max(0,
   $("#queue").innerHTML=`<div class="swdeck"><div class="swtop"><b>For review</b><span class="src">${S.swI+1} of ${list.length}</span><button class="btn small" data-sw="list">List</button></div>
   <article class="swcard" id="swCard" data-sw-id="${esc(d.id)}"><span class="swstamp ok">Approve</span><span class="swstamp no">No</span>${pic}
     <div class="swmeta">${vid?"":qAccts(d)}<span class="src">${t?esc(t.toLocaleString("en-GB",{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})):"No date yet"}${d.type?" · "+esc(d.type):""}</span></div>
-    <h3>${esc(d.title||"Untitled")}</h3>${txt?`<p class="swtext">${esc(txt)}</p>`:""}
+    <h3>${esc(d.title||"Untitled")}</h3>${viSource(d.source||(d.videoIdea||{}).source)}${txt?`<p class="swtext">${esc(txt)}</p>`:""}
     <button class="btn small" data-sw="open">Open the full post</button></article>
   ${no?`<div class="swno"><b>Why not?</b><span class="src">Helps the morning run</span><div class="row">${REJECT_REASONS.map(r=>`<button class="chip rr" data-sw-r="${esc(r)}" aria-pressed="${S.swR.has(r)}">${esc(r)}</button>`).join("")}</div><div class="swbtns"><button class="btn" data-sw="back">Back</button><button class="btn bad" data-sw="bin">Send to Bin</button></div></div>`
   :`<div class="swbtns"><button class="btn bad" data-sw="no">← No</button><button class="btn primary" data-sw="ok">Approve →</button></div>
@@ -2016,7 +2034,8 @@ function renderQueue(){pageMode();document.body.classList.toggle("swmode",swDeck
   const tickable=["pending","videos"].includes(S.status)&&!!S.db;if(!S.ticks)S.ticks=new Set();for(const id of [...S.ticks])if(!list.some(d=>d.id===id))S.ticks.delete(id);
   const head="";
   if(swDeckOn())return renderSwDeck(list);
-  $("#queue").innerHTML=newBar()+(S.status==="pending"&&S.db&&phoneW()?`<div class="swback"><button class="btn small" data-sw="deck">One at a time</button></div>`:"")+bulkBar(list,tickable)+trashBar()+`<div class="qtable${tickable?" tick":""}">`+head+list.map(d=>{const g=grouped?qday(d):null;const gh=g&&g!==lastG?`<div class="qgroup">${esc(g)}<span>${list.filter(x=>qday(x)===g).length}</span></div>`:"";lastG=g;const vid=isVidIdea(d);
+  const kitChip=S.kitFilter?`<div class="swback" style="justify-content:flex-start"><button class="chip on" data-kit-clear>Kit: ${esc(((S.kits||{})[S.kitFilter]||{}).name||"campaign kit")} ✕</button></div>`:"";
+  $("#queue").innerHTML=newBar()+kitChip+(S.status==="pending"&&S.db&&phoneW()?`<div class="swback"><button class="btn small" data-sw="deck">One at a time</button></div>`:"")+bulkBar(list,tickable)+trashBar()+`<div class="qtable${tickable?" tick":""}">`+head+list.map(d=>{const g=grouped?qday(d):null;const gh=g&&g!==lastG?`<div class="qgroup">${esc(g)}<span>${list.filter(x=>qday(x)===g).length}</span></div>`:"";lastG=g;const vid=isVidIdea(d);
     return gh+`<div class="qslot qrow">${tickable?`<label class="qtick"><input type="checkbox" data-tick="${esc(d.id)}"${S.ticks.has(d.id)?" checked":""} aria-label="Tick ${esc(d.title)}"></label>`:""}
     <button class="qitem" data-id="${esc(d.id)}" data-status="${esc(d.status||"pending")}" data-tone="${qTone(d)}" aria-current="${d.id===S.openId}">
       <span class="stripe"></span>
@@ -2375,7 +2394,7 @@ function rvPreview(d,pic,sp,top){const vid=isVidIdea(d);const ps=rvPlats(d);cons
      ${(d.facts||[]).length?ck(!cf.length,cf.length?`${cf.length} fact${cf.length===1?"":"s"} to check: ${cf.map(x=>`“${esc(x.f.claim||"")}”`).join(", ")}`:`${d.facts.length} fact${d.facts.length===1?"":"s"} with sources`,true):""}
      ${sp.real.length?ck(false,"Might be out of date: "+esc(sp.real.join("; ")),true):sp.retime?ck(false,"Its time has passed: pick a new one in Finishing",true):ck(!!w,w?"Time: "+esc(when):"No time yet",true)}
    </ul></section>`;
-  const extra=`${vid||d.videoIdea?vidIdeaBox(d):""}${(d.modelledOn||[]).map(m=>`<div class="model"><a href="${esc(m.url)}" target="_blank" rel="noopener">${esc(m.label)}</a><span class="m">${esc(m.metric)}</span></div>`).join("")}`;
+  const extra=`${d.source&&!(d.videoIdea&&d.videoIdea.source&&vid)?viSource(d.source):""}${vid||d.videoIdea?vidIdeaBox(d):""}${(d.modelledOn||[]).map(m=>`<div class="model"><a href="${esc(m.url)}" target="_blank" rel="noopener">${esc(m.label)}</a><span class="m">${esc(m.metric)}</span></div>`).join("")}`;
   return `${tabs}<div class="rvgrid${vid?" vid":""}"><div class="rvstage">${post}</div><aside class="rvside">${top||""}${checks}${extra}</aside></div>`}
 function reasonBar(isRej){return `<div class="row"><b style="font-size:13.5px">${isRej?"Why reject it?":"What needs to change?"}</b><span class="src">${isRej?`It goes to the Bin, and the morning run learns from the reasons.`:""}</span></div>
     <div class="reasons">${REJECT_REASONS.map(r=>`<button class="reason" data-reason="${esc(r)}" aria-pressed="${S.picked.has(r)}">${esc(r)}</button>`).join("")}</div>
@@ -2664,16 +2683,27 @@ function viTimes(v){const fixed=(v.beats||[]).reduce((n,b)=>n+(b.secs||0),0),ope
   return (v.beats||[]).map(b=>{const len=b.secs||each,f=t;t+=len;return `${f}–${t} s`})}
 function vidIdeaBox(d){const v=d.videoIdea;if(!v||!v.prompts)return"";
   const r=v.route==="film"?"film":"make",tm=viTimes(v),done=!!(d.publishVideo||(d.video&&d.video.url));
-  const seg=k=>`<button type="button" data-vi="${k}" aria-pressed="${k===r}">${k==="make"?"Make the video":"Film it instead"}</button>`;
+  const r2=v.route==="clip"&&v.prompts.clip?"clip":r;
+  const seg=k=>`<button type="button" data-vi="${k}" aria-pressed="${k===r2}">${k==="make"?"Make the video":k==="clip"?"Use the footage":"Film it instead"}</button>`;
   return `<div class="videa" data-vi-box>
-    <div class="vihead"><span class="eyebrow">▶ ${v.standalone!==false?"Video idea":"Make it a video too"}</span><span class="src">${r==="make"?"Your Claude makes it":"Someone films it"} · about ${esc(v.seconds)} s</span></div>
+    <div class="vihead"><span class="eyebrow">▶ ${v.standalone!==false?"Video idea":"Make it a video too"}</span><span class="src">${r2==="clip"?"Cut from existing footage":r==="make"?"Your Claude makes it":"Someone films it"} · about ${esc(v.seconds)} s</span></div>${v.source&&!(d.source&&d.source.ref&&d.source.ref===v.source.ref)?viSource(v.source):""}
     ${v.standalone===false?`<p class="src" style="margin:0">This post could also go out as a short video. It's optional: the post works without it.</p>`:""}
     <ol>${(v.beats||[]).map((b,i)=>`<li><span class="t">${esc(tm[i]||"")}</span><span>${viHl(b.text)}${b.look==="blue"?' <small class="src">(blue screen)</small>':""}${b.shot?`<span class="shot">Shot: ${esc(b.shot)}</span>`:""}</span></li>`).join("")}${v.ask?`<li><span class="t">end</span><span>${esc(v.ask)}</span></li>`:""}</ol>
-    ${done?`<small class="src">✓ The video is uploaded.</small>`:`<div class="vibox"><div class="vitop"><span class="viseg" role="group" aria-label="Prompt for">${seg("make")}${seg("film")}</span><span class="row" style="gap:6px;margin:0"><button type="button" class="btn small primary" data-vi="copy">Copy prompt for Claude</button><button type="button" class="btn small" data-vi="open">Open in Claude</button></span></div>
-      <pre data-vi-p="make"${r==="make"?"":" hidden"}>${esc(v.prompts.make)}</pre><pre data-vi-p="film"${r==="film"?"":" hidden"}>${esc(v.prompts.film)}</pre></div>
-    <small class="src" data-vi-how>${r==="make"?VI_HOW.make:VI_HOW.film} ${v.standalone===false?"To post the video instead of the picture, pick Video as the post type in Compose and upload it there.":isFinish(d)?"Then upload the finished video here.":"Approve it, then upload the finished video in Finishing."}</small>`}
+    ${done?`<small class="src">✓ The video is uploaded.</small>`:`<div class="vibox"><div class="vitop"><span class="viseg" role="group" aria-label="Prompt for">${v.prompts.clip?seg("clip"):""}${seg("make")}${seg("film")}</span><span class="row" style="gap:6px;margin:0"><button type="button" class="btn small primary" data-vi="copy">Copy prompt for Claude</button><button type="button" class="btn small" data-vi="open">Open in Claude</button></span></div>
+      ${v.prompts.clip?`<pre data-vi-p="clip"${r2==="clip"?"":" hidden"}>${esc(v.prompts.clip)}</pre>`:""}<pre data-vi-p="make"${r2==="make"?"":" hidden"}>${esc(v.prompts.make)}</pre><pre data-vi-p="film"${r2==="film"?"":" hidden"}>${esc(v.prompts.film)}</pre></div>${viFootage(d)}
+    <small class="src" data-vi-how>${VI_HOW[r2]} ${v.standalone===false?"To post the video instead of the picture, pick Video as the post type in Compose and upload it there.":isFinish(d)?"Then upload the finished video here.":"Approve it, then upload the finished video in Finishing."}</small>`}
   </div>`}
-const VI_HOW={make:"Paste it into your own Claude with file creation on (Settings › Features): it gives back an MP4.",film:"Paste it into your own Claude: you get a script, a shot list, on-screen text and a captions file."};
+const VI_HOW={make:"Paste it into your own Claude with file creation on (Settings › Features): it gives back an MP4.",film:"Paste it into your own Claude: you get a script, a shot list, on-screen text and a captions file.",clip:"Ask for the cut above. Paste the prompt into your own Claude for the timings and captions, then add the words in CapCut."};
+/* Where an idea came from (12 Nov, B2): a speech in Parliament with the words said, a campaign, or news. */
+const SRC_KIND={parliament:["🏛","From Parliament","parl"],campaign:["📣","From a campaign","camp"],news:["🔥","From the news","news"],own:["★","Our own","own"]};
+function viSource(x){if(!x||!SRC_KIND[x.kind])return"";const [ic,lab,cls]=SRC_KIND[x.kind];
+  const meta=[x.who,x.party,x.place,x.dated?new Date(x.dated+"T12:00:00Z").toLocaleDateString("en-GB",{day:"numeric",month:"short"}):""].filter(Boolean).join(" · ");
+  return `<div class="srcq ${cls}"><span class="srctag">${ic} ${esc(lab)}${x.title?` · ${esc(x.title)}`:""}</span>${x.quote?`<q>${esc(x.quote)}</q>`:""}${meta||x.url?`<small class="src">${esc(meta)}${x.url?` · <a href="${esc(x.url)}" target="_blank" rel="noopener">${x.kind==="parliament"?"Official record":"Source"} ↗</a>`:""}</small>`:""}</div>`}
+/* Existing footage on a video idea (12 Nov): ask the Mini to cut it, the same as Tools › Clip a video. */
+function viFootage(d){const v=d.videoIdea||{};if(!(v.footage||[]).length)return"";const list=videoSuggestions(d).filter(o=>/^vf\d/.test(o.id));if(!list.length)return"";
+  return `<div class="vifoot"><b>Footage to use</b>${list.map(o=>{const rq=(S.requests||{})[d.id+"-"+o.id];const need=o.rights&&o.rights.ok===false;const ok=!need||S.vsRights===d.id+"-"+o.id;
+    return `<div class="vifrow"><span><b>${esc(o.title||"Footage")}</b><small class="src">${esc([o.who,o.start&&o.end?`${o.start}–${o.end}`:o.start||"",o.source].filter(Boolean).join(" · "))} · <a href="${esc(o.url)}" target="_blank" rel="noopener">Watch ↗</a></small>${need&&!rq?`<label class="src"><input type="checkbox" data-act="vsRights" data-opt="${esc(o.id)}"${S.vsRights===d.id+"-"+o.id?" checked":""}> ${esc(o.rights.note||"We may use this footage")}</label>`:""}</span>
+    ${rq?`<span class="rp ${rq.status==="done"?"ok":"warn"}">${rq.status==="done"?"Cut and attached":"Cut requested"}</span>`:S.db?`<button type="button" class="btn small" data-act="vsCut" data-opt="${esc(o.id)}"${ok?"":" disabled"}>Ask for the cut</button>`:""}</div>`}).join("")}</div>`}
 function viPhone(d){const v=d.videoIdea;const film=v.route==="film";
   const fr=(v.beats||[]).map((b,i)=>film?`<div class="vf film${i?"":" on"}"><div>${esc(b.text.replace(/\*/g,""))}</div>${b.shot?`<em>${esc(b.shot)}</em>`:""}</div>`:`<div class="vf${b.look==="blue"?" blue":""}${i?"":" on"}"><div>${viHl(b.text)}</div><small>CitizenGO</small></div>`).join("");
   return `<div class="viphone" data-vi-phone role="img" aria-label="Storyboard: ${esc((v.beats||[]).map(b=>b.text.replace(/\*/g,"")).join(" / "))}"><span class="vn">${film?"to film":"storyboard"}</span>${fr}</div>`}
@@ -2681,7 +2711,7 @@ setInterval(()=>{if(document.hidden||matchMedia("(prefers-reduced-motion: reduce
 document.addEventListener("click",ev=>{if(ev.target.closest("[data-vi-copy]"))document.querySelector('#detail [data-vi-box] [data-vi="copy"]')?.click()});
 document.addEventListener("click",async ev=>{const b=ev.target.closest("[data-vi]");if(!b)return;const box=b.closest("[data-vi-box]");if(!box)return;ev.stopPropagation();
   const k=b.dataset.vi;const cur=()=>box.querySelector("pre[data-vi-p]:not([hidden])");
-  if(k==="make"||k==="film"){box.querySelectorAll("[data-vi='make'],[data-vi='film']").forEach(x=>x.setAttribute("aria-pressed",x.dataset.vi===k));box.querySelectorAll("pre[data-vi-p]").forEach(p=>p.hidden=p.dataset.viP!==k);const h=box.querySelector("[data-vi-how]");if(h)h.textContent=h.textContent.replace(VI_HOW.make,VI_HOW[k]).replace(VI_HOW.film,VI_HOW[k]);return}
+  if(k==="make"||k==="film"||k==="clip"){box.querySelectorAll("[data-vi='make'],[data-vi='film'],[data-vi='clip']").forEach(x=>x.setAttribute("aria-pressed",x.dataset.vi===k));box.querySelectorAll("pre[data-vi-p]").forEach(p=>p.hidden=p.dataset.viP!==k);const h=box.querySelector("[data-vi-how]");if(h)h.textContent=h.textContent.replace(VI_HOW.make,VI_HOW[k]).replace(VI_HOW.film,VI_HOW[k]).replace(VI_HOW.clip,VI_HOW[k]);return}
   const p=cur();if(!p)return;const text=p.textContent;
   if(k==="copy"){try{await navigator.clipboard.writeText(text);toast("Prompt copied: paste it into your Claude")}catch(e){const r=document.createRange();r.selectNodeContents(p);const sel=getSelection();sel.removeAllRanges();sel.addRange(r);toast("Prompt selected: press Ctrl+C (⌘C on a Mac)")}return}
   if(k==="open"){const u="https://claude.ai/new?q="+encodeURIComponent(text);if(u.length<7500)window.open(u,"_blank","noopener");else{try{await navigator.clipboard.writeText(text)}catch(e){}window.open("https://claude.ai/new","_blank","noopener");toast("Prompt copied: paste it into the new chat")}}
@@ -4223,7 +4253,7 @@ const sideSvg=(k,n=18)=>`<svg width="${n}" height="${n}" viewBox="0 0 24 24" fil
 const SIDE_NAV=[["make","Create",[["compose","New post"],["posts:pending","For review"],["posts:hold","Finishing"],["posts:scheduled","In Asana"],["posts:posted","Posted"],["evergreen","Evergreen"],["posts:rejected","Bin"]]],["plan","Plan",[["plan","Month"],["calendar:week","Week"],["calendar:list","List"],["calendar:grid","Instagram grid"]]],
   ["talk","Inbox",[["inbox:inbox","Conversations"],["inbox:mine","Assigned to me"],["inbox:posts","By post"],["inbox:autos","Automations"],["inbox:history","Moderation"],["inbox:team","Team"]]],
   ["listen","Listen",[["listening:rising","Rising now"],["listening:mentions","Mentions"],["listening:allies","Allies and opponents"],["listening:topics","Topics"],["listening:parliament","Parliament"],["listening:watches","Watches"]]],
-  ["learn","Reports",[["analytics:overview","Overview"],["analytics:signups","Sign-ups"],["analytics:audience","Audience"],["analytics:posts","Posts"],["analytics:talk","Conversations"],["analytics:campaigns","Campaigns"],["analytics:allies","Allies"],["analytics:leaderboard","Leaderboard"],["analytics:countries","Countries"]]],["tools","Tools",[["tools:home","All tools"],["tools:inviter","Page Inviter"],["tools:links","Tracked links"],["tools:bio","Link in bio"],["tools:make","Make"],["tools:claude","Claude connectors"],["tools:health","Health check"]]]];
+  ["learn","Reports",[["analytics:overview","Overview"],["analytics:signups","Sign-ups"],["analytics:audience","Audience"],["analytics:posts","Posts"],["analytics:talk","Conversations"],["analytics:campaigns","Campaigns"],["analytics:allies","Allies"],["analytics:leaderboard","Leaderboard"],["analytics:countries","Countries"]]],["tools","Tools",[["tools:home","All tools"],["tools:kit","Campaign kit"],["tools:inviter","Page Inviter"],["tools:links","Tracked links"],["tools:bio","Link in bio"],["tools:make","Make"],["tools:claude","Claude connectors"],["tools:health","Health check"]]]];
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}};const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 const SIDE={open:lsGet("desk.sideOpen",{make:true}),fold:lsGet("desk.sideFold",false)};
 function applyTheme(t){const r=document.documentElement;r.setAttribute("data-theme","light");t="light";return;/* light only since 12 Nov */
@@ -4324,6 +4354,7 @@ const TL={tab:"home",days:30,inv:null,links:null,health:null,err:{},loading:{},m
 const TL_TABS=[["home","All tools"],["inviter","Page Inviter"],["links","Tracked links"],["bio","Link in bio"],["make","Make"],["claude","Claude connectors"],["health","Health check"]];
 async function tlLoad(k,fn){if(TL.loading[k]||!S.mcp)return;TL.loading[k]=true;TL.err[k]=null;renderTools();try{TL[k]=await fn()}catch(e){TL.err[k]=e}finally{TL.loading[k]=false;renderTools()}}
 function loadTools(){renderTools();const t=TL.tab;
+  if(t==="kit"&&(!TL.src||TL.src.team!==S.team))tlLoad("src",()=>eng("engine_sources",{team:S.team,days:7}).then(r=>({...r,team:S.team})));
   if((t==="home"||t==="inviter")&&!TL.inv)tlLoad("inv",()=>eng("engine_inviter",{days:TL.days}));
   if((t==="home"||t==="links")&&(!TL.links||TL.links.team!==S.team))tlLoad("links",()=>eng("engine_links",{team:S.team}));
   if(TL.bio&&TL.bio.team!==S.team){TL.bio=null;TL.bioDirty=false}
@@ -4336,6 +4367,7 @@ function tlCard(icon,title,desc,status,go,dim){const ic=SIDE_IC[icon]?`<span cla
 function tlHome(){const I=TL.inv,L=TL.links,H=TL.health;const bad=H?H.checks.filter(c=>c.level==="bad"||c.level==="warn").length:null;
   const sig=L?L.links.reduce((a,l)=>a+(l.signatures||0),0):null;
   return `<div class="tlgrid">
+    ${tlCard("kit","Campaign kit","Plan a campaign's posts and videos across days and accounts; the morning run drafts the whole set.",S.kits?`✓ ${Object.values(S.kits).filter(k=>k.team===S.team).length} kit${Object.values(S.kits).filter(k=>k.team===S.team).length===1?"":"s"}`:"✓ Posts and videos","kit")}
     ${tlCard("fish","Page Inviter","Invites people who reacted to our posts to like the Page. A Chrome extension.",I?`✓ ${esc(PI_INFO.version)} · ${anN(I.invites)} invites in ${I.days} days · ${I.people.length} ${I.people.length===1?"person":"people"}`:TL.loading.inv?"Loading…":"—","inviter")}
     ${tlCard("link","Tracked links","Make cgo.ac links for a petition, one per network, and see the signatures each brought.",L?`✓ ${L.links.length} links · ${anN(sig)} signatures`:TL.loading.links?"Loading…":"—","links")}
     ${tlCard("palette","Make a graphic","Our post designs without starting a post: pick one, type the words, download.",`✓ ${SWITCH_T.length} designs`,"make")}
@@ -4483,8 +4515,68 @@ function tlWho(){const A=TL.acc;const box=b=>`<section class="rsbox"><h3>Who can
   if(TL.err.acc)return box(`<p class="src">Couldn't load it (${esc(whyFailed(TL.err.acc))}).</p>`);if(!A)return box(`<p class="src">${TL.loading.acc?"Loading…":""}</p>`);
   const n=A.accounts.length;const cell=(p,k)=>{const c=p.accounts.filter(a=>a.source&&a[k]).length;return `<td class="n">${!c?'<span class="src">—</span>':c===n?"✓":`${c} of ${n}`}</td>`};
   return box(`<div class="awrap"><table class="atbl"><thead><tr><th>Person</th><th class="n">Post</th><th class="n">Reply and DM</th><th class="n">Moderate</th></tr></thead><tbody>${A.people.map(p=>`<tr><td>${esc(p.who)}${p.accounts.some(a=>a.source==="hand")?' <small class="src" title="Set up by hand until they connect Facebook">✎</small>':""}</td>${cell(p,"post")}${cell(p,"reply")}${cell(p,"moderate")}</tr>`).join("")}</tbody></table></div><span class="src">Across ${n} account${n===1?"":"s"}.</span>`)}
+/* Campaign kit (Chris, 12 Nov): pick a campaign, the days, accounts and how many posts and videos; the
+   desk lays out a plan (angles spread across the days, videos marked ▶) that you can change, and "Ask for
+   the kit" files it (desk docs: kits). The morning run drafts every item into For review with doc.kit. */
+SIDE_IC.kit='<path d="M12 3 3 8l9 5 9-5-9-5Z"/><path d="m3 13 9 5 9-5"/><path d="m3 17.5 9 5 9-5"/>';
+const KIT_ANGLES=[["launch","Launch","post"],["why","Why it matters","post"],["fact","A fact that lands","post"],["story","A real person's story","post"],["speech","What an MP or MSP said","post"],["explainer","Explainer","video"],["clip","Clip from a speech","video"],["voice","Supporter to camera","video"],["milestone","Sign-up milestone","post"],["reminder","Reminder","post"],["countdown","Countdown","video"],["thanks","Thank you","post"],["lastcall","Last call","post"]];
+function kitDefaults(){const t=new Date(Date.now()+864e5);return {name:"",url:"",starts:dayKey(t),days:7,accounts:null,posts:8,videos:3,angles:["launch","why","fact","story","speech","explainer","clip","voice","reminder","milestone","thanks","lastcall"],parl:true,footage:true,notes:""}}
+function kitPlan(K){const days=Math.max(1,Number(K.days)||7),acc=K.accounts||[],start=new Date(K.starts+"T12:00:00");
+  const on=KIT_ANGLES.filter(a=>K.angles.includes(a[0])&&(a[0]!=="speech"&&a[0]!=="clip"||K.parl));
+  const posts=on.filter(a=>a[2]==="post"),vids=on.filter(a=>a[2]==="video");
+  const pick=(list,n)=>{if(!list.length||n<=0)return[];const first=list[0][0]==="launch"?[list[0]]:[],last=list[list.length-1][0]==="lastcall"?[list[list.length-1]]:[];const mid=list.filter(a=>!first.includes(a)&&!last.includes(a));const out=[...first];let i=0;while(out.length<n-last.length&&mid.length){out.push(mid[i%mid.length]);i++}return [...out,...last].slice(0,Math.max(n,first.length+last.length>n?n:0)||n)};
+  const P=pick(posts,Number(K.posts)||0),V=pick(vids,Number(K.videos)||0);
+  const items=[];const fb=acc.filter(k=>/-fb$/.test(k)),ig=acc.filter(k=>/-ig$/.test(k)),x=acc.filter(k=>/-x$/.test(k));
+  P.forEach((a,i)=>{const d=P.length<2?0:Math.round(i*(days-1)/(P.length-1));const big=["launch","lastcall","milestone"].includes(a[0]);const rot=[[...fb,...ig],[...fb,...x],[...ig,...x]][i%3].filter(Boolean);items.push({day:d,angle:a[0],label:a[1],kind:"post",accounts:big||!rot.length?acc:rot})});
+  V.forEach((a,i)=>{const d=Math.min(days-1,Math.max(0,Math.round((i+1)*(days-1)/(V.length+1))));items.push({day:d,angle:a[0],label:a[1],kind:"video",accounts:[...fb,...ig].length?[...fb,...ig]:acc})});
+  items.sort((a,b)=>a.day-b.day||(a.kind==="video")-(b.kind==="video"));
+  return items.map(it=>{const t=new Date(start);t.setDate(t.getDate()+it.day);return {...it,date:dayKey(t)}})}
+function tlKit(){const team=(S.teams||[]).find(x=>x.id===S.team);const accs=(team&&team.accounts||[]).filter(a=>a.platform!=="instagram"||a.handle||a.ig_id);
+  if(!TL.kit)TL.kit=kitDefaults();const K=TL.kit;if(!K.accounts)K.accounts=accs.map(a=>a.key);
+  const src=TL.src;const camps=(src&&src.campaigns)||[];const nParl=(src&&src.parliament||[]).length;
+  const plan=kitPlan(K);const byDay={};plan.forEach(p=>{(byDay[p.date]=byDay[p.date]||[]).push(p)});
+  const nm=k=>{const a=accs.find(x=>x.key===k);return a?qAvatar(k):esc(k)};
+  const form=`<section class="rsbox tlform kitform"><h3>Plan a campaign kit</h3><span class="src">Pick the campaign and how much you want. The plan on the right updates as you go, and the morning run drafts every post and video into For review.</span>
+    <label class="wsf">Campaign<input id="kitName" list="kitCamps" maxlength="120" placeholder="e.g. Protect children online: under-16s ban" value="${esc(K.name)}"></label>
+    <datalist id="kitCamps">${camps.map(c=>`<option value="${esc(c.title||c.url)}">${esc(anN(c.signatures))} sign-ups from our posts</option>`).join("")}</datalist>
+    <label class="wsf">Petition link<input id="kitUrl" type="url" placeholder="https://citizengo.org/en-gb/..." value="${esc(K.url)}"></label>
+    <div class="tlrow"><label class="wsf">Starts<input type="date" id="kitStart" min="${dayKey(new Date())}" value="${esc(K.starts)}"></label><label class="wsf">How long<select id="kitDays">${[[3,"3 days"],[7,"1 week"],[14,"2 weeks"],[21,"3 weeks"]].map(([v,l])=>`<option value="${v}"${Number(K.days)===v?" selected":""}>${l}</option>`).join("")}</select></label></div>
+    <div class="tlrow"><label class="wsf">Posts<input type="number" id="kitPosts" min="0" max="30" value="${esc(K.posts)}"></label><label class="wsf">Videos<input type="number" id="kitVids" min="0" max="10" value="${esc(K.videos)}"></label></div>
+    <fieldset class="wsf"><legend>Accounts</legend>${accs.map(a=>`<label><input type="checkbox" data-kit-acc="${esc(a.key)}"${K.accounts.includes(a.key)?" checked":""}> ${esc(a.name||a.key)}</label>`).join("")}</fieldset>
+    <fieldset class="wsf kitang"><legend>Angles to use</legend>${KIT_ANGLES.map(([k,l,kind])=>`<label class="chip${K.angles.includes(k)?" on":""}"><input type="checkbox" data-kit-ang="${k}"${K.angles.includes(k)?" checked":""}> ${kind==="video"?"▶ ":""}${esc(l)}</label>`).join("")}</fieldset>
+    <label class="dest"><input type="checkbox" id="kitParl"${K.parl?" checked":""}> Use what MPs and MSPs said on this issue${src?` <small class="src">(${nParl} speech${nParl===1?"":"es"} on our issues this week)</small>`:""}</label>
+    <label class="dest"><input type="checkbox" id="kitFoot"${K.footage?" checked":""}> Use existing footage where there is some (Parliament, our own clips)</label>
+    <label class="wsf">Anything else <small>(optional)</small><textarea id="kitNotes" rows="2" maxlength="600" placeholder="e.g. Second reading is on the 26th; keep it hopeful">${esc(K.notes)}</textarea></label>
+    <div class="tpacts"><button class="btn primary" data-kit-go${S.db?"":" disabled"}>Ask for the kit</button><button class="btn" data-kit-reset>Start again</button></div></section>`;
+  const nPost=plan.filter(p=>p.kind==="post").length,nVid=plan.length-nPost;
+  const prev=`<section class="rsbox kitplan"><div class="rsbar"><h3>The plan</h3><span class="src">${nPost} post${nPost===1?"":"s"} · ${nVid} video${nVid===1?"":"s"} · ${esc(String(K.days))} days</span></div>
+    ${plan.length?Object.entries(byDay).map(([day,list])=>`<div class="kitday"><b>${esc(new Date(day+"T12:00:00").toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"}))}</b><div>${list.map(p=>`<div class="kititem ${p.kind}"><span class="kk">${p.kind==="video"?"▶ Video":"Post"}</span><span class="kl">${esc(p.label)}</span><span class="ka">${p.accounts.map(nm).join("")}</span></div>`).join("")}</div></div>`).join(""):`<p class="src">Pick at least one angle and one post or video.</p>`}
+    <span class="src">Times are picked by the run from the best times for each account. Every draft still needs your OK in For review.</span></section>`;
+  const mine=Object.entries(S.kits||{}).map(([id,k])=>({id,...k})).filter(k=>k.team===S.team).sort((a,b)=>String(b.at).localeCompare(String(a.at)));
+  const list=mine.length?`<section class="rsbox"><h3>Your team's kits</h3>${mine.map(k=>{const ds=(S.drafts||[]).filter(d=>d.kit&&d.kit.id===k.id);const nv=ds.filter(d=>d.videoIdea&&d.videoIdea.standalone!==false).length;
+      return `<div class="kitrow"><span><b>${esc(k.name||k.url)}</b><small class="src">${esc(k.starts||"")} · ${esc(String(k.days||""))} days · ${esc(String((k.plan||[]).length))} items · asked by ${esc(nameOf(k.by))}</small></span>${k.status==="drafted"||ds.length?`<span class="rp ok">${ds.length-nv} post${ds.length-nv===1?"":"s"} · ${nv} video${nv===1?"":"s"} drafted</span><button class="btn small" data-kit-open="${esc(k.id)}">Open in For review</button>`:`<span class="rp warn">Drafted in the next morning run</span>${k.by===S.me?`<button class="btn small ghost" data-kit-cancel="${esc(k.id)}">Cancel</button>`:""}`}</div>`}).join("")}</section>`:"";
+  return `<div class="tlsplit kitsplit">${form}${prev}</div>${list}`}
+function kitRead(){const K=TL.kit;if(!K)return;const v=id=>$(id)?.value;
+  K.name=(v("#kitName")||"").trim();K.url=(v("#kitUrl")||"").trim();K.starts=v("#kitStart")||K.starts;K.days=Number(v("#kitDays"))||7;K.posts=Math.min(30,Math.max(0,Number(v("#kitPosts"))||0));K.videos=Math.min(10,Math.max(0,Number(v("#kitVids"))||0));
+  K.accounts=[...document.querySelectorAll("[data-kit-acc]")].filter(x=>x.checked).map(x=>x.dataset.kitAcc);K.angles=[...document.querySelectorAll("[data-kit-ang]")].filter(x=>x.checked).map(x=>x.dataset.kitAng);
+  K.parl=!!$("#kitParl")?.checked;K.footage=!!$("#kitFoot")?.checked;K.notes=(v("#kitNotes")||"").trim();
+  const c=((TL.src&&TL.src.campaigns)||[]).find(c=>(c.title||c.url)===K.name);if(c&&!K.url)K.url=c.url}
+document.addEventListener("change",ev=>{if(!ev.target.closest(".kitform"))return;kitRead();const f=document.activeElement&&document.activeElement.id;renderTools();if(f)$("#"+f)?.focus()});
+document.addEventListener("click",async ev=>{
+  if(ev.target.closest("[data-kit-reset]")){TL.kit=null;renderTools();return}
+  if(ev.target.closest("[data-kit-clear]")){S.kitFilter=null;renderQueue();return}
+  const o=ev.target.closest("[data-kit-open]");if(o){navGo("posts");S.status="pending";S.q="";S.kitFilter=o.dataset.kitOpen;renderAll();return}
+  const c=ev.target.closest("[data-kit-cancel]");if(c){try{await S.db.doc("kits/"+c.dataset.kitCancel).update({status:"cancelled"});toast("Kit cancelled")}catch(e){failToast(e,"Couldn't cancel it")}return}
+  const b=ev.target.closest("[data-kit-go]");if(!b)return;kitRead();const K=TL.kit;const plan=kitPlan(K);
+  if(!K.name){toast("Name the campaign first");$("#kitName")?.focus();return}
+  if(K.url&&!/^https:\/\/(www\.)?citizengo\.org\//.test(K.url)){toast("The petition link should be a citizengo.org link");return}
+  if(!K.accounts.length){toast("Tick at least one account");return}
+  if(!plan.length){toast("Pick at least one angle and one post or video");return}
+  b.disabled=true;const id="kit-"+S.team+"-"+Date.now().toString(36);
+  try{await S.db.doc("kits/"+id).set({team:S.team,name:K.name.slice(0,120),url:K.url||null,starts:K.starts,days:K.days,accounts:K.accounts,posts:K.posts,videos:K.videos,angles:K.angles,parliament:K.parl,footage:K.footage,notes:K.notes.slice(0,600),plan,status:"requested",by:S.me,at:new Date().toISOString()});
+    toast("Kit asked for: the next morning run drafts it into For review");TL.kit=null;renderTools()}catch(e){failToast(e,"Couldn't ask for the kit");b.disabled=false}});
 function renderTools(){const el=$("#toolsView");if(!el||el.hidden)return;
-  const body=TL.tab==="claude"?tlClaude():TL.tab==="inviter"?tlInviter():TL.tab==="links"?tlLinks():TL.tab==="bio"?tlBio():TL.tab==="make"?tlMake():TL.tab==="health"?tlHealth():tlHome();
+  const body=TL.tab==="kit"?tlKit():TL.tab==="claude"?tlClaude():TL.tab==="inviter"?tlInviter():TL.tab==="links"?tlLinks():TL.tab==="bio"?tlBio():TL.tab==="make"?tlMake():TL.tab==="health"?tlHealth():tlHome();
   el.innerHTML=body;
   if(TL.tab==="make")mkDraw()}
 function mkCard(){const k=TL.mk;return switchTemplate({kicker:k.kicker,headline:k.headline||"Your headline here",sub:k.sub,photo:k.photo?{url:k.photo}:null},k.T)}
@@ -7321,6 +7413,7 @@ const AI_OFF=true;
   const saved=teamPref();S.team=(S.teams.find(t=>t.id===saved)||S.teams.find(t=>t.id!=="global")||S.teams[0]).id;
   renderTeams();renderConnect();renderPause();
   S.db=engineStore(db);
+  if(db)db.collection("kits").onSnapshot(snap=>{S.kits={};snap.docs.forEach(x=>S.kits[x.id]=x.data());if(S.view==="tools"&&TL.tab==="kit"&&!document.activeElement?.closest?.("#toolsView"))renderTools()});
   if(db)db.collection("videoRequests").onSnapshot(snap=>{S.requests={};snap.docs.forEach(x=>S.requests[x.id]=x.data());if(S.view==="tools"&&TL.tab==="make"&&!document.activeElement?.closest?.("#toolsView"))renderTools();if(!(S.editing&&$("#editText"))&&!busy())renderDetail();else S.renderWaiting=true},()=>{});
   loadSettings();await refreshPosts();loadInbox();renderSide();loadBell();setTimeout(lsWatchTotals,4000);
   if(db)try{db.collection("analyticsGroups").onSnapshot(snap=>{AN.groups=snap.docs.map(x=>x.data());if(S.view==="analytics")renderAnalytics()},()=>{})}catch(e){}
@@ -7803,6 +7896,7 @@ const PAGE_HELP={
   "tools:links":["Tracked links","cgo.ac links for a petition, one per network, and the signatures each brought."],
   "tools:bio":["Link in bio","One page per country for the Instagram and X bio; only your team can change yours. It fills itself with the petitions our posts linked to recently.",["Petitions drop off when they close in Asana or get no signatures for 14 days.","Each petition button is a tracked link marked BIO, so its signatures show here and in Looker.","Reorder, pin or close buttons, then Save."]],
   "tools:inviter":["Page Inviter","The Chrome extension that invites people who reacted to our posts to like the Page."],
+  "tools:kit":["Campaign kit","A campaign's posts and videos planned across days and accounts. The morning run drafts them all into For review."],
   "tools:make":["Make","Our post designs without starting a post, and video clips cut in the morning run."],
   "tools:health":["Health check","Who can post where, pauses, and whether every data feed is up to date.",["Renew your Facebook connection here when the bell says it's running out."]],
   settings:["Settings","Your own settings and the teams you're in.",["Time format, week start and calendar view are saved for you only."]]};
