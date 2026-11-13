@@ -24,7 +24,7 @@ const DESK_TOOLS = new Set(['engine_me', 'engine_posts', 'engine_save', 'engine_
   'engine_evergreen', 'engine_evergreen_update', 'engine_connect', 'engine_media', 'engine_pause', 'engine_video', 'engine_inbox', 'engine_inbox_act',
   'engine_inbox_undo', 'engine_inbox_history', 'engine_inbox_team', 'engine_ig_grid', 'engine_bio', 'engine_parliament', 'engine_inbox_person', 'engine_inbox_posts', 'engine_inbox_rules', 'engine_inbox_rule', 'engine_inbox_alert',
   'engine_inbox_bulk', 'engine_analytics', 'engine_listening', 'engine_automations', 'engine_automation', 'engine_access', 'page_inviter_usage', 'engine_inviter', 'engine_links', 'engine_health', 'engine_preview', 'engine_trash',
-  'engine_create', 'engine_inbox_check', 'engine_prefs', 'engine_bell', 'engine_inbox_post', 'engine_inbox_similar', 'engine_benchmark', 'engine_house_rules', 'engine_report', 'engine_signups', 'engine_sources']);
+  'engine_create', 'engine_inbox_check', 'engine_prefs', 'engine_bell', 'engine_inbox_post', 'engine_inbox_similar', 'engine_benchmark', 'engine_house_rules', 'engine_report', 'engine_signups', 'engine_sources', 'engine_preview_link']);
 
 function send(res, status, body, cookie) {
   res.statusCode = status;
@@ -45,10 +45,44 @@ function store() {
   return supabaseStore({ url: process.env.SUPABASE_URL, serviceKey: process.env.SUPABASE_SERVICE_KEY });
 }
 
+async function previewPage(req, res, token) {
+  const PV = require('../lib/preview');
+  const html = (status, body) => {
+    res.statusCode = status;
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('X-Robots-Tag', 'noindex, nofollow');
+    res.setHeader('Referrer-Policy', 'no-referrer');
+    res.setHeader('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; img-src https:; frame-ancestors 'none'; base-uri 'none'; form-action 'none'");
+    res.end(body);
+  };
+  let t;
+  try { t = PV.readToken(token); } catch (e) { return html(503, PV.goneHtml('Previews are not set up on this server.')); }
+  if (!t) return html(404, PV.goneHtml('The link is wrong or has expired. Ask whoever sent it for a new one.'));
+  try {
+    const st = store();
+    const [post, docs] = await Promise.all([st.enginePost(t.id), D.pg('GET', `engine_desk_docs?select=data&collection=eq.previewLinks&id=eq.${encodeURIComponent(t.id)}`)]);
+    const link = docs && docs[0] && docs[0].data;
+    if (!post || !link || link.stopped || link.nonce !== t.nonce) return html(404, PV.goneHtml('Sharing was stopped for this preview. Ask whoever sent it for a new link.'));
+    if (!PV.PLANNED.has(post.status)) return html(410, PV.goneHtml(post.status === 'posted' ? 'This post has gone out, so its preview has closed.' : 'This post is no longer planned, so its preview has closed.'));
+    const paths = [...new Set(PV.networksOf(post).flatMap((n) => [...(n.media || []), n.cover]).filter(Boolean))].slice(0, 20);
+    const images = {};
+    await Promise.all(paths.map(async (p) => { const u = await st.engineMediaUrl(p, 3600).catch(() => null); if (u) images[p] = u; }));
+    const teams = (await st.engineTeams().catch(() => [])) || [];
+    const team = (teams.find((x) => x.id === post.team_id) || {}).name || '';
+    return html(200, PV.previewHtml({ post, team: team ? `CitizenGO ${team}`.replace('CitizenGO CitizenGO', 'CitizenGO') : '', images, exp: t.exp }));
+  } catch (e) {
+    return html(503, PV.goneHtml('The preview could not be loaded just now. Try again in a minute.'));
+  }
+}
+
 module.exports = async (req, res) => {
   const url = new URL(req.url, 'https://placeholder.invalid');
   const op = url.searchParams.get('op') || '';
   if (req.method === 'POST' && !D.sameOrigin(req)) return send(res, 403, { error: 'Not from the desk.' });
+
+  // A planned post's preview page [13 Nov 2026]: public, read-only, gated by its signed link.
+  if (op === 'preview' && req.method === 'GET') return previewPage(req, res, url.searchParams.get('t'));
 
   let session;
   try { session = await D.readSession(req); } catch (e) { return send(res, 503, { error: 'The desk database is not reachable.' }); }

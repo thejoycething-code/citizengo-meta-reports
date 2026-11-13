@@ -486,3 +486,7 @@ alter table public.petition_status add column if not exists passed_at timestampt
 alter table public.petition_status add column if not exists site_checked_at timestamptz;
 alter table public.engine_bio add column if not exists logo text;
 alter table public.engine_bio add column if not exists logo_at timestamptz;
+-- 13 Nov 2026: the collection check had fallen behind lib/desk.js (DOC_COLLECTIONS +
+-- ENGINE_COLLECTIONS), so saves to newer collections were refused. Keep the two in step.
+alter table public.engine_desk_docs drop constraint if exists engine_desk_docs_collection_check;
+alter table public.engine_desk_docs add constraint engine_desk_docs_collection_check check (collection = any (array['savedReplies','listenShares','listenWatches','listenVoices','toolLinks','analyticsGroups','analyticsViews','feedback','videoRequests','results','composeKit','calNotes','kits','houseRules','personTags','reports','previewLinks']::text[]));

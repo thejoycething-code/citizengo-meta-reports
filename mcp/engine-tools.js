@@ -951,13 +951,23 @@ function teamAccountMatcher(team) {
   }
   return (p) => ids.has(String(p.account_id)) || names.has(norm(p.account_label));
 }
+// Post type for the signature path: link, video, photo, text (Facebook media_type,
+// Instagram media_type / reels), X posts are 'post'.
+function PS_KIND(t, platform) {
+  const v = String(t || '').toLowerCase();
+  if (platform === 'x') return 'post';
+  if (/reel|video/.test(v)) return 'video';
+  if (/link|share/.test(v)) return 'link';
+  if (/photo|image|album|carousel/.test(v)) return 'photo';
+  return v ? 'other' : null;
+}
 async function engineSignups(store, args, ctx0, now = Date.now()) {
   const ctx = await context(store, ctx0.who);
   const teamId = String(args.team || '');
   if (!E.canEditTeam(ctx, teamId)) throw err('You are not in that team.', 'ENGINE_NOT_MEMBER');
   const team = teamById(ctx, teamId);
   const days = [7, 30, 90].includes(Number(args.days)) ? Number(args.days) : 30;
-  const key = `signups:v1:${teamId}:${days}`;
+  const key = `signups:v2:${teamId}:${days}`;
   return cached(store, key, args, async () => {
     const since = new Date(now - days * 864e5).toISOString();
     const mine = teamAccountMatcher(team);
@@ -983,7 +993,16 @@ async function engineSignups(store, args, ctx0, now = Date.now()) {
       const audience = x && x.impressions != null ? Number(x.impressions) : null;
       const ep = byCode[String(r.campaign_code).toLowerCase()] || null;
       if (ep) { const b = by_post[ep.id] = by_post[ep.id] || { signatures: 0, new_members: 0 }; b.signatures += r.signatures || 0; b.new_members += r.new_members || 0; }
+      // The path [13 Nov 2026, Chris: signature path C + A]: reached (unique where the
+      // platform gives it), clicked (link clicks where known, else all clicks), signed.
+      const kind = PS_KIND(x && x.media_type, r.platform);
+      const reached = x ? (x.reach != null ? x.reach : x.impressions) : null;
+      const allClicks = x && x.url_link_clicks != null ? Number(x.url_link_clicks) : null;
+      // Link clicks only when they can explain the sign-ups: on Reels and posts whose link is in
+      // the first comment, Meta counts most clicks as "other", so all clicks are the fairer base.
+      const clicks = x && x.link_clicks != null && x.link_clicks > 0 && x.link_clicks >= 2 * (r.signatures || 0) ? Number(x.link_clicks) : allClicks;
       return { platform: r.platform, account: r.account_label || r.account_id, posted_at: r.posted_at, url: r.permalink_url || null, petition_id: r.petition_id || null,
+        kind, reached, clicks, all_clicks: allClicks, link_clicks: x && x.link_clicks != null ? Number(x.link_clicks) : null, post_id: r.post_id,
         signatures: r.signatures || 0, new_members: r.new_members || 0, first_days: r.first_days || 0, audience, per_1k: audience ? Math.round((r.signatures / audience) * 10000) / 10 : null,
         shared_with: r.shared_with || 0, post: ep ? { id: ep.id, title: ep.title } : null };
     }).sort((a, b) => b.signatures - a.signatures || String(b.posted_at).localeCompare(String(a.posted_at)));
@@ -1095,6 +1114,26 @@ async function engineListening(store, args, ctx0) {
       const tagTopic = Object.fromEntries(tags.map((t) => [t.tag, t.topic]));
       const fit = (media || []).filter((m) => tagTopic[m.hashtag] && langOf(m.caption) === lang && T.topicsOf(m.caption).includes(tagTopic[m.hashtag]));
       return json({ tab: 'beyond', edition, ...require('../lib/listen-topics').beyond({ tags, media: fit, news, posts, known: (accounts || []).map((a) => a.username) }, { now }), hashtag_rows: fit.length, news_rows: news.length });
+    });
+  }
+  // Supporter posts [13 Nov 2026, Chris: "Do 6, no permission builder, we can just
+  // rework or repost; part of Listening"]: public posts that tag the team's Pages
+  // and Instagram accounts (meta_social_tags, read by the nightly collector),
+  // last 30 days, most liked first. Read-only; Rework and Repost file requests.
+  if (args.tab === 'supporters') {
+    if (!team) throw err('Pick a team.', 'ENGINE_REFUSED');
+    const t = teamById(ctx, team);
+    const pages = [...new Set(((t && t.accounts) || []).map((a) => a.page_id).filter(Boolean).map(String))];
+    return cached(store, `listening:supporters:v1:${team}`, args, async () => {
+      const since = new Date(Date.now() - 30 * 864e5).toISOString();
+      const rows = pages.length && store.socialTags ? (await Promise.all(pages.map((page_id) => store.socialTags({ since, page_id, limit: 200 }).catch(() => [])))).flat() : [];
+      const seen = new Set();
+      const label = (r) => { const a = ((t && t.accounts) || []).find((x) => String(x.page_id) === String(r.page_id) && x.platform === r.platform); return (a && (a.label || a.name || (a.handle ? '@' + a.handle : ''))) || r.account_name || ''; };
+      const posts = rows.filter((r) => { const k = `${r.platform}|${r.item_id}`; if (seen.has(k)) return false; seen.add(k); return true; })
+        .map((r) => ({ id: `${r.platform}:${r.item_id}`, platform: r.platform, who: r.author || 'Someone', text: String(r.text || '').slice(0, 1200), url: r.permalink || null,
+          media_type: r.media_type || null, created_time: r.created_at, likes: r.likes == null ? null : Number(r.likes), comments: r.comments == null ? null : Number(r.comments), tagged: label(r) }))
+        .sort((a, b) => ((b.likes || 0) + 2 * (b.comments || 0)) - ((a.likes || 0) + 2 * (a.comments || 0)) || String(b.created_time).localeCompare(String(a.created_time)));
+      return json({ tab: 'supporters', team, days: 30, posts: posts.slice(0, 120) });
     });
   }
   if (args.tab === 'opponents_mix') {
@@ -2145,6 +2184,36 @@ async function enginePreview(store, args, { who }) {
   return url ? json({ ok: true, url, expires_in: 3600 }) : json({ ok: false, error: 'The preview could not be found.' });
 }
 
+// Preview links for planned posts [13 Nov 2026, Chris]: a read-only page for
+// someone outside the desk to check one post before it goes out (lib/preview.js).
+// action get (default) says whether one is live; create makes a new one (the old
+// one stops); stop ends it. Only while the post is planned (hold or scheduled).
+async function enginePreviewLink(store, args, { who }) {
+  const ctx = await context(store, who);
+  const post = await editablePost(store, ctx, args.id);
+  const PV = require('../lib/preview');
+  const D = require('../lib/desk');
+  const id = String(post.id);
+  const cur = (await D.pg('GET', `engine_desk_docs?select=data&collection=eq.previewLinks&id=eq.${encodeURIComponent(id)}`).catch(() => [])) || [];
+  const link = cur[0] && cur[0].data;
+  const base = 'https://meta-organic-reporting.vercel.app/preview/';
+  const live = link && link.nonce && link.exp > Date.now() && !link.stopped;
+  const planned = PV.PLANNED.has(post.status);
+  const action = args.action || 'get';
+  if (action === 'get') return json({ ok: true, planned, live: !!(live && planned), url: live && planned ? base + PV.tokenFor({ id, nonce: link.nonce, exp: link.exp }) : null, exp: live ? new Date(link.exp).toISOString() : null, by: live ? link.by : null });
+  if (action === 'stop') {
+    if (link) await D.docsPut('previewLinks', id, { ...link, stopped: true, stopped_by: who, stopped_at: new Date().toISOString() }, who, { engine: true });
+    await store.engineEvent({ post_id: id, team_id: post.team_id, who, action: 'preview-link-stop', detail: {} });
+    return json({ ok: true, live: false });
+  }
+  if (action !== 'create') return json({ ok: false, error: 'Use get, create or stop.' });
+  if (!planned) return json({ ok: false, error: 'Preview links are for planned posts only: approve it or hand it off first.' });
+  const nonce = PV.newNonce(), exp = Date.now() + PV.DAYS * 864e5;
+  await D.docsPut('previewLinks', id, { team: post.team_id, post_id: id, nonce, exp, by: who, at: new Date().toISOString() }, who, { engine: true });
+  await store.engineEvent({ post_id: id, team_id: post.team_id, who, action: 'preview-link', detail: { exp: new Date(exp).toISOString() } });
+  return json({ ok: true, live: true, planned, url: base + PV.tokenFor({ id, nonce, exp }), exp: new Date(exp).toISOString(), by: who });
+}
+
 async function engineMedia(store, args, { who }) {
   const ctx = await context(store, who);
   const post = await editablePost(store, ctx, args.id);
@@ -2332,7 +2401,7 @@ const ENGINE_TOOLS = [
   { name: 'engine_inbox_team', description: 'Content Engine Inbox › Team for one of your teams: open conversations per person and unassigned, each person\'s replies and median first-reply time, what has waited over 2 hours, and comments arriving by hour (in the team\'s own time zone) against reply times, over the last 7 days (days up to 30).', inputSchema: obj({ team: { type: 'string' }, days: { type: 'number' } }, ['team']), handler: engineInboxTeam },
   { name: 'engine_inbox_history', description: 'Content Engine Inbox moderation history for one of your teams: every reply, hide, delete, like, assignment, label and done, by whom, newest first.', inputSchema: obj({ team: { type: 'string' }, limit: { type: 'number' } }, ['team']), handler: engineInboxHistory },
   { name: 'engine_analytics', description: 'Content Engine Analytics for the desk, as data: page reach, views, engagements and net follows, Instagram follower movement, top Facebook posts against their own Page\'s median, top Instagram posts and X totals, for the last 7, 30 or 90 days. scope citizengo (every CitizenGO Page, default), hazteoir (kept apart), team (with team), countries (every team side by side) or leaderboard (every CitizenGO Facebook Page, this window and the one before: followers, growth, engagements, posts, per post, per 1,000 followers, best post).', inputSchema: obj({ scope: { type: 'string', enum: ['citizengo', 'hazteoir', 'team', 'countries', 'leaderboard'] }, team: { type: 'string' }, days: { type: 'number', enum: [7, 30, 90] }, from: { type: 'string', description: 'Custom range start, YYYY-MM-DD (up to 92 days). Returns only the report, ranked posts and conversations.' }, to: { type: 'string', description: 'Custom range end, inclusive; defaults to today.' }, compare_from: { type: 'string', description: 'First day of the window to compare with (same length). Default: the days just before.' }, compare: { type: 'string', enum: ['previous', 'none'] }, fresh: { type: 'boolean' } }), handler: engineAnalytics },
-  { name: 'engine_listening', description: 'Content Engine Listening for the desk, as data: posts beating their own normal (min_multiple, default 3). tab citizengo: other CitizenGO Pages\' posts (not your team\'s, with team) by views against that Page\'s 90-day median, last 7 or 30 days. tab allies: watched ally Instagram accounts (optional country UK, US, IE, CA, AU), last 7, 10 or 30 days. tab opponents: watched opponent accounts plus their Meta Ad Library issue ads. tab beyond: hashtag posts from anyone (config/listen-hashtags.json), UK headlines per topic, and accounts our watched posts keep tagging that are not on our lists. tab opponents_mix: each opponent organisation\'s last 7 or 14 days split by topic (posts, best post, ads, spend). tab watches: watches [{id, words, not, sources}] matched against the last 14 days of those posts. tab overview: English posts from all of those in the last 14 days sorted into campaign topics (posts, change, share of voice, words, top posts, gaps) plus rising hashtags, links and names.', inputSchema: obj({ tab: { type: 'string', enum: ['citizengo', 'allies', 'opponents', 'overview', 'watches', 'opponents_mix', 'beyond'] }, watches: { type: 'array', items: { type: 'object' } }, team: { type: 'string' }, country: { type: 'string' }, days: { type: 'number' }, min_multiple: { type: 'number' }, fresh: { type: 'boolean' } }), handler: engineListening },
+  { name: 'engine_listening', description: 'Content Engine Listening for the desk, as data: posts beating their own normal (min_multiple, default 3). tab citizengo: other CitizenGO Pages\' posts (not your team\'s, with team) by views against that Page\'s 90-day median, last 7 or 30 days. tab allies: watched ally Instagram accounts (optional country UK, US, IE, CA, AU), last 7, 10 or 30 days. tab opponents: watched opponent accounts plus their Meta Ad Library issue ads. tab beyond: hashtag posts from anyone (config/listen-hashtags.json), UK headlines per topic, and accounts our watched posts keep tagging that are not on our lists. tab opponents_mix: each opponent organisation\'s last 7 or 14 days split by topic (posts, best post, ads, spend). tab watches: watches [{id, words, not, sources}] matched against the last 14 days of those posts. tab overview: English posts from all of those in the last 14 days sorted into campaign topics (posts, change, share of voice, words, top posts, gaps) plus rising hashtags, links and names. tab supporters (with team): public posts that tagged the team\'s Pages and Instagram accounts in the last 30 days, most liked first.', inputSchema: obj({ tab: { type: 'string', enum: ['citizengo', 'allies', 'opponents', 'overview', 'watches', 'opponents_mix', 'beyond', 'supporters'] }, watches: { type: 'array', items: { type: 'object' } }, team: { type: 'string' }, country: { type: 'string' }, days: { type: 'number' }, min_multiple: { type: 'number' }, fresh: { type: 'boolean' } }), handler: engineListening },
   { name: 'engine_record', description: 'Content Engine: record bookkeeping on a post in any status, posted and rejected included: results, posted (the real post links and time), stale, and posting.asanaTaskGid / asanaUrl / syncedAt / removedAt. Nothing else; the post itself is saved with engine_save. version must be the one you read.', inputSchema: obj({ id: { type: 'string' }, version: { type: 'number' }, patch: { type: 'object' } }, ['id', 'version', 'patch']), handler: engineRecord },
   { name: 'engine_trash', description: "Content Engine: the desk's bin of rejected posts for one of your teams. action count (default) says how many the morning run has already learnt from (ready) and how many are newer (waiting); action empty archives the ready ones: they leave the desk but the morning run still reads them like rejected posts.", inputSchema: obj({ team: { type: 'string' }, action: { type: 'string', enum: ['count', 'empty'] } }, ['team']), handler: engineTrash },
   { name: 'engine_status', description: 'Content Engine: approve (schedules it; needs publishing rights for every Facebook and Instagram account), hold, changes (needs a note), reject, reopen, or mark as posted (it went out) a post.', inputSchema: obj({ id: { type: 'string' }, version: { type: 'number' }, action: { type: 'string', enum: ['approve', 'hold', 'changes', 'reject', 'reopen', 'posted'] }, note: { type: 'string' }, reasons: { type: 'array', items: { type: 'string' } } }, ['id', 'version', 'action']), handler: engineStatus },
@@ -2342,6 +2411,7 @@ const ENGINE_TOOLS = [
   { name: 'engine_request', description: 'Content Engine Plan: ask the daily engine to draft a post for a date (action create: team, for_date YYYY-MM-DD, title, optional angle, source key_date or idea), cancel an open request (action cancel: id), or record that it was drafted (action drafted: id, post_id).', inputSchema: obj({ action: { type: 'string', enum: ['create', 'cancel', 'drafted'] }, id: { type: 'number' }, team: { type: 'string' }, for_date: { type: 'string' }, title: { type: 'string' }, angle: { type: 'string' }, source: { type: 'string', enum: ['key_date', 'idea', 'evergreen'] }, evergreen_id: { type: 'number' }, post_id: { type: 'string' } }, ['action']), handler: engineRequest },
   { name: 'engine_evergreen', description: 'Content Engine evergreen bank for one of your teams: past winners with their state (due, coming, resting, retired), due date and any open fresh-draft request. Due 10 weeks after a post last went out.', inputSchema: obj({ team: { type: 'string' } }, ['team']), handler: engineEvergreen },
   { name: 'engine_evergreen_update', description: 'Content Engine evergreen bank: add a past winner (action add: team, title, last_out YYYY-MM-DD, optional url, format, account_key, result, why), or snooze it 4 weeks, retire, restore, or record that a fresh version went out (went_out, optional last_out) by id.', inputSchema: obj({ action: { type: 'string', enum: ['add', 'snooze', 'retire', 'restore', 'went_out'] }, id: { type: 'number' }, team: { type: 'string' }, title: { type: 'string' }, last_out: { type: 'string' }, url: { type: 'string' }, format: { type: 'string' }, account_key: { type: 'string' }, result: { type: 'string' }, why: { type: 'string' }, source_post: { type: 'string' } }, ['action']), handler: engineEvergreenUpdate },
+  { name: 'engine_preview_link', description: 'Content Engine: a read-only preview link for one planned post (Idea approved or handed off), for someone outside the desk to check it. action get (default) says whether one is live, create makes a new one (14 days; the old one stops), stop ends it. The page stops once the post is posted.', inputSchema: obj({ id: { type: 'string' }, action: { type: 'string', enum: ['get', 'create', 'stop'] } }, ['id']), handler: enginePreviewLink },
   { name: 'engine_preview', description: "Content Engine: a 1-hour signed link to play a video preview stored for a post (path from the post's video.preview or a videoSuggestions entry's preview), for the desk's trimmer. Or clip + team: a file from that team's clip (Tools › Clip a video).", inputSchema: obj({ id: { type: 'string' }, clip: { type: 'string' }, team: { type: 'string' }, path: { type: 'string' } }, ['path']), handler: enginePreview },
   { name: 'engine_media', description: 'Content Engine: store one finished image (base64 JPEG or PNG, up to 3 MB) for a post you can edit, for Facebook or Instagram (index 0-9 for carousels), or platform story for the Instagram Story frames (index 0-9, in order). Returns its path for the post\'s final snapshot.', inputSchema: obj({ id: { type: 'string' }, platform: { type: 'string', enum: ['facebook', 'instagram', 'story'] }, index: { type: 'number' }, mime: { type: 'string', enum: ['image/jpeg', 'image/png'] }, data: { type: 'string' } }, ['id', 'platform', 'mime', 'data']), handler: engineMedia },
   { name: 'engine_connect', description: 'Content Engine: a ten-minute link that connects your own Facebook account, so the Pages you can post to become your publishing rights.', inputSchema: obj({}), handler: engineConnect },
