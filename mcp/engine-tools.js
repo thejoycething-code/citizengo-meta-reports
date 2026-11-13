@@ -1296,7 +1296,7 @@ async function engineBio(store, args, { who }) {
   // L7: the real page, as visitors see it, for the desk's phone preview
   // (links switched off so the preview never counts a click).
   const grid = L.tiles.map((t) => ({ img: t.img, label: t.label, href: '#' }));
-  const preview = B.pageHtml({ bio, items: L.shown, hero: L.hero, heroWhy: L.heroWhy, grid, socials: L.socials, status: L.status, origin: '', today: L.today })
+  const preview = B.pageHtml({ bio, items: L.shown, hero: L.hero, heroWhy: L.heroWhy, grid, socials: L.socials, status: L.status, logo: B.logoOf(bio), origin: '', today: L.today })
     .replace('</head>', '<style>a{pointer-events:none}</style></head>').replace(/<script>[\s\S]*?<\/script>/, '');
   return json({ team: team.id, preview, bio: { slug: bio.slug, title: bio.title, intro: bio.intro || '', auto: bio.auto !== false, settings: B.cleanSettings(bio.settings || {}), saved: !bio.unsaved, updated_at: bio.updated_at || null, updated_by: bio.updated_by || null },
     path: `/links/${bio.slug}`, qr: `/links/${bio.slug}/qr.svg`, sources: B.SOURCES, sections: B.SECTIONS,

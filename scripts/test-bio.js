@@ -173,9 +173,12 @@ const refreshDone = (async () => {
     async petitionPagesSet(rows) { pages.push(...rows); },
     async igImageCopySet(id, url) { igCopies.push([id, url.split('?')[0]]); },
     async engineSaveBio(row) { saved.push(row); return row; },
+    async engineBioLogoSet(t, url) { logos.push([t, url.split('?')[0]]); },
   };
+  const logos = [], asked = [];
   const site = JSON.stringify([{ id: 19389, title: 'Faith is not a crime against humanity', featured_image: 'https://api.citizengo.org/media/images/p.jpg', signature_count: 900, padding: 100, cluster_count: 4500, segment: { code: 'en-gb', listcode: 'EN_GB' } }]);
   const web = async (url) => {
+    asked.push(url);
     const api = url.includes('api.citizengo.org/api/') && url.includes('19389');
     return { status: 200, ok: true, headers: { get: (k) => (k === 'content-type' ? (api ? 'application/json' : 'image/jpeg') : null) }, arrayBuffer: async () => (api ? Buffer.from(site) : jpg) };
   };
@@ -183,7 +186,12 @@ const refreshDone = (async () => {
   const team = { id: 'uk', accounts };
   const bioR = { slug: 'uk', title: 'UK', auto: true, items: [{ id: 'old', title: 'Old one', url: 'https://citizengo.org/en-gb/fr/42', petition_id: '42', closed: true }] };
   const out = await R.refreshTeam(store, { team, bio: bioR, now, fetchImpl: web, lookup });
-  eq('refresh: page title kept, picture copied from the page, grid picture copied once', [pages.find((p) => p.petition_id === '19389').page_title, pages.find((p) => p.petition_id === '19389').page_image_src, copies.map((c) => c[0]), igCopies], ['Faith is not a crime against humanity', 'page', ['bio/petitions/19389.jpg', 'bio/ig/555.jpg'], [['555', 'https://kept/bio/ig/555.jpg']]]);
+  eq('refresh: page title kept, picture copied from the page, grid picture copied once', [pages.find((p) => p.petition_id === '19389').page_title, pages.find((p) => p.petition_id === '19389').page_image_src, copies.map((c) => c[0]), igCopies], ['Faith is not a crime against humanity', 'page', ['bio/petitions/19389.jpg', 'bio/ig/555.jpg', 'bio/logo/uk.jpg'], [['555', 'https://kept/bio/ig/555.jpg']]]);
+  eq('refresh: the team\'s Facebook profile picture is kept for the top of the page', [logos, asked.includes('https://graph.facebook.com/105/picture?width=320&height=320'), out.logo], [[['uk', 'https://kept/bio/logo/uk.jpg']], true, true]);
+  {
+    const pg = B.pageHtml({ bio: { slug: 'uk', title: 'CitizenGO UK', settings: {}, logo: 'https://kept/bio/logo/uk.jpg' }, items: [], logo: B.logoOf({ logo: 'https://kept/bio/logo/uk.jpg' }), origin: 'https://o' });
+    eq('page: the team picture replaces GO at the top and in the preview', [pg.includes('<img src="https://kept/bio/logo/uk.jpg" alt="CitizenGO UK"'), pg.includes('og:image" content="https://kept/bio/logo/uk.jpg"'), B.logoOf({}), B.logoOf({ logo: 'javascript:x' })], [true, true, '/desk/go.png', '/desk/go.png']);
+  }
   {
     const p = pages.find((x) => x.petition_id === '19389');
     eq('refresh: the site\'s all-language total and share page are kept', [p.site_total, p.site_count, p.share_url], [4500, 900, 'https://citizengo.org/en-gb/LP2-share?m=8&nid=19389&title=faith-is-not-a-crime-against-humanity&list=EN_GB&utm_source=bio&utm_medium=linkinbio']);
