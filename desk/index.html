@@ -1457,6 +1457,37 @@ body:has(.ibfocus) .toast{z-index:80}
 .ibrmi:hover,.ibrmi:focus-visible{background:var(--sunk)}.ibrmi:disabled{color:var(--muted);cursor:not-allowed}.ibrmi small{color:var(--muted);margin-left:auto}
 .ibrml{display:flex;gap:6px;padding:4px}.ibrml input,.modask input,.modask select,#modTest,#ibRuleVal,#ibRuleKind{font:inherit;font-size:13px;padding:4px 8px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg);min-width:0}
 /* ===== end consistency ===== */
+.pvl{display:flex;flex-direction:column;gap:8px;border:1px solid var(--line);border-radius:10px;padding:10px 14px;background:var(--surface)}
+.pvl>div:first-child{display:flex;flex-direction:column;gap:2px}
+.pvlrow{display:flex;gap:6px;flex-wrap:wrap;align-items:center}.pvlrow input{flex:1 1 220px;min-width:0;font-size:13px}
+/* Signature path on a posted draft [13 Nov 2026, Chris: C with A beneath] */
+.spath{display:flex;flex-direction:column;gap:12px;border:1px solid var(--line);border-radius:10px;padding:12px 16px;background:var(--surface)}
+.spath h3{margin:0;font-size:15px}
+.spnet{display:flex;flex-direction:column;gap:0}
+.spnet>.src{margin-bottom:2px}
+.spst{display:grid;grid-template-columns:26px minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px 0;border-bottom:1px dashed var(--line)}
+.spst:last-child{border-bottom:0}
+.spdot{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;color:#fff}
+.spdot.r{background:#8aa8e6}.spdot.c{background:var(--accent)}.spdot.s{background:var(--ok)}
+.spst b.n{font-size:19px;font-variant-numeric:tabular-nums}
+.spst small{display:block;color:var(--muted);font-size:12.5px}
+.spcmp{position:relative;height:7px;background:var(--sunk);border-radius:4px;margin-top:5px;max-width:320px}
+.spcmp i{position:absolute;left:0;top:0;height:7px;border-radius:4px;background:var(--ok)}
+.spcmp em{position:absolute;top:-4px;width:2px;height:15px;background:var(--fg)}
+.spchip{font-size:12px;font-weight:700;border-radius:999px;padding:2px 9px;white-space:nowrap;background:var(--sunk);color:var(--muted)}
+.spchip.hi{background:var(--ok-soft);color:var(--ok)}.spchip.lo{background:var(--warn-soft);color:var(--warn)}
+.spnote{background:var(--ok-soft);border-radius:8px;padding:8px 12px;font-size:13.5px}
+.sptbl{width:100%;border-collapse:collapse;font-size:13.5px;min-width:620px}
+.sptbl th{font-size:12px;font-weight:600;color:var(--muted);text-align:left;padding:5px 6px;border-bottom:1px solid var(--line)}
+.sptbl td{padding:7px 6px;border-bottom:1px solid var(--line);vertical-align:middle;font-variant-numeric:tabular-nums}
+.sptbl td.n,.sptbl th.n{text-align:right}
+.sptbl tr.me td{background:var(--accent-soft)}
+.sptbl .t{display:block;max-width:240px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}
+.spfun{display:flex;flex-direction:column;gap:2px;width:150px}
+.spfun i{display:block;height:6px;border-radius:3px;min-width:3px}
+.spfun i.r{background:#8aa8e6}.spfun i.c{background:var(--accent)}.spfun i.s{background:var(--ok)}
+.splg{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+.splg i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:4px;vertical-align:-1px}
 /* Hand-off mode: nothing is posted from the desk */
 body.handoff [data-act="apNow"],body.handoff [data-cp="now"]{display:none!important}
 /* Video ideas (12 Nov): ideas people make with their own Claude, with the prompt to copy */
@@ -2598,7 +2629,9 @@ function renderDetail0(){
     ${headHtml(d,st)}
     <div class="dmain">
       ${st==="posted"||d.results?resultsBox(d):""}
+      ${st==="posted"?sigPathBox(d):""}
       ${["pending","changes","hold","scheduled"].includes(st)?`<section class="cwhere" aria-label="Where and when">${postingPanel(d,st)}</section>`:""}
+      ${["hold","scheduled"].includes(st)?pvlRow(d):""}
       ${S.trim&&S.trim.id===d.id?trimView(d):""}
       <div class="ptabs" role="tablist" aria-label="Customise for each network">${PLATFORMS.map(p=>`<button class="ptab" role="tab" aria-selected="${S.platform===p.key}" data-jump="${p.key}">${p.label}${tabWarn(d,p.key)||`<span class="pcnt">${esc(pCount(d,p.key))}</span>`}${edited[p.key]!=null||(p.key==="facebook"&&edited.facebookComment!=null)?'<span class="edited">EDITED</span>':""}</button>`).join("")}${["facebook","instagram","x"].some(k=>edited[k]!=null)&&S.db?`<button class="ptab diffbtn" data-act="showDiff" aria-pressed="${!!S.showDiff}">${S.showDiff?"Hide my changes":"Show my changes"}</button>`:""}<span class="src fhint">Pick a network · click any text in the preview to edit it</span></div>
       <div class="stepper" role="tablist" aria-label="Steps for this post">${steps.map((x,i)=>`<button role="tab" class="stp" data-step="${i}" aria-selected="${i===si}"><b>${esc(x.label)}</b></button>`).join("")}</div>
@@ -3072,6 +3105,44 @@ function bestX(r){const xs=["facebook","instagram","x"].map(k=>r&&r[k]&&parseFlo
 /* Post now on UK accounts: where its Asana task is, or why it isn't there yet. */
 function asanaLine(d){const g=d.posting||{};if(g.asanaUrl)return `<span class="src"><a href="${esc(g.asanaUrl)}" target="_blank" rel="noopener">Asana task</a>${g.asanaError?` · ${esc(g.asanaError.message||"")}`:""}</span>`;
   if(g.asanaError)return `<span class="src">The Asana task couldn’t be made (${esc(g.asanaError.message||"")}). The engine run adds it instead.</span>`;return ""}
+/* Signature path on a posted draft [13 Nov 2026, Chris picked C with A's breakdown beneath]:
+   reached, clicked, signed for each network the post went out on, each step against the
+   team's usual rate for that post type, then the team's posts as rows with this one marked. */
+const SP_KIND={link:"link post",video:"video",photo:"photo",post:"post",other:"post"};
+function spUsual(rows,plat,kind){const a=rows.filter(r=>r.platform===plat&&(!kind||r.kind===kind)&&r.reached>0);if(a.length<2)return null;
+  const R=a.reduce((n,r)=>n+(r.reached||0),0),C=a.filter(r=>r.clicks!=null).reduce((n,r)=>n+(r.clicks||0),0),Cr=a.filter(r=>r.clicks!=null).reduce((n,r)=>n+(r.reached||0),0),S=a.reduce((n,r)=>n+(r.signatures||0),0),Sc=a.filter(r=>r.clicks!=null).reduce((n,r)=>n+(r.signatures||0),0);
+  return{n:a.length,reach:R/a.length,click:Cr?C/Cr:null,sign:C?Sc/C:null,per1k:R?1000*S/R:null}}
+const spPct=v=>v==null?"—":(v>=0.1?Math.round(v*100):Math.round(v*1000)/10)+"%";
+function spChip(v,u,few){if(few)return `<span class="spchip">Too few</span>`;if(v==null||!u)return"";const x=v/u;return x>=1.2?`<span class="spchip hi">Above usual</span>`:x<=0.8?`<span class="spchip lo">Below usual</span>`:`<span class="spchip">About usual</span>`}
+function spCmp(v,u){if(v==null||!u)return"";const mx=Math.max(v,u)*1.25;return `<div class="spcmp" aria-hidden="true"><i style="width:${Math.round(100*v/mx)}%"></i><em style="left:${Math.round(100*u/mx)}%"></em></div>`}
+function sigPathBox(d){if(!S.team)return"";const g=SG[`${S.team}:90`];if(!g){sgLoad(90);return""}if(g.busy||g.err||g.ready===false)return"";
+  const all=g.posts||[];const mine=all.filter(r=>r.post&&r.post.id===d.id);
+  if(!mine.length)return `<section class="spath" aria-label="Signature path"><h3>Signature path</h3><span class="src">No sign-ups traced to this post yet. Only posts with a tracked petition link can be traced, and sign-ups arrive with the nightly Looker pull.</span></section>`;
+  const nets={facebook:"Facebook",instagram:"Instagram",x:"X"};let lesson="";
+  const blocks=mine.map(r=>{const u=spUsual(all.filter(x=>x!==r),r.platform,r.kind)||spUsual(all.filter(x=>x!==r),r.platform);const kind=SP_KIND[r.kind]||"post";
+    const cr=r.clicks!=null&&r.reached?r.clicks/r.reached:null,sr=r.clicks?r.signatures/r.clicks:null,few=r.clicks!=null&&r.clicks<50;
+    const steps=[`<div class="spst"><span class="spdot r">1</span><div><b class="n">${anN(r.reached)}</b> reached<small>${u?`Usual for a ${esc(kind)}: ${anN(Math.round(u.reach))}`:""}</small></div>${u&&r.reached!=null?spChip(r.reached,u.reach):""}</div>`];
+    if(r.clicks!=null)steps.push(`<div class="spst"><span class="spdot c">2</span><div><b class="n">${anN(r.clicks)}</b> clicked · ${spPct(cr)}<small>${r.link_clicks>0&&r.clicks===r.link_clicks?`Link clicks${r.all_clicks!=null?` (${anN(r.all_clicks)} clicks of any kind)`:""}`:"All clicks on the post"}${u&&u.click!=null?` · usual ${spPct(u.click)}`:""}</small>${spCmp(cr,u&&u.click)}</div>${spChip(cr,u&&u.click)}</div>`);
+    steps.push(`<div class="spst"><span class="spdot s">${r.clicks!=null?3:2}</span><div><b class="n">${anN(r.signatures)}</b> signed${sr!=null?` · ${spPct(sr)} of clickers`:""}<small>${anN(r.new_members)} new member${r.new_members===1?"":"s"}${u&&u.sign!=null&&r.clicks!=null?` · usual ${spPct(u.sign)} of clickers`:u&&u.per1k!=null?` · usual ${anN(Math.round(u.per1k*10)/10)} per 1,000 reached`:""}</small>${r.clicks!=null?spCmp(sr,u&&u.sign):""}</div>${r.clicks!=null?spChip(sr,u&&u.sign,few):spChip(r.reached?1000*r.signatures/r.reached:null,u&&u.per1k)}</div>`);
+    if(!lesson&&u&&!few&&sr!=null&&cr!=null&&u.sign&&u.click){const sHi=sr/u.sign>=1.2,cLo=cr/u.click<=0.8,sLo=sr/u.sign<=0.8,cHi=cr/u.click>=1.2;
+      lesson=sHi&&cLo?"The petition page did its job: more clickers than usual signed. Getting more people to click is the next gain, so try a stronger first line or picture.":sLo&&cHi?"People clicked more than usual but fewer signed. Check the post promised what the petition asks.":sHi&&cHi?"Better than usual at both steps: worth reusing this angle.":sLo&&cLo?"Below usual at both steps: compare it with the posts above it in the list.":""}
+    return `<div class="spnet"><span class="src">${esc(nets[r.platform]||r.platform)} · ${esc(kind)}${r.url?` · <a href="${esc(r.url)}" target="_blank" rel="noopener">open ↗</a>`:""}${r.shared_with?` · link also in ${r.shared_with} other post${r.shared_with===1?"":"s"}`:""}</span>${steps.join("")}</div>`}).join("");
+  /* A beneath: the team's posts on the same network, by sign-ups, this one marked. */
+  const plat=mine[0].platform;const list=all.filter(r=>r.platform===plat).sort((a,b)=>b.signatures-a.signatures);let rows=list.slice(0,8);mine.filter(r=>r.platform===plat&&!rows.includes(r)).forEach(r=>rows.push(r));
+  const mx=Math.max(1,...rows.map(r=>r.reached||0));const w=v=>v==null?0:Math.max(0.6,Math.round(1000*v/mx)/10);
+  const tbl=`<div class="splg"><span><i style="background:#8aa8e6"></i>Reached</span><span><i style="background:var(--accent)"></i>Clicked</span><span><i style="background:var(--ok)"></i>Signed</span></div><div class="awrap"><table class="sptbl"><thead><tr><th>${esc(nets[plat]||plat)} posts, last 90 days</th><th>Path</th><th class="n">Reached</th><th class="n">Clicked</th><th class="n">Signed</th><th>Clickers who signed</th></tr></thead><tbody>${rows.map(r=>{const sr=r.clicks?r.signatures/r.clicks:null;const me=mine.includes(r);return `<tr${me?' class="me"':""}><td><span class="t" title="${esc(r.post?.title||"")}">${me?"This post: ":""}${esc(r.post?.title||r.account||"")}</span><small class="src">${esc(new Date(r.posted_at).toLocaleDateString("en-GB",{day:"numeric",month:"short"}))} · ${esc(SP_KIND[r.kind]||"post")}${r.petition_id?` · ${esc(r.petition_id)}`:""}</small></td><td><span class="spfun" aria-hidden="true"><i class="r" style="width:${w(r.reached)}%"></i>${r.clicks!=null?`<i class="c" style="width:${w(r.clicks)}%"></i>`:""}<i class="s" style="width:${w(r.signatures)}%"></i></span></td><td class="n">${anN(r.reached)}</td><td class="n">${r.clicks==null?"—":anN(r.clicks)}</td><td class="n"><b>${anN(r.signatures)}</b></td><td>${r.clicks==null?"—":r.clicks<50?`<span class="spchip">Too few</span>`:`<span class="spchip${sr>=0.08?" hi":sr<0.02?" lo":""}">${spPct(sr)}</span>`}</td></tr>`}).join("")}</tbody></table></div>`;
+  return `<section class="spath" aria-label="Signature path"><h3>Signature path</h3>${blocks}${lesson?`<p class="spnote">${esc(lesson)}</p>`:""}${tbl}<span class="src">Sign-ups traced through this post's tracked link (Looker, nightly). Usual = the team's average for this post type on ${esc(nets[plat]||plat)} over 90 days. "Too few" means under 50 clicks.</span></section>`}
+/* Preview link for a planned post [13 Nov 2026, Chris]: a read-only page for someone
+   outside the desk (legal, a spokesperson). Stops when the post goes out, after 14 days, or on Stop sharing. */
+const PVL={};
+function pvlLoad(id){if(PVL[id])return;PVL[id]={busy:true};eng("engine_preview_link",{id}).then(r=>{PVL[id]=r||{}}).catch(e=>{PVL[id]={err:e}}).finally(()=>{if(S.openId===id)renderDetail()})}
+function pvlRow(d){const v=PVL[d.id];if(!v){pvlLoad(d.id);return ""}if(v.busy||v.err)return "";
+  const exp=v.exp?new Date(v.exp).toLocaleDateString("en-GB",{day:"numeric",month:"short"}):"";
+  return `<section class="pvl" aria-label="Preview link"><div><b>Preview link</b><span class="src">${v.live?`Anyone with this link can see the post as planned, read-only, until ${esc(exp)} or until it goes out.`:"Share a read-only preview with someone outside the desk, such as legal or a spokesperson."}</span></div>${v.live?`<div class="pvlrow"><input type="text" id="pvlUrl" readonly value="${esc(v.url)}" aria-label="Preview link"><button class="btn small primary" data-pvl="copy">Copy</button><a class="btn small" href="${esc(v.url)}" target="_blank" rel="noopener">Open ↗</a><button class="btn small" data-pvl="stop">Stop sharing</button></div>`:`<div class="pvlrow"><button class="btn small" data-pvl="create">Make a preview link</button></div>`}</section>`}
+document.addEventListener("click",async ev=>{const b=ev.target.closest("[data-pvl]");if(!b)return;const id=S.openId;if(!id)return;const a=b.dataset.pvl;
+  if(a==="copy"){const u=$("#pvlUrl");try{await navigator.clipboard.writeText(u.value);toast("Preview link copied")}catch(e){u.select();toast("Select and copy the link")}return}
+  b.disabled=true;try{const r=await eng("engine_preview_link",{id,action:a});if(r&&r.ok===false){toast(r.error||"Couldn't do that");b.disabled=false;return}PVL[id]=r;
+    if(a==="create"){try{await navigator.clipboard.writeText(r.url);toast("Preview link made and copied")}catch(e){toast("Preview link made")}}else toast("Sharing stopped: the link no longer works");renderDetail()}catch(e){failToast(e,"Couldn't do that");b.disabled=false}});
 function resultsBox(d){
   if(d.status!=="posted"&&!d.results)return"";
   const r=d.results;const p=d.posted||{};
@@ -4448,7 +4519,7 @@ const SIDE_IC={plan:'<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M
 const sideSvg=(k,n=18)=>`<svg width="${n}" height="${n}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${SIDE_IC[k]}</svg>`;
 const SIDE_NAV=[["make","Create",[["compose","New post"],["posts:pending","For review"],["posts:hold","Finishing"],["posts:scheduled","In Asana"],["posts:posted","Posted"],["evergreen","Evergreen"],["posts:rejected","Bin"]]],["plan","Plan",[["plan","Month"],["calendar:week","Week"],["calendar:list","List"],["calendar:grid","Instagram grid"]]],
   ["talk","Inbox",[["inbox:inbox","Conversations"],["inbox:mine","Assigned to me"],["inbox:posts","By post"],["inbox:autos","Automations"],["inbox:history","Moderation"],["inbox:team","Team"]]],
-  ["listen","Listen",[["listening:rising","Rising now"],["listening:mentions","Mentions"],["listening:allies","Allies and opponents"],["listening:topics","Topics"],["listening:parliament","Parliament"],["listening:watches","Watches"]]],
+  ["listen","Listen",[["listening:rising","Rising now"],["listening:mentions","Mentions"],["listening:supporters","Supporter posts"],["listening:allies","Allies and opponents"],["listening:topics","Topics"],["listening:parliament","Parliament"],["listening:watches","Watches"]]],
   ["learn","Reports",[["analytics:overview","Overview"],["analytics:signups","Sign-ups"],["analytics:audience","Audience"],["analytics:posts","Posts"],["analytics:talk","Conversations"],["analytics:campaigns","Campaigns"],["analytics:allies","Allies"],["analytics:leaderboard","Leaderboard"],["analytics:countries","Countries"]]],["tools","Tools",[["tools:home","All tools"],["tools:kit","Campaign kit"],["tools:inviter","Page Inviter"],["tools:links","Tracked links"],["tools:bio","Link in bio"],["tools:make","Make"],["tools:claude","Claude connectors"],["tools:health","Health check"]]]];
 const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}};const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
 const SIDE={open:lsGet("desk.sideOpen",{make:true}),fold:lsGet("desk.sideFold",false)};
@@ -6429,14 +6500,28 @@ document.addEventListener("click",async ev=>{const a=ev.target.closest("[data-pa
   const tm=new Date();tm.setDate(tm.getDate()+1);
   try{await eng("engine_request",{action:"create",team:S.team,for_date:tm.toISOString().slice(0,10),source:"idea",title:`Parliament: ${i.title}`.slice(0,200),angle:`${i.place}, ${i.dated}: ${i.title}. ${i.why||""} ${i.url?`Official record: ${i.url}.`:""} Issues: ${i.areas.map(x=>x.name).join(", ")}. Write our own post on it for our audience, facts checked against the official record, with our live petition if one fits.`.slice(0,1500)});
     LS.done.add("parl:"+i.id);toast("Asked for a post tomorrow. It shows in Plan.");renderListening()}catch(e){b.disabled=false;failToast(e,"Couldn't ask for a post")}});
+/* Supporter posts [13 Nov 2026, Chris]: public posts that tagged our accounts, to rework or repost.
+   No permission step: Rework writes our own version crediting them; Repost asks the run to share it with thanks. */
+function renderSupporters(el,head){const D=LS.data,ps=D.posts||[];const t=(S.teams||[]).find(x=>x.id===S.team);const nets={facebook:"Facebook",instagram:"Instagram"};
+  const when=d=>d?new Date(d).toLocaleDateString("en-GB",{day:"numeric",month:"short"}):"";
+  if(!ps.length){el.innerHTML=head+emptyState("quiet","No one has tagged us in the last 30 days","Posts that tag our Pages or Instagram accounts are read each night.");return}
+  el.innerHTML=head+`<div class="lgrid">${ps.map((p,k)=>{const done=LS.done.has(p.url||p.text),rp=LS.done.has("rp:"+(p.url||p.text));return `<div class="lcard"><div class="top"><b>${esc(p.who)}</b><span class="src">${esc(nets[p.platform]||p.platform)} · tagged ${esc(p.tagged||"us")} · ${esc(when(p.created_time))}${p.media_type?" · "+esc(String(p.media_type).toLowerCase().replace(/_/g," ")):""}</span></div>
+    <p>${esc(p.text||"(no words)")}</p><span class="src">${p.likes!=null?`${anN(p.likes)} likes`:""}${p.comments!=null?` · ${anN(p.comments)} comments`:""}</span>
+    <div class="ibacts">${p.url?`<a class="btn small" href="${esc(p.url)}" target="_blank" rel="noopener">Open their post ↗</a>`:""}${t?(done?`<span class="src">✓ Rework requested</span>`:`<button class="btn small primary" data-ls-rework="${k}" title="Tomorrow's run writes our own version, crediting them">Rework</button>`):""}${t&&p.url?(rp?`<span class="src">✓ Repost requested</span>`:`<button class="btn small" data-ls-repost="${k}" title="Tomorrow's run drafts a repost of it with a line of thanks">Repost</button>`):""}</div></div>`}).join("")}</div>`}
+document.addEventListener("click",async ev=>{const b=ev.target.closest("[data-ls-repost]");if(!b||!LS.data||LS.data.tab!=="supporters")return;const p=LS.data.posts[Number(b.dataset.lsRepost)];if(!p)return;
+  const tm=new Date();tm.setDate(tm.getDate()+1);b.disabled=true;const net=p.platform==="instagram"?"Instagram":"Facebook";
+  try{const r=await eng("engine_request",{action:"create",team:S.team,for_date:tm.toISOString().slice(0,10),source:"idea",title:`Repost: ${p.who}: ${String(p.text||"").replace(/\s+/g," ").slice(0,90)}`,
+      angle:`Repost ${p.who}'s ${net} post (${(p.created_time||"").slice(0,10)}), which tagged us: ${p.url}. Share it as it is (Facebook: share their post to our Page; Instagram: repost it or share it to our Story) with one short line of thanks naming them, plus our live petition if one fits. Don't change their words. Their text: ${String(p.text||"").slice(0,600)}`.slice(0,1500)});
+    if(r&&r.ok!==false){LS.done.add("rp:"+(p.url||p.text));toast("Requested: tomorrow's run drafts the repost into Review.");renderListening()}else{toast((r&&r.error)||"Couldn't request it");b.disabled=false}}catch(e){failToast(e,"Couldn't request it");b.disabled=false}});
 function renderListening(){const el=$("#lsView");if(!el||el.hidden)return;const D=LS.data,t=(S.teams||[]).find(x=>x.id===S.team);
   const tabs=["citizengo","allies","opponents"].includes(LS.tab)?[["allies","Allies"],["opponents","Opponents"],["citizengo","Other CitizenGO Pages"]]:[];
-  const lede={parliament:"What Westminster and the Scottish Parliament did on our issues, from the Parliamentary Monitor: only what it marked worth a line or worth acting on, with why it matters. Ask for a post turns one into a request for the morning run.",mentions:"People and organisations tagging our Pages and Instagram accounts in their own posts, last 7 days. Thank them or share it from Facebook or Instagram; open one in the Inbox to assign or label it.",topics:"Every campaign area at once: how much it's being talked about, who's talking (us, allies, opponents), what's being said and where our side hasn't answered. Plus anything picking up across all the accounts we read.",watches:"Your own words to look out for across the posts we read: a campaign, a person, a phrase. Pick a watch to see what it caught; mark them seen as you go.",rising:"Posts doing at least 3× their own account's normal, from other CitizenGO Pages, allies and opponents, freshest and furthest above normal first. Rework what's working; answer what's against us.",citizengo:"Other CitizenGO Pages' posts doing at least 3× their own normal views in the last 30 days. Good ideas worth reworking for your audience.",allies:"Allied organisations' Instagram posts at 3× their own normal (likes and comments) in the last 10 days, UK accounts first.",opponents:"Organisations campaigning against us, one card each: what they're pushing, topic by topic, from their own Instagram posts and the issue ads they started (Meta Ad Library)."}[LS.tab];
+  const lede={parliament:"What Westminster and the Scottish Parliament did on our issues, from the Parliamentary Monitor: only what it marked worth a line or worth acting on, with why it matters. Ask for a post turns one into a request for the morning run.",supporters:"Posts by people and groups who tagged our Pages and Instagram accounts in the last 30 days, most liked first. Rework one into our own post, or ask for it to be reposted with thanks; both go to tomorrow's run as requests.",mentions:"People and organisations tagging our Pages and Instagram accounts in their own posts, last 7 days. Thank them or share it from Facebook or Instagram; open one in the Inbox to assign or label it.",topics:"Every campaign area at once: how much it's being talked about, who's talking (us, allies, opponents), what's being said and where our side hasn't answered. Plus anything picking up across all the accounts we read.",watches:"Your own words to look out for across the posts we read: a campaign, a person, a phrase. Pick a watch to see what it caught; mark them seen as you go.",rising:"Posts doing at least 3× their own account's normal, from other CitizenGO Pages, allies and opponents, freshest and furthest above normal first. Rework what's working; answer what's against us.",citizengo:"Other CitizenGO Pages' posts doing at least 3× their own normal views in the last 30 days. Good ideas worth reworking for your audience.",allies:"Allied organisations' Instagram posts at 3× their own normal (likes and comments) in the last 10 days, UK accounts first.",opponents:"Organisations campaigning against us, one card each: what they're pushing, topic by topic, from their own Instagram posts and the issue ads they started (Meta Ad Library)."}[LS.tab];
   const head=`<div><h2>Listening</h2><p class="lede">${esc(lede)}</p></div><div class="egbar"><span class="tabs">${tabs.map(([k,l])=>`<button class="tab" data-ls-tab="${k}" aria-pressed="${LS.tab===k}">${l}</button>`).join("")}</span></div>`;{const hu=$("#hdUpd");if(hu)hu.innerHTML=updRefresh(LS.data&&LS.data.cached_at,'data-ls="refresh"',LS.loading)}
   if(LS.err){el.innerHTML=head+`<p class="offline">Couldn't load Listening (${esc(whyFailed(LS.err))}).</p>`;return}
   if(!D&&LS.tab==="watches"){renderWatches(el,head);return}
   if(!D){el.innerHTML=head+`<p class="src">${LS.loading?"Loading…":"Nothing yet."}</p>`;return}
   if(D.tab==="mentions"){const mt={positive:0,negative:0,mixed:0};D.items.forEach(i=>{if(i.tone in mt)mt[i.tone]++});el.innerHTML=head+(D.items.length?(ibToneLine(mt)?`<p class="src" title="Tone of the words, not whether they agree with us">Tone: ${esc(ibToneLine(mt))}, the rest neutral or not English or Spanish.</p>`:"")+`<div class="lgrid">${D.items.map(i=>`<div class="lcard"><div class="top"><b>${esc(i.author_name||"Someone")}</b>${ibToneChip(i)}<span class="src">tagged ${esc(accLabel(i.account_key))} · ${esc(ibWhen(i.created_at))}${i.status==="done"?" · done":""}</span></div><p>${esc(i.text||"(no text)")}</p><div class="ibacts">${i.post_url?`<a class="btn small" href="${esc(i.post_url)}" target="_blank" rel="noopener">Open their post ↗</a>`:""}<button class="btn small" data-ls-mention="${esc(i.id)}">Open in the Inbox</button></div></div>`).join("")}</div>`:emptyState("wait","No mentions in the last 7 days","They're read every few minutes once someone in the team has connected Facebook."));return}
+  if(D.tab==="supporters"){renderSupporters(el,head);return}
   if(D.tab==="topics"){renderTopics(el,head);return}
   if(D.tab==="parliament"){renderParliament(el,head);return}
   if(D.tab==="watches"){renderWatches(el,head);return}
@@ -6813,7 +6898,7 @@ async function loadAnRange(fresh){if(!AN.custom&&AN.cmp==="previous"){AN.rdata=n
 /* B1 Sign-ups per post (Chris, 12 Nov): Reports › Sign-ups ranks the team's posts by the petition sign-ups traced to each one (engine_signups), and posted desk posts carry a sign-up badge. */
 const SG={};
 function sgLoad(days,fresh){const key=`${S.team}:${days}`;if(SG[key]&&(SG[key].busy||!fresh))return SG[key];SG[key]={busy:true};
-  eng("engine_signups",{team:S.team,days,...(fresh?{fresh:true}:{})}).then(r=>{SG[key]=r||{}}).catch(e=>{SG[key]={err:e}}).finally(()=>{if(AN.tab==="signups"&&!$("#anView")?.hidden)renderAnalytics();if(days===90)renderQueue()});return SG[key]}
+  eng("engine_signups",{team:S.team,days,...(fresh?{fresh:true}:{})}).then(r=>{SG[key]=r||{}}).catch(e=>{SG[key]={err:e}}).finally(()=>{if(AN.tab==="signups"&&!$("#anView")?.hidden)renderAnalytics();if(days===90){renderQueue();try{const o=(S.drafts||[]).find(x=>x.id===S.openId);if(o&&o.status==="posted"&&S.view!=="analytics")renderDetail()}catch(e){}}});return SG[key]}
 function sigOf(d){if(!S.team)return null;const g=SG[`${S.team}:90`];if(!g){sgLoad(90);return null}const b=g.by_post&&g.by_post[d.id];return b&&b.signatures>0?b:null}
 function anSignups(){const days=[7,30,90].includes(AN.sgDays)?AN.sgDays:30;const g=sgLoad(days);const t=(S.teams||[]).find(x=>x.id===S.team);
   const bar=`<div class="anbar"><span class="tabs">${[7,30,90].map(d=>`<button class="tab" data-sg-days="${d}" aria-pressed="${d===days}">${d} days</button>`).join("")}</span><span class="tabs">${[["signatures","Most sign-ups"],["per_1k","Per 1,000 reached"],["new_members","New members"]].map(([k,l])=>`<button class="tab" data-sg-sort="${k}" aria-pressed="${(AN.sgSort||"signatures")===k}">${l}</button>`).join("")}</span></div>`;

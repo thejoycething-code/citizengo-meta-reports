@@ -48,6 +48,10 @@
     {
       "source": "/links",
       "destination": "/api/bio"
+    },
+    {
+      "source": "/preview/:t",
+      "destination": "/api/desk?op=preview&t=:t"
     }
   ],
   "headers": [
