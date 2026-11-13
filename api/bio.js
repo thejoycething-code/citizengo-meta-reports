@@ -84,7 +84,7 @@ module.exports = async function handler(req, res) {
       const item = /^\d{1,9}$/.test(card) ? L.shown.find((i) => String(i.petition_id) === card) : null;
       if (!item) return send(res, 302, '', { Location: `/links/${slug}`, 'Cache-Control': 'no-store' });
       if (human) return send(res, 302, '', { Location: `/links/${slug}/go/${encodeURIComponent(item.id)}`, 'Cache-Control': 'no-store' });
-      return send(res, 200, req.method === 'HEAD' ? '' : B.cardHtml({ bio, item, status: L.status, origin }), { ...HTML, 'Cache-Control': 'public, max-age=600', 'Content-Security-Policy': CSP });
+      return send(res, 200, req.method === 'HEAD' ? '' : B.cardHtml({ bio, item, status: L.status, logo: B.logoOf(bio), origin }), { ...HTML, 'Cache-Control': 'public, max-age=600', 'Content-Security-Policy': CSP });
     }
     const go = q.get('go');
     if (go != null) {
@@ -103,7 +103,7 @@ module.exports = async function handler(req, res) {
     const qs = src ? `?s=${src}` : '';
     // Every grid picture opens its post on Instagram [12 Nov 2026, Chris].
     const grid = L.tiles.map((t) => ({ img: t.img, label: t.label, href: t.permalink || (t.item_id ? `${origin}/links/${slug}/go/${encodeURIComponent(t.item_id)}${qs}` : null) })).filter((t) => t.href);
-    const html = B.pageHtml({ bio, items: L.shown, hero: L.hero, heroWhy: L.heroWhy, grid, socials: L.socials, status: L.status, origin, src, today: L.today });
+    const html = B.pageHtml({ bio, items: L.shown, hero: L.hero, heroWhy: L.heroWhy, grid, socials: L.socials, status: L.status, logo: B.logoOf(bio), origin, src, today: L.today });
     return send(res, 200, req.method === 'HEAD' ? '' : html, {
       ...HTML,
       // Views are counted on the server, so the page itself is not cached
