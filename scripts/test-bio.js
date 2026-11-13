@@ -62,7 +62,7 @@ eq('resolve: removed is left out, and a removed campaign does not come back by i
   eq('countdown: in N days, tomorrow, today, gone after', ['2026-11-06', '2026-11-03', '2026-11-02', '2026-11-01'].map((d) => B.countdownText({ cd_date: d, cd_label: 'Council decides' }, '2026-11-02')), ['Council decides in 4 days', 'Council decides tomorrow', 'Council decides today', null]);
   eq('socials: one per platform, plus the WhatsApp channel', B.socialsFor([...accounts, { platform: 'facebook', page_id: '2' }, { platform: 'instagram', handle: 'citizengo_uk' }], { whatsapp_url: 'https://whatsapp.com/channel/x' }).map((x) => x.url), ['https://www.facebook.com/105', 'https://x.com/CitizenGO_GB', 'https://www.instagram.com/citizengo_uk', 'https://whatsapp.com/channel/x']);
   const page = B.pageHtml({ bio: { slug: 'uk', title: 'CitizenGO UK', settings: { donate_url: 'https://citizengo.org/en-gb/donate' } }, items: rr.shown, hero: rr.shown[1], status, origin: 'https://x.test', src: 'ig', today: '2026-11-02', grid: [{ img: 'https://scontent.cdninstagram.com/a.jpg', href: 'https://x.test/links/uk/go/a' }], socials: [{ platform: 'x', url: 'https://x.com/a' }] });
-  eq('page: hero with total and goal, one share button, source carried on links', [page.includes('10,812</b> signed · help reach 15,000'), page.includes('href="https://x.test/links/uk/go/a?s=share" aria-label="Share this petition"'), page.includes('wa.me'), page.includes('data-copy="'), page.includes('href="https://x.test/links/uk/go/w?s=ig"')], [true, true, false, false, true]);
+  eq('page: hero with total and goal, one share button, source carried on links', [page.includes('10,812</b> signed</div>') && page.includes('72% of 15,000'), page.includes('href="https://x.test/links/uk/go/a?s=share" aria-label="Share this petition"'), page.includes('wa.me'), page.includes('data-copy="'), page.includes('href="https://x.test/links/uk/go/w?s=ig"')], [true, true, false, false, true]);
   {
     const st2 = { ...status, 1: { total: 10812, last14: 300, site_total: 80205, share_url: 'https://citizengo.org/en-gb/LP2-share?m=8&nid=1&title=a' } };
     const p2 = B.pageHtml({ bio: { slug: 'uk', title: 'UK' }, items: rr.shown, hero: rr.shown[1], status: st2, today: '2026-11-02' });
@@ -82,7 +82,7 @@ eq('resolve: removed is left out, and a removed campaign does not come back by i
   {
     const st3 = { ...status, 1: { total: 10812, site_total: 80223, site_goal: 100000 } };
     const p3 = B.pageHtml({ bio: { slug: 'uk', title: 'UK' }, items: rr.shown, hero: rr.shown[1], status: st3, today: '2026-11-02', origin: 'https://x.test', grid: [{ img: 'https://kept/a.jpg', href: 'https://www.instagram.com/p/abc/' }] });
-    eq('page: the site goal, a bar on every petition row, picture preview, grid opens Instagram', [p3.includes('80,223</b> signed · help reach 100,000'), (p3.match(/class="rbar"/g) || []).length > 0, p3.includes('og:description" content="Sign A'), p3.includes('href="https://www.instagram.com/p/abc/"'), p3.includes('see it on Instagram')], [true, true, true, true, true]);
+    eq('page: the site goal, a bar on every petition row, picture preview, grid opens Instagram', [p3.includes('80,223</b> signed</div>') && p3.includes('80% of 100,000'), (p3.match(/class="rbar"/g) || []).length > 0, p3.includes('og:description" content="Sign A'), p3.includes('href="https://www.instagram.com/p/abc/"'), p3.includes('see it on Instagram')], [true, true, true, true, true]);
     const card = B.cardHtml({ bio: { slug: 'uk', title: 'UK' }, item: { id: 'p19960', petition_id: '19960', title: 'Netflix: Cancel The Body', image: 'https://kept/n.jpg' }, status: { 19960: { site_total: 80223, site_goal: 100000 } }, origin: 'https://x.test' });
     eq('share card: picture, title and total in the preview, then on to sign', [card.includes('og:image" content="https://kept/n.jpg"'), card.includes('80,223 signed. Help reach 100,000.'), card.includes('url=https://x.test/links/uk/go/p19960')], [true, true, true]);
   }
@@ -146,7 +146,7 @@ eq('page: what people typed is escaped', [html.includes('<script>x'), html.inclu
   const many = Array.from({ length: 8 }, (_, n) => ({ id: 'x' + n, title: 'Petition title ' + n, petition_id: String(100 + n), section: 'Act now', image: n === 0 ? 'https://h.test/i.jpg' : null }));
   const html = B.pageHtml({ bio: { slug: 'uk', title: 'UK', settings: {} }, items: many, status: { 100: { total: 1234 } }, today: '2026-11-02' });
   eq('L3: five under the heading, the rest under More', [(html.match(/class="b pic/g) || []).length, /<summary>More petitions \(3\)<\/summary>/.test(html)], [8, true]);
-  eq('L2a: picture rows show signatures', html.includes('<small>1,234 signed</small>'), true);
+  eq('L2a: picture rows show signatures', html.includes('<b>1,234</b> signed · goal 2,500'), true);
 }
 {
   const R = require('../lib/bio-refresh');
@@ -213,12 +213,15 @@ function fakeStore({ copilotFails = false } = {}) {
     async engineBioClick(slug, id) { clicks.push([slug, id]); return true; },
     async engineBios() { return [{ team_id: 'uk', slug: 'uk', title: 'CitizenGO UK' }]; },
     async petitionStatus() { return [{ petition_id: '19389', total: 4480, last14: 120 }]; },
+    async petitionPagesSet(rows) { (this.pagesSet = this.pagesSet || []).push(...rows); },
     async engineCopilotAuth() { return { owner: 'CJO' }; },
     async engineTrackedLink(code) { return tracked.get(code) || null; },
     async engineSaveTrackedLink(row) { tracked.set(row.code, row); return row; },
     async copilotCall() { if (copilotFails) throw new Error('down'); },
   };
 }
+const liveWeb = async (url) => ({ status: 200, ok: true, headers: { get: (k) => (k === 'content-type' ? 'application/json' : null) }, arrayBuffer: async () => Buffer.from(url.includes('19389') ? '[{"id":19389,"title":"x","signature_count":4000,"padding":0,"cluster_count":4613}]' : '[]') });
+handler._setLive({ fetchImpl: liveWeb, lookup: async () => [{ address: '104.16.1.1', family: 4 }] });
 function run(url, store, headers = { host: 'x.test', 'user-agent': 'Mozilla/5.0 (iPhone)' }) {
   handler._setStore(store);
   return new Promise((resolve) => {
@@ -237,7 +240,8 @@ function run(url, store, headers = { host: 'x.test', 'user-agent': 'Mozilla/5.0 
   await run('/api/bio?slug=uk&s=evil', s);
   await run('/api/bio?slug=uk&s=ig', s, { host: 'x.test', 'user-agent': 'facebookexternalhit/1.1' });
   eq('endpoint: views by source, unknown sources as other, previewers not counted', s.clicks.splice(0), [['uk', '_v:ig'], ['uk', '_v']]);
-  eq('endpoint: the hero shows the Bluebook total', page.body.includes('4,480</b> signed'), true);
+  eq('endpoint: the hero shows the live total from citizengo.org when newer', page.body.includes('4,613</b> signed'), true);
+  eq('endpoint: the live total is kept', (s.pagesSet || []).some((r) => r.petition_id === '19389' && r.site_total === 4613), true);
   const cb = await run('/api/bio?slug=uk&p=19389', s, { host: 'x.test', 'user-agent': 'WhatsApp/2.23' });
   const cp = await run('/api/bio?slug=uk&p=19389', s);
   const cx = await run('/api/bio?slug=uk&p=999', s);

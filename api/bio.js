@@ -19,10 +19,12 @@
 // so signatures from the bio are attributed in Looker.
 
 const B = require('../lib/bio');
+const R = require('../lib/bio-refresh');
 const QR = require('../lib/qr');
 const { supabaseStore } = require('../lib/store');
 
 let store = null;
+let live = {}; // tests swap in a fake web
 const getStore = () => (store = store || supabaseStore({ url: process.env.SUPABASE_URL, serviceKey: process.env.SUPABASE_SERVICE_KEY }));
 
 function send(res, status, body, headers = {}) {
@@ -69,6 +71,12 @@ module.exports = async function handler(req, res) {
     const team = ((await s.engineTeams()) || []).find((t) => t.id === bio.team_id);
     if (!team) return notFound(res);
     const L = await B.load(s, { team, bio });
+    // Up-to-date totals for what this view shows [13 Nov 2026]: a quick look
+    // at citizengo.org when a total is over 10 minutes old.
+    if (q.get('go') == null && !(q.get('p') != null && human)) {
+      const ids = q.get('p') != null ? [q.get('p')] : L.shown.filter((i) => i.petition_id && !i.won).map((i) => i.petition_id);
+      await R.liveTotals(s, L.status, ids, live).catch(() => null);
+    }
     // A petition's share card [5a]: previews get its picture and total,
     // people go straight on to sign (counted as a click).
     const card = q.get('p');
@@ -95,7 +103,7 @@ module.exports = async function handler(req, res) {
     const qs = src ? `?s=${src}` : '';
     // Every grid picture opens its post on Instagram [12 Nov 2026, Chris].
     const grid = L.tiles.map((t) => ({ img: t.img, label: t.label, href: t.permalink || (t.item_id ? `${origin}/links/${slug}/go/${encodeURIComponent(t.item_id)}${qs}` : null) })).filter((t) => t.href);
-    const html = B.pageHtml({ bio, items: L.shown, hero: L.hero, grid, socials: L.socials, status: L.status, origin, src, today: L.today });
+    const html = B.pageHtml({ bio, items: L.shown, hero: L.hero, heroWhy: L.heroWhy, grid, socials: L.socials, status: L.status, origin, src, today: L.today });
     return send(res, 200, req.method === 'HEAD' ? '' : html, {
       ...HTML,
       // Views are counted on the server, so the page itself is not cached
@@ -109,3 +117,4 @@ module.exports = async function handler(req, res) {
   }
 };
 module.exports._setStore = (s) => { store = s; };
+module.exports._setLive = (o) => { live = o || {}; };

@@ -483,3 +483,4 @@ alter table public.petition_status add column if not exists site_goal bigint;
 alter table public.petition_status add column if not exists site_start timestamptz;
 alter table public.petition_status add column if not exists passed_mark bigint;
 alter table public.petition_status add column if not exists passed_at timestamptz;
+alter table public.petition_status add column if not exists site_checked_at timestamptz;
