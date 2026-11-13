@@ -1151,7 +1151,7 @@ async function engineListening(store, args, ctx0) {
   }
   const tab = ['citizengo', 'allies', 'opponents'].includes(args.tab) ? args.tab : 'citizengo';
   // Only the citizengo tab depends on the team (it leaves the team's own Pages out).
-  const key = `listening:p2:${tab}:${tab === 'citizengo' ? team : ''}:${args.country || ''}:${Number(args.days) || ''}:${Number(args.min_multiple) || ''}`;
+  const key = `listening:p3:${tab}:${tab === 'citizengo' ? team : ''}:${args.country || ''}:${Number(args.days) || ''}:${Number(args.min_multiple) || ''}`;
   return cached(store, key, args, () => listeningCompute(store, args, ctx0));
 }
 
@@ -1838,13 +1838,11 @@ async function listeningCompute(store, args, { who }) {
   if (tab === 'allies') await markReworked(store, ctx, posts);
   const ads = tab === 'opponents' ? ((out && out.ads) || []).slice(0, 40).map((a) => ({ who: a.label || a.page_name, started: a.delivery_start, running: !a.delivery_stop, spend_lower: Number(a.spend_lower) || 0, spend_upper: Number(a.spend_upper) || Number(a.spend_lower) || 0, currency: a.currency || null, title: a.link_titles || a.bodies || null, url: a.snapshot_url || null })) : [];
   // Convergence reads every watched post from the last 48 hours, not only the breakouts.
-  let converging = [], building = [];
-  if (tab === 'allies') {
-    const all = await PEER_TOOLS.find((t) => t.name === 'ally_watch').handler(store, { days: 3, limit: 200, sort: 'recent' });
-    const recent = ((all && all.rows) || []).map((r) => ({ who: r.label || `@${r.username}`, handle: r.username, text: r.caption, url: r.permalink, created_time: r.timestamp, x: r.vs_median }));
-    converging = convergence(recent);
-    building = convergenceBuilding(recent, converging);
-  }
+  // Allies and (since 13 Nov 2026, Chris) opponents alike; side says which.
+  const all = await PEER_TOOLS.find((t) => t.name === (tab === 'allies' ? 'ally_watch' : 'opponent_watch')).handler(store, { days: 3, limit: 200, sort: 'recent' });
+  const recent = ((all && all.rows) || []).map((r) => ({ who: r.label || `@${r.username}`, handle: r.username, text: r.caption, url: r.permalink, created_time: r.timestamp, x: r.vs_median }));
+  const converging = convergence(recent).map((c) => ({ ...c, side: tab }));
+  const building = convergenceBuilding(recent, converging).map((c) => ({ ...c, side: tab }));
   return json({ tab, days, min_multiple: minX, posts, ads, converging, building, topics: topicsOf(posts), note: out && !out.rows ? String(out.text || '').slice(0, 300) : null });
 }
 
