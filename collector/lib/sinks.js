@@ -88,6 +88,7 @@ function supabaseSink({ url, serviceKey }) {
     meta_ig_media_metrics: 'media_id,collected_date',
     meta_ig_account_metrics: 'ig_user_id,metric_date',
     meta_ig_account_months: 'ig_user_id,month',
+    meta_ig_account_weeks: 'ig_user_id,week_start',
     meta_ig_audience: 'ig_user_id,collected_date,kind,breakdown',
     meta_social_tags: 'platform,account_id,item_id',
     meta_fb_stories: 'post_id',

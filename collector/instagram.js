@@ -108,7 +108,7 @@ function firstValue(res) {
 
 // call(pathname, params, opts) is injected so this module stays testable and
 // shares the collector's API-call accounting.
-async function collectInstagram({ page, as, call, lookbackDays, maxPosts, runStarted, collectedDate, log }) {
+async function collectInstagram({ page, as, call, lookbackDays, maxPosts, runStarted, collectedDate, log, weeksBack }) {
   // The linked account, if any.
   const info = await call(`/${page.page_id}`, {
     fields: 'instagram_business_account{id,username,followers_count,media_count}',
@@ -220,6 +220,14 @@ async function collectInstagram({ page, as, call, lookbackDays, maxPosts, runSta
     log(`   instagram: @${ig.username} — monthly totals failed (${String(e.message).slice(0, 120)})`);
   }
 
+  // Monday-Sunday totals for the L10 scorecard. Own try, likewise.
+  let weeks = { rows: [], errorCount: 0 };
+  try {
+    weeks = await collectAccountWeeks({ ig, page, as, call, runStarted, weeksBack });
+  } catch (e) {
+    log(`   instagram: @${ig.username} — weekly totals failed (${String(e.message).slice(0, 120)})`);
+  }
+
   // Stories and audience: each in its own try, for the same reason.
   let stories = { media: [], metrics: [] };
   try {
@@ -249,7 +257,7 @@ async function collectInstagram({ page, as, call, lookbackDays, maxPosts, runSta
     log(`   instagram: @${ig.username} — audience failed (${String(e.message).slice(0, 120)})`);
   }
 
-  return { linked: true, username: ig.username, ig_user_id: ig.id, media, metrics, account, months, stories, audience, tags, collabs };
+  return { linked: true, username: ig.username, ig_user_id: ig.id, media, metrics, account, months, weeks, stories, audience, tags, collabs };
 }
 
 // Account-level daily metrics. Nothing was collected here before 7 Sept 2026:
@@ -519,6 +527,79 @@ async function collectAccountMonths({ ig, page, as, call, runStarted }) {
   return { rows, errorCount };
 }
 
+// WEEKLY TOTALS (17 Nov 2026). The Social Media L10 scorecard records each
+// Monday-Sunday week's Instagram interactions as Meta Business Suite shows them
+// (Insights > Instagram > Interactions), typed in by hand because nothing here
+// held a weekly account figure: per-post interactions miss stories, older posts
+// and the profile, and the month totals above cannot be cut into weeks.
+//
+// The window was matched to Business Suite against the API rather than
+// assumed. since = Monday 00:00 UTC, until = the next Monday 00:00 UTC gives
+// Business Suite's own figures exactly for @citizengo (968 for 5-11 Oct 2026,
+// 1,134 for 12-18 Oct; probed 17 Nov 2026), and so does any boundary from
+// Sunday 08:00 to Monday 06:00 UTC, since Meta's days close at Pacific
+// midnight. The Pacific-week window the month totals use gave 899 and 3,633:
+// a day out, which on a week with a spike is most of the figure.
+//
+// Unlike the ~30-day window collectAccountMonths works within, these weekly
+// totals are served for at least a year back, so missed weeks can be filled
+// later (scripts/ig-weeks-backfill.js).
+const IG_WEEK_METRICS = [
+  'total_interactions', 'likes', 'comments', 'shares', 'saves', 'reposts', 'replies',
+  'reach', 'views', 'accounts_engaged',
+];
+// Nightly: this week so far, and the last complete week again, so a missed
+// night or a late Meta update is corrected through the following week.
+const IG_WEEKS_BACK = 1;
+
+const DAY = 86400;
+// Monday 00:00 UTC of the week holding the given UTC day (unix seconds).
+function mondayOf(dayStart) {
+  const dow = (new Date(dayStart * 1000).getUTCDay() + 6) % 7; // Monday = 0
+  return dayStart - dow * DAY;
+}
+const isoDay = (s) => new Date(s * 1000).toISOString().slice(0, 10);
+
+// The weeks to read: this week's closed days so far (none on a Monday), then
+// `weeksBack` complete weeks before it, most recent first.
+function weekWindows(runStarted, weeksBack = IG_WEEKS_BACK) {
+  const now = Math.floor(runStarted.getTime() / 1000);
+  const today = now - (now % DAY);
+  const thisMonday = mondayOf(today);
+  const out = [];
+  if (today > thisMonday) {
+    out.push({ week: isoDay(thisMonday), since: thisMonday, until: today, days: (today - thisMonday) / DAY, complete: false });
+  }
+  for (let k = 1; k <= weeksBack; k++) {
+    const since = thisMonday - 7 * k * DAY;
+    out.push({ week: isoDay(since), since, until: since + 7 * DAY, days: 7, complete: true });
+  }
+  return out;
+}
+
+async function collectAccountWeeks({ ig, page, as, call, runStarted, weeksBack = IG_WEEKS_BACK }) {
+  const rows = [];
+  let errorCount = 0;
+  for (const w of weekWindows(runStarted, weeksBack)) {
+    const row = {
+      ig_user_id: ig.id, page_id: page.page_id, ig_username: ig.username || null,
+      week_start: w.week, days_covered: w.days, complete: w.complete,
+      collected_at: runStarted.toISOString(),
+    };
+    const errors = {};
+    for (const metric of IG_WEEK_METRICS) {
+      const got = await monthTotal(call, ig.id, metric, w.since, w.until, as);
+      if (got.error) { errors[metric] = got.error; continue; }
+      // Only what was observed is written (upsertByShape), as for months.
+      if (got.value !== null) row[metric] = got.value;
+    }
+    row.errors = Object.keys(errors).length ? errors : null;
+    if (row.errors) errorCount++;
+    rows.push(row);
+  }
+  return { rows, errorCount };
+}
+
 // STORIES (5 Nov 2026). The /media edge never returns them, so until now not
 // one Story was held - while the app's own monthly Views count them. A Story
 // lives 24 hours and so do its insights, so each one is read while it is live:
@@ -728,6 +809,7 @@ module.exports = {
   collectTags,
   collectStories, collectAudience, IG_STORY_METRICS, IG_AUDIENCE, IG_AUDIENCE_BREAKDOWNS, IG_TOTAL_DAYS,
   collectInstagram, collectAccountMetrics, collectAccountMonths, monthWindows, pacificMidnight,
+  collectAccountWeeks, weekWindows,
   IG_MONTH_METRICS,
   IG_METRICS, IG_FEED_METRICS, IG_REELS_METRICS,
   IG_ACCOUNT_SERIES, IG_ACCOUNT_TOTALS, IG_ACCOUNT_BREAKDOWNS, IG_FOLLOW_SPLIT,

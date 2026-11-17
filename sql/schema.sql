@@ -427,6 +427,35 @@ alter table public.meta_ig_account_months enable row level security;
 revoke all on public.meta_ig_account_months from anon, authenticated;
 grant select on public.meta_ig_account_months to meta_readonly;
 
+-- Instagram Monday-Sunday account totals (17 Nov 2026), for the Social Media
+-- L10 scorecard. Meta's own total_value from Monday 00:00 to Monday 00:00 UTC,
+-- which matches Meta Business Suite's weekly Interactions exactly
+-- (collector/instagram.js collectAccountWeeks). week_start is the Monday.
+create table if not exists public.meta_ig_account_weeks (
+  ig_user_id          text not null,
+  page_id             text not null references public.meta_pages(page_id),
+  ig_username         text,
+  week_start          date not null,
+  days_covered        integer,
+  complete            boolean not null default false,
+  total_interactions  bigint,
+  likes               bigint,
+  comments            bigint,
+  shares              bigint,
+  saves               bigint,
+  reposts             bigint,
+  replies             bigint,
+  reach               bigint,   -- unique accounts over the week
+  views               bigint,
+  accounts_engaged    bigint,   -- unique accounts over the week
+  collected_at        timestamptz not null default now(),
+  errors              jsonb,
+  primary key (ig_user_id, week_start)
+);
+alter table public.meta_ig_account_weeks enable row level security;
+revoke all on public.meta_ig_account_weeks from anon, authenticated;
+grant select on public.meta_ig_account_weeks to meta_readonly;
+
 -- Instagram audience (5 Nov 2026): followers and engaged accounts by age,
 -- gender, country and city - Meta's lifetime total_value with one breakdown per
 -- call. data is {value: count}; errors holds Meta's refusal (it withholds
