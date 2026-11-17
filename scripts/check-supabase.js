@@ -89,6 +89,10 @@ const EXPECTED = {
   meta_ig_account_months: ['ig_user_id', 'page_id', 'ig_username', 'month', 'days_covered',
     'complete', 'reach', 'views', 'total_interactions', 'accounts_engaged', 'reach_days',
     'accounts_engaged_days', 'collected_at', 'errors'],
+  // Instagram at account level, per Monday-Sunday week (Business Suite's window).
+  meta_ig_account_weeks: ['ig_user_id', 'page_id', 'ig_username', 'week_start', 'days_covered',
+    'complete', 'total_interactions', 'likes', 'comments', 'shares', 'saves', 'reposts', 'replies',
+    'reach', 'views', 'accounts_engaged', 'collected_at', 'errors'],
   meta_social_tags: ['platform', 'account_id', 'page_id', 'account_name', 'item_id', 'author',
     'text', 'media_type', 'permalink', 'created_at', 'likes', 'comments', 'collected_at'],
   meta_fb_stories: ['post_id', 'page_id', 'status', 'media_type', 'media_id', 'url', 'created_at', 'collected_at'],

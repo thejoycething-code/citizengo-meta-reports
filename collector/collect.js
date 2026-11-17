@@ -52,6 +52,9 @@ const METRIC_CONCURRENCY = Number(flag('metric-concurrency', process.env.METRIC_
 // Pages processed at once. Kept modest: each page already runs
 // CONCURRENCY x METRIC_CONCURRENCY requests, so this multiplies total in-flight.
 const PAGE_CONCURRENCY = Number(flag('page-concurrency', process.env.PAGE_CONCURRENCY || 6));
+// Complete Monday-Sunday weeks of Instagram totals re-read each run (default 1).
+// Raise it once to fill missed weeks; Meta serves these for a year or more.
+const IG_WEEKS_BACK = Math.min(Math.max(Number(flag('ig-weeks-back', process.env.IG_WEEKS_BACK || 1)) || 1, 1), 60);
 // Accepts bare ids and comma-separated lists. Previously only bare numeric args
 // matched, so "--page-ids 123,456" matched NOTHING and silently collected every
 // page instead of two - which on a 90-day run is a very expensive typo.
@@ -680,7 +683,7 @@ async function collectPageInner(page, pageToken, out) {
       page, as, call,
       lookbackDays: LOOKBACK_DAYS, maxPosts: MAX_POSTS,
       runStarted: RUN_STARTED, collectedDate: COLLECTED_DATE,
-      log: (m) => console.log(m),
+      log: (m) => console.log(m), weeksBack: IG_WEEKS_BACK,
     });
     if (ig.linked && ig.media.length) {
       await sink.upsert('meta_ig_media', ig.media);
@@ -745,6 +748,16 @@ async function collectPageInner(page, pageToken, out) {
           + `${ig.months.errorCount ? ` (${ig.months.rows.filter((r) => r.errors).map((r) => Object.keys(r.errors).join('/')).join('; ')} unavailable)` : ''}`);
       } catch (e) {
         console.log(`   instagram: month totals not saved — ${e.message.slice(0, 200)}`);
+      }
+    }
+    // Monday-Sunday totals (instagram.js collectAccountWeeks). Own try, as above.
+    if (ig.linked && ig.weeks && ig.weeks.rows.length) {
+      try {
+        await upsertByShape('meta_ig_account_weeks', ig.weeks.rows);
+        console.log(`   instagram: @${ig.username} — ${ig.weeks.rows.length} week total(s)`
+          + `${ig.weeks.errorCount ? ` (${ig.weeks.rows.filter((r) => r.errors).map((r) => Object.keys(r.errors).join('/')).join('; ')} unavailable)` : ''}`);
+      } catch (e) {
+        console.log(`   instagram: week totals not saved — ${e.message.slice(0, 200)}`);
       }
     }
   } catch (e) {

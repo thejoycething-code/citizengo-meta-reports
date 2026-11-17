@@ -1194,6 +1194,80 @@ async function instagramMonthly(store, { month, page_id, all_accounts = false })
   };
 }
 
+// Monday-Sunday account totals (meta_ig_account_weeks), the weekly figure
+// Meta Business Suite shows under Insights > Instagram > Interactions.
+const DAY_MS = 86400000;
+function mondayIso(iso) {
+  const t = Date.parse(`${iso}T00:00:00Z`);
+  const dow = (new Date(t).getUTCDay() + 6) % 7;
+  return new Date(t - dow * DAY_MS).toISOString().slice(0, 10);
+}
+async function instagramWeekly(store, { week, weeks = 1, since, until, page_id, all_accounts = false }) {
+  const isDay = (v) => /^\d{4}-\d{2}-\d{2}$/.test(String(v || '')) && !Number.isNaN(Date.parse(`${v}T00:00:00Z`));
+  const lastComplete = mondayIso(shiftDay(mondayIso(new Date().toISOString().slice(0, 10)), -7));
+  let from; let to;
+  if (isDay(since)) {
+    from = mondayIso(since);
+    to = mondayIso(isDay(until) ? until : since);
+  } else {
+    to = isDay(week) ? mondayIso(week) : lastComplete;
+    const k = Math.min(Math.max(Math.floor(Number(weeks)) || 1, 1), 26);
+    from = shiftDay(to, -7 * (k - 1));
+  }
+  if (from > to) [from, to] = [to, from];
+  if ((Date.parse(to) - Date.parse(from)) / DAY_MS / 7 + 1 > 60) from = shiftDay(to, -7 * 59);
+
+  const rows = typeof store.igAccountWeeks === 'function'
+    ? await store.igAccountWeeks({ from, to, page_id }).catch(() => []) : [];
+  const label = (m) => `${prettyDay(m)} – ${prettyDay(shiftDay(m, 6))}`;
+  const span = from === to ? label(from) : `weeks of ${prettyDay(from)} to ${label(to)}`;
+  if (!rows || !rows.length) {
+    return {
+      text: `No Instagram weekly totals held for ${span}. They are collected nightly from 18 Nov 2026 (a week shows on the Monday after it ends) and earlier weeks are filled by scripts/ig-weeks-backfill.js.`,
+      data: null,
+    };
+  }
+
+  const num = (v) => (typeof v === 'number' ? v : (v === null || v === undefined || v === '' ? null : Number(v)));
+  const order = new Map(IG_DASHBOARD_ROWS.filter(([u]) => u).map(([u, l], i) => [u, [i, l]]));
+  const names = [...new Set(rows.map((r) => r.ig_username).filter(Boolean))];
+  const others = names.filter((u) => !order.has(u));
+  const wanted = (u) => page_id || all_accounts || order.has(u);
+  let partial = false;
+  const out = rows.filter((r) => wanted(r.ig_username)).map((r) => {
+    const failed = new Set(r.errors && typeof r.errors === 'object' ? Object.keys(r.errors) : []);
+    const held = (k) => (failed.has(k) ? null : num(r[k]));
+    if (!r.complete) partial = true;
+    let source = r.complete ? 'Meta week total' : `Meta total, ${r.days_covered} day(s) so far`;
+    if (failed.size) source += `; ${[...failed].join('/')} not read on the last run`;
+    return {
+      week_start: String(r.week_start).slice(0, 10), account: r.ig_username,
+      dashboard_row: order.has(r.ig_username) ? order.get(r.ig_username)[1] : '(not on dashboard)',
+      interactions: held('total_interactions'), likes: held('likes'), comments: held('comments'),
+      shares: held('shares'), saves: held('saves'), reposts: held('reposts'), replies: held('replies'),
+      reach: held('reach'), views: held('views'), accounts_engaged: held('accounts_engaged'),
+      complete: !!r.complete, source,
+    };
+  }).sort((a, b) => {
+    const oa = order.has(a.account) ? order.get(a.account)[0] : 99; const ob = order.has(b.account) ? order.get(b.account)[0] : 99;
+    return oa - ob || String(a.account).localeCompare(String(b.account)) || (a.week_start < b.week_start ? -1 : 1);
+  });
+
+  return {
+    text: `**Instagram weekly (Monday–Sunday) · ${span}**\n\n`
+      + table(['Week', 'Account', 'Interactions', 'Likes', 'Comments', 'Shares', 'Saves', 'Reposts', 'Replies', 'Accounts reached', 'Views', 'Source'],
+        out.map((r) => [label(r.week_start), '@' + r.account, n(r.interactions), n(r.likes), n(r.comments), n(r.shares), n(r.saves),
+          n(r.reposts), n(r.replies), n(r.reach), n(r.views), r.source]))
+      + '\n\n_Interactions is Meta\'s own account total for the week — likes, comments, shares, saves, reposts and replies on every post, reel and story, whenever it was published — '
+      + 'read for Monday 00:00 to Monday 00:00 UTC, which is the figure Meta Business Suite shows (Insights > Instagram > Interactions; checked against 968 for 5–11 Oct and 1,134 for 12–18 Oct 2026). '
+      + 'It is not the sum of instagram_posts, which only counts posts published in the week. Accounts reached is unique accounts over the week. '
+      + (partial ? 'A week marked "so far" is not over yet. ' : '')
+      + (!all_accounts && !page_id && others.length ? `${others.length} other connected account(s) are not on the dashboard; pass all_accounts for them. ` : '')
+      + '_',
+    data: { from, to, rows: out },
+  };
+}
+
 // Who follows and who engages, per Instagram account (meta_ig_audience).
 async function instagramAudience(store, { page_id, kind = 'followers', top = 8 }) {
   const rows = typeof store.igAudience === 'function' ? await store.igAudience({ page_id }) : [];
@@ -1709,6 +1783,23 @@ const TOOLS = [
       additionalProperties: false,
     },
     handler: (store, args) => instagramMonthly(store, args),
+  },
+  {
+    name: 'instagram_weekly',
+    description: 'Monday-Sunday account-level Instagram totals per account: Interactions (the weekly figure Meta Business Suite shows under Insights > Instagram > Interactions, and the L10 scorecard\'s "Weekly interactions overview from Instagram Global account"), with likes, comments, shares, saves, reposts, replies, accounts reached and views. Use this for any weekly Instagram interactions number, never a sum of instagram_posts (which only counts posts published that week).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        week: { type: 'string', description: 'Any date in the week wanted, YYYY-MM-DD. Defaults to the last complete Monday-Sunday week.' },
+        weeks: { type: 'number', description: 'How many weeks ending with that week (default 1, max 26).' },
+        since: { type: 'string', description: 'Alternative to week/weeks: every Monday-Sunday week from the one holding this date, YYYY-MM-DD...' },
+        until: { type: 'string', description: '...to the one holding this date, YYYY-MM-DD (inclusive).' },
+        page_id: { type: 'string', description: 'Restrict to the Instagram account linked to this Facebook page id.' },
+        all_accounts: { type: 'boolean', description: 'Also list connected accounts that are not on the monthly dashboard.' },
+      },
+      additionalProperties: false,
+    },
+    handler: (store, args) => instagramWeekly(store, args),
   },
   {
     name: 'instagram_posts',
