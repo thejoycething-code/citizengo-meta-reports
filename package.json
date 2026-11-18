@@ -73,6 +73,7 @@
     "test:desk": "node scripts/test-desk.js",
     "test:desk-ai": "node scripts/test-desk-ai.js",
     "publish": "node collector/publish.js",
-    "publish:dry": "node collector/publish.js --dry-run"
+    "publish:dry": "node collector/publish.js --dry-run",
+    "test:adspend": "node scripts/test-adspend.js"
   }
 }

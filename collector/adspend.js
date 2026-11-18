@@ -9,6 +9,43 @@
 // Needs ads_read on the token. The Redes HO token has it; a System User token
 // scoped only to page insights will not, in which case this is skipped and
 // everything else still runs.
+//
+// ONE ROW PER AD, holding the ad's LIFETIME totals (18 Nov 2026). This used to
+// store whatever a rolling "last N days" window returned, keyed on the window's
+// dates. The window moves every night, so every night wrote a new row for the
+// same ad, and the paid-vs-organic view summed them: a CitizenGO Argentina
+// boost that spent ARS 79,402 showed ARS 627,749 after ten nights, and its
+// reach (23,025) showed as 190,815, more than its 34,604 impressions. A window
+// also cuts off the start of any ad that began before it, and an ad that stops
+// delivering eventually falls out of it altogether.
+//
+// So the window is now used only to FIND ads that delivered recently. Their
+// totals are then asked for with date_preset=maximum, which Meta answers with
+// the whole life of the ad, and the row is overwritten each night under the
+// ad_id alone. Reach is unique people over the ad's life, which is why it is
+// asked for this way rather than summed from daily rows: daily reach does not
+// add up. An ad that has stopped keeps the last lifetime row it was given,
+// which is final because a stopped ad's totals no longer change.
+
+const PAGE_LIMIT = 500;
+// Meta caps the IN filter's value list; stay well under it.
+const ID_CHUNK = 50;
+
+// Follows the after-cursor so an account with more than one page of ads is not
+// silently cut off at the first PAGE_LIMIT.
+async function readAll(call, pathname, params) {
+  const out = [];
+  let after = null;
+  for (let guard = 0; guard < 100; guard++) {
+    const res = await call(pathname, after ? { ...params, after } : params);
+    if (!res.ok) return out.length ? out : null;
+    out.push(...((res.body && res.body.data) || []));
+    after = res.body && res.body.paging && res.body.paging.next
+      && res.body.paging.cursors && res.body.paging.cursors.after;
+    if (!after) break;
+  }
+  return out;
+}
 
 async function collectAdSpend({ call, lookbackDays, runStarted, log }) {
   const accounts = await call('/me/adaccounts', { fields: 'id,account_id,name,currency', limit: 100 });
@@ -22,56 +59,65 @@ async function collectAdSpend({ call, lookbackDays, runStarted, log }) {
   const rows = [];
 
   for (const acct of (accounts.body.data || [])) {
-    // Ad-level insights, with the creative expanded so the post id comes back in
-    // the same response rather than needing a call per ad.
-    const res = await call(`/${acct.id}/insights`, {
+    // Which ads delivered in the window. Only the ids are used from this.
+    const recent = await readAll(call, `/${acct.id}/insights`, {
       level: 'ad',
-      fields: 'ad_id,ad_name,campaign_name,spend,impressions,reach,date_start,date_stop',
+      fields: 'ad_id',
       time_range: JSON.stringify({ since, until }),
-      limit: 500,
+      limit: PAGE_LIMIT,
     });
-    if (!res.ok) continue;
-
-    const insights = (res.body && res.body.data) || [];
-    if (!insights.length) continue;
+    if (!recent || !recent.length) continue;
+    const adIds = [...new Set(recent.map((i) => i.ad_id).filter(Boolean))];
 
     // One call maps every ad in the account to its promoted post.
-    const creatives = await call(`/${acct.id}/ads`, {
+    const creatives = await readAll(call, `/${acct.id}/ads`, {
       fields: 'id,creative{effective_object_story_id,object_story_id}',
-      limit: 500,
+      limit: PAGE_LIMIT,
     });
     const postByAd = new Map();
-    if (creatives.ok) {
-      for (const ad of (creatives.body.data || [])) {
-        const c = ad.creative || {};
-        const postId = c.effective_object_story_id || c.object_story_id;
-        if (postId) postByAd.set(ad.id, postId);
-      }
+    for (const ad of creatives || []) {
+      const c = ad.creative || {};
+      const postId = c.effective_object_story_id || c.object_story_id;
+      if (postId) postByAd.set(ad.id, postId);
     }
 
-    for (const i of insights) {
-      const postId = postByAd.get(i.ad_id);
-      // An ad with no page post behind it (a link ad, say) has nothing to join
-      // to, so it is deliberately dropped rather than stored unattached.
-      if (!postId) continue;
-      rows.push({
-        post_id: postId,
-        page_id: postId.includes('_') ? postId.split('_')[0] : null,
-        ad_id: i.ad_id,
-        ad_account_id: acct.account_id || acct.id,
-        campaign_name: i.campaign_name || null,
-        spend: i.spend ? Number(i.spend) : null,
-        currency: acct.currency || null,
-        impressions: i.impressions ? Number(i.impressions) : null,
-        reach: i.reach ? Number(i.reach) : null,
-        date_start: i.date_start || since,
-        date_stop: i.date_stop || until,
-        collected_at: runStarted.toISOString(),
+    // An ad with no page post behind it (a link ad, say) has nothing to join
+    // to, so it is deliberately dropped rather than stored unattached.
+    const linked = adIds.filter((id) => postByAd.has(id));
+
+    for (let i = 0; i < linked.length; i += ID_CHUNK) {
+      const chunk = linked.slice(i, i + ID_CHUNK);
+      const lifetime = await readAll(call, `/${acct.id}/insights`, {
+        level: 'ad',
+        fields: 'ad_id,ad_name,campaign_name,spend,impressions,reach,date_start,date_stop',
+        date_preset: 'maximum',
+        filtering: JSON.stringify([{ field: 'ad.id', operator: 'IN', value: chunk }]),
+        limit: PAGE_LIMIT,
       });
+      for (const r of lifetime || []) {
+        const postId = postByAd.get(r.ad_id);
+        if (!postId) continue;
+        rows.push({
+          post_id: postId,
+          page_id: postId.includes('_') ? postId.split('_')[0] : null,
+          ad_id: r.ad_id,
+          ad_account_id: acct.account_id || acct.id,
+          campaign_name: r.campaign_name || null,
+          spend: r.spend ? Number(r.spend) : null,
+          currency: acct.currency || null,
+          impressions: r.impressions ? Number(r.impressions) : null,
+          reach: r.reach ? Number(r.reach) : null,
+          // The ad's first and last day of delivery, as Meta reports them for
+          // the lifetime preset.
+          date_start: r.date_start || null,
+          date_stop: r.date_stop || null,
+          collected_at: runStarted.toISOString(),
+        });
+      }
     }
   }
 
-  log(`   ad spend: ${rows.length} ad-to-post link(s)`);
+  log(`   ad spend: ${rows.length} ad-to-post link(s), lifetime totals`);
   return { rows, skipped: false };
 }
 

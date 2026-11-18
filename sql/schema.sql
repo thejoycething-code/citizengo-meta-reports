@@ -664,8 +664,21 @@ create table if not exists public.meta_post_ad_spend (
   collected_at  timestamptz not null default now()
 );
 
-create unique index if not exists meta_post_ad_spend_key
-  on public.meta_post_ad_spend (ad_id, date_start, date_stop);
+-- One row per ad, holding its lifetime totals (18 Nov 2026). The key used to be
+-- (ad_id, date_start, date_stop) over a rolling window, so each night added a
+-- row for the same ad and meta_post_paid_vs_organic summed them: spend and
+-- reach came out multiplied by the number of nights the ad was in the window.
+-- For stores created before then: keep only each ad's newest row, then rekey.
+-- The kept row is still a window total until the next nightly collection
+-- overwrites it with the lifetime figure; that run looks 400 days back for
+-- ads (AD_LOOKBACK_DAYS), so every ad held here is refreshed.
+delete from public.meta_post_ad_spend a
+ using public.meta_post_ad_spend b
+ where a.ad_id = b.ad_id
+   and (a.collected_at, a.id) < (b.collected_at, b.id);
+drop index if exists public.meta_post_ad_spend_key;
+create unique index if not exists meta_post_ad_spend_ad_key
+  on public.meta_post_ad_spend (ad_id);
 
 create index if not exists meta_post_ad_spend_post_idx
   on public.meta_post_ad_spend (post_id);

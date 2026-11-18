@@ -33,7 +33,7 @@ const CONFLICT_KEYS = {
   meta_page_metrics: ['page_id', 'metric_date'],
   meta_ig_media: ['media_id'],
   meta_ig_media_metrics: ['media_id', 'collected_date'],
-  meta_post_ad_spend: ['ad_id', 'date_start', 'date_stop'],
+  meta_post_ad_spend: ['ad_id'],
 };
 const KNOWN = new Set([...Object.keys(CONFLICT_KEYS), 'meta_collection_runs',
   'meta_page_metrics', 'meta_ig_media', 'meta_ig_media_metrics', 'meta_post_ad_spend']);
@@ -51,6 +51,8 @@ const COLUMNS = {
     'reactions_wow', 'reactions_haha', 'reactions_sorry', 'reactions_anger',
     'shares_total', 'clicks_total', 'clicks_by_type', 'activity_by_type', 'video_views',
     'comments_total', 'errors'],
+  meta_post_ad_spend: ['id', 'post_id', 'page_id', 'ad_id', 'ad_account_id', 'campaign_name',
+    'spend', 'currency', 'impressions', 'reach', 'date_start', 'date_stop', 'collected_at'],
   meta_collection_runs: ['id', 'run_id', 'page_id', 'started_at', 'finished_at', 'status',
     'posts_seen', 'metrics_written', 'api_calls', 'error_code', 'error_message'],
 };
