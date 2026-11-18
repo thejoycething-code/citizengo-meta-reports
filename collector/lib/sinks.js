@@ -24,7 +24,7 @@ function jsonSink({ dir }) {
     if (table === 'meta_page_metrics') return `${row.page_id}|${row.metric_date}`;
     if (table === 'meta_ig_media') return row.media_id;
     if (table === 'meta_ig_media_metrics') return `${row.media_id}|${row.collected_date}`;
-    if (table === 'meta_post_ad_spend') return `${row.ad_id}|${row.date_start}|${row.date_stop}`;
+    if (table === 'meta_post_ad_spend') return row.ad_id;
     // X source - see sql/x-schema.sql.
     if (table === 'x_accounts') return row.account_id;
     if (table === 'x_posts') return row.post_id;
@@ -93,7 +93,7 @@ function supabaseSink({ url, serviceKey }) {
     meta_social_tags: 'platform,account_id,item_id',
     meta_fb_stories: 'post_id',
     meta_ig_media_transcript: 'media_id',
-    meta_post_ad_spend: 'ad_id,date_start,date_stop',
+    meta_post_ad_spend: 'ad_id',
     // X source - see sql/x-schema.sql. x_oauth_tokens is deliberately absent:
     // credentials are written by api/x/callback.js and PATCHed by the collector,
     // never bulk-upserted.

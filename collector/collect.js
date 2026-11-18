@@ -37,6 +37,11 @@ function flag(name, fallback) {
 }
 const DRY_RUN = args.includes('--dry-run');
 const LOOKBACK_DAYS = Number(flag('lookback-days', process.env.LOOKBACK_DAYS || 30));
+// How far back to look for ads that delivered, so their lifetime totals get
+// refreshed. Separate from LOOKBACK_DAYS on purpose: finding ads is one cheap
+// call per ad account, and tying it to the 14-day post window let ads drop out
+// before their totals were final. See collector/adspend.js.
+const AD_LOOKBACK_DAYS = Number(flag('ad-lookback-days', process.env.AD_LOOKBACK_DAYS || 400));
 const MAX_POSTS = Number(flag('max-posts', process.env.MAX_POSTS || 200));
 const CONCURRENCY = Number(flag('concurrency', process.env.CONCURRENCY || 4));
 // Concurrency WITHIN a post. The insights calls for one post are independent of
@@ -936,7 +941,7 @@ async function main() {
   // identical work for every one of them.
   try {
     const ads = await collectAdSpend({
-      call, lookbackDays: LOOKBACK_DAYS, runStarted: RUN_STARTED,
+      call, lookbackDays: AD_LOOKBACK_DAYS, runStarted: RUN_STARTED,
       log: (m) => console.log(m.replace(/^ {3}/, '')),
     });
     if (ads.rows.length) await sink.upsert('meta_post_ad_spend', ads.rows);
