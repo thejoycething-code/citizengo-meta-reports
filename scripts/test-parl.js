@@ -36,6 +36,41 @@ const fetchImpl = async (url, o) => {
   const bad = await P.feed('uk', { now, url: 'https://x', token: 't', fetchImpl: async () => ({ ok: false, status: 401 }) });
   eq('feed: a refused parliament is reported, not thrown', [bad.items.length, bad.errors.length], [0, 2]);
   eq('feed: other teams not covered', (await P.feed('es', { now, url: 'https://x', token: 't', fetchImpl })).covered, []);
+  // E4: big dates for the Calendar.
+  const M = [
+    { key: 'bill:4157:2026-11-25', date: '2026-11-25', kind: 'bill', title: 'Health Bill: Lords report stage', url: 'https://parliamentary-monitor.vercel.app/bills/health-bill.html' },
+    { key: 's1', date: '2026-11-26', kind: 'sitting', title: 'Health Bill: Lords committee stage (day 8)', url: null },
+    { key: 's2', date: '2026-11-27', kind: 'sitting', title: 'Prostitution (Scotland) Bill: Third reading', url: 'http://insecure' },
+    { key: 'c1', date: '2026-12-01', kind: 'consultation', title: 'Children not in school guidance', url: 'https://www.gov.uk/c' },
+    { key: 'h1', date: '2026-12-02', kind: 'hearing', title: 'A hearing', url: null },
+  ];
+  const big = P.shapeBigDates(M);
+  eq('big dates: committee sittings and unknown kinds left out', big.map((k) => k.starts), ['2026-11-25', '2026-11-27', '2026-12-01']);
+  eq('big dates: a Parliament marker with its kind as the angle', [big[0].kind, big[0].angle, big[0].title.startsWith('🏛 Health Bill'), big[1].url], ['parliament', 'Bill', true, null]);
+  eq('big dates: UK for all, Scotland for the ones naming it', [P.bigDatesFor(big, ['uk']).length, P.bigDatesFor(big, ['scotland']).map((k) => [k.team_id, k.starts])], [3, [['scotland', '2026-11-27']]]);
+  eq('big dates: sql reads _moments in the range', /from _moments where date::text >= '2026-11-01' and date::text <= '2026-12-31'/.test(P.bigDatesSql({ from: '2026-11-01', to: '2026-12-31' })), true);
+  // E5: petitions near 100,000.
+  eq('petitions near 100k: 75k up to 100k, not yet debated', P.nearHundredK([{ signatures: 80000 }, { signatures: 120000 }, { signatures: 60000 }, { signatures: 90000, debate: true }]).length, 1);
+  // E2: "How your MPs voted" drafts.
+  const V = require('./parl-vote-drafts');
+  const b = { id: 1234, house: 'Commons', title: 'Health Bill: Report Stage: New Clause 1', bill: 'Health Bill', date: '2026-11-25', ayes: 300, noes: 200,
+    url: 'https://votes.parliament.uk/Votes/Commons/Division/1234', parties: [['Labour', 290, 3]], scotland: false };
+  const d = V.draftsFor(b);
+  eq('vote drafts: one UK draft, id by division', d.map((x) => [x.id, x.team]), [['parl-vote-c1234-uk', 'uk']]);
+  eq('vote drafts: the count and the link, no em dash', [d[0].doc.platforms.facebook.includes('300 Ayes to 200 Noes, so it passed by 100 votes'), d[0].doc.platforms.facebook.includes(b.url), /—/.test(JSON.stringify(d[0].doc))], [true, true, false]);
+  eq('vote drafts: Scotland too when the bill reaches it', V.draftsFor({ ...b, scotland: true }).map((x) => x.team), ['uk', 'scotland']);
+  eq('vote drafts: Lords wording', V.draftsFor({ ...b, house: 'Lords', ayes: 100, noes: 150 })[0].doc.platforms.facebook.slice(0, 84), 'Peers voted on the Health Bill: 100 Contents to 150 Not contents, so it was rejected');
+  eq('vote drafts: no link, no draft', V.draftsFor({ ...b, url: 'http://x' }), []);
+  const fs = require('fs'), os = require('os'), path = require('path');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pvd-'));
+  fs.writeFileSync(path.join(dir, 'division-c1234.json'), JSON.stringify(b));
+  fs.writeFileSync(path.join(dir, 'division-c1.md'), 'not json');
+  const posts = {}; const events = [];
+  const store = { enginePost: async (id) => posts[id] || null, engineInsertPost: async (r) => { posts[r.id] = r; return r; }, engineEvent: async (e) => events.push(e) };
+  const first = await V.run({ dir, store, log: () => {} });
+  const again = await V.run({ dir, store, log: () => {} });
+  eq('vote drafts: added once to Review, by the monitor', [first, again, posts['parl-vote-c1234-uk'].status, posts['parl-vote-c1234-uk'].created_by, events.length], [1, 0, 'review', 'parliamentary-monitor', 1]);
+  eq('vote drafts: old briefs ignored', await V.run({ dir, store: { ...store, enginePost: async () => null }, log: () => {}, now: Date.now() + 5 * 864e5 }), 0);
   console.log(`\n${passed} passed, ${failed} failed`);
   process.exit(failed ? 1 : 0);
 })().catch((e) => { console.error(e); process.exit(1); });
