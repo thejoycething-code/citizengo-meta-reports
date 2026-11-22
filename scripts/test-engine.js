@@ -398,6 +398,28 @@ const callErr = async (store, name, args, who) => { try { await tool(name)(store
       const b = await call(s2, 'engine_bell', { team: 'uk' }, 'chris');
       eq('bell: Listening ad burst from the cached Today view (A2)', b.items.filter((i) => i.kind === 'listen').map((i) => i.text.slice(0, 18)).join(','), 'Ad burst: DiD: 3 n');
       eq('today: someone outside the team is refused', await callErr(s2, 'engine_listening', { tab: 'today', team: 'uk' }, 'greg'), 'ENGINE_NOT_MEMBER');
+      // Batch 2 (22 Nov 2026): thresholds (E4), timeline (C2), learn (E1-E3), account check (F4).
+      const admins0 = process.env.ENGINE_ADMINS; process.env.ENGINE_ADMINS = 'chris';
+      const set0 = await call(s2, 'engine_listening', { tab: 'settings' }, 'chris');
+      eq('settings: the usual thresholds until someone changes them', [set0.settings.rise, set0.settings.hot, set0.settings.conv_accounts, set0.settings.conv_hours, set0.can_edit], [3, 5, 3, 48, true]);
+      eq('settings: only a maintainer can change them', await callErr(s2, 'engine_listening', { tab: 'settings', set: { rise: 2 } }, 'greg'), 'ENGINE_REFUSED');
+      const set1 = await call(s2, 'engine_listening', { tab: 'settings', set: { rise: 2.5, hot: 99, conv_accounts: 2, conv_hours: 72 } }, 'chris');
+      eq('settings: saved, odd values fall back to the usual', [set1.settings.rise, set1.settings.hot, set1.settings.conv_accounts, set1.settings.conv_hours], [2.5, 5, 2, 72]);
+      eq('settings: read back for everyone', (await call(s2, 'engine_listening', { tab: 'settings' }, 'chris')).settings.rise, 2.5);
+      const pv = await call(s2, 'engine_listening', { tab: 'settings_preview', set: { rise: 2 } }, 'chris');
+      eq('settings preview: counts, never fails on an empty week', [pv.tab, typeof pv.rising_7d, typeof pv.converging_now], ['settings_preview', 'number', 'number']);
+      s2.peerRecent = async () => [{ username: 'ally1', stance: 'ally', caption: 'Assisted dying: protect the vulnerable', permalink: 'https://ig/a', timestamp: new Date(Date.now() - 3 * 864e5).toISOString(), media_type: 'VIDEO', media_product_type: 'REELS', vs_median: 4 }];
+      const tl = await call(s2, 'engine_listening', { tab: 'timeline', team: 'uk', topic: 'assisted-dying' }, 'chris');
+      eq('timeline: 90 days for the topic with the opponent ads marked', [tl.tab, tl.days, tl.daily.allies.reduce((a, b) => a + b, 0), tl.totals.ads], ['timeline', 90, 1, 3]);
+      eq('timeline: an unknown topic is refused', await callErr(s2, 'engine_listening', { tab: 'timeline', team: 'uk', topic: 'nope' }, 'chris'), 'ENGINE_REFUSED');
+      const ln = await call(s2, 'engine_listening', { tab: 'learn', team: 'uk' }, 'chris');
+      eq('learn: answered, recap and formats, with the ad burst in the recap', [ln.tab, typeof ln.answered.listening.posts, ln.recap.bursts.length, typeof ln.formats.formats], ['learn', 'number', 1, 'object']);
+      s2.peerAccounts = async () => [{ username: 'ally1', label: 'Ally One', stance: 'ally', last_status: 'ok', last_checked_at: new Date().toISOString() }, { username: 'gone', label: 'Gone', stance: 'opponent', last_status: 'not_found', last_checked_at: new Date().toISOString() }, { username: 'quiet', label: 'Quiet', stance: 'ally', last_status: 'ok', last_checked_at: new Date().toISOString() }];
+      const hd = await call(s2, 'engine_listening', { tab: 'handles', fresh: true }, 'chris');
+      eq('handle check: a missing account and a quiet one (F4)', [hd.checked, hd.ok, hd.problems.map((p) => p.username).join(',')], [3, 1, 'gone,quiet']);
+      const b2 = await call(s2, 'engine_bell', { team: 'uk' }, 'chris');
+      eq('bell: the monthly account check for a maintainer', b2.items.filter((i) => i.id.startsWith('lh:')).map((i) => i.text.slice(0, 31)).join(','), 'Monthly account check: 2 watche');
+      if (admins0 === undefined) delete process.env.ENGINE_ADMINS; else process.env.ENGINE_ADMINS = admins0;
     }
     eq('engine_listening watches: matched through the tool', [r.tab, r.watches.length, r.watches[0].id, r.watches[0].total], ['watches', 1, 'h', 1]);
   }

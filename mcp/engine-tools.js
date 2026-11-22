@@ -1149,6 +1149,30 @@ async function engineListening(store, args, ctx0) {
     if (!team) throw err('Pick a team.', 'ENGINE_REFUSED');
     return cached(store, `listening:today:v1:${team}`, args, () => listeningToday(store, ctx0, team, lang));
   }
+  // E4 thresholds (Chris, 22 Nov 2026): one set for Listening, changed by a maintainer.
+  if (args.tab === 'settings') {
+    if (args.set) {
+      if (!ctx.maintainer) throw err('Only Chris can change the Listening thresholds.', 'ENGINE_REFUSED');
+      const v = cleanListenSettings(args.set);
+      await store.engineCacheSet(LISTEN_SETTINGS_KEY, { ...v, by: ctx0.who, at: new Date().toISOString() });
+      return json({ tab: 'settings', ok: true, settings: v, can_edit: true });
+    }
+    return json({ tab: 'settings', settings: await listenSettings(store), defaults: LISTEN_DEFAULTS, can_edit: !!ctx.maintainer });
+  }
+  if (args.tab === 'settings_preview') return listenPreview(store, cleanListenSettings(args.set || {}));
+  // C2 timeline, E1-E3 learning, F4 account check (Chris, 22 Nov 2026).
+  if (args.tab === 'timeline') {
+    const T = require('../lib/listen-topics');
+    const topic = String(args.topic || '');
+    if (!T.TOPICS.some((t) => t.key === topic)) throw err('Pick a topic.', 'ENGINE_REFUSED');
+    if (!team) throw err('Pick a team.', 'ENGINE_REFUSED');
+    return cached(store, `listening:timeline:v1:${team}:${topic}`, args, () => listeningTimeline(store, ctx, ctx0, team, topic));
+  }
+  if (args.tab === 'learn') {
+    if (!team) throw err('Pick a team.', 'ENGINE_REFUSED');
+    return cached(store, `listening:learn:v1:${team}`, args, () => listeningLearn(store, ctx, ctx0, team));
+  }
+  if (args.tab === 'handles') return cached(store, 'listening:handles:v1', args, () => listeningHandles(store));
   if (args.tab === 'context') {
     if (!team) throw err('Pick a team.', 'ENGINE_REFUSED');
     return cached(store, `listening:context:v1:${team}`, args, () => listeningContext(store, ctx, team));
@@ -1160,7 +1184,8 @@ async function engineListening(store, args, ctx0) {
   }
   const tab = ['citizengo', 'allies', 'opponents'].includes(args.tab) ? args.tab : 'citizengo';
   // Only the citizengo tab depends on the team (it leaves the team's own Pages out).
-  const key = `listening:p4:${tab}:${tab === 'citizengo' ? team : ''}:${args.country || ''}:${Number(args.days) || ''}:${Number(args.min_multiple) || ''}`;
+  const LSET = await listenSettings(store);
+  const key = `listening:p4:${tab}:${tab === 'citizengo' ? team : ''}:${args.country || ''}:${Number(args.days) || ''}:${Number(args.min_multiple) || ''}${tab === 'citizengo' ? '' : `:c${LSET.conv_accounts}-${LSET.conv_hours}`}`;
   return cached(store, key, args, () => listeningCompute(store, args, ctx0));
 }
 
@@ -1851,8 +1876,10 @@ async function listeningCompute(store, args, { who }) {
   // Allies and (since 13 Nov 2026, Chris) opponents alike; side says which.
   const all = await PEER_TOOLS.find((t) => t.name === (tab === 'allies' ? 'ally_watch' : 'opponent_watch')).handler(store, { days: 3, limit: 200, sort: 'recent' });
   const recent = ((all && all.rows) || []).map((r) => ({ who: r.label || `@${r.username}`, handle: r.username, text: r.caption, url: r.permalink, created_time: r.timestamp, x: r.vs_median }));
-  const converging = convergence(recent).map((c) => ({ ...c, side: tab }));
-  const building = convergenceBuilding(recent, converging).map((c) => ({ ...c, side: tab }));
+  const LSET = await listenSettings(store);
+  const cOpts = { min: LSET.conv_accounts, ms: LSET.conv_hours * 3600e3 };
+  const converging = convergence(recent, Date.now(), cOpts).map((c) => ({ ...c, side: tab }));
+  const building = convergenceBuilding(recent, converging, Date.now(), cOpts).map((c) => ({ ...c, side: tab }));
   return json({ tab, days, min_multiple: minX, posts, ads, converging, building, topics: topicsOf(posts), note: out && !out.rows ? String(out.text || '').slice(0, 300) : null });
 }
 
@@ -1877,6 +1904,106 @@ async function watchesCompute(store, watches, now = Date.now()) {
   const posts = await listeningCorpus(store, now);
   return json({ tab: 'watches', watches: require('../lib/listen-topics').watchMatches(posts, watches, { now }), read: posts.length });
 }
+const LISTEN_SETTINGS_KEY = 'settings:listening';
+const LISTEN_DEFAULTS = { rise: 3, hot: 5, conv_accounts: 3, conv_hours: 48 };
+function cleanListenSettings(v = {}) {
+  const pick = (x, list, d) => (list.includes(Number(x)) ? Number(x) : d);
+  return { rise: pick(v.rise, [2, 2.5, 3, 4, 5], LISTEN_DEFAULTS.rise), hot: pick(v.hot, [3, 4, 5, 7, 10], LISTEN_DEFAULTS.hot),
+    conv_accounts: pick(v.conv_accounts, [2, 3, 4, 5], LISTEN_DEFAULTS.conv_accounts), conv_hours: pick(v.conv_hours, [24, 48, 72], LISTEN_DEFAULTS.conv_hours) };
+}
+async function listenSettings(store) {
+  const hit = store.engineCacheGet ? await store.engineCacheGet(LISTEN_SETTINGS_KEY).catch(() => null) : null;
+  return cleanListenSettings((hit && hit.value) || {});
+}
+// How many items a candidate setting would show, from the last 7 days of posts.
+async function listenPreview(store, set, now = Date.now()) {
+  const posts = (await listeningCorpus(store, now)).filter((p) => p.src !== 'citizengo');
+  const wk = posts.filter((p) => now - Date.parse(p.created_time || 0) <= 7 * 864e5);
+  const rising = wk.filter((p) => p.x != null && p.x >= set.rise).length;
+  const hot = wk.filter((p) => p.x != null && p.x >= set.hot && now - Date.parse(p.created_time) <= 48 * 3600e3).length;
+  const rows = wk.map((p) => ({ ...p, handle: p.who }));
+  let conv = 0;
+  for (const side of ['allies', 'opponents']) conv += convergence(rows.filter((p) => p.src === side), now, { min: set.conv_accounts, ms: set.conv_hours * 3600e3 }).length;
+  return json({ tab: 'settings_preview', settings: set, rising_7d: rising, hot_48h: hot, converging_now: conv, read: wk.length });
+}
+async function listeningTimeline(store, ctx, ctx0, teamId, topic, now = Date.now()) {
+  const T = require('../lib/listen-topics');
+  const team = teamById(ctx, teamId);
+  const since = new Date(now - 90 * 864e5).toISOString();
+  const { TOOLS } = require('./tools');
+  const [peers, fb, ads, parl] = await Promise.all([
+    store.peerRecent ? store.peerRecent({ since }).catch(() => []) : [],
+    TOOLS.find((t) => t.name === 'top_posts').handler(store, { days: 90, sort: 'recent', compact: true, limit: 1000 }).then((r) => ((r.data || {}).rows || [])).catch(() => []),
+    store.opponentAds ? store.opponentAds({ since }).catch(() => []) : [],
+    engineParliamentItems(store, ctx0, teamId).catch(() => []),
+  ]);
+  const own = new Set(((team && team.accounts) || []).map((a) => a.page_id).filter(Boolean).map(String));
+  const posts = [
+    ...fb.filter((r) => IS_CGO.test(r.page_name || '') && !own.has(String(r.page_id))).map((r) => ({ src: 'citizengo', text: r.message, created_time: r.created_time })),
+    ...(peers || []).map((r) => ({ src: r.stance === 'opponent' ? 'opponents' : 'allies', text: r.caption, created_time: r.timestamp })),
+  ];
+  const ours = fb.filter((r) => own.has(String(r.page_id))).map((r) => ({ text: r.message, created_time: r.created_time, url: r.permalink_url }));
+  return json({ tab: 'timeline', team: teamId, ...T.timeline(topic, { posts, ours, ads, parl }, { now }) });
+}
+async function engineParliamentItems(store, ctx0, teamId) {
+  const r = await engineParliament(store, { team: teamId, days: 60 }, ctx0);
+  const v = JSON.parse(r.text);
+  return [...(v.items || []).map((i) => ({ date: i.date, title: i.title, why: i.why, url: i.url })), ...(v.upcoming || []).map((i) => ({ date: i.date, title: i.title, why: i.why || '', url: i.url }))];
+}
+// E1 did our answer work, E2 the week's recap, E3 allies' formats.
+async function listeningLearn(store, ctx, ctx0, teamId, now = Date.now()) {
+  const T = require('../lib/listen-topics');
+  const LSET = await listenSettings(store);
+  const since90 = new Date(now - 90 * 864e5).toISOString(), since7 = now - 7 * 864e5;
+  const parse = (out) => { try { return JSON.parse(out.text); } catch (e) { return {}; } };
+  const [reqs, sg, allies, opponents, overview, peers30, ads] = await Promise.all([
+    store.engineRequests({ team_ids: [teamId] }).catch(() => []),
+    engineSignups(store, { team: teamId, days: 90 }, ctx0).then(parse).catch(() => ({})),
+    listeningView(store, { tab: 'allies', days: 10, min_multiple: LSET.rise }, ctx0).catch(() => ({})),
+    listeningView(store, { tab: 'opponents', days: 7, min_multiple: LSET.rise }, ctx0).catch(() => ({})),
+    listeningView(store, { tab: 'overview', team: teamId }, ctx0).catch(() => ({})),
+    store.peerRecent ? store.peerRecent({ since: new Date(now - 30 * 864e5).toISOString() }).catch(() => []) : [],
+    store.opponentAds ? store.opponentAds({ since: new Date(since7).toISOString() }).catch(() => []) : [],
+  ]);
+  const mine = (reqs || []).map((r) => ({ ...r, kind: T.listenKind(r.title) })).filter((r) => r.kind && String(r.created_at || r.for_date || '') >= since90.slice(0, 10));
+  // E1: posts drafted from Listening, against the team's other traced posts.
+  const fromListen = new Map(mine.filter((r) => r.post_id).map((r) => [String(r.post_id), r]));
+  const rows = (sg.posts || []);
+  const sum = (l, k) => l.reduce((n, r) => n + (Number(r[k]) || 0), 0);
+  const side = (l) => { const reached = sum(l.filter((r) => r.reached != null), 'reached'); const sig = sum(l, 'signatures'); return { posts: l.length, signatures: sig, reached, per_1k: reached ? Math.round((sig / reached) * 10000) / 10 : null }; };
+  const ls = rows.filter((r) => r.post && fromListen.has(String(r.post.id))), rest = rows.filter((r) => !(r.post && fromListen.has(String(r.post.id))));
+  const byKind = {};
+  for (const r of ls) { const k = fromListen.get(String(r.post.id)).kind; (byKind[k] = byKind[k] || []).push(r); }
+  const answered = { listening: side(ls), others: side(rest), kinds: Object.entries(byKind).map(([kind, l]) => ({ kind, ...side(l) })),
+    requests: { total: mine.length, drafted: mine.filter((r) => r.post_id || r.status === 'drafted').length, open: mine.filter((r) => r.status === 'open').length },
+    posts: ls.slice(0, 20).map((r) => ({ title: r.post.title, kind: fromListen.get(String(r.post.id)).kind, url: r.url, reached: r.reached, signatures: r.signatures, per_1k: r.per_1k, posted_at: r.posted_at })), ready: sg.ready !== false };
+  // E2: the week on each side, what we asked for back, and gaps left open.
+  const wk = (p) => Date.parse(p.created_time || 0) >= since7;
+  const top = (l) => (l.posts || []).filter(wk).filter((p) => p.x != null).sort((a, b) => b.x - a.x).slice(0, 5).map((p) => ({ who: p.who, x: p.x, text: String(p.text || '').slice(0, 160), url: p.url, topics: (p.topics || []).map((k) => (T.TOPICS.find((t) => t.key === k) || {}).name).filter(Boolean) }));
+  const asked = mine.filter((r) => Date.parse(r.created_at || r.for_date || 0) >= since7).map((r) => ({ kind: r.kind, title: String(r.title || '').replace(/^[^:]+: /, '').slice(0, 120), status: r.post_id ? 'drafted' : r.status, at: r.created_at || r.for_date }));
+  const recap = { opponents: top(opponents), allies: top(allies), converging: [...(allies.converging || []), ...(opponents.converging || [])].map((c) => ({ key: c.key, side: c.side, accounts: c.accounts })),
+    bursts: T.adBursts(ads || [], { now }).slice(0, 5), asked, gaps: (overview.topics || []).filter((t) => t.gap).map((t) => ({ key: t.key, name: t.name, text: t.gap.text, answered: mine.some((r) => r.kind === 'Gap' && String(r.title).includes(t.name) && Date.parse(r.created_at || r.for_date || 0) >= since7) })) };
+  const formats = T.allyFormats((peers30 || []).filter((r) => r.stance !== 'opponent'), { min: LSET.rise });
+  return json({ tab: 'learn', team: teamId, answered, recap, formats, settings: LSET });
+}
+// F4: the watched accounts' own check, done on every daily read (still there,
+// same handle, still a public business account), with the ones to look at.
+async function listeningHandles(store, now = Date.now()) {
+  const accts = store.peerAccounts ? await store.peerAccounts().catch(() => []) : [];
+  const since = new Date(now - 60 * 864e5).toISOString();
+  const recent = store.peerRecent ? await store.peerRecent({ since }).catch(() => []) : [];
+  const lastPost = {};
+  for (const r of recent || []) if (!lastPost[r.username] || r.timestamp > lastPost[r.username]) lastPost[r.username] = r.timestamp;
+  const WHY = { not_found: 'Not found: renamed, deleted or made private', not_business: 'No longer a business or creator account, so it can\'t be read', error: 'Instagram refused the read', rate_limited: 'Not read: Instagram asked us to slow down' };
+  const rows = (accts || []).map((a) => {
+    const stale = !a.last_checked_at || now - Date.parse(a.last_checked_at) > 3 * 864e5;
+    const quiet = a.last_status === 'ok' && !lastPost[a.username];
+    const problem = a.last_status && a.last_status !== 'ok' ? WHY[a.last_status] || a.last_status : stale ? 'Not checked for over 3 days' : quiet ? 'No posts in 60 days: check the handle is still the one they use' : null;
+    return { username: a.username, label: a.label, stance: a.stance, country: a.country, status: a.last_status || null, checked: a.last_checked_at || null, last_post: lastPost[a.username] || null, problem, error: a.last_error || null };
+  });
+  const problems = rows.filter((r) => r.problem);
+  return json({ tab: 'handles', checked: rows.length, ok: rows.length - problems.length, problems, month: new Date(now).toISOString().slice(0, 7) });
+}
 // The same cached views Rising reads (same keys), so Today costs nothing extra.
 async function listeningView(store, args, ctx0) {
   const out = await engineListening(store, args, ctx0);
@@ -1885,16 +2012,17 @@ async function listeningView(store, args, ctx0) {
 async function listeningToday(store, ctx0, team, lang) {
   const T = require('../lib/listen-topics');
   const now = Date.now();
+  const LSET = await listenSettings(store);
   const [allies, opponents, overview] = await Promise.all([
-    listeningView(store, { tab: 'allies', days: 10, min_multiple: 3 }, ctx0).catch(() => ({})),
-    listeningView(store, { tab: 'opponents', days: 7, min_multiple: 3 }, ctx0).catch(() => ({})),
+    listeningView(store, { tab: 'allies', days: 10, min_multiple: LSET.rise }, ctx0).catch(() => ({})),
+    listeningView(store, { tab: 'opponents', days: 7, min_multiple: LSET.rise }, ctx0).catch(() => ({})),
     listeningView(store, { tab: 'overview', team }, ctx0).catch(() => ({})),
   ]);
   const since = new Date(now - 7 * 864e5).toISOString();
   const ads = store.opponentAds ? await store.opponentAds({ since }).catch(() => []) : (opponents.ads || []);
   const bursts = T.adBursts(ads || [], { now });
-  const signals = T.todaySignals({ allies, opponents, bursts, gaps: overview.topics || [] }, { now });
-  return json({ tab: 'today', team, lang, signals, bursts: bursts.slice(0, 10) });
+  const signals = T.todaySignals({ allies, opponents, bursts, gaps: overview.topics || [] }, { now, hot: LSET.hot });
+  return json({ tab: 'today', team, lang, signals, bursts: bursts.slice(0, 10), settings: LSET });
 }
 // B3 + B4: the team's live petitions (its Link in bio) and its own latest
 // post, each by topic, so every Listening item can show both.
@@ -2109,17 +2237,17 @@ function storyKeys(text) {
 }
 // rows: { who, handle, text, url, created_time }. Returns stories used by
 // CONVERGE_MIN+ different accounts within 48 hours, most accounts first.
-function convergence(rows, now = Date.now()) {
+function convergence(rows, now = Date.now(), { min = CONVERGE_MIN, ms = CONVERGE_MS } = {}) {
   const by = {};
   for (const r of rows) {
     const at = Date.parse(r.created_time);
-    if (!(at >= now - CONVERGE_MS)) continue;
+    if (!(at >= now - ms)) continue;
     for (const k of storyKeys(r.text)) (by[k] = by[k] || []).push(r);
   }
   const out = [];
   for (const [key, list] of Object.entries(by)) {
     const accounts = [...new Set(list.map((r) => r.handle || r.who))];
-    if (accounts.length < CONVERGE_MIN) continue;
+    if (accounts.length < min) continue;
     out.push({ key: key.replace(/^link:/, ''), kind: key.startsWith('#') ? 'hashtag' : key.startsWith('link:') ? 'link' : 'story', accounts: accounts.length,
       posts: list.sort((a, b) => String(a.created_time).localeCompare(String(b.created_time))).map((r) => ({ who: r.who, url: r.url, created_time: r.created_time, x: r.x })) });
   }
@@ -2130,16 +2258,16 @@ function convergence(rows, now = Date.now()) {
 
 // Convergence "building": a story one account has posted twice, or that two
 // accounts share, in 48 hours: not an alert yet (that takes CONVERGE_MIN).
-function convergenceBuilding(rows, converging = [], now = Date.now()) {
+function convergenceBuilding(rows, converging = [], now = Date.now(), { min = CONVERGE_MIN, ms = CONVERGE_MS } = {}) {
   const done = new Set(converging.map((c) => c.key));
   const seen = new Set();
   const by = {};
-  for (const r of rows) { if (!(Date.parse(r.created_time) >= now - CONVERGE_MS)) continue; for (const k of storyKeys(r.text)) (by[k] = by[k] || []).push(r); }
+  for (const r of rows) { if (!(Date.parse(r.created_time) >= now - ms)) continue; for (const k of storyKeys(r.text)) (by[k] = by[k] || []).push(r); }
   return Object.entries(by).map(([key, list]) => ({ key: key.replace(/^link:/, ''), raw: key, accounts: [...new Set(list.map((r) => r.handle || r.who))], list }))
-    .filter((b) => !done.has(b.key) && b.accounts.length < CONVERGE_MIN && (b.accounts.length === 2 || b.list.length >= 2))
+    .filter((b) => !done.has(b.key) && b.accounts.length < min && (b.accounts.length === 2 || b.list.length >= 2))
     .sort((a, b) => b.accounts.length - a.accounts.length || b.list.length - a.list.length)
     .filter((b) => { const sig = b.list.map((r) => `${r.handle || r.who}@${r.created_time}`).sort().join('|'); if (seen.has(sig)) return false; seen.add(sig); return true; }).slice(0, 8)
-    .map((b) => ({ key: b.key, kind: b.raw.startsWith('#') ? 'hashtag' : b.raw.startsWith('link:') ? 'link' : 'story', accounts: b.accounts.length, posts: b.list.map((r) => ({ who: r.who, url: r.url, created_time: r.created_time })), needs: CONVERGE_MIN - b.accounts.length }));
+    .map((b) => ({ key: b.key, kind: b.raw.startsWith('#') ? 'hashtag' : b.raw.startsWith('link:') ? 'link' : 'story', accounts: b.accounts.length, posts: b.list.map((r) => ({ who: r.who, url: r.url, created_time: r.created_time })), needs: min - b.accounts.length }));
 }
 
 const WEEKS = 12;
@@ -2369,6 +2497,16 @@ async function engineBell(store, args, { who }) {
     if (s.kind === 'converging' && s.side !== 'opponents' && !(s.agree || []).length) continue;
     const at = s.at && Date.parse(s.at) <= now ? s.at : today.computed_at;
     add({ id: `ls:${s.id}`.slice(0, 200), kind: 'listen', at, text: s.kind === 'ad_burst' ? `Ad burst: ${s.title}` : s.kind === 'converging' ? `Converging: ${s.title}` : `Opponent post at ${(s.post && s.post.x) || ''}× normal: ${s.title}`, go: 'listening:rising', ref: s.id });
+  }
+  // F4 (Chris, 22 Nov 2026): once a month, for maintainers, the watched
+  // accounts that need a look (from the nightly-warmed account check).
+  if (ctx.maintainer && store.engineCacheGet) {
+    const hc = await store.engineCacheGet('listening:handles:v1').catch(() => null);
+    const v = hc && hc.value, month = new Date(now).toISOString().slice(0, 7);
+    if (v && (v.problems || []).length && String(hc.computed_at || '').slice(0, 7) === month) {
+      // Dated the 1st and kept all month (not only the bell's 7 days), so it rings once a month.
+      out.push({ id: `lh:${month}`, kind: 'listen', at: `${month}-01T00:00:00.000Z`, text: `Monthly account check: ${v.problems.length} watched account${v.problems.length === 1 ? '' : 's'} to look at (${v.problems.slice(0, 3).map((p) => '@' + p.username).join(', ')}${v.problems.length > 3 ? '…' : ''})`, go: 'settings:listen', ref: month });
+    }
   }
   out.sort((a, b) => String(b.at).localeCompare(String(a.at)));
   return json({ team, items: out.slice(0, 50), seen: (prefs && prefs.bell_seen) || null, connections });
