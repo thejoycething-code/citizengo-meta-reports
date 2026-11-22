@@ -7,6 +7,7 @@
 // Each call is exactly what the desk sends, so the keys match.
 //
 //   node scripts/engine-warm-cache.js            (reads .env in this checkout)
+//   node scripts/engine-warm-cache.js --listening (Listening only: the 13:00 re-read)
 const { loadEnv } = require('../lib/graph');
 const { supabaseStore } = require('../lib/store');
 
@@ -21,12 +22,13 @@ async function main() {
   // E4 (22 Nov 2026): Rising reads at the threshold set in Settings › Listening.
   const rise = JSON.parse((await tool('engine_listening')(store, { tab: 'settings' }, { who: 'engine-warm' })).text).settings.rise;
   const jobs = [];
-  for (const days of [7, 30, 90]) {
+  const onlyListening = process.argv.includes('--listening');
+  if (!onlyListening) for (const days of [7, 30, 90]) {
     for (const scope of ['citizengo', 'hazteoir']) jobs.push(['engine_analytics', { scope, days }]);
     for (const team of teams) jobs.push(['engine_analytics', { scope: 'team', team, days }]);
   }
-  for (const days of [7, 30, 90]) jobs.push(['engine_analytics', { scope: 'countries', days }]);
-  for (const days of [7, 30, 90]) jobs.push(['engine_analytics', { scope: 'leaderboard', days }]);
+  if (!onlyListening) for (const days of [7, 30, 90]) jobs.push(['engine_analytics', { scope: 'countries', days }]);
+  if (!onlyListening) for (const days of [7, 30, 90]) jobs.push(['engine_analytics', { scope: 'leaderboard', days }]);
   // Listening: Rising now (per team), Topics (overview + beyond our list),
   // the Allies and Other CitizenGO tabs, and Opponents (7 and 14 days).
   for (const team of teams) {
@@ -50,6 +52,8 @@ async function main() {
   // Reports › Listening (E1-E3) and the monthly account check (F4).
   for (const team of teams) jobs.push(['engine_listening', { tab: 'learn', team }]);
   jobs.push(['engine_listening', { tab: 'handles' }]);
+  // Petitions climbing and opponents' own news, from the Parliamentary Monitor (D2, D3).
+  jobs.push(['engine_listening', { tab: 'petitions' }]); jobs.push(['engine_listening', { tab: 'opp_news' }]);
   let ok = 0; const failed = [];
   const t0 = Date.now();
   for (const [name, args] of jobs) {

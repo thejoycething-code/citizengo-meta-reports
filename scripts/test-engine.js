@@ -419,6 +419,13 @@ const callErr = async (store, name, args, who) => { try { await tool(name)(store
       eq('handle check: a missing account and a quiet one (F4)', [hd.checked, hd.ok, hd.problems.map((p) => p.username).join(',')], [3, 1, 'gone,quiet']);
       const b2 = await call(s2, 'engine_bell', { team: 'uk' }, 'chris');
       eq('bell: the monthly account check for a maintainer', b2.items.filter((i) => i.id.startsWith('lh:')).map((i) => i.text.slice(0, 31)).join(','), 'Monthly account check: 2 watche');
+      // Batch 3: Bluesky in Rising (D5), the monitor's petitions when it isn't linked (D2).
+      s2.peerPosts = async () => []; s2.opponentAds = async () => [];
+      s2.bskyRecent = async () => [0, 1, 2, 3, 4].map((i) => ({ uri: 'at://d/p/' + i, handle: 'humanists.uk', label: 'Humanists UK', stance: 'opponent', text: i ? 'Weekly news' : 'Assisted dying: write to your MP', url: 'https://bsky.app/profile/humanists.uk/post/' + i, created_at: new Date(Date.now() - (i + 0.5) * 864e5).toISOString(), like_count: i ? 10 : 100, repost_count: 0, reply_count: 0, quote_count: 0 }));
+      const op = await call(s2, 'engine_listening', { tab: 'opponents', days: 7, min_multiple: 3, fresh: true }, 'chris');
+      eq('opponents tab: a Bluesky post at 10x its account\'s normal (D5)', op.posts.filter((p) => p.platform === 'bluesky').map((p) => `${p.who}:${p.x}:${p.topics.join('')}`).join(','), 'Humanists UK:10:assisted-dying');
+      const pt = await call(s2, 'engine_listening', { tab: 'petitions', fresh: true }, 'chris');
+      eq('petitions tab: says so plainly when the monitor is not linked', [pt.tab, pt.items.length, /not set up/.test(pt.error)], ['petitions', 0, true]);
       if (admins0 === undefined) delete process.env.ENGINE_ADMINS; else process.env.ENGINE_ADMINS = admins0;
     }
     eq('engine_listening watches: matched through the tool', [r.tab, r.watches.length, r.watches[0].id, r.watches[0].total], ['watches', 1, 'h', 1]);
@@ -468,7 +475,25 @@ const callErr = async (store, name, args, who) => { try { await tool(name)(store
     const xml = `<rss><channel><item><title>Congreso discute la eutanasia - Milenio</title><link>https://example.mx/a</link><pubDate>Mon, 02 Nov 2026 10:00:00 GMT</pubDate><source>Milenio</source></item></channel></rss>`;
     const rows = N.parseFeed(xml, 'assisted-dying', now, 'mx');
     eq('news: Mexico edition rows say so', rows.map((r) => [r.edition, r.title, r.source].join('|')), ['mx|Congreso discute la eutanasia|Milenio']);
-    eq('news: two editions, the UK one unchanged', N.EDITIONS.map((e) => e.edition + ':' + e.params), ['uk:hl=en-GB&gl=GB&ceid=GB:en', 'mx:hl=es-419&gl=MX&ceid=MX:es-419']);
+    eq('news: two editions, the UK one unchanged, plus a Scottish pass (D4)', N.EDITIONS.map((e) => e.edition + ':' + e.params), ['uk:hl=en-GB&gl=GB&ceid=GB:en', 'uk:hl=en-GB&gl=GB&ceid=GB:en', 'mx:hl=es-419&gl=MX&ceid=MX:es-419']);
+    eq('news: the Scottish pass asks for a Scottish word', /Holyrood/.test(N.EDITIONS[1].suffix('abortion')), true);
+    {
+      const d0 = new Date(Date.now() - 3600e3).toUTCString();
+      eq('news: an outlet feed keeps topic headlines under their topic (D4)', N.parseOutlet(`<item><title>MSPs debate assisted dying bill</title><link>https://www.bbc.co.uk/news/1?x=1</link><pubDate>${d0}</pubDate></item><item><title>Cup final tonight</title><link>https://b/2</link><pubDate>${d0}</pubDate></item><item><title>Vet abortion of foals</title><link>https://b/3</link><pubDate>${d0}</pubDate></item>`, 'BBC Scotland').map((r) => `${r.topic}|${r.source}|${r.url}`).join(','), 'assisted-dying|BBC Scotland|https://www.bbc.co.uk/news/1');
+      eq('news: every outlet feed is https', N.OUTLETS.every(([, u]) => /^https:\/\//.test(u)), true);
+    }
+    {
+      const B = require('../collector/bluesky');
+      eq('bluesky: a domain handle with the same name is the organisation; a lookalike .bsky.social is not (D5)', [B.pickActor({ label: 'Humanists UK', username: 'humanistsuk' }, [{ handle: 'fan.bsky.social', displayName: 'Humanists UK' }, { handle: 'humanists.uk', displayName: 'Humanists UK', did: 'd' }]), B.pickActor({ label: 'SPUC', username: 'spucprolife' }, [{ handle: 'spuc.bsky.social', displayName: 'SPUC' }])], [{ handle: 'humanists.uk', did: 'd' }, null]);
+      eq('bluesky: own posts only, no reposts or replies', B.parseFeed({ feed: [{ post: { uri: 'at://d/app.bsky.feed.post/a1', author: { handle: 'humanists.uk' }, record: { text: 'x', createdAt: '2026-11-20T10:00:00Z' }, likeCount: 3 } }, { reason: { $type: 'repost' }, post: { uri: 'at://d/app.bsky.feed.post/a2', author: { handle: 'humanists.uk' }, record: { text: 'y', createdAt: '2026-11-20T10:00:00Z' } } }, { post: { uri: 'at://d/app.bsky.feed.post/a3', author: { handle: 'humanists.uk' }, record: { text: 'z', reply: {}, createdAt: '2026-11-20T10:00:00Z' } } }] }, { label: 'Humanists UK', stance: 'opponent' }, 'humanists.uk').map((r) => r.url).join(','), 'https://bsky.app/profile/humanists.uk/post/a1');
+    }
+    {
+      const P = require('../lib/parl');
+      const wk = new Date(Date.now() - 7 * 864e5).toISOString().slice(0, 10);
+      const ps = P.shapePetitions([{ id: 1, title: 'Repeal buffer zones', signatures: 30000, areas: '[1]', now_count: 30000, prev_count: 20000, prev_at: wk }, { id: 2, title: 'Off topic', signatures: 90000, areas: '[]' }, { id: 3, title: 'Ban puberty blockers', signatures: 12000, areas: '[3]', now_count: 12000, prev_count: 11900, prev_at: wk }]);
+      eq('petitions climbing: our issues only, fastest first, with the week\'s gain (D2)', ps.map((p) => `${p.id}:${p.gain}:${p.topics.join('')}`).join(','), '1:10000:abortion,3:100:gender');
+      eq('opponents\' news: links and titles kept, tags stripped (D3)', P.shapeOppNews([{ url: 'https://humanists.uk/x', org: 'Humanists UK', title: 'Assisted dying  now', summary: '<p>Hi</p>', areas: '[2]', published: '2026-11-20' }, { url: 'http://bad', title: 'x' }]).map((n) => `${n.org}|${n.title}|${n.summary}|${n.topics}`).join(','), 'Humanists UK|Assisted dying now|Hi|assisted-dying');
+    }
   }
   // Video ideas people make with their own Claude (12 Nov).
   {
