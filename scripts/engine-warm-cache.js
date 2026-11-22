@@ -43,6 +43,8 @@ async function main() {
     jobs.push(['engine_listening', { tab: 'beyond', team }]);
   }
   for (const days of [7, 14]) jobs.push(['engine_listening', { tab: 'opponents_mix', days }]);
+  // Today and its petitions/last-post context (22 Nov 2026), last, so they read the views warmed above.
+  for (const team of teams) { jobs.push(['engine_listening', { tab: 'today', team }]); jobs.push(['engine_listening', { tab: 'context', team }]); }
   let ok = 0; const failed = [];
   const t0 = Date.now();
   for (const [name, args] of jobs) {

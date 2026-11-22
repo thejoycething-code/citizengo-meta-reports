@@ -1138,11 +1138,20 @@ async function engineListening(store, args, ctx0) {
   }
   if (args.tab === 'opponents_mix') {
     const days = [7, 14].includes(Number(args.days)) ? Number(args.days) : 7;
-    return cached(store, `listening:opponents_mix:${days}`, args, async () => {
+    return cached(store, `listening:opponents_mix:v2:${days}`, args, async () => {
       const now = Date.now(), since = new Date(now - days * 864e5).toISOString();
       const [posts, ads, accounts] = await Promise.all([listeningCorpus(store, now), store.opponentAds ? store.opponentAds({ since }).catch(() => []) : [], store.peerAccounts ? store.peerAccounts().catch(() => []) : []]);
       return json({ tab: 'opponents_mix', ...require('../lib/listen-topics').opponentMix(posts, ads || [], (accounts || []).filter((a) => a.stance === 'opponent'), { now, days, storyKeys }) });
     });
+  }
+  // C1 Today, A5 ad bursts, B3 petitions and B4 "last time we spoke" (Chris, 22 Nov 2026).
+  if (args.tab === 'today') {
+    if (!team) throw err('Pick a team.', 'ENGINE_REFUSED');
+    return cached(store, `listening:today:v1:${team}`, args, () => listeningToday(store, ctx0, team, lang));
+  }
+  if (args.tab === 'context') {
+    if (!team) throw err('Pick a team.', 'ENGINE_REFUSED');
+    return cached(store, `listening:context:v1:${team}`, args, () => listeningContext(store, ctx, team));
   }
   if (args.tab === 'watches') {
     const ws = (Array.isArray(args.watches) ? args.watches : []).slice(0, 30).map((w) => ({ id: String(w.id || '').slice(0, 60), words: (w.words || []).map(String).slice(0, 20), not: (w.not || []).map(String).slice(0, 20), sources: (w.sources || []).map(String).slice(0, 3) }));
@@ -1151,7 +1160,7 @@ async function engineListening(store, args, ctx0) {
   }
   const tab = ['citizengo', 'allies', 'opponents'].includes(args.tab) ? args.tab : 'citizengo';
   // Only the citizengo tab depends on the team (it leaves the team's own Pages out).
-  const key = `listening:p3:${tab}:${tab === 'citizengo' ? team : ''}:${args.country || ''}:${Number(args.days) || ''}:${Number(args.min_multiple) || ''}`;
+  const key = `listening:p4:${tab}:${tab === 'citizengo' ? team : ''}:${args.country || ''}:${Number(args.days) || ''}:${Number(args.min_multiple) || ''}`;
   return cached(store, key, args, () => listeningCompute(store, args, ctx0));
 }
 
@@ -1802,6 +1811,7 @@ async function engineHealth(store, args, { who }) {
 // (likes + comments against their own 120-day median, from ally_watch and
 // opponent_watch), opponents with their Meta Ad Library issue ads. "Rework
 // for…" on the desk files a Plan request; nothing here posts anything.
+const topicsOfText = (t) => require('../lib/listen-topics').topicsOf(t);
 async function listeningCompute(store, args, { who }) {
   const ctx = await context(store, who);
   if (!ctx.maintainer && !Object.keys(ctx.myTeams).length) throw err('Join a Content Engine team to see Listening.', 'ENGINE_NOT_MEMBER');
@@ -1821,7 +1831,7 @@ async function listeningCompute(store, args, { who }) {
     const since = Date.now() - days * 864e5;
     const posts = oncePerLink(cgo.filter((r) => !own.has(r.page_id) && Date.parse(r.created_time) >= since && med[r.page_id] && r.views_total >= minX * med[r.page_id])
       .map((r) => ({ who: r.page_name, page_id: r.page_id, post_id: r.post_id, text: String(r.message || '').slice(0, 300), url: r.permalink_url, created_time: r.created_time, format: r.media_type || r.status_type || null,
-        views: r.views_total, x: Math.round((r.views_total / med[r.page_id]) * 10) / 10, beyond_pct: r.beyond_followers_pct, hazteoir: IS_HO.test(r.page_name || ''), lang: langOf(r.message) }))
+        views: r.views_total, x: Math.round((r.views_total / med[r.page_id]) * 10) / 10, normal: Math.round(med[r.page_id]), normal_unit: 'views', topics: topicsOfText(r.message), beyond_pct: r.beyond_followers_pct, hazteoir: IS_HO.test(r.page_name || ''), lang: langOf(r.message) }))
       .sort((a, b) => b.x - a.x)).slice(0, 60);
     await markReworked(store, ctx, posts);
     await addPictures(store, posts);
@@ -1832,7 +1842,7 @@ async function listeningCompute(store, args, { who }) {
   const days = [7, 10, 30].includes(Number(args.days)) ? Number(args.days) : (tab === 'allies' ? 10 : 7);
   const out = await PEER_TOOLS.find((t) => t.name === (tab === 'allies' ? 'ally_watch' : 'opponent_watch')).handler(store, { days, min_multiple: minX, limit: 40, ...(tab === 'allies' && args.country ? { country: String(args.country) } : {}) });
   const posts = ((out && out.rows) || []).map((r) => ({ who: r.label || `@${r.username}`, handle: r.username, country: r.country || null, text: String(r.caption || '').slice(0, 300), url: r.permalink, created_time: r.timestamp,
-    format: r.media_product_type || r.media_type || null, likes: r.like_count, comments: r.comments_count, x: r.vs_median === null || r.vs_median === undefined ? null : Number(r.vs_median), settled: !!r.settled, lang: langOf(r.caption), media_id: r.media_id }));
+    format: r.media_product_type || r.media_type || null, likes: r.like_count, comments: r.comments_count, x: r.vs_median === null || r.vs_median === undefined ? null : Number(r.vs_median), normal: r.median_engagement == null ? null : Math.round(Number(r.median_engagement)), normal_unit: 'likes and comments', topics: topicsOfText(r.caption), settled: !!r.settled, lang: langOf(r.caption), media_id: r.media_id }));
   await addPictures(store, posts);
   await addDayGain(store, posts);
   if (tab === 'allies') await markReworked(store, ctx, posts);
@@ -1866,6 +1876,52 @@ async function topicsOverview(store, now = Date.now(), lang = 'en') {
 async function watchesCompute(store, watches, now = Date.now()) {
   const posts = await listeningCorpus(store, now);
   return json({ tab: 'watches', watches: require('../lib/listen-topics').watchMatches(posts, watches, { now }), read: posts.length });
+}
+// The same cached views Rising reads (same keys), so Today costs nothing extra.
+async function listeningView(store, args, ctx0) {
+  const out = await engineListening(store, args, ctx0);
+  try { return JSON.parse(out.text); } catch (e) { return {}; }
+}
+async function listeningToday(store, ctx0, team, lang) {
+  const T = require('../lib/listen-topics');
+  const now = Date.now();
+  const [allies, opponents, overview] = await Promise.all([
+    listeningView(store, { tab: 'allies', days: 10, min_multiple: 3 }, ctx0).catch(() => ({})),
+    listeningView(store, { tab: 'opponents', days: 7, min_multiple: 3 }, ctx0).catch(() => ({})),
+    listeningView(store, { tab: 'overview', team }, ctx0).catch(() => ({})),
+  ]);
+  const since = new Date(now - 7 * 864e5).toISOString();
+  const ads = store.opponentAds ? await store.opponentAds({ since }).catch(() => []) : (opponents.ads || []);
+  const bursts = T.adBursts(ads || [], { now });
+  const signals = T.todaySignals({ allies, opponents, bursts, gaps: overview.topics || [] }, { now });
+  return json({ tab: 'today', team, lang, signals, bursts: bursts.slice(0, 10) });
+}
+// B3 + B4: the team's live petitions (its Link in bio) and its own latest
+// post, each by topic, so every Listening item can show both.
+async function listeningContext(store, ctx, teamId) {
+  const T = require('../lib/listen-topics');
+  const team = teamById(ctx, teamId);
+  const petitions = {};
+  try {
+    const B = require('../lib/bio');
+    const bio = (await store.engineBio({ team_id: team.id }).catch(() => null)) || { team_id: team.id, slug: team.id, auto: true, items: [], settings: {} };
+    const L = await B.load(store, { team, bio });
+    for (const i of L.shown || []) {
+      if (!i.url || i.kind === 'link') continue;
+      const st = (i.petition_id && L.status && L.status[i.petition_id]) || {};
+      for (const k of T.topicsOf(`${i.title || ''} ${st.page_title || ''} ${i.url}`)) (petitions[k] = petitions[k] || []).push({ title: i.title, url: i.url });
+    }
+  } catch (e) { console.warn(`listening context petitions ${teamId}: ${e.message}`); }
+  const last = {};
+  try {
+    const own = new Set((team.accounts || []).map((a) => a.page_id).filter(Boolean).map(String));
+    const { TOOLS } = require('./tools');
+    const rows = own.size ? (((await TOOLS.find((t) => t.name === 'top_posts').handler(store, { days: 90, sort: 'recent', compact: true, limit: 1000 })).data || {}).rows || []) : [];
+    for (const r of rows.filter((x) => own.has(String(x.page_id))).sort((a, b) => String(b.created_time).localeCompare(String(a.created_time)))) {
+      for (const k of T.topicsOf(r.message)) if (!last[k]) last[k] = { at: r.created_time, url: r.permalink_url || null, text: String(r.message || '').replace(/\s+/g, ' ').slice(0, 120), page: r.page_name || null };
+    }
+  } catch (e) { console.warn(`listening context posts ${teamId}: ${e.message}`); }
+  return json({ tab: 'context', team: teamId, petitions, last, days: 90 });
 }
 async function listeningCorpus(store, now = Date.now()) {
   const since = new Date(now - 28 * 864e5).toISOString();
@@ -2303,6 +2359,16 @@ async function engineBell(store, args, { who }) {
   for (const r of reps) {
     if (ctx.maintainer && r.status === 'open' && !isMe(r.by)) add({ id: `rp:${r.id}`, kind: 'report', at: r.at, text: `${r.by} reported a problem${r.page ? ` on ${r.page}` : ''}: ${quote(r.text)}`, go: 'reports', ref: r.id });
     if (isMe(r.by) && r.status === 'fixed' && r.fixed_at) add({ id: `rf:${r.id}`, kind: 'fixed', at: r.fixed_at, text: `${r.fixed_by || 'Chris'} fixed the problem you reported: ${quote(r.text)}${r.reply ? ` · ${String(r.reply).slice(0, 120)}` : ''}`, go: 'reports', ref: r.id });
+  }
+  // A2 (Chris, 22 Nov 2026): Listening's big ones, from the team's cached Today
+  // view (warmed nightly and whenever someone opens Listening): converging
+  // pushes, opponent ad bursts and opponent posts at 5x their normal. In the desk only.
+  const today = store.engineCacheGet ? await store.engineCacheGet(`listening:today:v1:${team}`).catch(() => null) : null;
+  for (const s of ((today && today.value && today.value.signals) || [])) {
+    if (!['converging', 'ad_burst', 'opp_post'].includes(s.kind)) continue;
+    if (s.kind === 'converging' && s.side !== 'opponents' && !(s.agree || []).length) continue;
+    const at = s.at && Date.parse(s.at) <= now ? s.at : today.computed_at;
+    add({ id: `ls:${s.id}`.slice(0, 200), kind: 'listen', at, text: s.kind === 'ad_burst' ? `Ad burst: ${s.title}` : s.kind === 'converging' ? `Converging: ${s.title}` : `Opponent post at ${(s.post && s.post.x) || ''}× normal: ${s.title}`, go: 'listening:rising', ref: s.id });
   }
   out.sort((a, b) => String(b.at).localeCompare(String(a.at)));
   return json({ team, items: out.slice(0, 50), seen: (prefs && prefs.bell_seen) || null, connections });

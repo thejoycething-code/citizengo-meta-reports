@@ -365,6 +365,12 @@ const callErr = async (store, name, args, who) => { try { await tool(name)(store
     const mix = LT.opponentMix(P, [{ label: 'DiD', link_titles: 'Assisted dying: choice now', spend_lower: 100, spend_upper: 199, currency: 'GBP', delivery_start: d(1) }, { label: 'Stonewall', bodies: 'Trans rights', spend_lower: 1000, spend_upper: 1499, currency: 'GBP', delivery_start: d(2), delivery_stop: d(1) }], [{ label: 'DiD', username: 'did', followers_count: 118000, stance: 'opponent' }, { label: 'BPAS', username: 'bpas', stance: 'opponent' }], { now, days: 7, storyKeys });
     const did = mix.orgs.find((o) => o.who === 'DiD');
     eq('opponents: per org, per topic posts, best and ads', [did.posts, did.followers, did.topics[0].key, did.topics[0].posts, did.topics[0].best_x, did.topics[0].ads, did.topics[0].hi], [2, 118000, 'assisted-dying', 2, 8, 1, 199]);
+    eq('opponents: what is new this window (C3)', [did.fresh.ads, !!did.fresh.big, did.fresh.big && did.fresh.big.x, Array.isArray(did.fresh.topics)], [1, true, 8, true]);
+    const ab = LT.adBursts([1, 2, 3].map((i) => ({ label: 'DiD', link_titles: 'Assisted dying now', delivery_start: d(i) })).concat([{ label: 'DiD', link_titles: 'Assisted dying', delivery_start: d(9) }, { label: 'X', bodies: 'abortion', delivery_start: d(1) }]), { now });
+    eq('ad bursts: 3 or more ads on one topic in 7 days (A5)', ab.map((b) => `${b.who}:${b.topic}:${b.ads}:${b.running}`).join(','), 'DiD:assisted-dying:3:3');
+    const td = LT.todaySignals({ opponents: { posts: [{ who: 'DiD', text: 'Assisted dying is choice', url: 'https://ig/o1', created_time: d(0.5), x: 7, normal: 40 }, { who: 'Old', text: 'abortion', url: 'https://ig/o2', created_time: d(4), x: 9 }], converging: [] },
+      allies: { posts: [{ who: 'RTL', text: 'Hospices need funding', url: 'https://ig/a1', created_time: d(0.2), x: 6 }] }, bursts: ab, gaps: [{ key: 'family', name: 'Marriage and family', posts: 5, accounts: 3, gap: { kind: 'alone', text: 'Allies are carrying this without us' } }] }, { now });
+    eq('today: fresh posts at 5x, bursts and gaps; two signals on one topic rank first (C1)', td.map((x) => x.kind + (x.agree ? '+' : '')).join(','), 'ad_burst+,opp_post+,ally_post,gap');
     const bz = LT.beyond({ tags: [{ tag: 'assisteddying', topic: 'assisted-dying' }, { tag: 'rse', topic: 'sex-education' }],
       media: [{ hashtag: 'assisteddying', posted_at: d(1), like_count: 50, permalink: 'https://ig/h1', caption: 'x' }, { hashtag: 'assisteddying', posted_at: d(2), like_count: 9 }, { hashtag: 'assisteddying', posted_at: d(9), like_count: 1 }],
       news: [{ topic: 'assisted-dying', title: 'Peers debate', source: 'BBC', url: 'https://bbc/1', published_at: d(0.2) }],
@@ -378,6 +384,21 @@ const callErr = async (store, name, args, who) => { try { await tool(name)(store
     const st = memoryStore();
     st.peerRecent = async () => [{ stance: 'opponent', label: 'DiD', caption: 'Hospice care is not enough, and the people know it now', permalink: 'https://ig/1', timestamp: new Date(Date.now() - 864e5).toISOString(), like_count: 5, comments_count: 1, vs_median: 2 }];
     const r = await call(st, 'engine_listening', { tab: 'watches', watches: [{ id: 'h', words: ['hospice'] }] }, 'chris');
+    {
+      // Today, context and the bell (22 Nov 2026): run end to end on a store with little data; never fails.
+      const s2 = memoryStore(); const cache = {};
+      s2.engineCacheGet = async (k) => cache[k] || null; s2.engineCacheSet = async (k, v) => { cache[k] = { value: v, computed_at: new Date().toISOString() }; };
+      s2.opponentAds = async () => [1, 2, 3].map((i) => ({ label: 'DiD', link_titles: 'Assisted dying now', delivery_start: new Date(Date.now() - i * 864e5).toISOString(), snapshot_url: 'https://ads/' + i }));
+      s2.engineBio = async () => null;
+      const t = await call(s2, 'engine_listening', { tab: 'today', team: 'uk' }, 'chris');
+      eq('today tab: ad burst signal from opponent ads', [t.tab, t.signals.map((x) => x.kind).join(','), t.bursts.length], ['today', 'ad_burst', 1]);
+      const c = await call(s2, 'engine_listening', { tab: 'context', team: 'uk' }, 'chris');
+      eq('context tab: petitions and last posts by topic, empty when nothing is known', [c.tab, typeof c.petitions, typeof c.last], ['context', 'object', 'object']);
+      s2.engineInbox = async () => []; s2.engineInboxActions = async () => [];
+      const b = await call(s2, 'engine_bell', { team: 'uk' }, 'chris');
+      eq('bell: Listening ad burst from the cached Today view (A2)', b.items.filter((i) => i.kind === 'listen').map((i) => i.text.slice(0, 18)).join(','), 'Ad burst: DiD: 3 n');
+      eq('today: someone outside the team is refused', await callErr(s2, 'engine_listening', { tab: 'today', team: 'uk' }, 'greg'), 'ENGINE_NOT_MEMBER');
+    }
     eq('engine_listening watches: matched through the tool', [r.tab, r.watches.length, r.watches[0].id, r.watches[0].total], ['watches', 1, 'h', 1]);
   }
 
