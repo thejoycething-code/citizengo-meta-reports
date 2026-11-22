@@ -64,7 +64,13 @@ function loadList(file = LIST) {
     if (!username || seen.has(username)) continue;
     if (/citizengo|hazteoir/.test(username)) continue;  // our own accounts are collected elsewhere
     seen.add(username);
-    out.push({ username, label: r.name || null, country: r.country || null, topic: r.group || null });
+    // Scotland (Listening D1, 22 Nov 2026): an entry may give "candidates", other
+    // spellings of the handle, and "match", words the account's own name must
+    // contain. The first spelling that answers with a matching name is used.
+    const more = (r.candidates || []).map(norm).filter((h) => h && !seen.has(h));
+    more.forEach((h) => seen.add(h));
+    out.push({ username, label: r.name || null, country: r.country || null, topic: r.group || null,
+      ...(more.length || r.match ? { candidates: more, match: (r.match || []).map(String) } : {}) });
   }
   return out;
 }
@@ -103,6 +109,14 @@ function classify(error) {
   if (msg.includes('cannot be found') || msg.includes('does not exist') || msg.includes('invalid user id')) return 'not_found';
   if (error.code === 4 || error.code === 17 || error.code === 32 || error.code === 613) return 'rate_limited';
   return 'error';
+}
+
+// Pure: does the account's own display name contain one of the match phrases?
+// The handle alone never counts: anyone can register a lookalike handle.
+function nameMatches(name, handle, match = []) {
+  const n = (x) => String(x || '').toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
+  const hay = n(name);
+  return !!hay && match.some((m) => n(m) && hay.includes(n(m)));
 }
 
 async function discover(get, viaId, username, posts) {
@@ -189,8 +203,25 @@ async function run({ get, upsert, purge = null, list, opts, via, now = new Date(
   const checkedAt = now.toISOString();
   const counts = { ok: 0, not_business: 0, not_found: 0, rate_limited: 0, error: 0, posts: 0 };
 
-  for (const peer of list) {
-    const r = await discover(get, via.id, peer.username, opts.posts);
+  for (const peer0 of list) {
+    let peer = peer0;
+    let r = await discover(get, via.id, peer.username, opts.posts);
+    if (peer0.match) {
+      // Try each spelling until one answers with the organisation's own name; write nothing for a miss.
+      const spellings = [peer0.username, ...(peer0.candidates || [])];
+      let hit = null;
+      for (let i = 0; i < spellings.length; i++) {
+        if (i) r = await discover(get, via.id, spellings[i], opts.posts);
+        if (r.status === 'rate_limited') break;
+        if (r.status === 'ok' && nameMatches(r.profile && r.profile.name, spellings[i], peer0.match)) { hit = spellings[i]; break; }
+      }
+      if (!hit) {
+        if (r.status === 'rate_limited') { log('  stopping: rate limited; the rest wait for next run'); break; }
+        log(`  ${peer0.label || peer0.username}: no matching account among ${spellings.map((h) => '@' + h).join(', ')} (skipped)`);
+        continue;
+      }
+      peer = { ...peer0, username: hit };
+    }
     counts[r.status] = (counts[r.status] || 0) + 1;
     const account = {
       username: peer.username, label: peer.label, country: peer.country, topic: peer.topic,
@@ -281,4 +312,4 @@ if (require.main === module) {
   main().catch((e) => { console.error(`peer watch failed: ${e.message}`); process.exit(1); });
 }
 
-module.exports = { args, gate, norm, makePg, loadList, findVia, classify, discover, run, connect, LISTS };
+module.exports = { args, gate, norm, makePg, loadList, findVia, classify, discover, run, connect, nameMatches, LISTS };

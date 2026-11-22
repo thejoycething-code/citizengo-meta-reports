@@ -426,6 +426,8 @@ const callErr = async (store, name, args, who) => { try { await tool(name)(store
       eq('opponents tab: a Bluesky post at 10x its account\'s normal (D5)', op.posts.filter((p) => p.platform === 'bluesky').map((p) => `${p.who}:${p.x}:${p.topics.join('')}`).join(','), 'Humanists UK:10:assisted-dying');
       const pt = await call(s2, 'engine_listening', { tab: 'petitions', fresh: true }, 'chris');
       eq('petitions tab: says so plainly when the monitor is not linked', [pt.tab, pt.items.length, /not set up/.test(pt.error)], ['petitions', 0, true]);
+      const src = await call(s2, 'engine_sources', { team: 'uk' }, 'chris');
+      eq('sources: the morning run gets Listening\'s signals and a rule for them (A1)', [Array.isArray(src.listening.signals), Array.isArray(src.listening.petitions_climbing), src.rules.some((r) => r.startsWith('Listening (every run)'))], [true, true, true]);
       if (admins0 === undefined) delete process.env.ENGINE_ADMINS; else process.env.ENGINE_ADMINS = admins0;
     }
     eq('engine_listening watches: matched through the tool', [r.tab, r.watches.length, r.watches[0].id, r.watches[0].total], ['watches', 1, 'h', 1]);
