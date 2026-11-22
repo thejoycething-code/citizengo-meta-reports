@@ -1173,6 +1173,17 @@ async function engineListening(store, args, ctx0) {
     return cached(store, `listening:learn:v1:${team}`, args, () => listeningLearn(store, ctx, ctx0, team));
   }
   if (args.tab === 'handles') return cached(store, 'listening:handles:v1', args, () => listeningHandles(store));
+  // D2 petitions climbing and D3 opponents' own news (Chris, 22 Nov 2026), read
+  // from the Parliamentary Monitor (lib/parl.js); once a day, never fails Listening.
+  if (args.tab === 'petitions' || args.tab === 'opp_news') {
+    const P = require('../lib/parl');
+    return cached(store, `listening:${args.tab}:v1:${new Date().toISOString().slice(0, 10)}`, args, async () => {
+      try {
+        const items = args.tab === 'petitions' ? await P.petitionsClimbing() : await P.opponentNews({ days: 14 });
+        return json({ tab: args.tab, items: items.slice(0, 40) });
+      } catch (e) { return json({ tab: args.tab, items: [], ok: false, error: e.code === 'PARL_NOT_CONFIGURED' ? 'The Parliamentary Monitor link is not set up yet.' : "The Parliamentary Monitor didn't answer." }); }
+    });
+  }
   if (args.tab === 'context') {
     if (!team) throw err('Pick a team.', 'ENGINE_REFUSED');
     return cached(store, `listening:context:v1:${team}`, args, () => listeningContext(store, ctx, team));
@@ -1868,6 +1879,15 @@ async function listeningCompute(store, args, { who }) {
   const out = await PEER_TOOLS.find((t) => t.name === (tab === 'allies' ? 'ally_watch' : 'opponent_watch')).handler(store, { days, min_multiple: minX, limit: 40, ...(tab === 'allies' && args.country ? { country: String(args.country) } : {}) });
   const posts = ((out && out.rows) || []).map((r) => ({ who: r.label || `@${r.username}`, handle: r.username, country: r.country || null, text: String(r.caption || '').slice(0, 300), url: r.permalink, created_time: r.timestamp,
     format: r.media_product_type || r.media_type || null, likes: r.like_count, comments: r.comments_count, x: r.vs_median === null || r.vs_median === undefined ? null : Number(r.vs_median), normal: r.median_engagement == null ? null : Math.round(Number(r.median_engagement)), normal_unit: 'likes and comments', topics: topicsOfText(r.caption), settled: !!r.settled, lang: langOf(r.caption), media_id: r.media_id }));
+  // D5: the same organisations' Bluesky posts at the same bar.
+  const bsky = await bskyPosts(store, Date.now() - Math.max(days, 3) * 864e5);
+  const cc = tab === 'allies' && args.country ? String(args.country).toUpperCase() : '';
+  for (const p of bsky) {
+    if (p.src !== tab || (cc && p.country !== cc) || Date.parse(p.created_time) < Date.now() - days * 864e5 || p.x == null || p.x < minX) continue;
+    posts.push({ who: p.who, handle: p.handle, country: p.country, text: p.text.slice(0, 300), url: p.url, created_time: p.created_time, format: 'Bluesky', platform: 'bluesky',
+      likes: p.likes, comments: p.comments, x: p.x, normal: p.normal, normal_unit: 'likes, reposts and replies', topics: topicsOfText(p.text), lang: p.lang });
+  }
+  posts.sort((a, b) => (b.x == null ? -1 : b.x) - (a.x == null ? -1 : a.x));
   await addPictures(store, posts);
   await addDayGain(store, posts);
   if (tab === 'allies') await markReworked(store, ctx, posts);
@@ -1875,7 +1895,10 @@ async function listeningCompute(store, args, { who }) {
   // Convergence reads every watched post from the last 48 hours, not only the breakouts.
   // Allies and (since 13 Nov 2026, Chris) opponents alike; side says which.
   const all = await PEER_TOOLS.find((t) => t.name === (tab === 'allies' ? 'ally_watch' : 'opponent_watch')).handler(store, { days: 3, limit: 200, sort: 'recent' });
-  const recent = ((all && all.rows) || []).map((r) => ({ who: r.label || `@${r.username}`, handle: r.username, text: r.caption, url: r.permalink, created_time: r.timestamp, x: r.vs_median }));
+  // One organisation on Instagram and Bluesky is one account for convergence.
+  const igOf = Object.fromEntries(((all && all.rows) || []).filter((r) => r.label).map((r) => [r.label, r.username]));
+  const recent = ((all && all.rows) || []).map((r) => ({ who: r.label || `@${r.username}`, handle: r.username, text: r.caption, url: r.permalink, created_time: r.timestamp, x: r.vs_median }))
+    .concat(bsky.filter((p) => p.src === tab).map((p) => ({ who: p.who, handle: igOf[p.who] || p.who, text: p.text, url: p.url, created_time: p.created_time, x: p.x })));
   const LSET = await listenSettings(store);
   const cOpts = { min: LSET.conv_accounts, ms: LSET.conv_hours * 3600e3 };
   const converging = convergence(recent, Date.now(), cOpts).map((c) => ({ ...c, side: tab }));
@@ -2051,6 +2074,22 @@ async function listeningContext(store, ctx, teamId) {
   } catch (e) { console.warn(`listening context posts ${teamId}: ${e.message}`); }
   return json({ tab: 'context', team: teamId, petitions, last, days: 90 });
 }
+// D5 (Chris, 22 Nov 2026): Bluesky posts of the watched organisations, each
+// against its account's 90-day median of likes, reposts, replies and quotes
+// (null until an account has five posts). Never fails Listening.
+async function bskyPosts(store, sinceMs, now = Date.now()) {
+  if (!store.bskyRecent) return [];
+  const rows = await store.bskyRecent({ since: new Date(now - 90 * 864e5).toISOString() }).catch(() => []);
+  const eng = (r) => (Number(r.like_count) || 0) + (Number(r.repost_count) || 0) + (Number(r.reply_count) || 0) + (Number(r.quote_count) || 0);
+  const by = {};
+  for (const r of rows || []) (by[r.handle] = by[r.handle] || []).push(eng(r));
+  const med = {};
+  for (const [h, l] of Object.entries(by)) med[h] = l.length >= 5 ? median(l) : null;
+  return (rows || []).filter((r) => Date.parse(r.created_at) >= sinceMs).map((r) => ({
+    platform: 'bluesky', src: r.stance === 'opponent' ? 'opponents' : 'allies', stance: r.stance, who: r.label || `@${r.handle}`, handle: r.handle, country: r.country || null,
+    text: String(r.text || ''), url: r.url, created_time: r.created_at, likes: Number(r.like_count) || 0, comments: Number(r.reply_count) || 0, reposts: Number(r.repost_count) || 0,
+    engagement: eng(r), normal: med[r.handle] == null ? null : Math.round(med[r.handle]), x: med[r.handle] ? Math.round((eng(r) / Math.max(1, med[r.handle])) * 10) / 10 : null, lang: langOf(r.text) }));
+}
 async function listeningCorpus(store, now = Date.now()) {
   const since = new Date(now - 28 * 864e5).toISOString();
   const { TOOLS } = require('./tools');
@@ -2062,7 +2101,9 @@ async function listeningCorpus(store, now = Date.now()) {
   const med = {};
   for (const r of cgo) (med[r.page_id] = med[r.page_id] || []).push(r.views_total);
   for (const k of Object.keys(med)) med[k] = median(med[k]);
+  const bsky = await bskyPosts(store, Date.parse(since), now);
   return [
+    ...bsky.map((p) => ({ src: p.src, who: p.who, text: p.text, url: p.url, created_time: p.created_time, likes: p.likes, comments: p.comments, lang: p.lang, x: p.x, platform: 'bluesky' })),
     ...oncePerLink(cgo.filter((r) => r.created_time >= since)).map((r) => ({ src: 'citizengo', who: r.page_name, text: r.message, url: r.permalink_url, created_time: r.created_time, views: r.views_total, lang: langOf(r.message), x: med[r.page_id] ? Math.round((r.views_total / med[r.page_id]) * 10) / 10 : null })),
     ...(peers || []).map((r) => ({ src: r.stance === 'opponent' ? 'opponents' : 'allies', who: r.label || `@${r.username}`, text: r.caption, url: r.permalink, created_time: r.timestamp, likes: r.like_count, comments: r.comments_count, lang: langOf(r.caption), x: r.vs_median == null ? null : Number(r.vs_median) })),
   ];
@@ -2603,7 +2644,7 @@ const ENGINE_TOOLS = [
   { name: 'engine_inbox_team', description: 'Content Engine Inbox › Team for one of your teams: open conversations per person and unassigned, each person\'s replies and median first-reply time, what has waited over 2 hours, and comments arriving by hour (in the team\'s own time zone) against reply times, over the last 7 days (days up to 30).', inputSchema: obj({ team: { type: 'string' }, days: { type: 'number' } }, ['team']), handler: engineInboxTeam },
   { name: 'engine_inbox_history', description: 'Content Engine Inbox moderation history for one of your teams: every reply, hide, delete, like, assignment, label and done, by whom, newest first.', inputSchema: obj({ team: { type: 'string' }, limit: { type: 'number' } }, ['team']), handler: engineInboxHistory },
   { name: 'engine_analytics', description: 'Content Engine Analytics for the desk, as data: page reach, views, engagements and net follows, Instagram follower movement, top Facebook posts against their own Page\'s median, top Instagram posts and X totals, for the last 7, 30 or 90 days. scope citizengo (every CitizenGO Page, default), hazteoir (kept apart), team (with team), countries (every team side by side) or leaderboard (every CitizenGO Facebook Page, this window and the one before: followers, growth, engagements, posts, per post, per 1,000 followers, best post).', inputSchema: obj({ scope: { type: 'string', enum: ['citizengo', 'hazteoir', 'team', 'countries', 'leaderboard'] }, team: { type: 'string' }, days: { type: 'number', enum: [7, 30, 90] }, from: { type: 'string', description: 'Custom range start, YYYY-MM-DD (up to 92 days). Returns only the report, ranked posts and conversations.' }, to: { type: 'string', description: 'Custom range end, inclusive; defaults to today.' }, compare_from: { type: 'string', description: 'First day of the window to compare with (same length). Default: the days just before.' }, compare: { type: 'string', enum: ['previous', 'none'] }, fresh: { type: 'boolean' } }), handler: engineAnalytics },
-  { name: 'engine_listening', description: 'Content Engine Listening for the desk, as data: posts beating their own normal (min_multiple, default 3). tab citizengo: other CitizenGO Pages\' posts (not your team\'s, with team) by views against that Page\'s 90-day median, last 7 or 30 days. tab allies: watched ally Instagram accounts (optional country UK, US, IE, CA, AU), last 7, 10 or 30 days. tab opponents: watched opponent accounts plus their Meta Ad Library issue ads. tab beyond: hashtag posts from anyone (config/listen-hashtags.json), UK headlines per topic, and accounts our watched posts keep tagging that are not on our lists. tab opponents_mix: each opponent organisation\'s last 7 or 14 days split by topic (posts, best post, ads, spend). tab watches: watches [{id, words, not, sources}] matched against the last 14 days of those posts. tab overview: English posts from all of those in the last 14 days sorted into campaign topics (posts, change, share of voice, words, top posts, gaps) plus rising hashtags, links and names. tab supporters (with team): public posts that tagged the team\'s Pages and Instagram accounts in the last 30 days, most liked first.', inputSchema: obj({ tab: { type: 'string', enum: ['citizengo', 'allies', 'opponents', 'overview', 'watches', 'opponents_mix', 'beyond', 'supporters'] }, watches: { type: 'array', items: { type: 'object' } }, team: { type: 'string' }, country: { type: 'string' }, days: { type: 'number' }, min_multiple: { type: 'number' }, fresh: { type: 'boolean' } }), handler: engineListening },
+  { name: 'engine_listening', description: 'Content Engine Listening for the desk, as data: posts beating their own normal (min_multiple, default 3). tab citizengo: other CitizenGO Pages\' posts (not your team\'s, with team) by views against that Page\'s 90-day median, last 7 or 30 days. tab allies: watched ally Instagram accounts (optional country UK, US, IE, CA, AU), last 7, 10 or 30 days. tab opponents: watched opponent accounts plus their Meta Ad Library issue ads. tab beyond: hashtag posts from anyone (config/listen-hashtags.json), UK headlines per topic, and accounts our watched posts keep tagging that are not on our lists. tab opponents_mix: each opponent organisation\'s last 7 or 14 days split by topic (posts, best post, ads, spend). tab watches: watches [{id, words, not, sources}] matched against the last 14 days of those posts. tab overview: English posts from all of those in the last 14 days sorted into campaign topics (posts, change, share of voice, words, top posts, gaps) plus rising hashtags, links and names. tab supporters (with team): public posts that tagged the team\'s Pages and Instagram accounts in the last 30 days, most liked first. tab today (with team): the few things most worth acting on now (converging pushes, opponent posts and ad bursts, ally posts, gaps), each with the team\'s petition and last post on its topic. tab context (team): petitions and our last post by topic. tab timeline (team, topic): 90 days of one topic with our posts, opponent ads and Parliament marked. tab learn (team): did Listening posts work, the week\'s recap, allies\' formats. tab handles: watched accounts that need a look. tab petitions: open UK Parliament petitions on our issues, fastest climbing first. tab opp_news: opponents\' own published news, 14 days. tab settings: the thresholds (set: maintainers only); settings_preview (set): counts a setting would show.', inputSchema: obj({ tab: { type: 'string', enum: ['citizengo', 'allies', 'opponents', 'overview', 'watches', 'opponents_mix', 'beyond', 'supporters', 'today', 'context', 'timeline', 'learn', 'handles', 'petitions', 'opp_news', 'settings', 'settings_preview'] }, watches: { type: 'array', items: { type: 'object' } }, team: { type: 'string' }, topic: { type: 'string' }, set: { type: 'object' }, country: { type: 'string' }, days: { type: 'number' }, min_multiple: { type: 'number' }, fresh: { type: 'boolean' } }), handler: engineListening },
   { name: 'engine_record', description: 'Content Engine: record bookkeeping on a post in any status, posted and rejected included: results, posted (the real post links and time), stale, and posting.asanaTaskGid / asanaUrl / syncedAt / removedAt. Nothing else; the post itself is saved with engine_save. version must be the one you read.', inputSchema: obj({ id: { type: 'string' }, version: { type: 'number' }, patch: { type: 'object' } }, ['id', 'version', 'patch']), handler: engineRecord },
   { name: 'engine_trash', description: "Content Engine: the desk's bin of rejected posts for one of your teams. action count (default) says how many the morning run has already learnt from (ready) and how many are newer (waiting); action empty archives the ready ones: they leave the desk but the morning run still reads them like rejected posts.", inputSchema: obj({ team: { type: 'string' }, action: { type: 'string', enum: ['count', 'empty'] } }, ['team']), handler: engineTrash },
   { name: 'engine_status', description: 'Content Engine: approve (schedules it; needs publishing rights for every Facebook and Instagram account), hold, changes (needs a note), reject, reopen, or mark as posted (it went out) a post.', inputSchema: obj({ id: { type: 'string' }, version: { type: 'number' }, action: { type: 'string', enum: ['approve', 'hold', 'changes', 'reject', 'reopen', 'posted'] }, note: { type: 'string' }, reasons: { type: 'array', items: { type: 'string' } } }, ['id', 'version', 'action']), handler: engineStatus },

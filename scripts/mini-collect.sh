@@ -9,7 +9,8 @@
 # Each job mirrors its workflow's SCHEDULED steps; change both together:
 #   nightly       nightly-collect.yml       04:30
 #   x             x-collect.yml             05:15   (only while X_COLLECT_ENABLED=true)
-#   peers         peer-ig-collect.yml       06:10   (only while PEER_IG_ENABLED=true)
+#   peers         peer-ig-collect.yml       06:10   (only while PEER_IG_ENABLED=true; also
+#                                                    13:00 on the Mini: a second read, Bluesky, Listening re-warmed)
 #   ig-connected  ig-connected-collect.yml  06:15
 #   links         link-registry.yml         06:40
 #   listen        listen-collect.yml        06:45
@@ -70,7 +71,13 @@ run_job() {
       local rc=0
       node collector/peers-ig.js --list allies --posts 50 || rc=1
       node collector/peers-ig.js --list opponents --posts 50 || rc=1
-      node collector/ad-library.js --days 90 || rc=1
+      # The 13:00 run (Listening A3, Chris 22 Nov 2026) reads posts only: the
+      # ad library stays once a day.
+      [ "$(date +%H)" -lt 12 ] && { node collector/ad-library.js --days 90 || rc=1; }
+      # Bluesky public posts of the same organisations (D5); never fails the job.
+      node collector/bluesky.js || echo "bluesky failed (ignored)"
+      # Midday: Rising now, Today and the bell re-read the fresh numbers.
+      [ "$(date +%H)" -ge 12 ] && { node scripts/engine-warm-cache.js --listening || echo "listening warm-up failed (ignored)"; }
       return $rc ;;
     ig-connected)
       node collector/ig-connected.js --days 30 ;;

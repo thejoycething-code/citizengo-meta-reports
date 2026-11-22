@@ -9,8 +9,12 @@
     <string>/Users/christopherjoyce/runner/meta-reports/scripts/mini-collect.sh</string>
     <string>peers</string>
   </array>
+  <!-- 06:10 the daily read; 13:00 a second read of allies and opponents (Listening A3, Chris 22 Nov 2026). -->
   <key>StartCalendarInterval</key>
-  <dict><key>Hour</key><integer>6</integer><key>Minute</key><integer>10</integer></dict>
+  <array>
+    <dict><key>Hour</key><integer>6</integer><key>Minute</key><integer>10</integer></dict>
+    <dict><key>Hour</key><integer>13</integer><key>Minute</key><integer>0</integer></dict>
+  </array>
   <key>RunAtLoad</key><false/>
   <key>StandardOutPath</key><string>/Users/christopherjoyce/runner/logs/meta-launchd.log</string>
   <key>StandardErrorPath</key><string>/Users/christopherjoyce/runner/logs/meta-launchd.log</string>
