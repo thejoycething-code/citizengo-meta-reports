@@ -45,6 +45,29 @@ echo "== $(date '+%F %T') $JOB start"
 cd "$REPO" || exit 1
 git pull -q --ff-only origin main || echo "git pull failed - running the code already checked out"
 
+# launchd changes reach the Mini by themselves (22 Nov 2026, Chris: "fully
+# automated with no action needed from me"): an installed meta job whose plist
+# changed in the repo is copied over and reloaded. Only jobs already installed,
+# never this job itself (the next other job reloads it), never one running now,
+# and never a plist edited by hand on the Mini (it must match an earlier repo version).
+sync_agents() {
+  local la="$HOME/Library/LaunchAgents" f base name job h known
+  for f in scripts/launchd/net.citizengo.meta.*.plist(N); do
+    base="${f:t}"; name="${base:r}"; job="${name#net.citizengo.meta.}"
+    [ "$job" = "$JOB" ] && continue
+    [ -f "$la/$base" ] || continue
+    cmp -s "$f" "$la/$base" && continue
+    [ -d "$HOME/runner/locks/meta-$job" ] && continue
+    known=0
+    for h in $(git log --format=%H -n 40 -- "$f"); do
+      git show "$h:$f" 2>/dev/null | cmp -s - "$la/$base" && { known=1; break; }
+    done
+    if [ $known = 0 ]; then echo "launchd: $name differs from every repo version (edited on the Mini?) - left as it is"; continue; fi
+    cp "$f" "$la/$base" && { launchctl bootout "gui/$(id -u)/$name" 2>/dev/null; launchctl bootstrap "gui/$(id -u)" "$la/$base" && echo "launchd: reloaded $name from the repo"; }
+  done
+}
+sync_agents
+
 # The workflows' repository variables. A line in .env wins over these.
 default() { grep -q "^$1=" .env 2>/dev/null || export "$1=$2"; }
 default GRAPH_VERSION v23.0

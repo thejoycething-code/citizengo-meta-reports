@@ -128,6 +128,20 @@ function fakeGet(calls) {
     { label: 'GLP', spend_lower: 0, spend_upper: 99, currency: 'GBP', delivery_start: '2026-10-21', delivery_stop: '2026-10-25', snapshot_url: 'https://fb/2', link_titles: 'Give' }], 'last 7 days');
   eq('ads: spend summed as a range, running counted', [adsText.includes('GBP 100–298'), adsText.includes('| GLP | 2 | 1 |')], [true, true]);
 
+  {
+    // Scotland default list (Listening D1, 22 Nov 2026): spellings tried in turn, kept only on a name match.
+    const { nameMatches } = require('../collector/peers-ig');
+    eq('scotland: the display name must match, a lookalike handle alone never does', [nameMatches('Care Not Killing', 'carenotkilling', ['care not killing']), nameMatches('Joe Bloggs', 'carenotkilling', ['care not killing']), nameMatches(null, 'carenotkilling', ['care not killing'])], [true, false, false]);
+    const prof = { stonewall_scotland: 'Stonewall Scotland', stonewallscotland: 'A fan page' };
+    const tried = [], wrote = [];
+    const get = async (p, q) => { const h = /username\(([^)]+)\)/.exec(q.fields)[1]; tried.push(h); return prof[h] ? { ok: true, body: { business_discovery: { id: '1', name: prof[h], followers_count: 5, media: { data: [] } } } } : { ok: false, error: { code: 110, message: 'Invalid user id' } }; };
+    await run({ get, upsert: async (t, rows) => { if (t === 'peer_ig_accounts') wrote.push(rows[0].username); }, list: [{ username: 'stonewallscotland', label: 'Stonewall Scotland', candidates: ['stonewall_scotland'], match: ['stonewall scotland'] }, { username: 'nobody', label: 'Nobody', candidates: ['nobody2'], match: ['nobody org'] }], opts: { posts: 5 }, via: { id: 'v', username: 'citizengo_uk' }, log: () => {} });
+    eq('scotland: the first spelling with the right name is stored; misses write nothing', [tried.join(','), wrote.join(',')], ['stonewallscotland,stonewall_scotland,nobody,nobody2', 'stonewall_scotland']);
+    const al = loadList(LISTS.allies).find((a) => a.label === 'Care Not Killing');
+    eq('scotland: list entries carry their spellings and match words', [al.username, al.candidates.length > 0, al.match[0]], ['carenotkilling', true, 'care not killing']);
+  }
+
   console.log(`\n${passed} passed, ${failed} failed`);
   process.exit(failed ? 1 : 0);
+
 })();

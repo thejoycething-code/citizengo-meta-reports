@@ -1042,13 +1042,26 @@ async function engineSources(store, args, ctx0) {
   let kits = [];
   try { kits = (await D.docsList('kits', { team: teamId })).map((r) => ({ id: r.id, ...r.data })).filter((k) => k.team === teamId && k.status === 'requested'); }
   catch (e) { kits = []; }
+  // A1 (Chris, 22 Nov 2026): the morning run reads Listening through this call,
+  // so no runbook change is needed: Today's signals, petitions climbing and the
+  // other side's own news (all cached views; never fails the sources).
+  const lv = async (a) => { try { return JSON.parse((await engineListening(store, a, ctx0)).text); } catch (e) { return {}; } };
+  const [today, ctxv, pets, oppNews] = await Promise.all([lv({ tab: 'today', team: teamId }), lv({ tab: 'context', team: teamId }), lv({ tab: 'petitions' }), lv({ tab: 'opp_news' })]);
+  const petOf = (keys) => { for (const k of keys || []) { const l = (ctxv.petitions || {})[k]; if (l && l.length) return l[0]; } return null; };
+  const lastOf = (keys) => { for (const k of keys || []) { const l = (ctxv.last || {})[k]; if (l) return l; } return null; };
+  const listening = {
+    signals: (today.signals || []).slice(0, 8).map((s) => ({ id: s.id, kind: s.kind, side: s.side || null, title: s.title, why: s.why || null, url: s.url || (s.post && s.post.url) || null, topics: s.topic_names || [], petition: petOf(s.topics), last: lastOf(s.topics), agree: s.agree || null })),
+    petitions_climbing: (pets.items || []).filter((x) => x.gain).slice(0, 5).map((x) => ({ title: x.title, url: x.url, signatures: x.signatures, gain: x.gain, days: x.days, areas: (x.areas || []).map((a) => a.name) })),
+    opponents_news: (oppNews.items || []).slice(0, 8).map((x) => ({ org: x.org, title: x.title, at: x.at })),
+  };
   return json({
-    ok: true, team: teamId, since_days: days, parliament: parliament.slice(0, 40), parliament_error: parliamentError, campaigns, kits,
+    ok: true, team: teamId, since_days: days, parliament: parliament.slice(0, 40), parliament_error: parliamentError, campaigns, kits, listening,
     video_limit: { base: VI.DAY_BASE, max: VI.DAY_MAX },
     rules: [
       `Video ideas: up to ${VI.DAY_BASE} a day, and up to ${VI.DAY_MAX} when there is good enough content from at least two kinds of source (parliament, campaign, news, own). Give every video idea its videoIdea.source; engine_create refuses beyond the limit.`,
       'Existing footage is welcome: put it in videoIdea.footage [{ url, from, to, who, title }] and use route clip. Parliament footage stays fair and in context: no cuts that change meaning, no mocking.',
       'A speech from parliament becomes a post with doc.source (kind parliament, ref, who, party, title, quote, dated, place) and, when it would work as one, a video idea (standalone: false, same source). Whether the post backs or challenges the speaker follows from what they said and our position on the issue; never attack the person.',
+      'Listening (every run): each listening.signals item is a candidate draft. Opponent posts, ad bursts and converging opponent pushes get a counter with facts (title "Counter: <who>: <one line>"), never quoting or linking the opponent; ally posts get a rework in our own words (title "Rework: <who>: <one line>"); a gap gets a post on that topic (title "Gap: <topic>"). Use the signal\'s petition as the ask when it fits; skip a signal when last shows a post on that topic in the last 2 days unless the story is new; a desk request already filed for it wins. A climbing petition on our side can be a share; opponents_news is context only, never linked. Say in the summary how many signals there were and which became drafts.',
       'Campaign kits: draft every post and video in the kit with doc.kit = { id, name, step } (kit posts do not count toward the daily video limit), then mark the kit drafted with engine_desk_docs put (collection kits, merge, data { status: "drafted", drafted_at }).',
     ],
   });
