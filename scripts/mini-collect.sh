@@ -14,7 +14,8 @@
 #   ig-connected  ig-connected-collect.yml  06:15
 #   links         link-registry.yml         06:40
 #   listen        listen-collect.yml        06:45
-#   stories       (Mini only)               hourly  (Instagram Stories while live)
+#   stories       (Mini only)               hourly  (Instagram Stories while live; and the monitor's
+#                                                    division drafts, scripts/parl-vote-drafts.js)
 #   watchdog      watchdog.yml              09:00   (GitHub's watchdog keeps running too,
 #                                                    so a dead Mini is still noticed)
 #
@@ -105,6 +106,8 @@ run_job() {
     ig-connected)
       node collector/ig-connected.js --days 30 ;;
     stories)
+      # Hourly: "How your MPs voted" drafts from the monitor's division watch (E2, 22 Nov 2026).
+      node scripts/parl-vote-drafts.js || echo "parl-vote-drafts failed (ignored)"
       node collector/ig-stories.js ;;
     links)
       node collector/links.js --days 30 ;;

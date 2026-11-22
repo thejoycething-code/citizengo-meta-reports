@@ -275,15 +275,20 @@ async function engineCalendar(store, args, { who }) {
   const from = args.from && /^\d{4}-\d{2}-\d{2}/.test(args.from) ? args.from : new Date(Date.now() - 7 * 864e5).toISOString().slice(0, 10);
   const to = args.to && /^\d{4}-\d{2}-\d{2}/.test(args.to) ? args.to : new Date(Date.now() + 35 * 864e5).toISOString().slice(0, 10);
   const mine = ctx.teams.filter((t) => E.canEditTeam(ctx, t.id)).map((t) => t.id);
-  const [posts, keyDates] = await Promise.all([
+  // E4 (Chris, 22 Nov 2026): the Parliamentary Monitor's big dates as markers,
+  // for the UK and Scotland teams; never fails the Calendar.
+  const P = require('../lib/parl');
+  const parlTeams = mine.filter((t) => P.TEAM_PARLIAMENTS[t]);
+  const [posts, keyDates, parl] = await Promise.all([
     store.enginePosts({ from, to, limit: 1000 }),
     store.engineKeyDates ? store.engineKeyDates({ team_ids: mine, from, to }) : [],
+    parlTeams.length ? P.bigDates({ from, to }).then((r) => P.bigDatesFor(r, parlTeams)).catch(() => []) : [],
   ]);
   return json({
     from, to,
     teams: ctx.teams.map((t) => ({ id: t.id, name: t.name, flag: t.flag, mine: E.canEditTeam(ctx, t.id) })),
     items: E.calendarFor(posts, ctx),
-    key_dates: keyDates,
+    key_dates: keyDates.concat(parl),
   });
 }
 
@@ -1053,6 +1058,9 @@ async function engineSources(store, args, ctx0) {
     signals: (today.signals || []).slice(0, 8).map((s) => ({ id: s.id, kind: s.kind, side: s.side || null, title: s.title, why: s.why || null, url: s.url || (s.post && s.post.url) || null, topics: s.topic_names || [], petition: petOf(s.topics), last: lastOf(s.topics), agree: s.agree || null })),
     petitions_climbing: (pets.items || []).filter((x) => x.gain).slice(0, 5).map((x) => ({ title: x.title, url: x.url, signatures: x.signatures, gain: x.gain, days: x.days, areas: (x.areas || []).map((a) => a.name) })),
     opponents_news: (oppNews.items || []).slice(0, 8).map((x) => ({ org: x.org, title: x.title, at: x.at })),
+    // E5 (Chris, 22 Nov 2026): Westminster petitions on our issues nearing 100,000, for the UK team, once each.
+    petitions_near_100k: teamId === 'uk' ? P.nearHundredK(pets.items).filter((x) => !used.has(`petition:${x.id}`)).slice(0, 3)
+      .map((x) => ({ id: x.id, ref: `petition:${x.id}`, title: x.title, url: x.url, signatures: x.signatures, per_day: x.per_day, closes: x.closes, areas: (x.areas || []).map((a) => a.name) })) : [],
   };
   return json({
     ok: true, team: teamId, since_days: days, parliament: parliament.slice(0, 40), parliament_error: parliamentError, campaigns, kits, listening,
@@ -1062,6 +1070,7 @@ async function engineSources(store, args, ctx0) {
       'Existing footage is welcome: put it in videoIdea.footage [{ url, from, to, who, title }] and use route clip. Parliament footage stays fair and in context: no cuts that change meaning, no mocking.',
       'A speech from parliament becomes a post with doc.source (kind parliament, ref, who, party, title, quote, dated, place) and, when it would work as one, a video idea (standalone: false, same source). Whether the post backs or challenges the speaker follows from what they said and our position on the issue; never attack the person.',
       'Listening (every run): each listening.signals item is a candidate draft. Opponent posts, ad bursts and converging opponent pushes get a counter with facts (title "Counter: <who>: <one line>"), never quoting or linking the opponent; ally posts get a rework in our own words (title "Rework: <who>: <one line>"); a gap gets a post on that topic (title "Gap: <topic>"). Use the signal\'s petition as the ask when it fits; skip a signal when last shows a post on that topic in the last 2 days unless the story is new; a desk request already filed for it wins. A climbing petition on our side can be a share; opponents_news is context only, never linked. Say in the summary how many signals there were and which became drafts.',
+      'Petitions near 100,000 (listening.petitions_near_100k): draft one post for each. If the petition is on our side, a push to get it over the line (at 100,000 signatures Parliament considers it for a debate) with its link, title "Petition push: <title>". If it is against us, a post making our case on the issue, never linking or naming the petition as a target, title "Answer: <title>". Give the post doc.source = { kind: "parliament", ref (the item\'s ref), title, url }, so it is never drafted twice.',
       'Campaign kits: draft every post and video in the kit with doc.kit = { id, name, step } (kit posts do not count toward the daily video limit), then mark the kit drafted with engine_desk_docs put (collection kits, merge, data { status: "drafted", drafted_at }).',
     ],
   });
