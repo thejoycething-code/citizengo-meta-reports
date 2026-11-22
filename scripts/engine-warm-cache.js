@@ -18,6 +18,8 @@ async function main() {
   const store = supabaseStore({ url: process.env.SUPABASE_URL, serviceKey: process.env.SUPABASE_SERVICE_KEY });
   const tool = (name) => ENGINE_TOOLS.find((t) => t.name === name).handler;
   const teams = (await store.engineTeams()).map((t) => t.id);
+  // E4 (22 Nov 2026): Rising reads at the threshold set in Settings › Listening.
+  const rise = JSON.parse((await tool('engine_listening')(store, { tab: 'settings' }, { who: 'engine-warm' })).text).settings.rise;
   const jobs = [];
   for (const days of [7, 30, 90]) {
     for (const scope of ['citizengo', 'hazteoir']) jobs.push(['engine_analytics', { scope, days }]);
@@ -28,11 +30,11 @@ async function main() {
   // Listening: Rising now (per team), Topics (overview + beyond our list),
   // the Allies and Other CitizenGO tabs, and Opponents (7 and 14 days).
   for (const team of teams) {
-    jobs.push(['engine_listening', { tab: 'citizengo', team, days: 7, min_multiple: 3 }]);
+    jobs.push(['engine_listening', { tab: 'citizengo', team, days: 7, min_multiple: rise }]);
     jobs.push(['engine_listening', { tab: 'citizengo', team }]);
   }
-  jobs.push(['engine_listening', { tab: 'allies', days: 10, min_multiple: 3 }]);
-  jobs.push(['engine_listening', { tab: 'opponents', days: 7, min_multiple: 3 }]);
+  jobs.push(['engine_listening', { tab: 'allies', days: 10, min_multiple: rise }]);
+  jobs.push(['engine_listening', { tab: 'opponents', days: 7, min_multiple: rise }]);
   jobs.push(['engine_listening', { tab: 'allies', team: teams[0], country: 'UK' }]);
   jobs.push(['engine_listening', { tab: 'overview' }]);
   jobs.push(['engine_listening', { tab: 'beyond' }]);
@@ -45,6 +47,9 @@ async function main() {
   for (const days of [7, 14]) jobs.push(['engine_listening', { tab: 'opponents_mix', days }]);
   // Today and its petitions/last-post context (22 Nov 2026), last, so they read the views warmed above.
   for (const team of teams) { jobs.push(['engine_listening', { tab: 'today', team }]); jobs.push(['engine_listening', { tab: 'context', team }]); }
+  // Reports › Listening (E1-E3) and the monthly account check (F4).
+  for (const team of teams) jobs.push(['engine_listening', { tab: 'learn', team }]);
+  jobs.push(['engine_listening', { tab: 'handles' }]);
   let ok = 0; const failed = [];
   const t0 = Date.now();
   for (const [name, args] of jobs) {
