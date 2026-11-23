@@ -1029,8 +1029,8 @@ async function engineSources(store, args, ctx0) {
   const recent = await store.enginePosts({ team_ids: [teamId], limit: 500 });
   const used = new Set();
   for (const p of recent) for (const s of [p.doc && p.doc.source, p.doc && p.doc.videoIdea && p.doc.videoIdea.source]) if (s && s.ref) used.add(String(s.ref));
-  let parliament = [], parliamentError = null;
-  try { const r = await P.speeches(teamId, { days }); parliament = r.items.filter((i) => !used.has(i.ref)); if (r.errors.length) parliamentError = r.errors.join('; '); }
+  let parliament = [], parliamentError = null, allSpeeches = [];
+  try { const r = await P.speeches(teamId, { days }); allSpeeches = r.items; parliament = r.items.filter((i) => !used.has(i.ref)); if (r.errors.length) parliamentError = r.errors.join('; '); }
   catch (e) { parliamentError = e.message; }
   let campaigns = [];
   try {
@@ -1062,8 +1062,25 @@ async function engineSources(store, args, ctx0) {
     petitions_near_100k: teamId === 'uk' ? P.nearHundredK(pets.items).filter((x) => !used.has(`petition:${x.id}`)).slice(0, 3)
       .map((x) => ({ id: x.id, ref: `petition:${x.id}`, title: x.title, url: x.url, signatures: x.signatures, per_day: x.per_day, closes: x.closes, areas: (x.areas || []).map((a) => a.name) })) : [],
   };
+  // D2-D5 (Chris, 23 Nov 2026): more kinds of post from what the desk
+  // already reads. Each list leaves out what a post already used (its ref)
+  // and never fails the sources.
+  const safe = async (f, d) => { try { return await f(); } catch (e) { return d; } };
+  const [tn, bl, say, quiet] = await Promise.all([
+    safe(() => P.thenAndNow(teamId, allSpeeches), { items: [], errors: [] }),
+    safe(() => P.billsLive(teamId), { items: [], errors: [] }),
+    safe(() => P.haveYourSay(), []),
+    safe(() => require('../lib/quiet').quietFor(store, teamById(ctx, teamId) || { id: teamId, accounts: [] }), []),
+  ]);
+  const fresh = (x) => !used.has(x.ref);
+  const more = {
+    then_and_now: tn.items.filter(fresh).slice(0, 6).map((x) => ({ ref: x.ref, now: { ref: x.now.ref, who: x.now.who, party: x.now.party, place: x.now.place, dated: x.now.dated, title: x.now.title, quote: x.now.quote, areas: x.now.areas.map((a) => a.name) }, then: x.then.map((t) => ({ ref: t.ref, dated: t.dated, title: t.title, quote: t.quote })) })),
+    bills: bl.items.filter(fresh).slice(0, 12),
+    have_your_say: say.filter(fresh).slice(0, 6).map((c) => ({ ...c, areas: c.areas.map((a) => a.name) })),
+    quiet_petitions: quiet.filter(fresh),
+  };
   return json({
-    ok: true, team: teamId, since_days: days, parliament: parliament.slice(0, 40), parliament_error: parliamentError, campaigns, kits, listening,
+    ok: true, team: teamId, since_days: days, parliament: parliament.slice(0, 40), parliament_error: parliamentError, campaigns, kits, listening, ...more,
     video_limit: { base: VI.DAY_BASE, max: VI.DAY_MAX },
     rules: [
       `Video ideas: up to ${VI.DAY_BASE} a day, and up to ${VI.DAY_MAX} when there is good enough content from at least two kinds of source (parliament, campaign, news, own). Give every video idea its videoIdea.source; engine_create refuses beyond the limit.`,
@@ -1071,6 +1088,11 @@ async function engineSources(store, args, ctx0) {
       'A speech from parliament becomes a post with doc.source (kind parliament, ref, who, party, title, quote, dated, place) and, when it would work as one, a video idea (standalone: false, same source). Whether the post backs or challenges the speaker follows from what they said and our position on the issue; never attack the person.',
       'Listening (every run): each listening.signals item is a candidate draft. Opponent posts, ad bursts and converging opponent pushes get a counter with facts (title "Counter: <who>: <one line>"), never quoting or linking the opponent; ally posts get a rework in our own words (title "Rework: <who>: <one line>"); a gap gets a post on that topic (title "Gap: <topic>"). Use the signal\'s petition as the ask when it fits; skip a signal when last shows a post on that topic in the last 2 days unless the story is new; a desk request already filed for it wins. A climbing petition on our side can be a share; opponents_news is context only, never linked. Say in the summary how many signals there were and which became drafts.',
       'Petitions near 100,000 (listening.petitions_near_100k): draft one post for each. If the petition is on our side, a push to get it over the line (at 100,000 signatures Parliament considers it for a debate) with its link, title "Petition push: <title>". If it is against us, a post making our case on the issue, never linking or naming the petition as a target, title "Answer: <title>". Give the post doc.source = { kind: "parliament", ref (the item\'s ref), title, url }, so it is never drafted twice.',
+      'Quote cards for news (D1): a news draft built on a named person\'s words (a peer, a doctor, a regulator, a church leader) gets a quote card: card template "duo" with variant "top" (kicker = who they are in a few words, quote = their exact words, cut only at the end, name and role), plus "ig1d" with the impact phrase highlighted in cardOptions. The words are copied from the source and listed in facts with status "check" until confirmed. Use an official portrait (members-api.parliament.uk) only for a parliamentarian; otherwise a photo note, never a stand-in face.',
+      'Then and now (D2, then_and_now): each item pairs a speech this week with the same member\'s earlier words on the same issue from the official record. Draft one only when the two clearly differ (a changed position, or a promise against what they now back); if they say the same thing, skip it. Card template "beforeafter" with a REAL date on both sides and the exact words, each linked in facts. Fair and in context: no cuts that change meaning, never mock the person. doc.source = { kind: "parliament", ref (the item\'s ref), who, party, place, dated (now), quote (now), title: "Then and now" }. At most one a day.',
+      'Bill explainers (D3, bills): for a Bill the team campaigns on (a live petition about it, or a post naming it in the last 60 days; a draft Bill under scrutiny counts too, with ref "explainer:draft-<short-name>:<stage>"), make one explainer carousel: card template "carousel" with 5 "ig1d" slides (what the Bill says, what it would mean, who is warning, where it is in Parliament now with the stage, what you can do with the petition ask), altTexts one per slide, type "Explainer". doc.source = { kind: "parliament", ref (the item\'s ref), title (the Bill), url }. The ref carries the stage, so a Bill that moves on gets a fresh one. At most one a day; Bills nobody campaigns on are skipped.',
+      'Have your say (D4, have_your_say): for an open government consultation or committee call for evidence on our issues, when say is "opened" (first week) or "closing" (last week), draft a post saying what it is about, who is asking, the closing date and how to respond (the url). Neutral on facts, clear on our view; never tell people what to write word for word. A live petition on the same issue can be the first comment. doc.source = { kind: "parliament", ref (the item\'s ref), title, url, dated (closes) }. title "Have your say: <title>".',
+      'Quiet petitions (D5, quiet_petitions): each is a live petition of ours still gaining signatures with no post for 14 days or more. Draft one post for each with that petition as the ask (doc.action with petitionId, title, url, signatures), a fresh angle, not a repeat of the last post. doc.source = { kind: "campaign", ref (the item\'s ref), title, url, petition (its id) }.',
       'Campaign kits: draft every post and video in the kit with doc.kit = { id, name, step } (kit posts do not count toward the daily video limit), then mark the kit drafted with engine_desk_docs put (collection kits, merge, data { status: "drafted", drafted_at }).',
     ],
   });
@@ -2628,7 +2650,7 @@ const obj = (properties, required = []) => ({ type: 'object', properties, requir
 const ENGINE_TOOLS = [
   { name: 'engine_report', description: 'Content Engine desk: report a problem with the desk (action send: text, page, team), list reports (Chris sees all, everyone else their own), or for Chris mark one fixed or open again (action fix / reopen: id, optional reply). Text only, no screenshots; deleted 30 days after it is fixed. Reports show in the desk bell, never by email or Slack.', inputSchema: obj({ action: { type: 'string', enum: ['send', 'list', 'fix', 'reopen'] }, text: { type: 'string' }, page: { type: 'string' }, team: { type: 'string' }, id: { type: 'string' }, reply: { type: 'string' } }), handler: engineReport },
   { name: 'engine_signups', description: 'Content Engine Reports › Sign-ups: petition sign-ups traced to each post on one team\'s own accounts over the last 7, 30 or 90 days (each day\'s signers from a platform go to the post of that link live that day), with sign-ups per 1,000 reached and which desk post each one was (by_post).', inputSchema: obj({ team: { type: 'string' }, days: { type: 'number' }, fresh: { type: 'boolean' } }, ['team']), handler: engineSignups },
-  { name: 'engine_sources', description: 'Content Engine morning run: what to turn into posts and videos for one team. parliament: speeches on our issues from Westminster and Holyrood in the last days (default 3, up to 7) not yet used in a post (ref, who, party, title, quote, dated, place, areas); campaigns: the team\'s petitions by sign-ups from its posts (30 days); kits: campaign kits people asked for in Tools; video_limit and rules for using them.', inputSchema: obj({ team: { type: 'string' }, days: { type: 'number' } }, ['team']), handler: engineSources },
+  { name: 'engine_sources', description: 'Content Engine morning run: what to turn into posts and videos for one team. parliament: speeches on our issues from Westminster and Holyrood in the last days (default 3, up to 7) not yet used in a post (ref, who, party, title, quote, dated, place, areas); campaigns: the team\'s petitions by sign-ups from its posts (30 days); kits: campaign kits people asked for in Tools; listening; then_and_now (a speech beside the same member\'s earlier words), bills (Bills on our issues and their stage, for explainers), have_your_say (open consultations and calls for evidence), quiet_petitions (live petitions with no post for 14 days); video_limit and rules for using them.', inputSchema: obj({ team: { type: 'string' }, days: { type: 'number' } }, ['team']), handler: engineSources },
   { name: 'engine_me', description: 'Content Engine: who you are, your country teams and the accounts you can publish to. Used by the posts desk.', inputSchema: obj({}), handler: engineMe },
   { name: 'engine_posts', description: 'Content Engine: the posts in one of your teams (the desk), optionally by status (one, or several comma-separated: review, changes, hold, scheduled, posted, rejected, archived: rejected posts cleared from the desk bin). Each post comes with track (its Asana task, results check, posted time, stale flag and source); full: true returns each whole post instead.', inputSchema: obj({ team: { type: 'string' }, status: { type: 'string' }, full: { type: 'boolean' }, limit: { type: 'number' } }, ['team']), handler: enginePosts },
   { name: 'engine_post', description: 'Content Engine: one whole post from your teams.', inputSchema: obj({ id: { type: 'string' } }, ['id']), handler: enginePost },

@@ -91,13 +91,48 @@ async function videoComments({ store, privateKey, now, log, fetchImpl, runner })
 }
 
 // Hand-off mode: Asana tasks for handed-off posts (lib/asana.js).
-async function asanaPass({ store, live, now, log, token, fetchImpl, tally }) {
+// B1: the petition's live count from citizengo.org (the site's own public API,
+// as Link in bio reads it), or null.
+async function siteCountDefault(pid) {
+  const FL = require('../lib/fromlink');
+  const R = require('../lib/bio-refresh');
+  const site = R.readSite((await FL.get(R.SITE_API + pid)).buf.toString('utf8'));
+  return site && site.count ? site.count : null;
+}
+
+// B1: bring the post's signature count up to date before it goes out.
+// Returns the saved post and the comment for its task, or null.
+async function freshenCounts({ store, post, live, now, log, siteCount }) {
+  if (!A.freshDue(post, now)) return null;
+  const stamp = new Date(now).toISOString();
+  const pid = String(post.doc.action.petitionId);
+  let count = null;
+  try { count = await siteCount(pid); } catch (e) { log(`  ! ${post.id}: couldn't read petition ${pid}'s count (${e.message})`); }
+  const fc = count ? A.freshCounts(post.doc, count) : null;
+  if (!live) { if (fc && fc.patch) log(`  → ${post.id}: would update the count ${A.fmtCount(fc.from)} → ${A.fmtCount(fc.to)}`); return null; }
+  if (!fc || !fc.patch) {
+    await patchDoc(store, post.id, () => ({ posting: { countsAt: stamp } }));
+    return null;
+  }
+  const saved = await patchDoc(store, post.id, () => ({ ...fc.patch, action: { signatures: fc.to, checkedAt: stamp }, posting: { countsAt: stamp, countsFrom: fc.from } }));
+  log(`  ✓ ${post.id}: signature count ${A.fmtCount(fc.from)} → ${A.fmtCount(fc.to)} in the copy`);
+  const note = `Signature count brought up to date: ${A.fmtCount(fc.to)} (was ${A.fmtCount(fc.from)} when it was written), read from the petition page at ${A.when(stamp)}.`
+    + (fc.inPicture ? ` The picture still shows ${A.fmtCount(fc.from)}: fine to post as it is, or remake it from the desk.` : '');
+  return { post: saved, note };
+}
+
+async function asanaPass({ store, live, now, log, token, fetchImpl, tally, siteCount = siteCountDefault }) {
   const posts = await store.enginePosts({ statuses: ['scheduled', 'hold', 'changes', 'review', 'rejected'], limit: 500 });
   const stamp = new Date(now).toISOString();
   const api = A.client(token, fetchImpl);
   const handoffOn = H.on();
-  for (const post of posts) {
-    const step = A.stepFor(post, { handoffOn });
+  for (let post of posts) {
+    let countNote = null;
+    try {
+      const fr = await freshenCounts({ store, post, live, now, log, siteCount });
+      if (fr && fr.post) { post = fr.post; countNote = fr.note; }
+    } catch (e) { log(`  ! ${post.id}: count check failed (${e.message})`); }
+    const step = A.stepFor(post, { handoffOn, now });
     if (!step) continue;
     const p = post.doc.posting || {};
     const err = p.asanaError || {};
@@ -142,20 +177,28 @@ async function asanaPass({ store, live, now, log, token, fetchImpl, tally }) {
         await A.updateTask(api, p.asanaTaskGid, task, { stageChanged });
         const attached = await attachMedia({ store, api, gid: p.asanaTaskGid, post, done: p.asanaMedia || [], log, label });
         await patchDoc(store, post.id, () => ({ posting: { syncedAt: stamp, asanaSig: A.sigOf(post), asanaMedia: attached, asanaStage: task.stage } }));
+        if (countNote) await api.call('POST', `/tasks/${p.asanaTaskGid}/stories`, { text: countNote }).catch((e) => log(`  ! ${label}: couldn't add the count comment (${e.message})`));
         log(`  ✓ ${label}: task updated${stageChanged ? ` (now ${task.stage === 'ready' ? 'Ready to Post' : 'In Progress'})` : ''}`);
+      } else if (step === 'missed') {
+        // B2: completed late is still posted (the check below); otherwise the
+        // task is deleted, which takes it off every calendar, and the post goes
+        // to the Bin as Missed.
+        const t = await A.readTask(api, p.asanaTaskGid);
+        if (t.completed) { await closePosted({ store, post, t, live, stamp, label, log, tally }); continue; }
+        if (!live) { tally.would++; log(`  → ${label}: missed, would delete task ${p.asanaTaskGid}`); continue; }
+        await A.deleteTask(api, p.asanaTaskGid);
+        await patchDoc(store, post.id, () => ({
+          review: { by: 'publisher', at: stamp, action: 'reject', reasons: ['Missed'], note: 'Not posted within 48 hours of its time, so its Asana task was deleted. This says nothing about the draft itself.' },
+          missed: { at: stamp, due: A.dueAt(post), task: p.asanaTaskGid },
+          posting: { asanaDeletedAt: stamp, asanaTaskGid: null, asanaUrl: null, asanaSig: null, asanaMedia: null, asanaStage: null, handoff: null, asanaOldTask: p.asanaTaskGid },
+        }), () => ({ status: 'rejected' }));
+        await store.engineEvent({ post_id: post.id, team_id: post.team_id, who: 'publisher', action: 'missed', detail: { task: p.asanaTaskGid, due: A.dueAt(post) } });
+        tally.missed = (tally.missed || 0) + 1;
+        log(`  ✓ ${label}: missed; task ${p.asanaTaskGid} deleted, post in the Bin`);
       } else if (step === 'check') {
         const t = await A.readTask(api, p.asanaTaskGid);
         if (!t.completed) continue;
-        const keys = E.destinations(post.doc);
-        const urls = A.linksByKey(keys, t.links);
-        const at = t.completed_at || stamp;
-        if (!live) { tally.would++; log(`  → ${label}: task completed, would mark posted (${Object.keys(urls).length} link${Object.keys(urls).length === 1 ? '' : 's'})`); continue; }
-        const published = {};
-        for (const k of keys) if (!(post.doc.published || {})[k]) published[k] = { at, by: 'hand', byHand: true, note: 'Posted by hand from its Asana task', ...(urls[k] ? { url: urls[k] } : {}) };
-        await patchDoc(store, post.id, () => ({ published, posted: { at, by: 'asana', linksPending: keys.some((k) => !urls[k]) }, posting: { asanaClosedAt: stamp } }), () => ({ status: 'posted' }));
-        await store.engineEvent({ post_id: post.id, team_id: post.team_id, who: 'publisher', action: 'posted', detail: { via: 'asana', task: p.asanaTaskGid } });
-        tally.closed = (tally.closed || 0) + 1;
-        log(`  ✓ ${post.id}: Asana task completed, marked Posted`);
+        await closePosted({ store, post, t, live, stamp, label, log, tally });
       } else if (step === 'cancel') {
         if (!live) { tally.would++; log(`  → ${label}: would cancel task ${p.asanaTaskGid} (now ${post.status})`); continue; }
         const t = await A.readTask(api, p.asanaTaskGid);
@@ -168,6 +211,21 @@ async function asanaPass({ store, live, now, log, token, fetchImpl, tally }) {
       if (live && step !== 'check') await patchDoc(store, post.id, () => ({ posting: { asanaError: { at: stamp, message: e.message, tries: (err.tries || 0) + 1 } } })).catch(() => {});
     }
   }
+}
+
+// The task was completed: mark the post posted, links filed by account.
+async function closePosted({ store, post, t, live, stamp, label, log, tally }) {
+  const p = post.doc.posting || {};
+  const keys = E.destinations(post.doc);
+  const urls = A.linksByKey(keys, t.links);
+  const at = t.completed_at || stamp;
+  if (!live) { tally.would++; log(`  → ${label}: task completed, would mark posted (${Object.keys(urls).length} link${Object.keys(urls).length === 1 ? '' : 's'})`); return; }
+  const published = {};
+  for (const k of keys) if (!(post.doc.published || {})[k]) published[k] = { at, by: 'hand', byHand: true, note: 'Posted by hand from its Asana task', ...(urls[k] ? { url: urls[k] } : {}) };
+  await patchDoc(store, post.id, () => ({ published, posted: { at, by: 'asana', linksPending: keys.some((k) => !urls[k]) }, posting: { asanaClosedAt: stamp } }), () => ({ status: 'posted' }));
+  await store.engineEvent({ post_id: post.id, team_id: post.team_id, who: 'publisher', action: 'posted', detail: { via: 'asana', task: p.asanaTaskGid } });
+  tally.closed = (tally.closed || 0) + 1;
+  log(`  ✓ ${post.id}: Asana task completed, marked Posted`);
 }
 
 // Attaches the post's media to its task, each file once. Returns the keys done.
@@ -189,7 +247,7 @@ async function attachMedia({ store, api, gid, post, done, log, label }) {
 // runner: 'mini' (every 5 minutes) or 'cloud' (the Vercel backup, every 15).
 // minLateMs: leave anything due more recently than this to the other runner,
 // so the backup only steps in when the Mini hasn't.
-async function run({ store, privateKey, live, now = Date.now(), log = console.log, fetchImpl, wait, runner = 'mini', minLateMs = 0, asanaToken = null, asanaFetch }) {
+async function run({ store, privateKey, live, now = Date.now(), log = console.log, fetchImpl, wait, runner = 'mini', minLateMs = 0, asanaToken = null, asanaFetch, siteCount }) {
   const [teams, posts, pauses] = await Promise.all([store.engineTeams(), store.enginePosts({ statuses: ['scheduled'], limit: 500 }), store.enginePauses()]);
   const items = P.plan(posts, teams, now, pauses);
   const tally = { published: 0, held: 0, failed: 0, would: 0 };
@@ -284,7 +342,7 @@ async function run({ store, privateKey, live, now = Date.now(), log = console.lo
   }
   // Hand-off mode: the Asana tasks (Mini only, where the token is).
   if (asanaToken) {
-    try { await asanaPass({ store, live, now, log, token: asanaToken, fetchImpl: asanaFetch || fetch, tally }); }
+    try { await asanaPass({ store, live, now, log, token: asanaToken, fetchImpl: asanaFetch || fetch, tally, ...(siteCount ? { siteCount } : {}) }); }
     catch (e) { log(`  ! Asana: ${e.message}`); }
   }
   // Heartbeat: when each runner last checked, for the desk's warning.

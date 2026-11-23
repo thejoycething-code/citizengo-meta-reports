@@ -428,6 +428,7 @@ const callErr = async (store, name, args, who) => { try { await tool(name)(store
       eq('petitions tab: says so plainly when the monitor is not linked', [pt.tab, pt.items.length, /not set up/.test(pt.error)], ['petitions', 0, true]);
       const src = await call(s2, 'engine_sources', { team: 'uk' }, 'chris');
       eq('sources: the morning run gets Listening\'s signals and a rule for them (A1)', [Array.isArray(src.listening.signals), Array.isArray(src.listening.petitions_climbing), src.rules.some((r) => r.startsWith('Listening (every run)'))], [true, true, true]);
+      eq('sources: D2-D5 lists and their rules, empty when the monitor is not linked', [src.then_and_now, src.bills, src.have_your_say, Array.isArray(src.quiet_petitions), ['Quote cards for news', 'Then and now', 'Bill explainers', 'Have your say', 'Quiet petitions'].every((k) => src.rules.some((r) => r.startsWith(k)))], [[], [], [], true, true]);
       if (admins0 === undefined) delete process.env.ENGINE_ADMINS; else process.env.ENGINE_ADMINS = admins0;
     }
     eq('engine_listening watches: matched through the tool', [r.tab, r.watches.length, r.watches[0].id, r.watches[0].total], ['watches', 1, 'h', 1]);
