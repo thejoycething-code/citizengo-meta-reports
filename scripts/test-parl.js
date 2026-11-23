@@ -71,6 +71,31 @@ const fetchImpl = async (url, o) => {
   const again = await V.run({ dir, store, log: () => {} });
   eq('vote drafts: added once to Review, by the monitor', [first, again, posts['parl-vote-c1234-uk'].status, posts['parl-vote-c1234-uk'].created_by, events.length], [1, 0, 'review', 'parliamentary-monitor', 1]);
   eq('vote drafts: old briefs ignored', await V.run({ dir, store: { ...store, enginePost: async () => null }, log: () => {}, now: Date.now() + 5 * 864e5 }), 0);
+
+  // D2-D5 (23 Nov 2026).
+  {
+    const nowS = { ref: 'n1', mid: '4475', parliament: 'westminster', place: 'Westminster', dated: '2026-11-16', who: 'Suella Braverman', quote: 'x'.repeat(70), areas: P.areasOf('[4]') };
+    const pairs = P.pairThen([nowS, { ...nowS, ref: 'n2', mid: null }], [{ ref: 'o1', mid: '4475', parliament: 'westminster', dated: '2024-01-01', quote: 'y'.repeat(70), areas: P.areasOf('[4,5]') }, { ref: 'o2', mid: '4475', parliament: 'westminster', dated: '2023-01-01', quote: 'z'.repeat(70), areas: P.areasOf('[1]') }]);
+    eq('then and now: same member, a shared issue, earlier words only', pairs.map((x) => [x.ref, x.then.map((t) => t.ref)]), [['thennow:n1', ['o1']]]);
+    eq('then and now: ids are numbers only, six months back', [P.thenSql('westminster', { mids: ['4475', "1; drop"], before: '2026-05-27' }).includes('in (4475)'), P.thenSql('westminster', { mids: [], before: 'x' })], [true, null]);
+    const bills = P.shapeBills('westminster', [{ id: 3774, title: 'Terminally Ill Adults (End of Life) Bill', stage: 'Committee stage', stage_id: 20186, updated: '2026-05-14' }, { id: 4157, title: 'Terminally Ill Adults (End of Life) Bill', stage: '2nd reading', stage_id: 20840, updated: '2026-09-14', sponsors: '[{"name":"Kim Leadbeater","party":"Labour"}]' }]);
+    eq('bills: one per title (newest), the ref carries the stage, official link', [bills.length, bills[0].ref, bills[0].url, bills[0].sponsors], [1, 'explainer:uk4157:20840', 'https://bills.parliament.uk/bills/4157', ['Kim Leadbeater, Labour']]);
+    const cs = P.shapeConsults([{ url: 'https://www.gov.uk/c/a', title: 'Children not in school', opens: '2026-11-20', closes: '2027-02-03', areas: '[6]', kind: 'consultation' }, { url: 'https://www.gov.uk/c/a', title: 'Consultation: Children not in school', closes: '2027-02-03', areas: '[6]', kind: 'consultation' }, { url: 'https://committees.parliament.uk/x', title: 'Call', closes: '2026-11-27', areas: '[7]', kind: 'inquiry' }, { url: 'https://x', title: 'Off topic', closes: '2026-12-01', areas: '[]' }], Date.parse('2026-11-23T08:00:00Z'));
+    eq('have your say: one per title, on our issues, opened or closing', cs.map((c) => [c.title, c.kind, c.say, c.days_left]), [['Children not in school', 'Consultation', 'opened', 72], ['Call', 'Call for evidence', 'closing', 4]]);
+    eq('have your say: the ref changes between opened and closing', /:opened$/.test(cs[0].ref), true);
+  }
+  {
+    const Q = require('../lib/quiet');
+    const now = Date.parse('2026-11-23T08:00:00Z');
+    const ago = (d) => new Date(now - d * 864e5).toISOString();
+    const accounts = [{ page_id: '105' }];
+    const links = [{ account_id: '105', petition_id: '18560', posted_at: ago(20), url: 'https://citizengo.org/en-gb/fr/18560-x' }, { account_id: '105', petition_id: '19822', posted_at: ago(3) }, { account_id: '999', petition_id: '777', posted_at: ago(30) }, { account_id: '105', petition_id: '111', posted_at: ago(40) }, { account_id: '105', petition_id: '222', posted_at: ago(40) }];
+    const posts = [{ status: 'rejected', created_at: ago(5), doc: { action: { petitionId: '222', title: 'Binned' } } }];
+    const status = [{ petition_id: '18560', total: 29000, site_total: 29512, last14: 120 }, { petition_id: '19822', last14: 50 }, { petition_id: '111', last14: 0 }, { petition_id: '222', last14: 10 }, { petition_id: '777', last14: 99 }];
+    const q = Q.quietPetitions({ accounts, links, posts, status, now });
+    eq('quiet petitions: ours, still gaining, nothing for 14 days (a fresh draft counts)', q.map((x) => [x.petition_id, x.signatures, x.quiet_days, x.url]), [['18560', 29512, 20, 'https://citizengo.org/en-gb/fr/18560']]);
+    eq('quiet petitions: closed in Asana or won are left out', Q.quietPetitions({ accounts, links, posts: [], status: status.map((s) => (s.petition_id === '18560' ? { ...s, asana_closed: true } : s)), now }).map((x) => x.petition_id), ['222']);
+  }
   console.log(`\n${passed} passed, ${failed} failed`);
   process.exit(failed ? 1 : 0);
 })().catch((e) => { console.error(e); process.exit(1); });

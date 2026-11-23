@@ -179,6 +179,39 @@ async function asanaTests() {
   const e2 = db.posts.find((x) => x.id === 'uk-3');
   eq('hand-off: same task, now Ready to Post', [calls.filter((c) => c.m === 'POST' && c.path.endsWith('/tasks')).length, e2.doc.posting.asanaStage, calls.some((c) => c.m === 'PUT' && c.body && c.body.custom_fields && Object.values(c.body.custom_fields).includes('ready-' + A.CALENDARS['uk-fb'].project))], [0, 'ready', true]);
 
+  // B1 (23 Nov): the signature count is brought up to date two hours before it's due.
+  {
+    const fc = A.freshCounts({ action: { signatures: 29338 }, final: { facebook: { text: '29,338 have signed. Not 129,338 or 29,3380.' } }, platforms: { x: ['29,338 people'] }, card: { label: '29,338' } }, 29512);
+    eq('B1: only the exact count is swapped', [fc.patch.final.facebook.text, fc.patch.platforms.x[0], fc.hits, fc.inPicture], ['29,512 have signed. Not 129,338 or 29,3380.', '29,512 people', 2, true]);
+    eq('B1: a lower or equal live count changes nothing', [A.freshCounts({ action: { signatures: 100 }, final: { facebook: { text: '100' } } }, 100), A.freshCounts({ action: { signatures: 100 } }, 90)], [null, null]);
+  }
+  db.posts.push({ id: 'uk-5', team_id: 'uk', status: 'scheduled', version: 1, post_at: '2026-11-09T11:00:00Z', doc: { title: 'Count',
+    action: { petitionId: '18560', signatures: 29338 }, card: { template: 'bignum', number: '29,338' },
+    final: { facebook: { text: '29,338 people have signed', media: [] } }, platforms: { x: ['29,338 have signed'] },
+    posting: { destinations: ['uk-fb', 'uk-x'], at: '2026-11-09T11:00:00Z', handoff: { at: 'x', by: 'chris' }, asanaTaskGid: 'T5', asanaUrl: 'u', asanaStage: 'ready' } } });
+  db.posts.find((x) => x.id === 'uk-5').doc.posting.asanaSig = A.sigOf(db.posts.find((x) => x.id === 'uk-5'));
+  const asked = [];
+  const siteCount = async (pid) => { asked.push(pid); return 29512; };
+  calls.length = 0;
+  await run({ ...opts, siteCount });
+  let c5 = db.posts.find((x) => x.id === 'uk-5');
+  eq('B1: count read for the petition and swapped in the copy', [asked, c5.doc.final.facebook.text, c5.doc.platforms.x[0], c5.doc.action.signatures], [['18560'], '29,512 people have signed', '29,512 have signed', 29512]);
+  eq('B1: the task is updated and told, including that the picture shows the old count', [calls.some((c) => c.m === 'PUT' && /\/tasks\/T5$/.test(c.path) && c.body.html_notes && c.body.html_notes.includes('29,512')), calls.some((c) => /T5\/stories$/.test(c.path) && /29,512 \(was 29,338/.test(c.body.text) && /picture still shows/.test(c.body.text))], [true, true]);
+  asked.length = 0;
+  await run({ ...opts, siteCount });
+  eq('B1: not read again within 30 minutes', asked.length, 0);
+  await run({ ...opts, siteCount, now: Date.parse('2026-11-09T07:00:00Z') });
+  // B2 (23 Nov): 48 hours past its time and not completed: the task is deleted, the post goes to the Bin.
+  calls.length = 0;
+  await run({ ...opts, siteCount, now: Date.parse('2026-11-11T11:30:00Z') });
+  c5 = db.posts.find((x) => x.id === 'uk-5');
+  eq('B2: missed task deleted (off every calendar)', calls.some((c) => c.m === 'DELETE' && /\/tasks\/T5$/.test(c.path)), true);
+  eq('B2: post in the Bin as Missed, task forgotten', [c5.status, c5.doc.review.reasons, c5.doc.posting.asanaTaskGid, c5.doc.posting.asanaOldTask, !!c5.doc.missed], ['rejected', ['Missed'], null, 'T5', true]);
+  calls.length = 0;
+  await run({ ...opts, siteCount, now: Date.parse('2026-11-11T12:00:00Z') });
+  eq('B2: nothing more for it next run', calls.filter((c) => /T5/.test(c.path)).length, 0);
+  eq('B2: 47 hours late is not missed yet', A.stepFor({ status: 'scheduled', post_at: '2026-11-09T11:00:00Z', doc: { posting: { handoff: {}, asanaTaskGid: 'T', asanaSig: 'x', destinations: ['uk-fb'] } } }, { now: Date.parse('2026-11-11T10:00:00Z') }) !== 'missed', true);
+
   // No token (the cloud backup): no Asana at all.
   calls.length = 0;
   await run({ ...opts, asanaToken: null });
