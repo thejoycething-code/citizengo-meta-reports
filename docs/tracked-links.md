@@ -42,7 +42,7 @@ The link goes out as the long `citizengo.org/<locale>/<cat>/<id>?campaign=…&ut
 Sign in once from the laptop (it opens the browser):
 
 ```
-SUPABASE_URL=https://hxymihnuzbxianbpdovo.supabase.co SUPABASE_SERVICE_KEY="$(pbpaste)" npm run -s copilot:login
+SUPABASE_URL=https://YOUR-PROJECT.supabase.co SUPABASE_SERVICE_KEY="$(pbpaste)" npm run -s copilot:login
 ```
 
 The sign-in is saved in `engine_copilot_auth`, which only the service key can read. Vercel and the Mini both use it. It is a separate Copilot client from the laptop's `copilot_mcp.py`, so their refreshes don't clash.
