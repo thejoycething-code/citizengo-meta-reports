@@ -1,6 +1,6 @@
 # Phase 2 scope: trending topic, ally and enemy monitoring
 
-_Drafted 30 Oct 2026 for Asana task 1218618085657974. Status: for a build decision._
+_Drafted 30 Oct 2026 for an internal Asana task. Status: for a build decision._
 
 ## The question this answers
 
@@ -9,7 +9,7 @@ to move out there, and who is moving it"**, early enough to act: join an ally's
 campaign while it is still climbing, or answer an opponent's before it sets the
 narrative.
 
-Candela's task (1218612679195558, cross-platform topic performance across X,
+Candela's task (cross-platform topic performance across X,
 Meta and Google Trends) answers "how is this topic doing across **our own**
 estate". The two share a topic list and Google Trends; they should not share a
 build. Phase 2 looks outward; hers looks inward.
@@ -47,8 +47,8 @@ Lists are curated by people, per country, in config files reviewed like
 
 | Source | What it gives | Cost | Notes |
 |---|---|---|---|
-| **X user timelines** (watched accounts) | Their posts and public counts (likes, reposts, replies, quotes, impressions) | ~$0.005 per post returned | The main cost driver; see budget |
-| **X post counts** (`/2/tweets/counts/recent`) | Hourly volume of any keyword query over the last 7 days, without paying per post | ~$0.005 **per request**, reported by third parties; **probe first** | The cheap trend signal. One request per keyword covers a week |
+| **X user timelines** (watched accounts) | Their posts and public counts (likes, reposts, replies, quotes, impressions) | Paid per post returned | The main cost driver; see budget |
+| **X post counts** (`/2/tweets/counts/recent`) | Hourly volume of any keyword query over the last 7 days, without paying per post | Paid **per request**, as reported by third parties; **probe first** | The cheap trend signal. One request per keyword covers a week |
 | **Instagram `business_discovery`** | Public posts, likes, comments of any Business/Creator account | Free | Already built. Opponents can be added the same way. No reach or shares |
 | **Meta Ad Library API** | Active issue/political ads by any Page (all ads in the EU) | Free | Best early sign an opponent is **putting money** behind a campaign |
 | **Google Trends** | Search interest per country and term | Official API is alpha, invite-only; pytrends is unofficial and fragile | Apply for alpha; share with Candela's task |
@@ -92,17 +92,16 @@ A signal from two different rules on the same theme ranks first.
 
 ## Budget (X is the only paid source)
 
-The current X ceiling is `X_MONTHLY_BUDGET_USD = 100`, already shared with our
-own collection (~$38/month at the owned rate, up to ~$167 if billed at the
-ordinary rate). Monitoring needs **its own budget line and guard**.
+The current X ceiling is `X_MONTHLY_BUDGET_USD`, already shared with our own
+collection. Monitoring needs **its own budget line and guard**.
 
-| Option | Assumption | Approx. per month |
-|---|---|---|
-| A. Topics only (counts) | 50 keyword queries, 4 reads a day | ~$30 |
-| B. A + 30 watched X accounts | ~5 posts/day each, each post read twice (day 0 and day 1) | ~$30 + ~$45 = **~$75** |
-| C. A + 80 watched X accounts | same | ~$30 + ~$120 = ~$150 |
+| Option | Assumption |
+|---|---|
+| A. Topics only (counts) | 50 keyword queries, 4 reads a day |
+| B. A + 30 watched X accounts | ~5 posts/day each, each post read twice (day 0 and day 1) |
+| C. A + 80 watched X accounts | same |
 
-Recommendation: **B**, capped at $100/month in its own ledger, with the
+Recommendation: **B**, with its own monthly cap in its own ledger, and the
 watched-account list prioritised by country.
 
 ## Phasing
@@ -119,7 +118,7 @@ watched-account list prioritised by country.
 
 ## Decisions needed before building
 
-1. **Budget:** approve option B (~$75, capped at $100/month separately)?
+1. **Budget:** approve option B, with its own separate monthly cap?
 2. **Data protection:** storing posts from opponent organisations and public
    figures. Public-role accounts only, no private individuals, 120-day
    retention. This needs a sign-off from whoever owns GDPR at CitizenGO before
