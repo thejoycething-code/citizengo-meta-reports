@@ -3,7 +3,7 @@ name: meta-breakout-alerts
 description: Each morning, announce any CitizenGO Facebook post past 100,000 views, and any X post past 10,000 organic impressions or 250 interactions, to #comm-social-networks, deduplicated so translated copies are not announced twice
 ---
 
-Announce breakout CitizenGO posts to the Slack channel **#comm-social-networks**, so other pages can consider reworking them for their own audience. Two platforms, two rules:
+Announce breakout CitizenGO posts to the Slack channel **#comm-social-networks** (channel id `C7YFZ17MH`), so other pages can consider reworking them for their own audience. Two platforms, two rules:
 
 - **Facebook:** the post has passed **100,000 views**.
 - **X:** the post has passed **10,000 organic impressions** or **250 interactions** (likes, reposts, quotes, replies and bookmarks).
@@ -67,7 +67,7 @@ Keep the block short: one line per claim and no essays. The alert has to stay re
 
 **Step 3 — post each one.**
 
-For every entry in `announce`, send the `slack_text` **with its fact-check block added as above** to the #comm-social-networks channel (find its id with the Slack connector's channel search) using the Slack connector. Apart from adding that block, change nothing: the text is standard Markdown, which the connector converts, and editing it will break the links.
+For every entry in `announce`, send the `slack_text` **with its fact-check block added as above** to channel `C7YFZ17MH` using the Slack connector. Apart from adding that block, change nothing: the text is standard Markdown, which the connector converts, and editing it will break the links.
 
 Post them one at a time and note whether each succeeded.
 
