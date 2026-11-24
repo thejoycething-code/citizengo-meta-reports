@@ -19,7 +19,7 @@ const ROOT = path.join(__dirname, '..');
 const STRONG = 'cgo_Kd8vQ2mXpL7nRt4wYzB6hJ3s';
 // The shape that was live in production until this review: twenty characters,
 // one character class, dictionary words.
-const WEAK = 'cgo_team_shared_2026';
+const WEAK = 'cgo_exampleweaktoken';
 
 process.env.MCP_TOKENS = STRONG;
 process.env.SUPABASE_URL = 'http://localhost:1';       // never reached; auth fails first
