@@ -2,18 +2,19 @@
 'use strict';
 // Does the PAGE-level views metric include ads?
 //
-// The question that prompted this: Business Suite and our page_media_view sum
-// gave close totals for one page in one month, and the two clearly describe the
-// same thing. But that page also ran paid ads that month, so whether the figure
-// is organic-only changes how it should be read - and whether it can be
-// compared with our organic post totals at all.
+// The question that prompted this: Business Suite reported 787,058 views for
+// the UK page in August, our page_media_view sums to 807,299 for the same
+// month, and the two clearly describe the same thing. But that page ran £906 of
+// ads in August (167,676 impressions), so whether the figure is organic-only
+// changes how it should be read - and whether it can be compared with our
+// organic post totals at all.
 //
 // Settles it by asking Meta for page_media_view twice: once plain, once broken
 // down by is_from_ads, the same breakdown the collector already uses per post.
 // If the segments sum to the plain total, the plain total includes ads.
 //
 // READ-ONLY. Writes nothing.
-//   META_TOKENS=... node scripts/probe-page-paid-split.js <page_id> [since] [until]
+//   META_TOKENS=... node scripts/probe-page-paid-split.js [page_id] [since] [until]
 
 const { loadEnv, makeClient } = require('../lib/graph');
 const { makePageTokens } = require('../lib/pagetokens');
@@ -24,8 +25,7 @@ const TOKENS = String(process.env.META_TOKENS || process.env.META_TOKEN || '')
   .split(/[\n,]/).map((s) => s.trim()).filter(Boolean);
 if (!TOKENS.length) { console.error('No token. Set META_TOKENS or META_TOKEN.'); process.exit(2); }
 
-const PAGE = process.argv[2];
-if (!PAGE) { console.error("Usage: node scripts/probe-page-paid-split.js <page_id> [since] [until]"); process.exit(2); }
+const PAGE = process.argv[2] || '105872884133170';       // Citizen GO UK
 const SINCE = process.argv[3] || '2026-08-01';
 const UNTIL = process.argv[4] || '2026-09-01';
 
