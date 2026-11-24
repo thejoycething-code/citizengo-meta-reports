@@ -1,7 +1,7 @@
 # Content Engine: going live
 
-Chris's checklist for these steps is the Asana task "Content Engine go-live":
-https://app.asana.com/1/826488630492934/task/1220084771334351
+Chris's checklist for these steps is the internal Asana task "Content Engine
+go-live".
 
 Everything is built and in dry run. This is the order to switch it on, with a
 rehearsal on a test Page before any real account posts. Run the preflight at

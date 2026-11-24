@@ -1,5 +1,5 @@
 -- X (Twitter) source. APPLIED to production on 30 Sep 2026 as migration
--- x_source_tables (Asana task 1218268802872745; scoped 8 Sep 2026). Re-running
+-- x_source_tables (internal Asana task; scoped 8 Sep 2026). Re-running
 -- this file is safe: every statement is idempotent.
 --
 -- Kept in its own file rather than appended to schema.sql so that

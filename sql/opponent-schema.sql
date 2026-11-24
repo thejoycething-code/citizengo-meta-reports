@@ -1,5 +1,5 @@
 -- Opponent watch (31 Oct 2026). Collection authorised by Christopher Joyce on
--- 31 Oct 2026 (Asana 1220076872722026): free sources only, organisations acting
+-- 31 Oct 2026 (internal Asana task): free sources only, organisations acting
 -- in a public role only, never private individuals, 120-day retention.
 -- APPLIED to production on 31 Oct 2026 as migration opponent_watch. Re-running
 -- this file is safe: every statement is idempotent.
