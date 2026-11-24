@@ -9,7 +9,7 @@
 // one with only fb_page_name is found by searching that exact phrase and keeping
 // ads whose Page name matches it, and the run log names the id found so it can
 // be pinned in the config. Collection authorised by Christopher Joyce on
-// 31 Oct 2026 (Asana 1220076872722026); OPPONENTS_IG_ENABLED is the same switch
+// 31 Oct 2026 (internal Asana task); OPPONENTS_IG_ENABLED is the same switch
 // as the Instagram opponent list, and without it this is a dry run.
 //
 // Each stored run ends by deleting opponent ads that stopped over 120 days ago.

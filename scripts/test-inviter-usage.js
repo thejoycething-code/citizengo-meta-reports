@@ -18,18 +18,18 @@ const yesterday = new Date(Date.now() - 864e5).toISOString().slice(0, 10);
 
 (async () => {
   console.log('1. The extension reports');
-  let r = await callTool(store, 'inviter_report_usage', { user_email: 'Ana@CitizenGO.net', device_id: 'abcd-1234-efgh', extension_version: '1.4', days: [
+  let r = await callTool(store, 'inviter_report_usage', { user_email: 'Ana@Example.org', device_id: 'abcd-1234-efgh', extension_version: '1.4', days: [
     { day: today, page_id: '154268578340', page_name: 'HazteOir.org', invites: 120 },
     { day: yesterday, page_id: '154268578340', page_name: 'HazteOir.org', invites: 300 },
     { day: today, page_id: 'profile:100064551261576', invites: 5 },
   ] }, ext);
   check('saves its rows', !r.isError && JSON.parse(r.text).saved === 3, r.text);
-  check('email is lower-cased', [...table.values()].every((x) => x.user_email === 'ana@citizengo.net'));
-  r = await callTool(store, 'inviter_report_usage', { user_email: 'ana@citizengo.net', device_id: 'abcd-1234-efgh', days: [{ day: today, page_id: '154268578340', invites: 150 }] }, ext);
+  check('email is lower-cased', [...table.values()].every((x) => x.user_email === 'ana@example.org'));
+  r = await callTool(store, 'inviter_report_usage', { user_email: 'ana@example.org', device_id: 'abcd-1234-efgh', days: [{ day: today, page_id: '154268578340', invites: 150 }] }, ext);
   check('a later report replaces the day\'s total rather than adding', [...table.values()].find((x) => x.day === today && x.page_id === '154268578340').invites === 150);
-  r = await callTool(store, 'inviter_report_usage', { user_email: 'ana@citizengo.net', device_id: 'other-mac-9999', days: [{ day: today, page_id: '154268578340', invites: 50 }] }, ext);
+  r = await callTool(store, 'inviter_report_usage', { user_email: 'ana@example.org', device_id: 'other-mac-9999', days: [{ day: today, page_id: '154268578340', invites: 50 }] }, ext);
   check('a second computer is kept separately', table.size === 4);
-  r = await callTool(store, 'inviter_report_usage', { user_email: 'ana@citizengo.net', device_id: 'abcd-1234-efgh', days: [
+  r = await callTool(store, 'inviter_report_usage', { user_email: 'ana@example.org', device_id: 'abcd-1234-efgh', days: [
     { day: '2001-01-01', page_id: '154268578340', invites: 1 }, { day: today, page_id: 'abc', invites: 1 }, { day: today, page_id: '154268578340', invites: -3 },
   ] }, ext);
   check('old days, bad Page IDs and negative counts are skipped', JSON.parse(r.text).saved === 0 && JSON.parse(r.text).skipped === 3, r.text);
@@ -45,7 +45,7 @@ const yesterday = new Date(Date.now() - 864e5).toISOString().slice(0, 10);
   try { await callTool(store, 'page_inviter_usage', {}, ext); } catch (e) { refused = e; }
   check('the extension\'s own token cannot read usage', !!refused);
   r = await callTool(store, 'page_inviter_usage', { days: 7 }, { who: 'chris' });
-  check('the maintainer sees totals per person', /ana@citizengo\.net \| 505 \| 2 \| 2 \|/.test(r.text), r.text.split('\n')[0]);
+  check('the maintainer sees totals per person', /ana@example\.org \| 505 \| 2 \| 2 \|/.test(r.text), r.text.split('\n')[0]);
   check('and per Page, by name', /\| HazteOir\.org \| 500 \| 1 \|/.test(r.text));
   r = await callTool(store, 'page_inviter_usage', { user: 'nobody' }, { who: 'chris' });
   check('a filter with no match says so', /No Page Inviter usage/.test(r.text));

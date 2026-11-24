@@ -91,8 +91,8 @@ async function main() {
     console.log(`\n  spend this month   $${spent.toFixed(2)} of $${spend.budget}  (${pct}%) · ${Number(spend.post_reads || 0).toLocaleString('en-GB')} post reads, ${Number(spend.user_reads || 0).toLocaleString('en-GB')} user reads`);
     if (pct >= 100) problems.push(`X budget spent: est. $${spent.toFixed(2)} of $${spend.budget}. The collector refuses to run until X_MONTHLY_BUDGET_USD is raised or the month rolls over.`);
     else if (pct >= WARN_AT) warnings.push(`X spend is at ${pct}% of the $${spend.budget} monthly budget.`);
-    // The yearly cap agreed in Asana ("Review X API spending", 9 Nov 2026):
-    // $2,000 a year, and flag it there when spend gets close.
+    // The yearly cap agreed in Asana ("Review X API spending", 9 Nov 2026);
+    // flag it there when spend gets close.
     if (spend.year_budget) {
       const ySpent = Number(spend.year_cost_usd || 0);
       const yPct = Math.round((ySpent / spend.year_budget) * 100);

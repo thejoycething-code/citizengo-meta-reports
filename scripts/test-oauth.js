@@ -37,7 +37,7 @@ process.env.GOOGLE_AUTH_URL = `${GORIGIN}/auth`;
 process.env.GOOGLE_TOKEN_URL = `${GORIGIN}/token`;
 process.env.GOOGLE_JWKS_URL = `${GORIGIN}/certs`;
 process.env.GOOGLE_ISSUERS = 'https://accounts.google.com';
-process.env.ALLOWED_GOOGLE_DOMAINS = 'citizengo.net';
+process.env.ALLOWED_GOOGLE_DOMAINS = 'example.org';
 const { publicKey: GPUB, privateKey: GPRIV } = crypto.generateKeyPairSync('rsa', { modulusLength: 2048 });
 const { privateKey: OTHERPRIV } = crypto.generateKeyPairSync('rsa', { modulusLength: 2048 });
 const GJWK = { ...GPUB.export({ format: 'jwk' }), kid: 'test-kid', alg: 'RS256', use: 'sig' };
@@ -46,11 +46,11 @@ let expectedNonce = null;
 function mintIdToken(code) {
   const now = Math.floor(Date.now() / 1000);
   const base = { iss: 'https://accounts.google.com', aud: 'test-client', sub: '1001', iat: now, exp: now + 300,
-    email: 'alice@citizengo.net', email_verified: true, hd: 'citizengo.net', nonce: expectedNonce };
+    email: 'alice@example.org', email_verified: true, hd: 'example.org', nonce: expectedNonce };
   const variants = {
     ok: {},
     gmail: { email: 'alice@gmail.com', hd: undefined },
-    alias: { email: 'alice@citizengo.net', hd: undefined },          // consumer account with a work alias
+    alias: { email: 'alice@example.org', hd: undefined },          // consumer account with a work alias
     other: { email: 'bob@other.example', hd: 'other.example' },
     unverified: { email_verified: false },
     badnonce: { nonce: 'not-the-nonce' },
@@ -216,7 +216,7 @@ async function main() {
     const start = await fetch(`${ORIGIN}/api/oauth/google/start?${gq}`, { redirect: 'manual' });
     const gloc = new URL(start.headers.get('location'));
     check('start sends the browser to Google with hd, nonce and a signed state',
-      start.status === 302 && gloc.origin === GORIGIN && gloc.searchParams.get('hd') === 'citizengo.net'
+      start.status === 302 && gloc.origin === GORIGIN && gloc.searchParams.get('hd') === 'example.org'
       && !!gloc.searchParams.get('nonce') && !!gloc.searchParams.get('state')
       && gloc.searchParams.get('redirect_uri') === `${ORIGIN}/api/oauth/google/callback`, gloc.origin + gloc.pathname);
     const gstate = gloc.searchParams.get('state');
@@ -229,7 +229,7 @@ async function main() {
 
     const good = await cb('ok');
     const back = good.status === 302 ? new URL(good.headers.get('location')) : null;
-    check('a verified citizengo.net Workspace account is redirected back to Claude with a code',
+    check('a verified example.org Workspace account is redirected back to Claude with a code',
       !!back && back.origin === 'https://claude.ai' && !!back.searchParams.get('code') && back.searchParams.get('state') === 'gstate-xyz',
       `HTTP ${good.status}`);
 
@@ -247,7 +247,7 @@ async function main() {
       body: new URLSearchParams({ grant_type: 'authorization_code', code: back.searchParams.get('code'), code_verifier: verifier,
         redirect_uri: 'https://claude.ai/api/mcp/auth_callback', client_id: reg.client_id }).toString() })).json();
     const gclaims = JSON.parse(Buffer.from((gtok.access_token || '..').split('.')[1].replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8'));
-    check('the access token names the verified work email', gclaims.who === 'alice@citizengo.net', gclaims.who);
+    check('the access token names the verified work email', gclaims.who === 'alice@example.org', gclaims.who);
     const gcall = await (await fetch(`${ORIGIN}/api/mcp`, { method: 'POST', headers: { ...MCPH, Authorization: `Bearer ${gtok.access_token}` }, body: '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' })).json();
     check('a Google-identity token authorises tools/list', !!(gcall.result && gcall.result.tools.length === TOOLS.length));
     const gref = await (await fetch(`${ORIGIN}/api/oauth/token`, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -257,9 +257,9 @@ async function main() {
     // GOOGLE_DESK_NAMES: a paired work email acts as its desk name, so
     // Content Engine teams carry over; an unpaired one stays the email.
     const { deskNameFor } = require('../lib/identity');
-    process.env.GOOGLE_DESK_NAMES = 'bob@citizengo.net=bob, Alice@CitizenGO.net = alice';
-    check('a paired email maps to its desk name (case-insensitive)', deskNameFor('alice@citizengo.net') === 'alice');
-    check('an unpaired email and a plain name pass through', deskNameFor('carol@citizengo.net') === 'carol@citizengo.net' && deskNameFor('chris') === 'chris');
+    process.env.GOOGLE_DESK_NAMES = 'bob@example.org=bob, Alice@Example.org = alice';
+    check('a paired email maps to its desk name (case-insensitive)', deskNameFor('alice@example.org') === 'alice');
+    check('an unpaired email and a plain name pass through', deskNameFor('carol@example.org') === 'carol@example.org' && deskNameFor('chris') === 'chris');
     const logged = [];
     const realLog = console.log;
     console.log = (line) => { logged.push(String(line)); };
@@ -280,7 +280,7 @@ async function main() {
     check('while a bearer token sent straight to /api/mcp still works (Page Inviter)', !!direct.result);
     process.env.MCP_TOKEN_CONSENT = 'on';
 
-    process.env.MCP_REVOKED_EMAILS = 'Alice@CitizenGO.net';
+    process.env.MCP_REVOKED_EMAILS = 'Alice@Example.org';
     const revoked = await fetch(`${ORIGIN}/api/mcp`, { method: 'POST', headers: { ...MCPH, Authorization: `Bearer ${gtok.access_token}` }, body: '{"jsonrpc":"2.0","id":1,"method":"ping"}' });
     check('adding the email to MCP_REVOKED_EMAILS ends the session on the next call (case-insensitive)', revoked.status === 401, `HTTP ${revoked.status}`);
     const revokedRef = await (await fetch(`${ORIGIN}/api/oauth/token`, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },

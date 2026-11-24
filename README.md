@@ -320,7 +320,7 @@ require a newer extension, or `revert_to` an earlier row, and checks the result
 against the shape the extension expects before saving — a config that would
 break the extension is refused, never stored. It is **the only write on the MCP
 request path**: one table, append-only, and only for the names or Google emails
-in `INVITER_CONFIG_ADMINS` (unset means nobody; currently Christopher Joyce only: `chris,cjoyce@citizengo.net`). Anyone else who asks is told to send the request to the maintainer named in the config (`maintainerName`/`maintainerEmail`), or to `INVITER_CONFIG_CONTACT`. The extension's own token,
+in `INVITER_CONFIG_ADMINS` (unset means nobody; currently Christopher Joyce only: `chris,maintainer@example.org`). Anyone else who asks is told to send the request to the maintainer named in the config (`maintainerName`/`maintainerEmail`), or to `INVITER_CONFIG_CONTACT`. The extension's own token,
 `invite-to-like-extension`, can read but not write. The extension calls from
 `chrome-extension://gndfogfkkcpphoddibbooeoclgkgmcef`, a fixed ID pinned by the
 `key` in its manifest and allowlisted in `lib/origin.js`. `npm run
@@ -383,10 +383,9 @@ production, or every request is blocked before reaching the auth in `api/mcp.js`
 
 ## X (Twitter) source — LIVE for @CitizenGO
 
-Scoped 8 Sep 2026 (Asana task 1218268802872745; brief in Drive, "X data via MCP –
-scoping brief"). **Live since 30 Sep 2026 for the Global account @CitizenGO
-only.** Nightly collection at 05:15 UTC, six tools on the connector, 242 posts
-backfilled to 100 days on the first run for an estimated $0.25. X developer app:
+Scoped 8 Sep 2026 (internal scoping brief). **Live since 30 Sep 2026 for the
+Global account @CitizenGO only.** Nightly collection at 05:15 UTC, six tools on
+the connector, 242 posts backfilled to 100 days on the first run. X developer app:
 "CitizenGO Reporting". Adding another account is step 5 of the checklist below;
 switching off is the paragraph after it.
 
@@ -415,21 +414,19 @@ against the live API — `npm run probe:x` is that check and must run first.
   `lib/xapi.js`); anything else lands in `x_post_metrics.errors`.
 - **X 5xx is retried twice** (2s, 6s). A pass that still fails marks the run
   `failed` or `partial`, never `ok` with zero posts.
-- **Billing is per resource RETURNED**, prepaid: $0.001 per own post, $0.005
-  per anyone else's, $0.010 per user lookup; repeats within a UTC day charged
-  once. So the collection schedule is the cost. Agreed 30 Sep 2026
-  (`lib/xschedule.js`): every post is read **daily for days 0-7, then at days
-  14, 28, 60 and 85** - 12 reads per post. Day 28 is the insurance read inside
-  X's documented 30 days; 60 and 85 rely on the observed ~89. A missed night
-  catches up at the next run (`dueForCheckpoint`). Steady state from the third
-  month: 18 accounts at 5 posts/day is **$37.80/month** ($167.40 if X bills the
-  ordinary rate); @CitizenGO alone is about $1.20. `x_collection_runs` is the
-  ledger; the collector refuses to start once `X_MONTHLY_BUDGET_USD` (a spike
-  guard, $200 on the Mini and in Actions) is spent, or once the last 365 days
-  reach `X_ANNUAL_BUDGET_USD` ($2,000, `lib/xbudget.js`), and `npm run check:x`
-  warns at 80% of either. The $2,000/year cap and keeping all 12 reads per post
-  were agreed on 9 Nov 2026 in the Asana task "Review X API spending"
-  (~$1,560/year approved, review in month 11).
+- **Billing is per resource RETURNED**, prepaid, at different rates for own
+  posts, anyone else's posts and user lookups (see X's pricing page); repeats
+  within a UTC day charged once. So the collection schedule is the cost.
+  Agreed 30 Sep 2026 (`lib/xschedule.js`): every post is read **daily for days
+  0-7, then at days 14, 28, 60 and 85** - 12 reads per post. Day 28 is the
+  insurance read inside X's documented 30 days; 60 and 85 rely on the observed
+  ~89. A missed night catches up at the next run (`dueForCheckpoint`).
+  `lib/xschedule.js` projects the steady-state monthly cost. `x_collection_runs`
+  is the ledger; the collector refuses to start once `X_MONTHLY_BUDGET_USD` (a
+  spike guard) is spent, or once the last 365 days reach `X_ANNUAL_BUDGET_USD`
+  (`lib/xbudget.js`), and `npm run check:x` warns at 80% of either.
+  The yearly cap and keeping all 12 reads per post were agreed internally on
+  9 Nov 2026 (review in month 11).
 - **The watchdog watches the slack.** If reads of posts aged 31-89 days stop
   returning private metrics, `check-x-health.js` warns that X has tightened
   and the day-60 and day-85 checkpoints are buying public metrics only.
@@ -473,7 +470,7 @@ against the live API — `npm run probe:x` is that check and must run first.
   how far viewers got through each video, the video file itself, countries
   that withhold a post, X Article titles, the HTTP status of each link, plus
   profile fields. `scripts/x-refresh-posts.js` re-reads old posts to fill
-  these in (2 Oct 2026: 4,339 posts, $19.38, 2,404 long posts repaired); it
+  these in (2 Oct 2026: 4,339 posts, 2,404 long posts repaired); it
   writes x_posts only, never a metric snapshot. Expansions are
   NOT free (they return extra billed posts and users), so only media is
   expanded.
@@ -517,7 +514,7 @@ account instead of a pasted token.
 
 1. **X developer account and app.** Check with Ignacio whether one exists (he
    uses the X API). Create an OAuth 2.0 app: type Web App, read-only, callback
-   `https://meta-organic-reporting.vercel.app/api/x/callback`. Load $20 of
+   `https://meta-organic-reporting.vercel.app/api/x/callback`. Load some
    credits and set a spending cap in the console.
 2. **Keys.** `npm run x:keygen`. Private key to GitHub Actions secrets ONLY;
    public key to Vercel ONLY; invite secret to both and to local `.env`.
@@ -537,7 +534,7 @@ account instead of a pasted token.
    spokespersons: `--kind spokesperson`, after they have agreed.
 6. **First run by hand.** Actions → X collection → Run workflow (dispatch
    always runs). Check the step summary's cost line. Optionally a one-off
-   `backfill_days=90` (public metrics only, ~$0.10 per 100 posts).
+   `backfill_days=90` (public metrics only).
 7. **Switch on.** Repo variable `X_COLLECT_ENABLED=true`; add
    `node scripts/check-x-health.js` as a step in `watchdog.yml` (with
    `if: always()`); set `X_TOOLS_ENABLED=true` on Vercel and redeploy. Tell

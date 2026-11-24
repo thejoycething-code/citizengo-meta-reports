@@ -19,7 +19,7 @@ const ROOT = path.join(__dirname, '..');
 const STRONG = 'cgo_Kd8vQ2mXpL7nRt4wYzB6hJ3s';
 // The shape that was live in production until this review: twenty characters,
 // one character class, dictionary words.
-const WEAK = 'cgo_team_shared_2026';
+const WEAK = 'cgo_exampleweaktoken';
 
 process.env.MCP_TOKENS = STRONG;
 process.env.SUPABASE_URL = 'http://localhost:1';       // never reached; auth fails first
@@ -511,19 +511,19 @@ const ping = { jsonrpc: '2.0', id: 1, method: 'ping' };
     const saved = { ...process.env };
     process.env.MCP_TOKENS = `alice:${STRONG}`;
     process.env.GOOGLE_CLIENT_ID = 'x'; process.env.GOOGLE_CLIENT_SECRET = 'y';
-    process.env.ALLOWED_GOOGLE_DOMAINS = 'citizengo.net';
+    process.env.ALLOWED_GOOGLE_DOMAINS = 'example.org';
     delete process.env.MCP_REVOKED_EMAILS;
     check('a name still in MCP_TOKENS is valid', await identityStillValid('alice'));
     check('a name no longer in MCP_TOKENS is not', !(await identityStillValid('mallory')));
-    check('a work email in an allowed domain is valid', await identityStillValid('someone@citizengo.net'));
-    check('the domain check is case-insensitive', await identityStillValid('Someone@CitizenGO.net'));
+    check('a work email in an allowed domain is valid', await identityStillValid('someone@example.org'));
+    check('the domain check is case-insensitive', await identityStillValid('Someone@Example.org'));
     check('an email in another domain is not', !(await identityStillValid('someone@gmail.com')));
     check('an email with no domain is not', !(await identityStillValid('someone@')));
-    process.env.MCP_REVOKED_EMAILS = 'someone@citizengo.net';
-    check('a revoked email is not, whatever its domain', !(await identityStillValid('Someone@citizengo.net')));
+    process.env.MCP_REVOKED_EMAILS = 'someone@example.org';
+    check('a revoked email is not, whatever its domain', !(await identityStillValid('Someone@example.org')));
     delete process.env.MCP_REVOKED_EMAILS;
     delete process.env.GOOGLE_CLIENT_ID;
-    check('with Google sign-in off, no email identity is valid', !(await identityStillValid('someone@citizengo.net')));
+    check('with Google sign-in off, no email identity is valid', !(await identityStillValid('someone@example.org')));
     check('but names still are', await identityStillValid('alice'));
     check('nothing and nonsense are not', !(await identityStillValid('')) && !(await identityStillValid(null)) && !(await identityStillValid(42)));
     for (const k of ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'ALLOWED_GOOGLE_DOMAINS', 'MCP_REVOKED_EMAILS']) delete process.env[k];

@@ -102,7 +102,7 @@ async function main() {
   delete process.env.INVITER_CONFIG_ADMINS;
   let u = await callTool(store, 'update_inviter_config', { note: 'x', set: { notice: 'hi' } }, { who: 'Chris' });
   check('nobody may write while INVITER_CONFIG_ADMINS is unset', u.isError && store.inserts === 0, u.text);
-  process.env.INVITER_CONFIG_ADMINS = 'Chris, cjoyce@citizengo.net';
+  process.env.INVITER_CONFIG_ADMINS = 'Chris, maintainer@example.org';
   u = await callTool(store, 'update_inviter_config', { note: 'x', set: { notice: 'hi' } }, { who: 'invite-to-like-extension' });
   check('the extension\'s own token cannot write', u.isError && store.inserts === 0);
   check('a refused request is routed to the maintainer named in the config, or the fallback contact',
@@ -136,7 +136,7 @@ async function main() {
   check('configVersion goes up by one', live.config.configVersion === seed.configVersion + 1);
   check('the note records who made the change', /— Chris$/.test(live.note), live.note);
   check('earlier versions are kept', store.rows.length === 2 && store.rows[0].config.inviteWords.length === seed.inviteWords.length);
-  u = await callTool(store, 'update_inviter_config', { note: 'Pause', set: { killSwitch: true, notice: 'Facebook is limiting invites this week' } }, { who: 'cjoyce@citizengo.net' });
+  u = await callTool(store, 'update_inviter_config', { note: 'Pause', set: { killSwitch: true, notice: 'Facebook is limiting invites this week' } }, { who: 'maintainer@example.org' });
   check('a Google sign-in on the list can pause everyone', !u.isError && (await store.inviterConfigs(1))[0].config.killSwitch === true);
   u = await callTool(store, 'update_inviter_config', { note: 'again', set: { killSwitch: true } }, { who: 'chris' });
   check('a change that changes nothing is not saved', !u.isError && store.inserts === 2);
@@ -144,10 +144,10 @@ async function main() {
   const reverted = (await store.inviterConfigs(1))[0].config;
   check('revert_to brings back an earlier version as a new row', !u.isError && reverted.killSwitch === false && reverted.configVersion === seed.configVersion + 3 && store.inserts === 3);
 
-  u = await callTool(store, 'update_inviter_config', { note: 'Contact', set: { maintainerName: 'Christopher Joyce', maintainerEmail: 'cjoyce@citizengo.net' } }, { who: 'chris' });
+  u = await callTool(store, 'update_inviter_config', { note: 'Contact', set: { maintainerName: 'Christopher Joyce', maintainerEmail: 'maintainer@example.org' } }, { who: 'chris' });
   check('the maintainer\'s name and email can be added to a config saved before they existed', !u.isError, u.text.split('\n')[0]);
   u = await callTool(store, 'update_inviter_config', { note: 'x', set: { notice: 'hi' } }, { who: 'someone-else' });
-  check('after that, refusals name Christopher and his email', /Christopher Joyce \(cjoyce@citizengo\.net\)/.test(u.text));
+  check('after that, refusals name Christopher and his email', /Christopher Joyce \(maintainer@example\.org\)/.test(u.text));
   u = await callTool(store, 'update_inviter_config', { note: 'x', set: { maintainerEmail: 'not an email' } }, { who: 'chris' });
   check('a malformed maintainer email is refused', u.isError);
 

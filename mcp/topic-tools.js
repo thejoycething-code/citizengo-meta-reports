@@ -1,6 +1,6 @@
 'use strict';
 // topic_performance (30 Oct 2026): how one topic did across Facebook, Instagram
-// and X in a single answer (Asana 1218612679195558, Candela's cross-platform
+// and X in a single answer (an Asana task, Candela's cross-platform
 // topic question).
 //
 // The three platforms count different things - Facebook views, Instagram

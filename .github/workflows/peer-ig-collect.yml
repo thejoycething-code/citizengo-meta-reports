@@ -11,8 +11,8 @@ name: Peer watch (Instagram)
 # post while it is still taking off, and a weekly read saw it up to six days
 # late. Still free: ~60 business_discovery calls a day.
 #
-# Opponents (31 Oct 2026, authorised by Christopher Joyce, Asana
-# 1220076872722026): the scheduled run then reads config/opponents-ig.json the
+# Opponents (31 Oct 2026, authorised by Christopher Joyce, internal
+# Asana task): the scheduled run then reads config/opponents-ig.json the
 # same way, and their UK issue ads from Meta's Ad Library (collector/ad-library.js),
 # and deletes opponent data older than 120 days. Free sources only. To stop it,
 # set OPPONENTS_IG_ENABLED below to 'false': both steps become dry runs.

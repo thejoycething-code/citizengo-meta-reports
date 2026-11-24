@@ -25,7 +25,7 @@
 //      public metrics always arrive.
 //   6. A run row with reads and estimated cost. Refuses to START when the
 //      month's estimated spend has reached X_MONTHLY_BUDGET_USD, or the last
-//      365 days' has reached X_ANNUAL_BUDGET_USD (default $2,000, lib/xbudget.js).
+//      365 days' has reached X_ANNUAL_BUDGET_USD (lib/xbudget.js).
 //
 // Spokesperson accounts are collected only for posts carrying a CitizenGO link
 // or mentioning CitizenGO (lib/xschedule.js isAboutUs). Everything else on a
@@ -100,7 +100,7 @@ const PRIVATE_KEY = String(process.env.X_TOKEN_PRIVATE_KEY || '').replace(/\\n/g
 
 // Spend in THIS run, shared across accounts collected in parallel, and what the
 // month's budget leaves. The start-of-run guard alone could not stop one large
-// run - a full-history backfill of 12 accounts is ~$86 - from overshooting the
+// run - a full-history backfill of many accounts - from overshooting the
 // cap, so every backfill page is checked against these before it is requested.
 const RUN_SPEND = { spent: 0, remaining: Infinity, nightlyReserve: 0, stoppedAtBudget: false, limitedBy: 'monthly' };
 
@@ -601,8 +601,8 @@ async function collectAccount(account, out) {
   // X bills $0.001 only when the account read IS the account that owns the
   // developer app; every other account is $0.005 ("not a discount for client
   // or managed accounts" - docs.x.com pricing). Pricing every account as owned
-  // under-counted spend five-fold: the ledger said $2.39 on 30 Sep 2026 when
-  // the X console said $10.40, so the budget guard would have let spend run
+  // under-counted spend about five-fold (the ledger and the X console disagreed
+  // on 30 Sep 2026), so the budget guard would have let spend run
   // well past the cap. X_APP_OWNER_ID names the owning account.
   charge();
   const cost = sched.estimateCost({ postReads: client.tally.postReads, userReads: client.tally.userReads, owned });
@@ -655,7 +655,7 @@ async function main() {
   let accounts = await loadAccounts();
   // The nightly reserve covers EVERY collected account, not just the ones this
   // run is limited to: a backfill of two accounts must not spend what the other
-  // thirteen need tonight (30 Sep 2026: a 2-account run reserved $8, not $60).
+  // thirteen need tonight (seen on 30 Sep 2026).
   const allAccounts = accounts.length;
   if (ONLY.length) accounts = accounts.filter((a) => ONLY.includes(a.account_id) || ONLY.includes(a.label) || ONLY.includes(a.username));
   if (!accounts.length) {

@@ -13,11 +13,10 @@
 // ONE ROW PER AD, holding the ad's LIFETIME totals (18 Nov 2026). This used to
 // store whatever a rolling "last N days" window returned, keyed on the window's
 // dates. The window moves every night, so every night wrote a new row for the
-// same ad, and the paid-vs-organic view summed them: a CitizenGO Argentina
-// boost that spent ARS 79,402 showed ARS 627,749 after ten nights, and its
-// reach (23,025) showed as 190,815, more than its 34,604 impressions. A window
-// also cuts off the start of any ad that began before it, and an ad that stops
-// delivering eventually falls out of it altogether.
+// same ad, and the paid-vs-organic view summed them: one boost showed about
+// eight times its real spend after ten nights, and a reach larger than its
+// impressions. A window also cuts off the start of any ad that began before
+// it, and an ad that stops delivering eventually falls out of it altogether.
 //
 // So the window is now used only to FIND ads that delivered recently. Their
 // totals are then asked for with date_preset=maximum, which Meta answers with
