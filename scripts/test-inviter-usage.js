@@ -19,18 +19,18 @@ const yesterday = new Date(Date.now() - 864e5).toISOString().slice(0, 10);
 (async () => {
   console.log('1. The extension reports');
   let r = await callTool(store, 'inviter_report_usage', { user_email: 'Ana@Example.org', device_id: 'abcd-1234-efgh', extension_version: '1.4', days: [
-    { day: today, page_id: '100000000002', page_name: 'HazteOir.org', invites: 120 },
-    { day: yesterday, page_id: '100000000002', page_name: 'HazteOir.org', invites: 300 },
-    { day: today, page_id: 'profile:100000000000003', invites: 5 },
+    { day: today, page_id: '154268578340', page_name: 'HazteOir.org', invites: 120 },
+    { day: yesterday, page_id: '154268578340', page_name: 'HazteOir.org', invites: 300 },
+    { day: today, page_id: 'profile:100064551261576', invites: 5 },
   ] }, ext);
   check('saves its rows', !r.isError && JSON.parse(r.text).saved === 3, r.text);
   check('email is lower-cased', [...table.values()].every((x) => x.user_email === 'ana@example.org'));
-  r = await callTool(store, 'inviter_report_usage', { user_email: 'ana@example.org', device_id: 'abcd-1234-efgh', days: [{ day: today, page_id: '100000000002', invites: 150 }] }, ext);
-  check('a later report replaces the day\'s total rather than adding', [...table.values()].find((x) => x.day === today && x.page_id === '100000000002').invites === 150);
-  r = await callTool(store, 'inviter_report_usage', { user_email: 'ana@example.org', device_id: 'other-mac-9999', days: [{ day: today, page_id: '100000000002', invites: 50 }] }, ext);
+  r = await callTool(store, 'inviter_report_usage', { user_email: 'ana@example.org', device_id: 'abcd-1234-efgh', days: [{ day: today, page_id: '154268578340', invites: 150 }] }, ext);
+  check('a later report replaces the day\'s total rather than adding', [...table.values()].find((x) => x.day === today && x.page_id === '154268578340').invites === 150);
+  r = await callTool(store, 'inviter_report_usage', { user_email: 'ana@example.org', device_id: 'other-mac-9999', days: [{ day: today, page_id: '154268578340', invites: 50 }] }, ext);
   check('a second computer is kept separately', table.size === 4);
   r = await callTool(store, 'inviter_report_usage', { user_email: 'ana@example.org', device_id: 'abcd-1234-efgh', days: [
-    { day: '2001-01-01', page_id: '100000000002', invites: 1 }, { day: today, page_id: 'abc', invites: 1 }, { day: today, page_id: '100000000002', invites: -3 },
+    { day: '2001-01-01', page_id: '154268578340', invites: 1 }, { day: today, page_id: 'abc', invites: 1 }, { day: today, page_id: '154268578340', invites: -3 },
   ] }, ext);
   check('old days, bad Page IDs and negative counts are skipped', JSON.parse(r.text).saved === 0 && JSON.parse(r.text).skipped === 3, r.text);
   r = await callTool(store, 'inviter_report_usage', { user_email: 'not an email', device_id: 'abcd-1234-efgh', days: [] }, ext);

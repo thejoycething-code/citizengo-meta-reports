@@ -20,7 +20,7 @@ const ad = (id, page_id, page_name, extra = {}) => ({ id, page_id, page_name, ad
 (async () => {
   const pages = loadPages();
   eq('config: pages with a Facebook Page to read', pages.length > 0 && pages.every((p) => p.id || p.name), true);
-  eq('config: Dignity in Dying found by its Page name (no Page ids kept in the public config)', [pages.find((p) => p.label === 'Dignity in Dying').id, pages.find((p) => p.label === 'Dignity in Dying').name], [null, 'Dignity in Dying']);
+  eq('config: Dignity in Dying read by id', pages.find((p) => p.label === 'Dignity in Dying').id, '47612991154');
 
   const r = toRow(ad('1', 9, 'X', { ad_delivery_stop_time: null }), { label: 'X', topic: 'gender' }, '2026-10-31T00:00:00Z');
   eq('row: ranges as numbers, text variants deduplicated', [r.spend_lower, r.spend_upper, r.link_titles, r.delivery_stop], [100, 199, 'Act', null]);
@@ -31,14 +31,14 @@ const ad = (id, page_id, page_name, extra = {}) => ({ id, page_id, page_name, ad
   const get = async (path, params) => {
     calls.push(params);
     if (params.search_page_ids) {
-      return params.after ? { ok: true, body: { data: [ad('2', 10000000001, 'Dignity in Dying')] } }
-        : { ok: true, body: { data: [ad('1', 10000000001, 'Dignity in Dying')], paging: { next: 'n', cursors: { after: 'c1' } } } };
+      return params.after ? { ok: true, body: { data: [ad('2', 47612991154, 'Dignity in Dying')] } }
+        : { ok: true, body: { data: [ad('1', 47612991154, 'Dignity in Dying')], paging: { next: 'n', cursors: { after: 'c1' } } } };
     }
     return { ok: true, body: { data: [ad('3', 555, 'Stonewall'), ad('4', 777, 'Stonewall Housing')] } };
   };
   const writes = [];
   const opts = { dryRun: false, days: 90 };
-  const testPages = [{ id: '10000000001', name: 'Dignity in Dying', label: 'Dignity in Dying', topic: 'assisted-dying' },
+  const testPages = [{ id: '47612991154', name: 'Dignity in Dying', label: 'Dignity in Dying', topic: 'assisted-dying' },
     { id: null, name: 'Stonewall', label: 'Stonewall', topic: 'gender' }];
   const counts = await run({ get, upsert: async (t, rows) => writes.push([t, rows.map((x) => x.ad_id)]), purge: async () => ({ ads_deleted: 0 }),
     pages: testPages, opts, now: new Date('2026-10-31T00:00:00Z'), log: () => {} });

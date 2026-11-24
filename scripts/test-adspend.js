@@ -19,7 +19,7 @@ function eq(name, actual, expected) {
   else { console.log(`  FAIL  ${name}\n          expected ${e}\n          got      ${a}`); failed++; }
 }
 
-const POST = '1000000000000014_1000000000000016';
+const POST = '1092595733162631_1151513767270827';
 const LIFETIME = { ad_id: 'ad1', campaign_name: 'Papa', spend: '79402.19', impressions: '34604', reach: '23025', date_start: '2026-11-08', date_stop: '2026-11-12' };
 
 function fakeGraph({ pages = 1 } = {}) {

@@ -248,7 +248,7 @@ async function listPages(store) {
       + '\n\n'
       + table(['Page', 'ID', 'Followers', 'Last read'], dormant.map((g) => [g.name, g.page_id, n(g.followers_count), lastRead(g)]))
       + `\n\n_Totals and medians here cover ALL held history (${span}), not a recent window. For a like-for-like comparison over one period use compare_pages; do not mix these figures with its window._`
-      + `\n\n_The ID is the page's classic Facebook ID, which every tool takes. Post links often show a different number (e.g. HazteOir posts link via 1000000000000024): that is the same page's newer profile ID, which Facebook uses in URLs. Both refer to the same page._`
+      + `\n\n_The ID is the page's classic Facebook ID, which every tool takes. Post links often show a different number (e.g. HazteOir posts link via 1510300191127109): that is the same page's newer profile ID, which Facebook uses in URLs. Both refer to the same page._`
       + `\n\n_Only pages whose Business Portfolio has granted read access appear here. Pages missing from this list are an access gap, not inactive pages._`,
     data: pages,
   };

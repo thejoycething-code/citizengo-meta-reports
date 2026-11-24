@@ -23,17 +23,17 @@ const PORT = Number(argVal('port', 5700));
 // both tok-big and tok-small, to prove first-token-wins rather than duplicating.
 const TOKEN_PAGES = {
   'tok-big': [
-    { id: '100000000000009', name: 'CitizenGO', followers_count: 117665 },
-    { id: '100000000002', name: 'HazteOir.org', followers_count: 500000 },
-    { id: '100000000000010', name: 'CitizenGO France', followers_count: 12000 },
-    { id: '100000000000008', name: 'CitizenGO Deutsch', followers_count: 9000 },
+    { id: '434058216680321', name: 'CitizenGO', followers_count: 117665 },
+    { id: '154268578340', name: 'HazteOir.org', followers_count: 500000 },
+    { id: '702065149817690', name: 'CitizenGO France', followers_count: 12000 },
+    { id: '413326745503751', name: 'CitizenGO Deutsch', followers_count: 9000 },
   ],
   'tok-small': [
-    { id: '100000000002', name: 'HazteOir.org', followers_count: 500000 }, // overlap
-    { id: '100000000000006', name: 'Derecho a Vivir', followers_count: 40000 },
+    { id: '154268578340', name: 'HazteOir.org', followers_count: 500000 }, // overlap
+    { id: '221966714568910', name: 'Derecho a Vivir', followers_count: 40000 },
   ],
   'tok-uk': [
-    { id: '100000000000004', name: 'Citizen GO UK', followers_count: 8589 },
+    { id: '105872884133170', name: 'Citizen GO UK', followers_count: 8589 },
   ],
   // 'tok-dead' is deliberately absent -> authentication failure
 };
