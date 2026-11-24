@@ -25,8 +25,8 @@ function memoryStore() {
       { id: 'at', name: 'Austria', flag: '🇦🇹', accounts: [{ key: 'at-fb', platform: 'facebook' }] },
       { id: 'uk', name: 'United Kingdom', flag: '🇬🇧', accounts: [{ key: 'uk-fb', platform: 'facebook' }, { key: 'sc-fb', platform: 'facebook' }, { key: 'uk-x', platform: 'x' }] },
     ],
-    members: [{ team_id: 'de', who: 'greg', role: 'editor' }, { team_id: 'at', who: 'tamara@citizengo.net', role: 'editor' }, { team_id: 'uk', who: 'chris', role: 'admin' }],
-    rights: [{ who: 'greg', account_key: 'de-fb' }, { who: 'tamara@citizengo.net', account_key: 'at-fb' }, { who: 'chris', account_key: 'uk-fb' }],
+    members: [{ team_id: 'de', who: 'greg', role: 'editor' }, { team_id: 'at', who: 'tamara@example.org', role: 'editor' }, { team_id: 'uk', who: 'chris', role: 'admin' }],
+    rights: [{ who: 'greg', account_key: 'de-fb' }, { who: 'tamara@example.org', account_key: 'at-fb' }, { who: 'chris', account_key: 'uk-fb' }],
     posts: [], events: [],
     keyDates: [{ team_id: null, starts: '2026-11-20', title: "Universal Children's Day" }, { team_id: 'de', starts: '2026-11-22', title: 'Totensonntag' }, { team_id: 'at', starts: '2026-11-15', title: 'Leopolditag' }],
   };
@@ -111,20 +111,20 @@ const callErr = async (store, name, args, who) => { try { await tool(name)(store
   const de = await call(store, 'engine_create', { team: 'de', doc: docDe, id: 'de-1' }, 'greg');
   eq('greg creates a German post', [de.ok, de.post.status, de.post.post_at], [true, 'review', '2026-11-05T14:00:00.000Z']);
   eq('greg cannot add to Austria', await callErr(store, 'engine_create', { team: 'at', doc: {} }, 'greg'), 'ENGINE_NOT_MEMBER');
-  await call(store, 'engine_create', { team: 'at', doc: { title: 'Lebensschutz', posting: { destinations: ['at-fb'], at: '2026-11-06T09:00:00Z' } }, id: 'at-1' }, 'tamara@citizengo.net');
+  await call(store, 'engine_create', { team: 'at', doc: { title: 'Lebensschutz', posting: { destinations: ['at-fb'], at: '2026-11-06T09:00:00Z' } }, id: 'at-1' }, 'tamara@example.org');
 
-  eq('tamara cannot open the German desk', await callErr(store, 'engine_posts', { team: 'de' }, 'tamara@citizengo.net'), 'ENGINE_NOT_MEMBER');
-  eq('tamara cannot read a German post by id', await callErr(store, 'engine_post', { id: 'de-1' }, 'tamara@citizengo.net'), 'ENGINE_NOT_FOUND');
+  eq('tamara cannot open the German desk', await callErr(store, 'engine_posts', { team: 'de' }, 'tamara@example.org'), 'ENGINE_NOT_MEMBER');
+  eq('tamara cannot read a German post by id', await callErr(store, 'engine_post', { id: 'de-1' }, 'tamara@example.org'), 'ENGINE_NOT_FOUND');
   eq('anonymous is turned away', await callErr(store, 'engine_me', {}, 'anonymous'), 'ENGINE_SIGN_IN');
 
-  let cal = await call(store, 'engine_calendar', { from: '2026-11-01', to: '2026-11-30' }, 'tamara@citizengo.net');
+  let cal = await call(store, 'engine_calendar', { from: '2026-11-01', to: '2026-11-30' }, 'tamara@example.org');
   eq('calendar: German draft hidden from tamara, her own shows', cal.items.map((i) => i.id), ['at-1']);
   eq('calendar key dates: CitizenGO-wide plus her own team, not Germany\'s', cal.key_dates.map((k) => k.title).sort(), ['Leopolditag', "Universal Children's Day"]);
 
   // Approving: rights and versions.
   let st = await call(store, 'engine_status', { id: 'de-1', version: 1, action: 'approve' }, 'greg');
   eq('greg approves (de-x is posted by hand, needs no right)', [st.ok, st.post && st.post.status], [true, 'scheduled']);
-  cal = await call(store, 'engine_calendar', { from: '2026-11-01', to: '2026-11-30' }, 'tamara@citizengo.net');
+  cal = await call(store, 'engine_calendar', { from: '2026-11-01', to: '2026-11-30' }, 'tamara@example.org');
   const g = cal.items.find((i) => i.id === 'de-1');
   eq('calendar: scheduled German post visible to tamara, read-only, no working text', [!!g, g && g.editable, g && g.text], [true, false, undefined]);
 
@@ -204,9 +204,9 @@ const callErr = async (store, name, args, who) => { try { await tool(name)(store
   }
 
   // Copy an idea across teams.
-  const cp = await call(store, 'engine_copy', { id: 'de-1', to_team: 'at' }, 'tamara@citizengo.net');
+  const cp = await call(store, 'engine_copy', { id: 'de-1', to_team: 'at' }, 'tamara@example.org');
   eq('tamara copies the scheduled German post into Austria, without its posting plan', [cp.ok, cp.post.team_id, cp.post.status, cp.post.source_team, !!cp.post.doc.posting], [true, 'at', 'review', 'de', false]);
-  eq('tamara cannot copy a German draft she cannot see', await callErr(store, 'engine_copy', { id: 'uk-1', to_team: 'at' }, 'tamara@citizengo.net'), 'ENGINE_NOT_FOUND');
+  eq('tamara cannot copy a German draft she cannot see', await callErr(store, 'engine_copy', { id: 'uk-1', to_team: 'at' }, 'tamara@example.org'), 'ENGINE_NOT_FOUND');
 
   eq('every change is in the activity log', store.db.events.map((e) => e.action), ['create', 'create', 'approve', 'save', 'create', 'hold', 'create', 'copy']);
 
@@ -228,7 +228,7 @@ const callErr = async (store, name, args, who) => { try { await tool(name)(store
     eq('engine_record refuses the post text', bad.ok, false);
     const old = await call(store, 'engine_record', { id: p.id, version: v0, patch: { stale: null } }, 'chris');
     eq('engine_record refuses an old version', old.conflict, true);
-    eq('engine_record: other teams cannot record on it', await callErr(store, 'engine_record', { id: p.id, version: r.post.version, patch: { stale: null } }, 'tamara@citizengo.net'), 'ENGINE_NOT_FOUND');
+    eq('engine_record: other teams cannot record on it', await callErr(store, 'engine_record', { id: p.id, version: r.post.version, patch: { stale: null } }, 'tamara@example.org'), 'ENGINE_NOT_FOUND');
   }
 
   {
