@@ -15,9 +15,8 @@
 // dates. The window moves every night, so every night wrote a new row for the
 // same ad, and the paid-vs-organic view summed them: one boost showed about
 // eight times its real spend after ten nights, and a reach larger than its
-// impressions. A window
-// also cuts off the start of any ad that began before it, and an ad that stops
-// delivering eventually falls out of it altogether.
+// impressions. A window also cuts off the start of any ad that began before
+// it, and an ad that stops delivering eventually falls out of it altogether.
 //
 // So the window is now used only to FIND ads that delivered recently. Their
 // totals are then asked for with date_preset=maximum, which Meta answers with
