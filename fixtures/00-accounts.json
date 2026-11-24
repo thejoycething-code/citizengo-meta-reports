@@ -9,19 +9,19 @@
   "body": {
     "data": [
       {
-        "id": "1202888116239414",
+        "id": "1000000000000017",
         "name": "Citizen GO Scotland",
         "followers_count": 28,
         "access_token": "<redacted>"
       },
       {
-        "id": "1116066201596147",
+        "id": "1000000000000015",
         "name": "CGO Sandbox",
         "followers_count": 0,
         "access_token": "<redacted>"
       },
       {
-        "id": "434058216680321",
+        "id": "100000000000009",
         "name": "CitizenGO",
         "followers_count": 117664,
         "access_token": "<redacted>"
@@ -29,8 +29,8 @@
     ],
     "paging": {
       "cursors": {
-        "before": "QVFIVFh3Q05DZAV9XLTNjaDh6THJTb3NQWGp3RHJqLS1jNjNyRUY4U3U4dVRNeE10ZAzZAYXy1ScDdwTHNCZAEZAwNkpfeE1ERVpCZA1hibkx6VzhtWDgxUG9icEdB",
-        "after": "QVFIVFY3cnZARc3FVeldNSEhUd3FxRmtQUUdyc19qbDFiX2VVdkJlR2lKaW5ncjZAQNWp4dHpPdWN0dmtUVHc4QXZAXeHJHTGdkVzlsTXlIcXptTVNWTXNKWTJn"
+        "before": "REDACTED_CURSOR",
+        "after": "REDACTED_CURSOR"
       }
     }
   }
