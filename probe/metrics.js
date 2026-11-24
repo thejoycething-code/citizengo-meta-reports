@@ -1,6 +1,6 @@
 'use strict';
 // Metric and field sets, corrected by the Phase 0 probe on 2026-08-20 against
-// the CitizenGO main page (434058216680321). Every verdict below is observed,
+// the CitizenGO main page (100000000000009). Every verdict below is observed,
 // not documented — see fixtures/.
 //
 // THE HEADLINE FINDING: reach is not dead. The Jun 2026 deprecation retired the
@@ -24,7 +24,7 @@ const POST_METRICS_EXPECTED_DEAD = [
   'post_impressions_fan',
 ];
 
-// CONFIRMED LIVE. Sample values from post 434058216680321_1517220967114396.
+// CONFIRMED LIVE. Sample values from post 100000000000009_1000000000000029.
 const POST_METRICS_CANDIDATE = [
   'post_total_media_view_unique',   // 569 — unique reach
   'post_media_view',               // 789 — total views

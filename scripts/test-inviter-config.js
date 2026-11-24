@@ -35,7 +35,7 @@ function seedConfig() {
     limitPatterns: ['try again later'], pageLimitPatterns: ['no more invitations to like this page'],
     reactSummaryPatterns: ['see who reacted'],
     postLinkPattern: '/(posts|reel)\\b',
-    reactions: { 1635855486666999: 'rLike' },
+    reactions: { 1000000000000032: 'rLike' },
     selectors: {
       row: 'div', toolbar: '[role="toolbar"]', tab: '[role="tab"]', dialog: '[role="dialog"]',
       alerts: '[role="dialog"]', limitLink: 'a', reactionIcon: '/reaction/image/(\\d+)', pageIdInHtml: '"delegate_page_id":"(\\d+)"',
@@ -59,15 +59,15 @@ function memoryStore(initial) {
     async freshness() { return { latest: '2026-09-01', recentFailures: 0 }; },
     async loadAll() {
       return {
-        pages: [{ page_id: '105872884133170', name: 'Citizen GO UK', platform: 'facebook', is_active: true },
-          { page_id: '434058216680321', name: 'CitizenGO', platform: 'facebook', is_active: true }],
+        pages: [{ page_id: '100000000000004', name: 'Citizen GO UK', platform: 'facebook', is_active: true },
+          { page_id: '100000000000009', name: 'CitizenGO', platform: 'facebook', is_active: true }],
         posts: [
-          { post_id: '1_a', page_id: '105872884133170', created_time: new Date(Date.now() - 2 * 864e5).toISOString(), permalink_url: 'https://www.facebook.com/1/posts/a', message: 'secret copy' },
-          { post_id: '1_b', page_id: '105872884133170', created_time: new Date(Date.now() - 90 * 864e5).toISOString(), permalink_url: 'https://www.facebook.com/1/posts/b', message: 'old' },
+          { post_id: '1_a', page_id: '100000000000004', created_time: new Date(Date.now() - 2 * 864e5).toISOString(), permalink_url: 'https://www.facebook.com/1/posts/a', message: 'secret copy' },
+          { post_id: '1_b', page_id: '100000000000004', created_time: new Date(Date.now() - 90 * 864e5).toISOString(), permalink_url: 'https://www.facebook.com/1/posts/b', message: 'old' },
         ],
         metrics: [
-          { post_id: '1_a', page_id: '105872884133170', collected_date: '2026-10-05', reactions_total: 70, views_total: 999 },
-          { post_id: '1_a', page_id: '105872884133170', collected_date: '2026-10-06', reactions_total: 74, views_total: 1200 },
+          { post_id: '1_a', page_id: '100000000000004', collected_date: '2026-10-05', reactions_total: 70, views_total: 999 },
+          { post_id: '1_a', page_id: '100000000000004', collected_date: '2026-10-06', reactions_total: 74, views_total: 1200 },
         ],
       };
     },
@@ -183,7 +183,7 @@ async function main() {
   const pg = await callTool(store, 'inviter_pages', {}, ext);
   const pgs = JSON.parse(pg.text).pages;
   check('inviter_pages returns names and IDs only', pgs.length === 2 && pgs.every((p) => JSON.stringify(Object.keys(p)) === '["page_id","name"]') && pgs.some((p) => p.name === 'CitizenGO'));
-  const po = await callTool(store, 'inviter_posts', { page_id: '105872884133170', days: 60 }, ext);
+  const po = await callTool(store, 'inviter_posts', { page_id: '100000000000004', days: 60 }, ext);
   const posts = JSON.parse(po.text).posts;
   check('inviter_posts returns recent posts with their latest reaction total', posts.length === 1 && posts[0].reactions_total === 74 && posts[0].permalink_url.endsWith('/posts/a'));
   check('and nothing else: no views, no post text', !/views|secret copy/.test(po.text), po.text);

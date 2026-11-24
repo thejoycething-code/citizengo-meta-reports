@@ -40,7 +40,7 @@ const CASES = [
   ['list_pages', {}],
   ['compare_pages', { days: 30 }],
   ['top_posts', { sort: 'beyond', limit: 3, days: 30 }],
-  ['page_summary', { page_id: '434058216680321', days: 30 }],
+  ['page_summary', { page_id: '100000000000009', days: 30 }],
   ['data_health', {}],
   ['top_posts', { page_id: 'does-not-exist' }],
   ['no_such_tool', {}],

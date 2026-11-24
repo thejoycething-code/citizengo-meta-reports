@@ -118,7 +118,7 @@ eq('account total: X signers from its posts (878 + 14), with 878 shown as via a 
 // tags every Page link "cgo-fbpage", a standing code since June 2025, so its
 // 39,598 Facebook signers (all time) belong to every use of it, not to the
 // four September posts, which had 18,996 views and 1,143 clicks between them.
-const hu = (id) => ({ platform: 'facebook', post_id: id, account_id: '773710406017012', account_label: 'CitizenGO Magyarország', account_kind: 'organisation', posted_at: '2026-09-28', campaign_code: 'cgo-fbpage', owner: null, series: null, petition_id: null });
+const hu = (id) => ({ platform: 'facebook', post_id: id, account_id: '100000000000011', account_label: 'CitizenGO Magyarország', account_kind: 'organisation', posted_at: '2026-09-28', campaign_code: 'cgo-fbpage', owner: null, series: null, petition_id: null });
 const huPosts = [hu('f1'), hu('f2'), hu('f3'), hu('f4')];
 const huSigs = [S('cgo-fbpage', 'fb', 39598, 15439), S('cgo-fbpage', 'tw', 7, 2)];
 const huReach = new Map([['f1', { platform: 'facebook', impressions: 2738, url_link_clicks: 402 }], ['f2', { platform: 'facebook', impressions: 9476, url_link_clicks: 110 }], ['f3', { platform: 'facebook', impressions: 1260, url_link_clicks: 29 }], ['f4', { platform: 'facebook', impressions: 5522, url_link_clicks: 602 }]]);

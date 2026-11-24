@@ -1,6 +1,8 @@
--- México team (3 Nov 2026): Elisa trials the desk for CitizenGO México and
+-- México team (3 Nov 2026): the México lead trials the desk for CitizenGO México and
 -- CitizenGO Latam. Run once in the Supabase SQL editor BEFORE deploying the
 -- code that reads these columns. Safe to run twice.
+-- The page_id and ig_id values below are placeholders: put the real IDs in
+-- before running it.
 
 -- 1. Each team's time zone (Analytics best times, inbox hours). Existing teams
 --    keep UK time.
@@ -8,13 +10,13 @@ alter table public.engine_teams add column if not exists tz text not null defaul
 comment on column public.engine_teams.tz is 'IANA time zone the team works in: Analytics best times and inbox hours use it.';
 
 -- 2. The México team: Mexico and Latam pages (both already collected nightly).
---    Elisa joins through an invite link from Settings › Team and access; her
+--    The México lead joins through an invite link from Settings › Team and access; her
 --    posting rights come from her own Facebook connection, as for everyone.
 insert into public.engine_teams (id, name, flag, tz, accounts) values ('mx', 'México', '🇲🇽', 'America/Mexico_City', '[
-  {"key": "mx-fb", "name": "Citizengo México", "page_id": "1281328458390126", "platform": "facebook"},
-  {"key": "mx-ig", "name": "citizengo_mexico", "ig_id": "17841417546423111", "handle": "citizengo_mexico", "platform": "instagram"},
-  {"key": "latam-fb", "name": "CitizenGO Latam", "page_id": "113661646716028", "platform": "facebook"},
-  {"key": "latam-ig", "name": "citizengo_latam", "ig_id": "17841465038522259", "handle": "citizengo_latam", "platform": "instagram"},
+  {"key": "mx-fb", "name": "Citizengo México", "page_id": "1000000000000018", "platform": "facebook"},
+  {"key": "mx-ig", "name": "citizengo_mexico", "ig_id": "10000000000000034", "handle": "citizengo_mexico", "platform": "instagram"},
+  {"key": "latam-fb", "name": "CitizenGO Latam", "page_id": "100000000000005", "platform": "facebook"},
+  {"key": "latam-ig", "name": "citizengo_latam", "ig_id": "10000000000000035", "handle": "citizengo_latam", "platform": "instagram"},
   {"key": "latam-x", "name": "@CitizenGOes", "handle": "CitizenGOes", "platform": "x"}
 ]'::jsonb) on conflict (id) do nothing;
 insert into public.engine_members (team_id, who, role, added_by) values ('mx', 'chris', 'admin', 'setup')
