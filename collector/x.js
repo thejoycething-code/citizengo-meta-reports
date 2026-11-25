@@ -629,7 +629,11 @@ async function collectAccount(account, out) {
       ? passFailures.map((f) => `${f.pass}: ${f.why}`).join('; ').slice(0, 500)
       : (privateOk && metrics.length && !withPrivate ? 'no private metrics on any in-window post' : null),
   })]);
-  return { status, posts: posts.size, metrics: metrics.length, cost, label: `@${u.username}` };
+  return {
+    status, posts: posts.size, metrics: metrics.length, cost, label: `@${u.username}`,
+    errorCode: passFailures.length ? (passFailures[0].status || null) : null,
+    why: passFailures.length ? passFailures[0].why : null,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -688,7 +692,15 @@ async function main() {
   }), { posts: 0, metrics: 0, cost: 0, failed: 0 });
 
   console.log('\nSummary');
-  for (const s of summary) console.log(`  ${String(s.status).padEnd(8)} ${s.label} — ${s.posts} posts, ${s.metrics} metric rows, est $${(s.cost || 0).toFixed(4)}`);
+  for (const s of summary) console.log(`  ${String(s.status).padEnd(8)} ${s.label} — ${s.posts} posts, ${s.metrics} metric rows, est $${(s.cost || 0).toFixed(4)}${s.status !== 'ok' && s.why ? ` (${s.why})` : ''}`);
+  // HTTP 402 is X saying the prepaid credit balance is empty (seen 15 Oct and
+  // 24-25 Nov 2026). Nothing in code can fix it: say plainly what to do.
+  const outOfCredit = summary.filter((s) => s.errorCode === 402).length;
+  if (outOfCredit) {
+    console.log(`\n  X CREDITS ARE EMPTY: ${outOfCredit} account(s) got HTTP 402 "credits depleted".`);
+    console.log('  Top up the prepaid balance (or raise the spending cap) in the X developer console, Billing.');
+    console.log('  Our figures above are estimates; the console balance is the real one. Runs re-read the last 8 days, so a top-up within a week loses nothing.');
+  }
   console.log(`  estimated cost this run: $${totals.cost.toFixed(4)} · month to date after run: $${(spent + totals.cost).toFixed(2)} of $${BUDGET_USD} · last 365 days: $${(yearSpent + totals.cost).toFixed(2)} of $${ANNUAL_BUDGET_USD}`);
   if (RUN_SPEND.stoppedAtBudget) console.log(`  NOTE: the backfill stopped at the ${RUN_SPEND.limitedBy} cap. It resumes where it stopped once the cap leaves room.`);
   if (Object.keys(written).length) {
